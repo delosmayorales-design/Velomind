@@ -1655,6 +1655,7 @@ document.addEventListener('DOMContentLoaded', () => {
       --success: #059669 !important;
     }
     body.light-theme .sidebar { background: #ffffff !important; }
+    body.light-theme .page-header { background: rgba(255,255,255,0.92) !important; }
     body.light-theme .card, body.light-theme .mod-card, body.light-theme .session-card-item { 
       box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; 
     }
