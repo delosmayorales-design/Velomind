@@ -89,7 +89,7 @@ async function checkZoneTimesCol(supabase) {
 
 const STRAVA_ID     = process.env.STRAVA_CLIENT_ID;
 const STRAVA_SECRET = process.env.STRAVA_CLIENT_SECRET;
-const STRAVA_RDR    = process.env.STRAVA_REDIRECT_URI || 'http://localhost:8085/cyclocoach/oauth-callback.html';
+const STRAVA_RDR = process.env.STRAVA_REDIRECT_URI || 'https://velomind-backend.onrender.com/api/providers/strava/callback';
 
 const GARMIN_KEY    = process.env.GARMIN_CONSUMER_KEY;
 const GARMIN_SECRET = process.env.GARMIN_CONSUMER_SECRET;
@@ -199,7 +199,7 @@ async function handleStravaExchange(req, res) {
       res.json({ message: '✅ Strava conectado correctamente', athlete: d.athlete });
     } else {
       // Redirigir al frontend tras el intercambio GET exitoso
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8085';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://velomind-liard.vercel.app';
       res.redirect(`${frontendUrl}/cyclocoach/integrations.html?strava=connected`);
     }
 
