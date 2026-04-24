@@ -6,23 +6,15 @@
   <title>VeloMind — Crear Perfil</title>
   <script>
     (function() {
-      document.documentElement.classList.add('no-transition');
       var theme = localStorage.getItem('velomind_theme');
       if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', theme);
       if (theme === 'light') document.documentElement.classList.add('light-theme');
-      else document.documentElement.classList.remove('light-theme');
     })();
-    window.addEventListener('load', function() {
-      requestAnimationFrame(function() { document.documentElement.classList.remove('no-transition'); });
-    });
   </script>
   <style>
-    html.no-transition, html.no-transition *, html.no-transition *:before, html.no-transition *:after { transition: none !important; }
-    html { color-scheme: dark; }
-    html[data-theme="light"], html.light-theme { color-scheme: light; }
-    html, body { background-color: #05070a !important; color: #EEF2FF !important; }
-    html[data-theme="light"], html[data-theme="light"] body, html.light-theme, html.light-theme body { background-color: #f8fafc !important; color: #1e293b !important; }
+    html { color-scheme: dark; background-color: #05070a; }
+    html[data-theme="light"], html.light-theme { color-scheme: light; background-color: #f8fafc; }
   </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
