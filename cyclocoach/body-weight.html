@@ -3,13 +3,24 @@
 <head>
   <script>
     (function() {
-      var isLight = localStorage.getItem('velomind_theme') === 'light';
-      if (isLight) document.documentElement.classList.add('light-theme');
-      var style = document.createElement('style');
-      style.textContent = 'html.light-theme, html.light-theme body { background-color: #f8fafc !important; color: #1e293b !important; } html, body { background-color: #0a0b0f !important; color: #f0f2f5 !important; }';
-      document.head.appendChild(style);
+      document.documentElement.classList.add('no-transition');
+      var theme = localStorage.getItem('velomind_theme');
+      if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'light') document.documentElement.classList.add('light-theme');
+      else document.documentElement.classList.remove('light-theme');
     })();
+    window.addEventListener('load', function() {
+      requestAnimationFrame(function() { document.documentElement.classList.remove('no-transition'); });
+    });
   </script>
+  <style>
+    html.no-transition, html.no-transition *, html.no-transition *:before, html.no-transition *:after { transition: none !important; }
+    html { color-scheme: dark; }
+    html[data-theme="light"], html.light-theme { color-scheme: light; }
+    html, body { background-color: #0a0b0f !important; color: #f0f2f5 !important; }
+    html[data-theme="light"], html[data-theme="light"] body, html.light-theme, html.light-theme body { background-color: #f8fafc !important; color: #1e293b !important; }
+  </style>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Peso Corporal — VeloMind</title>

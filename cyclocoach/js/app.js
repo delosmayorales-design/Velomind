@@ -1704,6 +1704,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleBtn.onclick = (e) => {
       e.preventDefault();
       document.documentElement.classList.toggle('light-theme');
+      document.documentElement.setAttribute('data-theme', document.documentElement.classList.contains('light-theme') ? 'light' : 'dark');
       localStorage.setItem('velomind_theme', document.documentElement.classList.contains('light-theme') ? 'light' : 'dark');
       
       const themeColorMeta = document.querySelector('meta[name="theme-color"]');
