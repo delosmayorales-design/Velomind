@@ -1511,6 +1511,23 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       .card-header, .card-body { padding: 12px !important; }
 
+      /* ── ARREGLO PARA INTEGRACIONES Y PANELES FLEXIBLES ── */
+      /* Convierte las filas de botones/textos (Strava, Garmin) en columnas para que no se escapen */
+      .card-body > div[style*="display: flex"],
+      .card-body > div[style*="display:flex"],
+      .card-body > div[style*="justify-content: space-between"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 16px !important;
+        text-align: center !important;
+      }
+      /* Forzar que todos los botones en las tarjetas móviles ocupen el 100% */
+      .card-body .btn, .card-body button, .card-body a.btn {
+        width: 100% !important;
+        justify-content: center !important;
+        margin: 8px 0 0 0 !important;
+      }
+
       /* Arreglo de Tablas para que hagan scroll interno y no rompan la app */
       table, .data-table, div[style*="overflow-x:auto"], div[style*="overflow-x: auto"] {
         display: block !important;
@@ -1577,6 +1594,11 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.innerHTML = '<i class="fas fa-bars"></i>';
     btn.onclick = () => document.body.classList.toggle('sidebar-open');
     
+    // Autocerrar el menú al tocar cualquier enlace en móviles
+    document.querySelectorAll('.sidebar a').forEach(link => {
+      link.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
+    });
+    
     const textWrapper = document.createElement('div');
     if (h1) textWrapper.appendChild(h1);
     if (p) textWrapper.appendChild(p);
@@ -1592,5 +1614,71 @@ document.addEventListener('DOMContentLoaded', () => {
     overlay.className = 'sidebar-overlay';
     overlay.onclick = () => document.body.classList.remove('sidebar-open');
     document.body.appendChild(overlay);
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════
+   THEME ADAPTER (Light / Dark Mode)
+══════════════════════════════════════════════════════════════ */
+if (localStorage.getItem('velomind_theme') === 'light') {
+  document.body.classList.add('light-theme');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const themeStyle = document.createElement('style');
+  themeStyle.innerHTML = `
+    body.light-theme {
+      --bg: #f3f4f6 !important;
+      --bg-card: #ffffff !important;
+      --bg-input: #f9fafb !important;
+      --border: rgba(0,0,0,0.08) !important;
+      --text: #111827 !important;
+      --text-secondary: #4b5563 !important;
+      --text-muted: #6b7280 !important;
+      --bg-card-hover: #f3f4f6 !important;
+    }
+    body.light-theme .sidebar { background: #ffffff !important; }
+    body.light-theme .card, body.light-theme .mod-card, body.light-theme .session-card-item { 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+    }
+    body.light-theme .week-card, body.light-theme .ai-section, body.light-theme .weekly-highlight-card { 
+      background: #ffffff !important; 
+      border-color: rgba(0,0,0,0.1) !important;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
+    }
+    body.light-theme .wc-grid { background: rgba(0,0,0,0.05) !important; }
+    body.light-theme .wc-item, body.light-theme .weekly-stat-item { background: #ffffff !important; }
+    body.light-theme .wc-val, body.light-theme .weekly-highlight-card h3 { color: #111827 !important; }
+    body.light-theme .auth-right { background: #ffffff !important; }
+  `;
+  document.head.appendChild(themeStyle);
+
+  const sidebarNav = document.querySelector('.sidebar-nav');
+  if (sidebarNav) {
+    const sectionTitle = document.createElement('div');
+    sectionTitle.className = 'nav-section-title';
+    sectionTitle.textContent = 'Apariencia';
+    
+    const toggleBtn = document.createElement('a');
+    toggleBtn.href = '#';
+    toggleBtn.className = 'nav-item theme-toggle';
+    
+    const updateBtnUI = () => {
+      toggleBtn.innerHTML = document.body.classList.contains('light-theme') 
+        ? '<i class="fas fa-moon"></i> Modo Oscuro' 
+        : '<i class="fas fa-sun"></i> Modo Claro';
+    };
+    
+    updateBtnUI();
+    
+    toggleBtn.onclick = (e) => {
+      e.preventDefault();
+      document.body.classList.toggle('light-theme');
+      localStorage.setItem('velomind_theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
+      updateBtnUI();
+    };
+    
+    sidebarNav.appendChild(sectionTitle);
+    sidebarNav.appendChild(toggleBtn);
   }
 });
