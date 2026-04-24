@@ -111,6 +111,15 @@ router.get('/recommendations', async (req, res) => {
 
   if (!latest) latest = { ctl: 0, atl: 0, tsb: 0 };
 
+  // OVERRIDE: Si el frontend (que calcula 1000 actividades) envía el dato preciso, usarlo siempre
+  if (!isNaN(req.query.ctl) && Number(req.query.ctl) > 0) {
+    latest = { 
+      ctl: Number(req.query.ctl), 
+      atl: Number(req.query.atl), 
+      tsb: Number(req.query.tsb) 
+    };
+  }
+
   const ctl = latest.ctl || 0;
   const atl = latest.atl || 0;
   const tsb = latest.tsb || 0;
@@ -1407,7 +1416,8 @@ router.post('/today-adaptation', async (req, res) => {
       .order('date', { ascending: false })
       .limit(3);
 
-    const latestPMC = pmcRows?.[0] || { ctl: 0, atl: 0, tsb: 0 };
+    // Si el cliente envía sus métricas precisas en el body, prevalecen
+    const latestPMC = req.body?.metrics || pmcRows?.[0] || { ctl: 0, atl: 0, tsb: 0 };
 
     const contexto = estadoUsuario.contexto_libre || '';
 
