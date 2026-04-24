@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <script>if(localStorage.getItem('velomind_theme')==='light')document.documentElement.classList.add('light-theme');</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Métricas — VeloMind</title>
@@ -23,6 +24,13 @@
     /* Asegurar que los mensajes de 'Sin datos' no cubran toda la pantalla */
     .chart-wrap-lg, .chart-wrap-md { position: relative !important; width: 100% !important; }
     .card { position: relative !important; }
+    
+    @media (max-width: 768px) {
+      .hide-on-mobile { display: none !important; }
+      .power-table-td { padding: 12px 8px !important; font-size: 12px !important; }
+      .power-table-th { padding: 8px 8px !important; font-size: 10px !important; }
+      #power-table { min-width: 100%; }
+    }
   </style>
 </head>
 <body>
@@ -126,7 +134,7 @@
           <p style="margin:6px 0 0;color:var(--text-muted)">Tiempo total en cada zona de potencia (Z1-Z7). Una distribución saludable tiene la mayor parte en Z2 (resistencia aeróbica). Las zonas se calculan como % de tu FTP.</p>
         </div>
         <div style="padding:12px;background:var(--bg-input);border-radius:8px">
-          <strong><i class="fas fa-trophy"></i> Mejores Esfuerzos (NP)</strong>
+          <strong style="color:#FFC800"><i class="fas fa-trophy"></i> Mejores Esfuerzos (NP)</strong>
           <p style="margin:6px 0 0;color:var(--text-muted)"><strong>NP (Normalized Power)</strong> es la potencia "efectiva" de una sesión, teniendo en cuenta las variaciones de intensidad. Es mejor indicador que la media. Aquí se muestra el mejor NP alcanzado según la duración del esfuerzo.</p>
         </div>
         <div style="padding:12px;background:var(--bg-input);border-radius:8px">
@@ -285,8 +293,8 @@
     <div class="grid-2">
       <div class="card">
         <div class="card-header">
-          <div class="card-title"><i class="fas fa-trophy"></i> Mejores Esfuerzos</div>
-          <span class="badge">NP por duración</span>
+          <div class="card-title"><i class="fas fa-trophy" style="color:#FFC800"></i> Mejores Esfuerzos</div>
+          <span class="badge">NP por duración de salida</span>
         </div>
         <div id="best-efforts"></div>
       </div>
@@ -320,11 +328,11 @@
           <table id="power-table" style="width:100%;border-collapse:collapse">
             <thead>
               <tr>
-                <th style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Dur.</th>
-                <th style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Potencia</th>
-                <th style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">W/kg</th>
-                <th style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">% FTP</th>
-                <th style="font-size:10px;padding:6px 10px;border-bottom:1px solid var(--border);min-width:60px"></th>
+                <th class="power-table-th" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">Dur.</th>
+                <th class="power-table-th" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">Potencia</th>
+                <th class="power-table-th hide-on-mobile" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">W/kg</th>
+                <th class="power-table-th hide-on-mobile" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">% FTP</th>
+                <th class="power-table-th" style="font-size:10px;padding:8px 10px;border-bottom:1px solid var(--border);min-width:60px;width:100%"></th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -353,12 +361,12 @@
       <div id="zones-info-bar" style="display:none;padding:10px 16px;background:rgba(59,130,246,0.08);border-radius:8px;font-size:12px;color:var(--text-muted);margin-bottom:16px"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="zones-tables">
         <div>
-          <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)"><i class="fas fa-bolt" style="color:#F59E0B"></i> Zonas de Potencia (Coggan)</div>
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;color:var(--text-primary)"><i class="fas fa-bolt" style="color:#F59E0B;margin-right:4px"></i> Zonas de Potencia</div>
           <div id="power-zones-table"></div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Basado en tu FTP. Usa <em>Auto-calcular desde Strava</em> para actualizar.</div>
         </div>
         <div>
-          <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)"><i class="fas fa-heartbeat" style="color:#EF4444"></i> Zonas de Frecuencia Cardíaca (Friel)</div>
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;color:var(--text-primary)"><i class="fas fa-heartbeat" style="color:#EF4444;margin-right:4px"></i> Zonas de Pulso</div>
           <div id="hr-zones-table"></div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Basado en LTHR (Umbral Láctico FC). Usa <em>Auto-calcular desde Strava</em> para actualizar.</div>
         </div>
@@ -1250,10 +1258,10 @@ function renderBestEfforts(acts, ftp) {
     return;
   }
   var buckets = [
-    { label: 'Sprint (< 30min)',   min: 0,    max: 1800     },
-    { label: 'Media (30–60min)',   min: 1800, max: 3600     },
-    { label: 'Largo (60–120min)',  min: 3600, max: 7200     },
-    { label: 'Fondo (> 120min)',   min: 7200, max: Infinity }
+    { label: 'Salida corta (< 30m)',   min: 0,    max: 1800     },
+    { label: 'Salida media (30–60m)',  min: 1800, max: 3600     },
+    { label: 'Salida larga (1–2h)',    min: 3600, max: 7200     },
+    { label: 'Gran Fondo (> 2h)',      min: 7200, max: Infinity }
   ];
   var rows = buckets.map(function(b) {
     var inB = wp.filter(function(a){ return (a.duration||0) >= b.min && (a.duration||0) < b.max; });
@@ -1314,13 +1322,15 @@ const HR_ZONES_FRIEL = [
 ];
 
 function renderZoneRow(zone, val1, val2, unit) {
-  return `<div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;margin-bottom:4px;background:var(--bg-input)">
-    <div style="width:10px;height:10px;border-radius:50%;background:${zone.color};flex-shrink:0"></div>
-    <div>
-      <div style="font-size:12px;font-weight:600;color:var(--text)">${zone.name}</div>
-      <div style="font-size:10px;color:var(--text-muted)">${zone.desc || zone.description || ''}</div>
+  return `<div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:12px 14px;border-radius:8px;margin-bottom:8px;background:var(--bg-input);border:1px solid var(--border)">
+    <div style="width:10px;height:10px;border-radius:50%;background:${zone.color};flex-shrink:0;box-shadow:0 0 8px ${zone.color}66"></div>
+    <div style="min-width:0">
+      <div style="font-size:13px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${zone.name}</div>
+      <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${zone.desc || zone.description || ''}</div>
     </div>
-    <div style="text-align:right;font-size:12px;font-weight:600;color:${zone.color};white-space:nowrap">${val1}${unit}${val2 ? ' – ' + val2 + unit : '+'}</div>
+    <div style="text-align:right;font-family:'Space Grotesk',sans-serif;">
+      <div style="font-size:14px;font-weight:800;color:${zone.color};white-space:nowrap">${val1}${unit}${val2 ? ' – ' + val2 + unit : '+'}</div>
+    </div>
   </div>`;
 }
 
@@ -1572,12 +1582,12 @@ function renderPowerCurve(pc) {
       var barOpacity = 0.35 + (pct / 100) * 0.65; // más largo = más brillante
       var barColor = 'rgba(196,239,68,' + barOpacity.toFixed(2) + ')';
       return '<tr>' +
-        '<td style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;font-weight:700;white-space:nowrap">' + p.label + '</td>' +
-        '<td style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:#C4EF44;font-weight:700">' + p.power + 'W</td>' +
-        '<td style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:var(--text-muted)">' + (p.wkg || '--') + '</td>' +
-        '<td style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:var(--text-muted)">' + (p.pctFTP ? p.pctFTP + '%' : '--') + '</td>' +
-        '<td style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.04)">' +
-          '<div style="height:4px;border-radius:2px;background:' + barColor + ';width:' + pct + '%"></div>' +
+        '<td class="power-table-td" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text-primary);white-space:nowrap">' + p.label + '</td>' +
+        '<td class="power-table-td" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:14px;color:#C4EF44;font-weight:800;font-family:\'Space Grotesk\',sans-serif">' + p.power + 'W</td>' +
+        '<td class="power-table-td hide-on-mobile" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted)">' + (p.wkg || '--') + '</td>' +
+        '<td class="power-table-td hide-on-mobile" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted)">' + (p.pctFTP ? p.pctFTP + '%' : '--') + '</td>' +
+        '<td class="power-table-td" style="padding:10px 10px;border-bottom:1px solid var(--border);width:100%">' +
+          '<div style="height:6px;border-radius:3px;background:' + barColor + ';width:' + pct + '%"></div>' +
         '</td></tr>';
     }).join('');
   }
