@@ -11,6 +11,19 @@
   <style>
     html { color-scheme: light; background-color: #f8fafc; }
     html[data-theme="dark"] { color-scheme: dark; background-color: #0a0b0f; }
+
+    html[data-theme="light"] {
+      --bg: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f1f5f9;
+      --bg-input: #f1f5f9;
+      --border: rgba(0,0,0,0.1);
+      --border-light: rgba(158,214,43,0.4);
+      --text: #1e293b;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --text-primary: #0f172a;
+    }
   </style>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -467,10 +480,14 @@
 
     <!-- METEOROLOGÍA -->
     <div class="card mb-6" id="weather-section">
-      <div class="card-header">
+      <div class="card-header" style="flex-wrap:wrap; gap:10px;">
         <div>
-          <div class="card-title"><i class="fas fa-cloud-sun" style="color:#00D4FF"></i> Previsión Meteorológica (24h)</div>
+          <div class="card-title"><i class="fas fa-cloud-sun" style="color:#00D4FF"></i> Previsión Meteorológica</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Viento, temperatura y lluvia para planificar tus rutas.</div>
+        </div>
+        <div id="weather-controls" style="display:none; gap:8px">
+          <button class="btn btn-secondary btn-sm" id="btn-weather-hoy" onclick="renderWeatherDay('hoy')" style="background:var(--primary);color:#111;border-color:var(--primary)">Hoy (<span id="lbl-hoy"></span>)</button>
+          <button class="btn btn-secondary btn-sm" id="btn-weather-manana" onclick="renderWeatherDay('manana')">Mañana (<span id="lbl-manana"></span>)</button>
         </div>
       </div>
       <div class="card-body" style="padding:0">
@@ -1606,6 +1623,8 @@ function exportWeekToGarmin() {
 }
 
 // ── Meteorología ──────────────────────────────────────────────
+let weatherDataCache = null;
+
 async function loadWeather() {
   const container = document.getElementById('weather-content');
   container.innerHTML = '<div style="width:100%; text-align:center; color:var(--text-muted); padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Solicitando ubicación...</div>';
@@ -1625,23 +1644,71 @@ async function loadWeather() {
 
 async function fetchAndRenderWeather(lat, lon) {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,weathercode,windspeed_10m,winddirection_10m&timezone=auto&forecast_days=2`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,weathercode,windspeed_10m,winddirection_10m&timezone=auto&forecast_days=3`;
     const res = await fetch(url);
-    const data = await res.json();
+    weatherDataCache = await res.json();
 
-    const now = new Date();
-    const currentTime = now.getTime();
-    let html = '';
+    const hoy = new Date();
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
 
-    for(let i=0; i<data.hourly.time.length; i++) {
-      const time = new Date(data.hourly.time[i]).getTime();
-      if(time < currentTime - 3600000) continue; // Ignorar horas pasadas
-      if(time > currentTime + 24 * 3600000) break; // Mostrar máximo las próximas 24h
+    const fmt = { day: 'numeric', month: 'short' };
+    const lblHoy = document.getElementById('lbl-hoy');
+    const lblManana = document.getElementById('lbl-manana');
+    if (lblHoy) lblHoy.textContent = hoy.toLocaleDateString('es-ES', fmt);
+    if (lblManana) lblManana.textContent = manana.toLocaleDateString('es-ES', fmt);
 
-      const tObj = new Date(data.hourly.time[i]);
-      const isTomorrow = tObj.getDate() !== now.getDate();
+    const controls = document.getElementById('weather-controls');
+    if (controls) controls.style.display = 'flex';
+
+    renderWeatherDay('hoy');
+  } catch(e) {
+    document.getElementById('weather-content').innerHTML = '<div style="width:100%; text-align:center; color:var(--danger); padding: 20px;"><i class="fas fa-times-circle"></i> Error al cargar el clima.</div>';
+  }
+}
+
+function renderWeatherDay(day) {
+  if (!weatherDataCache) return;
+  const data = weatherDataCache;
+
+  const btnHoy = document.getElementById('btn-weather-hoy');
+  const btnManana = document.getElementById('btn-weather-manana');
+  
+  if (btnHoy) {
+    btnHoy.style.background = day === 'hoy' ? 'var(--primary)' : 'var(--bg-input)';
+    btnHoy.style.color = day === 'hoy' ? '#111' : 'var(--text-secondary)';
+    btnHoy.style.borderColor = day === 'hoy' ? 'var(--primary)' : 'var(--border)';
+  }
+  if (btnManana) {
+    btnManana.style.background = day === 'manana' ? 'var(--primary)' : 'var(--bg-input)';
+    btnManana.style.color = day === 'manana' ? '#111' : 'var(--text-secondary)';
+    btnManana.style.borderColor = day === 'manana' ? 'var(--primary)' : 'var(--border)';
+  }
+
+  const now = new Date();
+  const targetDate = new Date();
+  if (day === 'manana') targetDate.setDate(targetDate.getDate() + 1);
+
+  const targetY = targetDate.getFullYear();
+  const targetM = targetDate.getMonth();
+  const targetD = targetDate.getDate();
+  const currentTime = now.getTime();
+
+  let html = '';
+
+  for(let i=0; i<data.hourly.time.length; i++) {
+    const tStr = data.hourly.time[i];
+    const tObj = new Date(tStr);
+    
+    if (tObj.getFullYear() !== targetY || tObj.getMonth() !== targetM || tObj.getDate() !== targetD) {
+      continue;
+    }
+
+    if (day === 'hoy' && tObj.getTime() < currentTime - 3600000) {
+      continue; // Ignorar horas pasadas hoy
+    }
+
       const hourStr = tObj.getHours().toString().padStart(2,'0') + ':00';
-      const dayStr = isTomorrow ? 'Mañana' : 'Hoy';
 
       const temp = Math.round(data.hourly.temperature_2m[i]);
       const pop = data.hourly.precipitation_probability[i];
@@ -1656,7 +1723,7 @@ async function fetchAndRenderWeather(lat, lon) {
 
       html += `
         <div style="min-width: 75px; flex-shrink: 0; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 12px 8px; text-align: center; display: flex; flex-direction: column; gap: 8px; scroll-snap-align: start; transition: border-color 0.2s;">
-          <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">${dayStr}<br><span style="font-size:12px; color:var(--text-secondary)">${hourStr}</span></div>
+          <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">${hourStr}</div>
           <i class="fas ${icon}" style="font-size: 22px; color: ${color};"></i>
           <div style="font-size: 16px; font-weight: 800; font-family:'Space Grotesk',sans-serif; color: var(--text-primary);">${temp}°</div>
           <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 4px;" title="Viento sopla hacia los ${windDir}°">
@@ -1665,11 +1732,10 @@ async function fetchAndRenderWeather(lat, lon) {
           <div style="font-size: 11px; color: #3B82F6; font-weight: 700;"><i class="fas fa-tint"></i> ${pop}%</div>
         </div>
       `;
-    }
-    document.getElementById('weather-content').innerHTML = html;
-  } catch(e) {
-    document.getElementById('weather-content').innerHTML = '<div style="width:100%; text-align:center; color:var(--danger); padding: 20px;"><i class="fas fa-times-circle"></i> Error al cargar el clima.</div>';
   }
+  
+  if (!html) html = '<div style="width:100%; text-align:center; color:var(--text-muted); padding: 20px;">No hay datos disponibles.</div>';
+  document.getElementById('weather-content').innerHTML = html;
 }
 </script>
 </body>
