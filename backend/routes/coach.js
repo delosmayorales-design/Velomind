@@ -1421,6 +1421,12 @@ router.post('/today-adaptation', async (req, res) => {
 
     const contexto = estadoUsuario.contexto_libre || '';
 
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const recentActs = (acts || []).filter(a => a.date >= sevenDaysAgo);
+    const recentHours = recentActs.reduce((acc, a) => acc + (a.duration || 0), 0) / 3600;
+    const recentTSS = Math.round(recentActs.reduce((acc, a) => acc + (a.tss || 0), 0));
+
     const actsCompact = (acts || []).map(a => ({
       fecha: a.date, tipo: a.type,
       min: Math.round((a.duration || 0) / 60), tss: a.tss,
@@ -1448,7 +1454,8 @@ CTL ${Math.round(latestPMC.ctl)} / ATL ${Math.round(latestPMC.atl)} / TSB ${Math
 Hoy es ${hoy}.
 ${sesionBlock}
 Comentario / Intención del atleta: "${contexto || 'no especificado'}".
-Carga reciente (últimas 7 sesiones): ${JSON.stringify(actsCompact)}.
+Carga real en los últimos 7 días: ${recentHours.toFixed(1)} horas, ${recentTSS} TSS en ${recentActs.length} sesiones.
+Historial de últimas actividades registradas: ${JSON.stringify(actsCompact)}.
 
 Analiza si el atleta debe mantener, reducir, sustituir o descansar la sesión de ${diaRef}.
 ¡MUY IMPORTANTE!: Si el atleta indica que hará una salida en grupo (grupeta), ruta larga libre o carrera, IGNORA los intervalos estructurados. Evalúa su fatiga y dale consejos tácticos para esa salida (ej: "ve a rueda", "escóndete en el grupo", "haz relevos cortos" si está muy cansado, o "prueba a atacar" si está fresco).
@@ -1700,7 +1707,7 @@ Hoy es el día con índice ${todayIdx} (0=Lunes, 6=Domingo).
 El atleta acaba de reportar lo que REALMENTE ha hecho hoy: "${feedback}"
 
 Tu tarea:
-1. Modifica la sesión de HOY (dayIndex: ${todayIdx}) para reflejar exactamente lo que hizo. Si hizo menos tiempo, baja su "durationMin" y "tss".
+1. Modifica la sesión de HOY (dayIndex: ${todayIdx}) para reflejar exactamente lo que hizo. Si hizo menos tiempo, baja su "durationMin" y "tss". ¡CRÍTICO!: Si el atleta reporta que NO HA PODIDO SALIR o ha descansado totalmente, DEBES obligatoriamente establecer "isRest": true, "type": "Descanso", "durationMin": 0 y "tss": 0 para el día de HOY.
 2. Aplica estas REGLAS DE COACHING para los días siguientes (dayIndex > ${todayIdx}):
    - ⚠️ REASIGNACIÓN DE CARGA (Imprevistos): Si el atleta no pudo hacer su serie dura hoy por un problema mecánico (pinchazo) o falta de tiempo, pero está SANO: LA CARGA NO SE PERDONA, SE APLAZA. Debes OBLIGATORIAMENTE modificar el día de MAÑANA para que incluya el "type", el "durationMin" y el "tss" alto de la sesión dura que tocaba hoy.
    - 📉 RECUPERACIÓN (Fatiga/Enfermedad): Solo si reporta estar muy cansado, enfermo o con dolor, reduce los "durationMin" y "tss" de los próximos días.
