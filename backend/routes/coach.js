@@ -1699,20 +1699,27 @@ router.post('/recalculate-week', async (req, res) => {
       advice: s.advice
     }));
 
+    const ayerIdx = todayIdx === 0 ? "anterior (fuera de esta semana)" : todayIdx - 1;
+    const mananaIdx = todayIdx === 6 ? "siguiente (fuera de esta semana)" : todayIdx + 1;
+
     const systemPrompt = 'Eres un coach ciclista experto y nutricionista. Responde SOLO con JSON válido, sin markdown ni texto extra.';
     const userMsg = `El atleta tiene esta planificación para la semana:
 ${JSON.stringify(planResumido, null, 2)}
 
-Hoy es el día con índice ${todayIdx} (0=Lunes, 6=Domingo).
-El atleta reporta el siguiente feedback (puede referirse al pasado, a hoy, o a intenciones futuras): "${feedback}"
+HOY es el índice ${todayIdx} (0=Lunes, 6=Domingo).
+AYER es el índice ${ayerIdx}.
+MAÑANA es el índice ${mananaIdx}.
+
+El atleta reporta el siguiente feedback: "${feedback}"
 
 Tu tarea:
-1. IDENTIFICA A QUÉ DÍAS SE REFIERE: Analiza si el atleta habla de "hoy", "ayer", "mañana" o menciona días concretos de la semana. Determina los 'dayIndex' afectados.
-2. APLICA LOS CAMBIOS: Modifica las sesiones de los días identificados. ¡CRÍTICO!: Si reporta que un día NO ENTRENÓ, DEBES obligatoriamente establecer "isRest": true, "type": "Descanso", "durationMin": 0 y "tss": 0 para ese día. Si te avisa que hará una salida distinta/larga en el futuro (ej. grupeta), ajusta el "type", "durationMin", "tss" y "description" de ese día futuro para reflejar su intención.
-3. RECALCULA EL RESTO DE LA SEMANA (días posteriores):
-   - ⚠️ REASIGNACIÓN (Imprevistos): Si se saltó una sesión dura importante por un imprevisto (estando sano), APLAZA esa sesión dura al siguiente día disponible, no la elimines.
-   - 📉 RECUPERACIÓN (Fatiga/Enfermedad): Si está muy cansado o enfermo, reduce el TSS y duración de los próximos días.
-   - ⚖️ COMPENSACIÓN: Si hizo más de lo que tocaba, suaviza el día siguiente. Actualiza los mensajes de "advice".
+1. MAPEO EXACTO DE DÍAS (dayIndex): Determina de qué días habla el atleta usando la referencia de índices de arriba.
+2. APLICA LOS CAMBIOS ÚNICAMENTE EN SU DÍA CORRESPONDIENTE:
+   - 🛑 ¡CRÍTICO!: Si el atleta dice que AYER no entrenó, DEBES establecer "isRest": true, "durationMin": 0 y "tss": 0 EXCLUSIVAMENTE para el índice de AYER (${ayerIdx}). ¡NUNCA modifiques HOY (${todayIdx}) como descanso si el reporte era sobre ayer!
+   - 🚴 Si avisa que HOY o MAÑANA hará una salida distinta (ej. grupeta de 3.5h), reemplaza la sesión de ESE ÍNDICE EXACTO con una ruta acorde, dándole consejos tácticos en la "description" y calculando el "durationMin" y "tss" previstos.
+3. RECALCULA EL RESTO DE LA SEMANA (días futuros):
+   - ⚠️ REASIGNACIÓN: Si el atleta no pudo hacer una sesión dura, muévela a un día futuro disponible.
+   - 📉 COMPENSACIÓN: Si hará muchas horas de grupeta, asegúrate de que el día siguiente sea suave o descanso.
 
 Devuelve EXACTAMENTE este JSON:
 {
@@ -1724,11 +1731,11 @@ Devuelve EXACTAMENTE este JSON:
     },
     {
       "dayIndex": número_de_otro_día_afectado,
-      "changes": { "isRest": false, "type": "vo2max", "durationMin": 90, "tss": 95, "targetWatts": 250, "advice": "Recuperamos las series." }
+      "changes": { "isRest": false, "type": "long", "durationMin": 210, "tss": 150, "description": "Salida con la grupeta. Intenta ir a rueda para ahorrar energía...", "advice": "He adaptado tu salida con la grupeta." }
     }
   ]
 }
-NOTA: 'modifications' DEBE contener al menos el objeto del día afectado por el reporte, más cualquier otro día que alteres. Asegúrate de que los dayIndex estén entre 0 y 6.`;
+NOTA: 'modifications' DEBE contener las alteraciones exactas para los índices reportados. Asegúrate de que los dayIndex devueltos estén entre 0 y 6.`;
 
     const result = await callAI(systemPrompt, userMsg, { max_tokens: 1500, temperature: 0.3 });
     if (!result || !result.modifications) return res.status(500).json({ error: 'La IA no devolvió un plan válido.' });
