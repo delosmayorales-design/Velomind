@@ -1704,11 +1704,11 @@ router.post('/recalculate-week', async (req, res) => {
 ${JSON.stringify(planResumido, null, 2)}
 
 Hoy es el día con índice ${todayIdx} (0=Lunes, 6=Domingo).
-El atleta reporta el siguiente feedback (puede referirse a hoy o a un día pasado): "${feedback}"
+El atleta reporta el siguiente feedback (puede referirse al pasado, a hoy, o a intenciones futuras): "${feedback}"
 
 Tu tarea:
-1. IDENTIFICA A QUÉ DÍA SE REFIERE: Analiza si el atleta habla de "hoy", "ayer" (día previo a hoy), "antes de ayer" o menciona un día de la semana ("el lunes"). Determina el 'dayIndex' correcto que debe modificarse. Si no especifica, asume que habla de HOY (dayIndex ${todayIdx}).
-2. APLICA LO QUE HIZO EN ESE DÍA: Modifica la sesión del día identificado. ¡CRÍTICO!: Si reporta que ESE DÍA NO ENTRENÓ, descansó o no pudo salir, DEBES obligatoriamente establecer "isRest": true, "type": "Descanso", "durationMin": 0 y "tss": 0 para ESE día.
+1. IDENTIFICA A QUÉ DÍAS SE REFIERE: Analiza si el atleta habla de "hoy", "ayer", "mañana" o menciona días concretos de la semana. Determina los 'dayIndex' afectados.
+2. APLICA LOS CAMBIOS: Modifica las sesiones de los días identificados. ¡CRÍTICO!: Si reporta que un día NO ENTRENÓ, DEBES obligatoriamente establecer "isRest": true, "type": "Descanso", "durationMin": 0 y "tss": 0 para ese día. Si te avisa que hará una salida distinta/larga en el futuro (ej. grupeta), ajusta el "type", "durationMin", "tss" y "description" de ese día futuro para reflejar su intención.
 3. RECALCULA EL RESTO DE LA SEMANA (días posteriores):
    - ⚠️ REASIGNACIÓN (Imprevistos): Si se saltó una sesión dura importante por un imprevisto (estando sano), APLAZA esa sesión dura al siguiente día disponible, no la elimines.
    - 📉 RECUPERACIÓN (Fatiga/Enfermedad): Si está muy cansado o enfermo, reduce el TSS y duración de los próximos días.
