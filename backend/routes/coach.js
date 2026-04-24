@@ -1704,30 +1704,31 @@ router.post('/recalculate-week', async (req, res) => {
 ${JSON.stringify(planResumido, null, 2)}
 
 Hoy es el día con índice ${todayIdx} (0=Lunes, 6=Domingo).
-El atleta acaba de reportar lo que REALMENTE ha hecho hoy: "${feedback}"
+El atleta reporta el siguiente feedback (puede referirse a hoy o a un día pasado): "${feedback}"
 
 Tu tarea:
-1. Modifica la sesión de HOY (dayIndex: ${todayIdx}) para reflejar exactamente lo que hizo. Si hizo menos tiempo, baja su "durationMin" y "tss". ¡CRÍTICO!: Si el atleta reporta que NO HA PODIDO SALIR o ha descansado totalmente, DEBES obligatoriamente establecer "isRest": true, "type": "Descanso", "durationMin": 0 y "tss": 0 para el día de HOY.
-2. Aplica estas REGLAS DE COACHING para los días siguientes (dayIndex > ${todayIdx}):
-   - ⚠️ REASIGNACIÓN DE CARGA (Imprevistos): Si el atleta no pudo hacer su serie dura hoy por un problema mecánico (pinchazo) o falta de tiempo, pero está SANO: LA CARGA NO SE PERDONA, SE APLAZA. Debes OBLIGATORIAMENTE modificar el día de MAÑANA para que incluya el "type", el "durationMin" y el "tss" alto de la sesión dura que tocaba hoy.
-   - 📉 RECUPERACIÓN (Fatiga/Enfermedad): Solo si reporta estar muy cansado, enfermo o con dolor, reduce los "durationMin" y "tss" de los próximos días.
-   - ⚖️ COMPENSACIÓN: Si comió mal o hizo exceso de carga, da un consejo en el "advice" de mañana.
+1. IDENTIFICA A QUÉ DÍA SE REFIERE: Analiza si el atleta habla de "hoy", "ayer" (día previo a hoy), "antes de ayer" o menciona un día de la semana ("el lunes"). Determina el 'dayIndex' correcto que debe modificarse. Si no especifica, asume que habla de HOY (dayIndex ${todayIdx}).
+2. APLICA LO QUE HIZO EN ESE DÍA: Modifica la sesión del día identificado. ¡CRÍTICO!: Si reporta que ESE DÍA NO ENTRENÓ, descansó o no pudo salir, DEBES obligatoriamente establecer "isRest": true, "type": "Descanso", "durationMin": 0 y "tss": 0 para ESE día.
+3. RECALCULA EL RESTO DE LA SEMANA (días posteriores):
+   - ⚠️ REASIGNACIÓN (Imprevistos): Si se saltó una sesión dura importante por un imprevisto (estando sano), APLAZA esa sesión dura al siguiente día disponible, no la elimines.
+   - 📉 RECUPERACIÓN (Fatiga/Enfermedad): Si está muy cansado o enfermo, reduce el TSS y duración de los próximos días.
+   - ⚖️ COMPENSACIÓN: Si hizo más de lo que tocaba, suaviza el día siguiente. Actualiza los mensajes de "advice".
 
 Devuelve EXACTAMENTE este JSON:
 {
-  "mensaje_coach": "Frase de entrenador estricto explicando que has movido su sesión dura a mañana para no perder carga.",
+  "mensaje_coach": "Frase de entrenador explicando los cambios realizados en la semana.",
   "modifications": [
     {
-      "dayIndex": ${todayIdx},
-      "changes": { "isRest": false, "type": "endurance", "durationMin": 60, "tss": 40, "advice": "Rodaje suave por pinchazo." }
+      "dayIndex": número_del_día_modificado,
+      "changes": { "isRest": true, "type": "Descanso", "durationMin": 0, "tss": 0, "advice": "Descanso registrado." }
     },
     {
-      "dayIndex": ${todayIdx + 1 > 6 ? 6 : todayIdx + 1},
-      "changes": { "isRest": false, "type": "vo2max", "durationMin": 90, "tss": 95, "targetWatts": 250, "advice": "Recuperamos la sesión de series que no pudiste hacer ayer." }
+      "dayIndex": número_de_otro_día_afectado,
+      "changes": { "isRest": false, "type": "vo2max", "durationMin": 90, "tss": 95, "targetWatts": 250, "advice": "Recuperamos las series." }
     }
   ]
 }
-NOTA: 'modifications' DEBE contener al menos el objeto de HOY (${todayIdx}), más cualquier otro día que alteres.`;
+NOTA: 'modifications' DEBE contener al menos el objeto del día afectado por el reporte, más cualquier otro día que alteres. Asegúrate de que los dayIndex estén entre 0 y 6.`;
 
     const result = await callAI(systemPrompt, userMsg, { max_tokens: 1500, temperature: 0.3 });
     if (!result || !result.modifications) return res.status(500).json({ error: 'La IA no devolvió un plan válido.' });
