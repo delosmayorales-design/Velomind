@@ -6,12 +6,11 @@
       var theme = localStorage.getItem('velomind_theme');
       if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', theme);
-      if (theme === 'light') document.documentElement.classList.add('light-theme');
     })();
   </script>
   <style>
-    html { color-scheme: dark; background-color: #0a0b0f; }
-    html[data-theme="light"], html.light-theme { color-scheme: light; background-color: #f8fafc; }
+    html { color-scheme: light; background-color: #f8fafc; }
+    html[data-theme="dark"] { color-scheme: dark; background-color: #0a0b0f; }
   </style>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -36,7 +35,7 @@
       --radius: 12px;
       --shadow-glow: 0 0 40px rgba(158,214,43,0.14);
     }
-    html.light-theme {
+    html[data-theme="light"] {
       --bg: #f8fafc;
       --bg-card: #ffffff;
       --bg-input: #f1f5f9;

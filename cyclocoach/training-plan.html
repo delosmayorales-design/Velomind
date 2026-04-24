@@ -6,12 +6,11 @@
       var theme = localStorage.getItem('velomind_theme');
       if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', theme);
-      if (theme === 'light') document.documentElement.classList.add('light-theme');
     })();
   </script>
   <style>
-    html { color-scheme: dark; background-color: #0a0b0f; }
-    html[data-theme="light"], html.light-theme { color-scheme: light; background-color: #f8fafc; }
+    html { color-scheme: light; background-color: #f8fafc; }
+    html[data-theme="dark"] { color-scheme: dark; background-color: #0a0b0f; }
   </style>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -464,6 +463,23 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- METEOROLOGÍA -->
+    <div class="card mb-6" id="weather-section">
+      <div class="card-header">
+        <div>
+          <div class="card-title"><i class="fas fa-cloud-sun" style="color:#00D4FF"></i> Previsión Meteorológica (24h)</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Viento, temperatura y lluvia para planificar tus rutas.</div>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div id="weather-content" style="display:flex; overflow-x:auto; padding:16px; gap:12px; scroll-snap-type: x mandatory; scrollbar-width: none;">
+           <div style="width:100%; text-align:center; color:var(--text-muted); padding: 20px;">
+             <button class="btn btn-secondary btn-sm" onclick="loadWeather()"><i class="fas fa-map-marker-alt"></i> Mostrar clima en mi ubicación</button>
+           </div>
+        </div>
+      </div>
     </div>
 
     <!-- NO ATHLETE ALERT -->
@@ -1587,6 +1603,73 @@ function exportWeekToGarmin() {
   const trainSessions = currentPlan.sessions.filter(s => !s.isRest);
   if (!trainSessions.length) { alert('No hay sesiones de entrenamiento esta semana.'); return; }
   FITWorkoutEncoder.exportWeek(currentPlan.sessions, ftp);
+}
+
+// ── Meteorología ──────────────────────────────────────────────
+async function loadWeather() {
+  const container = document.getElementById('weather-content');
+  container.innerHTML = '<div style="width:100%; text-align:center; color:var(--text-muted); padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Solicitando ubicación...</div>';
+
+  if ("geolocation" in navigator) {
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      fetchAndRenderWeather(lat, lon);
+    }, (error) => {
+      container.innerHTML = '<div style="width:100%; text-align:center; color:var(--text-muted); padding: 20px;"><i class="fas fa-exclamation-triangle" style="color:var(--warning)"></i> Permiso de ubicación denegado. Actívalo en el navegador para ver el clima.</div>';
+    });
+  } else {
+    container.innerHTML = '<div style="width:100%; text-align:center; color:var(--text-muted); padding: 20px;">Geolocalización no soportada.</div>';
+  }
+}
+
+async function fetchAndRenderWeather(lat, lon) {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,weathercode,windspeed_10m,winddirection_10m&timezone=auto&forecast_days=2`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    const now = new Date();
+    const currentTime = now.getTime();
+    let html = '';
+
+    for(let i=0; i<data.hourly.time.length; i++) {
+      const time = new Date(data.hourly.time[i]).getTime();
+      if(time < currentTime - 3600000) continue; // Ignorar horas pasadas
+      if(time > currentTime + 24 * 3600000) break; // Mostrar máximo las próximas 24h
+
+      const tObj = new Date(data.hourly.time[i]);
+      const isTomorrow = tObj.getDate() !== now.getDate();
+      const hourStr = tObj.getHours().toString().padStart(2,'0') + ':00';
+      const dayStr = isTomorrow ? 'Mañana' : 'Hoy';
+
+      const temp = Math.round(data.hourly.temperature_2m[i]);
+      const pop = data.hourly.precipitation_probability[i];
+      const windSpd = Math.round(data.hourly.windspeed_10m[i]);
+      const windDir = data.hourly.winddirection_10m[i];
+      const code = data.hourly.weathercode[i];
+
+      let icon = 'fa-sun'; let color = '#F59E0B';
+      if(code >= 1 && code <= 3) { icon = 'fa-cloud-sun'; color = '#9CA3AF'; }
+      if(code >= 45 && code <= 67) { icon = 'fa-cloud-rain'; color = '#3B82F6'; }
+      if(code >= 71 && code <= 99) { icon = 'fa-poo-storm'; color = '#EF4444'; }
+
+      html += `
+        <div style="min-width: 75px; flex-shrink: 0; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 12px 8px; text-align: center; display: flex; flex-direction: column; gap: 8px; scroll-snap-align: start; transition: border-color 0.2s;">
+          <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">${dayStr}<br><span style="font-size:12px; color:var(--text-secondary)">${hourStr}</span></div>
+          <i class="fas ${icon}" style="font-size: 22px; color: ${color};"></i>
+          <div style="font-size: 16px; font-weight: 800; font-family:'Space Grotesk',sans-serif; color: var(--text-primary);">${temp}°</div>
+          <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 4px;" title="Viento sopla hacia los ${windDir}°">
+            <i class="fas fa-arrow-down" style="transform: rotate(${windDir}deg); color:var(--text-muted);"></i> ${windSpd} <span style="font-size:9px">km/h</span>
+          </div>
+          <div style="font-size: 11px; color: #3B82F6; font-weight: 700;"><i class="fas fa-tint"></i> ${pop}%</div>
+        </div>
+      `;
+    }
+    document.getElementById('weather-content').innerHTML = html;
+  } catch(e) {
+    document.getElementById('weather-content').innerHTML = '<div style="width:100%; text-align:center; color:var(--danger); padding: 20px;"><i class="fas fa-times-circle"></i> Error al cargar el clima.</div>';
+  }
 }
 </script>
 </body>

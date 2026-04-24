@@ -6,12 +6,11 @@
       var theme = localStorage.getItem('velomind_theme');
       if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', theme);
-      if (theme === 'light') document.documentElement.classList.add('light-theme');
     })();
   </script>
   <style>
-    html { color-scheme: dark; background-color: #0a0b0f; }
-    html[data-theme="light"], html.light-theme { color-scheme: light; background-color: #f8fafc; }
+    html { color-scheme: light; background-color: #f8fafc; }
+    html[data-theme="dark"] { color-scheme: dark; background-color: #0a0b0f; }
   </style>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -367,6 +366,17 @@
             </div>
           </div>
         </div>
+        
+        <div class="card mb-6">
+          <div class="card-header" style="flex-wrap:wrap;gap:10px">
+            <div class="card-title">💊 Suplementación Deportiva</div>
+            <button class="btn btn-secondary btn-sm" onclick="window.open('https://www.google.com/search?tbm=shop&q=caja+geles+barritas+ciclismo+oferta', '_blank')">
+              <i class="fas fa-tags" style="color:var(--primary)"></i> Buscar ofertas en Geles
+            </button>
+          </div>
+          <div id="supplements-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px"></div>
+        </div>
+
         <div class="card">
           <div class="card-header"><div class="card-title">⚠️ Recomendaciones y Errores</div></div>
           <div id="nutrition-tips" class="mb-4" style="display:flex; flex-direction:column; gap:10px"></div>
@@ -811,6 +821,7 @@ function renderNutritionUI(n, athlete, isTraining) {
   document.getElementById('hydration-equiv').innerHTML = `🥤 ${glasses} vasos de 250ml<br>💧 ${Math.round(hydration_ml/500)} botellas de 500ml<br>🫙 ${(hydration_ml/1000).toFixed(1)} litros`;
 
   renderTips(tips);
+  renderSupplements(n.supplements);
 }
 function renderTips(tips) {
   const container = document.getElementById('nutrition-tips');
@@ -820,6 +831,24 @@ function renderTips(tips) {
       <span style="font-size:20px;flex-shrink:0">${t.icon}</span>
       <span style="font-size:13px;color:var(--text-secondary);line-height:1.5">${t.text}</span>
     </div>`).join('');
+}
+
+function renderSupplements(supplements) {
+  const container = document.getElementById('supplements-grid');
+  if (!container) return;
+  container.innerHTML = (supplements||[]).map(s => `
+    <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <strong style="font-size:14px;color:var(--text-primary)"><i class="fas fa-pills" style="color:var(--accent-green)"></i> ${s.name}</strong>
+        <span style="font-size:11px;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:12px;color:var(--text-secondary);text-align:right">${s.dose}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;flex:1">${s.note}</div>
+      <button onclick="window.open('https://www.google.com/search?tbm=shop&q=${encodeURIComponent(s.name + ' ciclismo comprar oferta')}', '_blank')" 
+        class="btn btn-ghost btn-sm" style="margin-top:8px;font-size:11px;padding:6px;width:100%;border-color:rgba(158,214,43,0.3);color:var(--primary)">
+        <i class="fas fa-shopping-cart"></i> Ver mejores precios
+      </button>
+    </div>
+  `).join('');
 }
 
 function renderCarbChart() {

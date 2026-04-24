@@ -1218,6 +1218,7 @@ const NutritionPlanner = {
       hydration_ml,
       workoutNutrition,
       tips: this._tips(goal, trainingDay),
+      supplements: this._supplements(goal),
     };
   },
 
@@ -1261,6 +1262,32 @@ const NutritionPlanner = {
     if (!trainingDay) base.push({ icon: '😴', text: 'Dia suave: baja carbohidrato, no bajes proteina.' });
     return base;
   },
+
+  _supplements(goal) {
+    const base = [
+      { name: 'Maltodextrina + Fructosa (Ratio 1:0.8)', dose: 'Intra-entreno', note: 'La mezcla óptima para absorber hasta 90-120g de carbohidratos por hora sin problemas gástricos.' },
+      { name: 'Electrolitos (Sodio/Magnesio)', dose: '500-1000mg/h', note: 'Vital para prevenir calambres y mantener la hidratación en días calurosos o salidas largas.' },
+      { name: 'Proteína Whey Isolate', dose: '25-30g post', note: 'Rápida absorción para maximizar la síntesis proteica muscular en la ventana anabólica.' }
+    ];
+    
+    const extras = {
+      sprint: [
+        { name: 'Creatina Monohidrato', dose: '3-5g/día', note: 'Aumenta las reservas de fosfocreatina. Mejora significativamente la potencia máxima en sprints cortos.' },
+        { name: 'Cafeína', dose: '3-6mg/kg', note: 'Mejora el reclutamiento de unidades motoras y reduce la percepción de fatiga.' }
+      ],
+      vo2max: [
+        { name: 'Zumo de Remolacha (Nitratos)', dose: '400mg pre', note: 'Tomar 2h antes. Mejora la eficiencia del oxígeno y el flujo sanguíneo en esfuerzos al límite.' },
+        { name: 'Beta-Alanina', dose: '3-6g/día', note: 'Actúa como buffer del ácido láctico. Ayuda a sostener esfuerzos en Z5-Z6 durante más tiempo.' }
+      ],
+      ftp: [
+        { name: 'Beta-Alanina', dose: '3-6g/día', note: 'Retrasa la quemazón muscular, permitiendo empujar los vatios de umbral más tiempo.' }
+      ],
+      gran_fondo: [
+        { name: 'BCAAs / Aminoácidos', dose: '5g intra', note: 'Reduce la fatiga del sistema nervioso central en pruebas de más de 4 horas.' }
+      ]
+    };
+    return [...base, ...(extras[goal] || [])];
+  }
 };
 
 const ProviderSync = {
@@ -1694,7 +1721,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleBtn.className = 'nav-item theme-toggle';
     
     const updateBtnUI = () => {
-      toggleBtn.innerHTML = document.documentElement.classList.contains('light-theme') 
+      toggleBtn.innerHTML = document.documentElement.getAttribute('data-theme') === 'light' 
         ? '<i class="fas fa-moon"></i> Modo Oscuro' 
         : '<i class="fas fa-sun"></i> Modo Claro';
     };
@@ -1703,12 +1730,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     toggleBtn.onclick = (e) => {
       e.preventDefault();
-      document.documentElement.classList.toggle('light-theme');
-      document.documentElement.setAttribute('data-theme', document.documentElement.classList.contains('light-theme') ? 'light' : 'dark');
-      localStorage.setItem('velomind_theme', document.documentElement.classList.contains('light-theme') ? 'light' : 'dark');
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      const newTheme = isLight ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('velomind_theme', newTheme);
       
       const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-      if (themeColorMeta) themeColorMeta.content = document.documentElement.classList.contains('light-theme') ? '#ffffff' : '#0a0b0f';
+      if (themeColorMeta) themeColorMeta.content = newTheme === 'light' ? '#ffffff' : '#0a0b0f';
       
       updateBtnUI();
     };
@@ -1733,7 +1761,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!document.querySelector('meta[name="theme-color"]')) {
     const themeColor = document.createElement('meta');
     themeColor.name = 'theme-color';
-    themeColor.content = document.documentElement.classList.contains('light-theme') ? '#ffffff' : '#0a0b0f';
+    themeColor.content = document.documentElement.getAttribute('data-theme') === 'light' ? '#ffffff' : '#0a0b0f';
     document.head.appendChild(themeColor);
   }
 
