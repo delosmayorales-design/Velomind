@@ -14,7 +14,7 @@
 const API_URL = window.API_URL ||
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
-    : '/api');
+    : 'https://velomind-backend.onrender.com/api');
 
 const Auth = (() => {
   const TOKEN_KEY  = 'velomind_token';
@@ -142,7 +142,15 @@ const Auth = (() => {
       const res = await fetch(`${API_URL}/auth/verify`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
-      if (!res.ok) { logout(); return false; }
+      if (!res.ok) { 
+        if (res.status === 401 || res.status === 403) {
+          console.warn('[Auth] Sesión rechazada por el servidor (401). Cerrando sesión.');
+          logout(); 
+          return false; 
+        }
+        console.warn(`[Auth] Backend inestable o durmiendo (Status: ${res.status}). Mantenemos sesión local.`);
+        return !!getUser();
+      }
       const data = await res.json();
       if (data.user) {
         setUser(data.user);

@@ -85,7 +85,7 @@
     .btn-row{display:flex;gap:10px;margin-top:22px;}
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:12px 20px;border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:var(--transition);font-family:'Space Grotesk',sans-serif;}
     .btn-primary{background:var(--primary);color:#05070a;flex:1;}
-    .btn-primary:hover{background:var(--primary-light);box-shadow:0 0 18px rgba(158,214,43,0.28);}
+    .btn-primary:hover{background:var(--primary-dark);box-shadow:0 0 18px rgba(158,214,43,0.28);}
     .btn-back{background:var(--bg-input);color:var(--text-secondary);border:1px solid var(--border);padding:12px 16px;}
     .btn-back:hover{color:var(--text-primary);border-color:var(--border-light);}
 
@@ -115,7 +115,7 @@
 <!-- LEFT PANEL -->
 <div class="left-panel">
   <div class="logo">
-    <img src="logoPerfil.png" alt="VeloMind" style="width:100%; max-width:160px; height:auto; display:block">
+    <img src="logo2.png" alt="VeloMind" style="width:100%; max-width:160px; height:auto; display:block">
   </div>
   <div class="left-content">
     <div class="step-badge" id="left-badge"><i class="fas fa-circle" style="font-size:7px"></i> Paso 1 de 4</div>
@@ -501,8 +501,8 @@ async function saveAndGo() {
   if (data.height) localStorage.setItem('velomind_height', data.height.toString());
 
   try {
-    const session = JSON.parse(localStorage.getItem('velomind_auth')||'{}');
-    if (data.name) { session.name=data.name; localStorage.setItem('cyclocoach_auth', JSON.stringify(session)); }
+    const session = JSON.parse(localStorage.getItem('velomind_user')||'{}');
+    if (data.name) { session.name=data.name; localStorage.setItem('velomind_user', JSON.stringify(session)); }
   } catch(e){}
 
   // Guardar peso inicial
@@ -511,7 +511,7 @@ async function saveAndGo() {
     const existing = JSON.parse(localStorage.getItem('velomind_weight_log')||'[]');
     if (!existing.find(e=>e.date===today)) {
       existing.push({date:today,weight:data.weight,fat:null,muscle:null,note:'Registro inicial del perfil'});
-      localStorage.setItem('cyclocoach_weight_log', JSON.stringify(existing));
+      localStorage.setItem('velomind_weight_log', JSON.stringify(existing));
     }
   }
 
@@ -544,9 +544,16 @@ document.getElementById('ob-age').addEventListener('input', function(){
 });
 
 // Pre-fill if existing profile
-(function prefill(){
+(async function prefill(){
   try {
-    const a = JSON.parse(localStorage.getItem('velomind_athlete')||'null');
+    let a = JSON.parse(localStorage.getItem('velomind_athlete')||'null');
+    
+    // Forzar carga de datos actualizados desde el servidor
+    if (Auth.isAuthenticated() && typeof BackendSync !== 'undefined') {
+      const profile = await BackendSync.loadProfile();
+      if (profile) a = profile;
+    }
+    
     if (!a) return;
     const set = (id,v)=>{ const el=document.getElementById(id); if(el&&v!=null&&v!=='') el.value=v; };
     set('ob-name',a.name); set('ob-age',a.age); set('ob-sex',a.sex);

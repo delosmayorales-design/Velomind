@@ -15,7 +15,10 @@
  */
 
 const BackendSync = (() => {
-  const API = window.API_URL || 'http://localhost:3000/api';
+  const API = window.API_URL || 
+    (location.hostname === 'localhost' || location.hostname === '127.0.0.1' 
+      ? 'http://localhost:3000/api' 
+      : 'https://velomind-backend.onrender.com/api');
 
   function isLegacyDemoActivity(a) {
     if (!a) return false;

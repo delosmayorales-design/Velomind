@@ -1494,16 +1494,24 @@ async function applyAutoZoneValues() {
     if (ftp   > 0) update.ftp    = ftp;
     if (maxHR > 0) update.max_hr = maxHR;
     if (lthr  > 0) update.lthr   = lthr;
-    await fetch(`${window.API_URL}/auth/profile`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
-      body: JSON.stringify(update),
-    });
-    if (AppState?.athlete) Object.assign(AppState.athlete, update);
-    if (state?.athlete)    Object.assign(state.athlete,    update);
-    localStorage.setItem('velomind_athlete', JSON.stringify(AppState?.athlete || {}));
+          
+          if (typeof BackendSync !== 'undefined') {
+            await BackendSync.saveProfile(update);
+          } else {
+            await fetch(`${window.API_URL}/auth/profile`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
+              body: JSON.stringify(update),
+            });
+            if (AppState?.athlete) Object.assign(AppState.athlete, update);
+            localStorage.setItem('velomind_athlete', JSON.stringify(AppState?.athlete || {}));
+          }
+          
+          if (state?.athlete) Object.assign(state.athlete, update);
     if (status) { status.style.display = 'inline'; setTimeout(() => status.style.display = 'none', 3000); }
     renderZones();
+          const ftpEl = document.getElementById('ftp');
+          if (ftpEl) ftpEl.textContent = 'FTP: ' + (ftp || '--') + 'W';
   } catch(e) {
     alert('Error al guardar: ' + e.message);
   } finally {
