@@ -6,6 +6,7 @@
       var theme = localStorage.getItem('velomind_theme');
       if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'light') document.documentElement.classList.add('light-theme');
     })();
   </script>
   <style>

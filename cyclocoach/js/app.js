@@ -1733,6 +1733,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const isLight = document.documentElement.getAttribute('data-theme') === 'light';
       const newTheme = isLight ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', newTheme);
+      if (newTheme === 'light') document.documentElement.classList.add('light-theme');
+      else document.documentElement.classList.remove('light-theme');
       localStorage.setItem('velomind_theme', newTheme);
       
       const themeColorMeta = document.querySelector('meta[name="theme-color"]');
