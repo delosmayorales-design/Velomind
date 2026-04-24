@@ -1447,14 +1447,15 @@ Sesión planificada para ${diaRef}:
 CTL ${Math.round(latestPMC.ctl)} / ATL ${Math.round(latestPMC.atl)} / TSB ${Math.round(latestPMC.tsb)}.
 Hoy es ${hoy}.
 ${sesionBlock}
-Cómo se encuentra el atleta: "${contexto || 'no especificado'}".
+Comentario / Intención del atleta: "${contexto || 'no especificado'}".
 Carga reciente (últimas 7 sesiones): ${JSON.stringify(actsCompact)}.
 
 Analiza si el atleta debe mantener, reducir, sustituir o descansar la sesión de ${diaRef}.
+¡MUY IMPORTANTE!: Si el atleta indica que hará una salida en grupo (grupeta), ruta larga libre o carrera, IGNORA los intervalos estructurados. Evalúa su fatiga y dale consejos tácticos para esa salida (ej: "ve a rueda", "escóndete en el grupo", "haz relevos cortos" si está muy cansado, o "prueba a atacar" si está fresco).
 Sé específico: usa los vatios reales del FTP (${ftp}W) si propones una alternativa.
 Responde con este JSON exacto:
 {
-  "recomendacion": "mantener" | "reducir" | "sustituir" | "descanso",
+  "recomendacion": "mantener" | "reducir" | "sustituir" | "descanso" | "adaptado",
   "titulo": "string corto (ej: Intervalos reducidos 60 min)",
   "duracion_min": number,
   "intensidad": "string (ej: Z2 130-145W, Umbral 260W, recuperación activa)",
