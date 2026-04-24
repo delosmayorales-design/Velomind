@@ -1512,30 +1512,25 @@ document.addEventListener('DOMContentLoaded', () => {
       .card-header, .card-body { padding: 12px !important; }
 
       /* ── ARREGLO PARA INTEGRACIONES Y PANELES FLEXIBLES ── */
-      /* Convierte las filas de botones/textos (Strava, Garmin) en columnas para que no se escapen */
-      .card-body > div[style*="display: flex"],
-      .card-body > div[style*="display:flex"],
-      .card-body > div[style*="justify-content: space-between"] {
+      /* Aplica a cualquier fila flex anidada en tarjetas para que no se escapen (Strava/Garmin) */
+      .card-body [style*="display: flex"],
+      .card-body [style*="display:flex"],
+      .card-body [style*="justify-content: space-between"],
+      .integration-card {
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 16px !important;
         text-align: center !important;
       }
       /* Forzar que todos los botones en las tarjetas móviles ocupen el 100% */
-      .card-body .btn, .card-body button, .card-body a.btn {
+      .card-body .btn, .card-body button, .card-body a.btn, .integration-card .btn {
         width: 100% !important;
         justify-content: center !important;
         margin: 8px 0 0 0 !important;
+        white-space: normal !important;
+        height: auto !important;
       }
-      /* Ajuste específico para la sección de integraciones */
-      .integration-card .int-actions {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 12px !important; /* Ajustar el espaciado vertical */
-      }
-      .integration-card .int-actions > * { /* Botones y divs dentro de int-actions */
-        width: 100% !important;
-      }
+      .card-body svg, .card-body img { margin: 0 auto; max-width: 100%; }
 
       /* Arreglo de Tablas para que hagan scroll interno y no rompan la app */
       table, .data-table, div[style*="overflow-x:auto"], div[style*="overflow-x: auto"] {
@@ -1665,8 +1660,11 @@ document.addEventListener('DOMContentLoaded', () => {
       box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
     }
     body.light-theme .wc-grid { background: rgba(0,0,0,0.05) !important; }
-    body.light-theme .wc-item, body.light-theme .weekly-stat-item { background: #ffffff !important; border-color: rgba(0,0,0,0.05) !important; }
+    body.light-theme .wc-item, body.light-theme .weekly-stat-item { background: #ffffff !important; border-color: rgba(0,0,0,0.1) !important; }
     body.light-theme .wc-val, body.light-theme .weekly-highlight-card h3 { color: #111827 !important; }
+    body.light-theme .wc-val.wc-blue { color: #1d4ed8 !important; }
+    body.light-theme .wc-val.wc-orange { color: #b45309 !important; }
+    body.light-theme .wc-val.wc-red { color: #b91c1c !important; }
     body.light-theme .auth-right { background: #ffffff !important; }
 
     /* Ajustes estrictos de legibilidad para elementos con estilos forzados (inline) */
@@ -1682,8 +1680,35 @@ document.addEventListener('DOMContentLoaded', () => {
     body.light-theme [style*="color: #C4EF44"], body.light-theme [style*="color:#C4EF44"],
     body.light-theme [style*="color: #9ED62B"], body.light-theme [style*="color:#9ED62B"],
     body.light-theme [style*="color: #34D399"], body.light-theme [style*="color:#34D399"],
-    body.light-theme [style*="color: #10B981"], body.light-theme [style*="color:#10B981"] {
+    body.light-theme [style*="color: #10B981"], body.light-theme [style*="color:#10B981"],
+    body.light-theme [style*="color: var(--primary)"], body.light-theme [style*="color:var(--primary)"],
+    body.light-theme [style*="color: var(--success)"], body.light-theme [style*="color:var(--success)"] {
       color: #166534 !important;
+    }
+    /* Azules intensos */
+    body.light-theme [style*="color: #00D4FF"], body.light-theme [style*="color:#00D4FF"],
+    body.light-theme [style*="color: #38BDF8"], body.light-theme [style*="color:#38BDF8"],
+    body.light-theme [style*="color: #3B82F6"], body.light-theme [style*="color:#3B82F6"],
+    body.light-theme [style*="color: var(--accent)"], body.light-theme [style*="color:var(--accent)"] {
+      color: #1d4ed8 !important;
+    }
+    /* Naranjas y Amarillos intensos */
+    body.light-theme [style*="color: #FFC800"], body.light-theme [style*="color:#FFC800"],
+    body.light-theme [style*="color: #F59E0B"], body.light-theme [style*="color:#F59E0B"],
+    body.light-theme [style*="color: #FFD93D"], body.light-theme [style*="color:#FFD93D"],
+    body.light-theme [style*="color: #FF6B35"], body.light-theme [style*="color:#FF6B35"],
+    body.light-theme [style*="color: var(--warning)"], body.light-theme [style*="color:var(--warning)"] {
+      color: #9a3412 !important;
+    }
+    /* Rojos y Rosas/Morados intensos */
+    body.light-theme [style*="color: #EF4444"], body.light-theme [style*="color:#EF4444"],
+    body.light-theme [style*="color: #ff4757"], body.light-theme [style*="color:#ff4757"],
+    body.light-theme [style*="color: var(--danger)"], body.light-theme [style*="color:var(--danger)"] {
+      color: #b91c1c !important;
+    }
+    body.light-theme [style*="color: #8B5CF6"], body.light-theme [style*="color:#8B5CF6"],
+    body.light-theme [style*="color: #EC4899"], body.light-theme [style*="color:#EC4899"] {
+      color: #6d28d9 !important;
     }
     body.light-theme [style*="background: var(--bg-input)"], body.light-theme [style*="background:var(--bg-input)"] {
       background: #f9fafb !important;
