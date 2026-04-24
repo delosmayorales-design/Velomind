@@ -1527,6 +1527,15 @@ document.addEventListener('DOMContentLoaded', () => {
         justify-content: center !important;
         margin: 8px 0 0 0 !important;
       }
+      /* Ajuste específico para la sección de integraciones */
+      .integration-card .int-actions {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important; /* Ajustar el espaciado vertical */
+      }
+      .integration-card .int-actions > * { /* Botones y divs dentro de int-actions */
+        width: 100% !important;
+      }
 
       /* Arreglo de Tablas para que hagan scroll interno y no rompan la app */
       table, .data-table, div[style*="overflow-x:auto"], div[style*="overflow-x: auto"] {
@@ -1631,15 +1640,17 @@ document.addEventListener('DOMContentLoaded', () => {
       --bg: #f3f4f6 !important;
       --bg-card: #ffffff !important;
       --bg-input: #f9fafb !important;
-      --border: rgba(0,0,0,0.08) !important;
+      --border: rgba(0,0,0,0.12) !important;
+      --border-light: rgba(0,0,0,0.05) !important;
       --text: #111827 !important;
-      --text-secondary: #4b5563 !important;
-      --text-muted: #6b7280 !important;
+      --text-primary: #111827 !important;
+      --text-secondary: #374151 !important;
+      --text-muted: #4b5563 !important;
       --bg-card-hover: #f3f4f6 !important;
     }
     body.light-theme .sidebar { background: #ffffff !important; }
     body.light-theme .card, body.light-theme .mod-card, body.light-theme .session-card-item { 
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; 
     }
     body.light-theme .week-card, body.light-theme .ai-section, body.light-theme .weekly-highlight-card { 
       background: #ffffff !important; 
@@ -1647,9 +1658,44 @@ document.addEventListener('DOMContentLoaded', () => {
       box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
     }
     body.light-theme .wc-grid { background: rgba(0,0,0,0.05) !important; }
-    body.light-theme .wc-item, body.light-theme .weekly-stat-item { background: #ffffff !important; }
+    body.light-theme .wc-item, body.light-theme .weekly-stat-item { background: #ffffff !important; border-color: rgba(0,0,0,0.05) !important; }
     body.light-theme .wc-val, body.light-theme .weekly-highlight-card h3 { color: #111827 !important; }
     body.light-theme .auth-right { background: #ffffff !important; }
+
+    /* Ajustes estrictos de legibilidad para elementos con estilos forzados (inline) */
+    body.light-theme [style*="color: #fff"], body.light-theme [style*="color:#fff"],
+    body.light-theme [style*="color: var(--text)"], body.light-theme [style*="color:var(--text)"] {
+      color: #111827 !important;
+    }
+    body.light-theme [style*="color: #9ca3af"], body.light-theme [style*="color:#9ca3af"],
+    body.light-theme [style*="color: var(--text-muted)"], body.light-theme [style*="color:var(--text-muted)"],
+    body.light-theme [style*="color: var(--text-secondary)"], body.light-theme [style*="color:var(--text-secondary)"] {
+      color: #4b5563 !important;
+    }
+    body.light-theme [style*="background: var(--bg-input)"], body.light-theme [style*="background:var(--bg-input)"] {
+      background: #f9fafb !important;
+    }
+    body.light-theme [style*="background: var(--bg-card)"], body.light-theme [style*="background:var(--bg-card)"] {
+      background: #ffffff !important;
+    }
+
+    /* Formularios y Tablas */
+    body.light-theme .form-input, body.light-theme select, body.light-theme textarea, body.light-theme .mechanic-textarea {
+      background: #ffffff !important; color: #111827 !important; border-color: rgba(0,0,0,0.15) !important;
+    }
+    body.light-theme .tab-btn { color: #4b5563 !important; }
+    body.light-theme .tab-btn.active { color: #111827 !important; background: var(--primary) !important; }
+    body.light-theme .diag-table th { background: #f3f4f6 !important; color: #374151 !important; border-bottom: 1px solid rgba(0,0,0,0.1) !important; }
+    body.light-theme .diag-table td { color: #111827 !important; border-bottom: 1px solid rgba(0,0,0,0.1) !important; }
+    body.light-theme .torque-item, body.light-theme .trouble-item { background: #f3f4f6 !important; }
+    body.light-theme .torque-item span, body.light-theme .trouble-sol { color: #4b5563 !important; }
+    body.light-theme .trouble-sym { color: #111827 !important; }
+    
+    /* Textos secundarios y Títulos */
+    body.light-theme .mobile-menu-btn { color: #111827 !important; border-color: rgba(0,0,0,0.15) !important; }
+    body.light-theme .btn-ghost { color: #4b5563 !important; }
+    body.light-theme .btn-ghost:hover { color: #111827 !important; background: rgba(0,0,0,0.05) !important; }
+    body.light-theme .card-title, body.light-theme .nav-section-title { color: #111827 !important; }
   `;
   document.head.appendChild(themeStyle);
 
