@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peso Corporal — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "/api";</script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo2.png" alt="VeloMind" style="width:100%; max-width:140px; height:auto; display:block; margin:0 auto">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="analytics.html" class="nav-item">
+      <i class="fas fa-chart-bar"></i> Métricas
+    </a>
+    <a href="activities.html" class="nav-item">
+      <i class="fas fa-history"></i> Actividades
+    </a>
+
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item">
+      <i class="fas fa-calendar-check"></i> Mi Plan
+    </a>
+    <a href="nutrition.html" class="nav-item">
+      <i class="fas fa-apple-alt"></i> Nutrición
+    </a>
+    <a href="body-weight.html" class="nav-item active"><i class="fas fa-weight"></i> Peso y W/Kg</a>
+
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="mecanica-general.html" class="nav-item"><i class="fas fa-wrench"></i> Mecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
+
+    <div class="nav-section-title">Equipación</div>
+    <a href="kit-designer.html" class="nav-item"><i class="fas fa-tshirt"></i> Diseñador Ropa</a>
+
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card" id="athlete-sidebar-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-sidebar-name">Cargando...</div>
+        <div class="ftp" id="athlete-sidebar-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1>⚖️ Peso Corporal</h1>
+      <p>Seguimiento de composición corporal y W/kg</p>
+    </div>
+    <div class="header-actions" style="display:flex;gap:10px">
+      <button class="btn btn-primary btn-sm" onclick="openAddModal()">
+        <i class="fas fa-plus"></i> Registrar peso
+      </button>
+    </div>
+  </header>
+
+  <div class="page-body">
+
+    <!-- STATS ROW -->
+    <div id="stats-row" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px">
+      <!-- Injected by JS -->
+    </div>
+
+    <!-- MAIN GRID: chart + form + log -->
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px">
+
+      <!-- CHART -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title"><i class="fas fa-chart-line" style="color:var(--primary)"></i> Evolución del Peso</div>
+            <div class="card-subtitle" id="chart-period-label">Últimas mediciones</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="tab-btn active" id="tab-30" onclick="setChartPeriod(30,this)">30d</button>
+            <button class="tab-btn" id="tab-90" onclick="setChartPeriod(90,this)">90d</button>
+            <button class="tab-btn" id="tab-365" onclick="setChartPeriod(365,this)">1 año</button>
+            <button class="tab-btn" id="tab-all" onclick="setChartPeriod(9999,this)">Todo</button>
+          </div>
+        </div>
+        <div style="padding:16px 16px 8px">
+          <div id="weight-no-data" style="display:none;text-align:center;padding:48px 20px;color:var(--text-muted)">
+            <div style="font-size:48px;margin-bottom:12px">⚖️</div>
+            <div style="font-size:15px;margin-bottom:8px">Sin registros de peso</div>
+            <div style="font-size:13px">Empieza a registrar tu peso diariamente para ver tu evolución</div>
+          </div>
+          <div id="weight-chart-wrap" style="height:280px;position:relative">
+            <canvas id="weight-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUICK ENTRY FORM -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-pen" style="color:var(--accent)"></i> Registrar Entrada</div>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Fecha</label>
+            <input type="date" id="entry-date" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Peso (kg) <span style="color:var(--danger)">*</span></label>
+            <input type="number" id="entry-weight" class="form-control" placeholder="70.5" step="0.1" min="30" max="200" />
+            <div class="form-hint">Preferiblemente en ayunas por la mañana</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">% Grasa corporal (opcional)</label>
+            <input type="number" id="entry-fat" class="form-control" placeholder="15.0" step="0.1" min="3" max="50" />
+            <div class="form-hint">De báscula de composición o plicómetro</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">% Masa muscular (opcional)</label>
+            <input type="number" id="entry-muscle" class="form-control" placeholder="45.0" step="0.1" min="10" max="70" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nota (opcional)</label>
+            <input type="text" id="entry-note" class="form-control" placeholder="Ej: post-competición, cargado de glucógeno..." maxlength="100" />
+          </div>
+          <button class="btn btn-primary btn-full" onclick="saveQuickEntry()">
+            <i class="fas fa-save"></i> Guardar
+          </button>
+          <div id="entry-feedback" style="margin-top:10px;font-size:13px;text-align:center;display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WEIGHT vs W/KG ANALYSIS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:20px">
+
+      <!-- W/kg calculator -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-bolt" style="color:var(--warning)"></i> W/kg — Ratio Potencia-Peso</div>
+        </div>
+        <div class="card-body">
+          <div id="wkg-display" style="text-align:center;padding:12px 0 16px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:48px;font-weight:800;color:var(--primary)" id="wkg-value">--</div>
+            <div style="color:var(--text-muted);font-size:14px;margin-top:4px">W/kg al FTP</div>
+            <div id="wkg-category" style="margin-top:8px;font-size:13px;font-weight:600"></div>
+          </div>
+          <div id="wkg-scale" style="display:flex;flex-direction:column;gap:4px">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- BMI + composición -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-body" style="color:var(--accent)"></i> Composición Corporal</div>
+        </div>
+        <div class="card-body" id="composition-body">
+          <div style="text-align:center;color:var(--text-muted);padding:20px;font-size:13px">
+            Registra tu peso y % de grasa para ver el análisis
+          </div>
+        </div>
+      </div>
+
+      <!-- Objetivo de peso -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-bullseye" style="color:var(--success)"></i> Objetivo de Peso</div>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Peso objetivo (kg)</label>
+            <input type="number" id="goal-weight" class="form-control" placeholder="68.0" step="0.1" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Estrategia</label>
+            <select id="goal-strategy" class="form-select">
+              <option value="conservadora">Conservadora (-0.3 kg/sem)</option>
+              <option value="moderada" selected>Moderada (-0.5 kg/sem)</option>
+              <option value="agresiva">Agresiva (-0.7 kg/sem) ⚠️</option>
+              <option value="ganancia">Ganar músculo (+0.3 kg/sem)</option>
+            </select>
+          </div>
+          <button class="btn btn-secondary btn-full btn-sm" onclick="calcGoal()">
+            <i class="fas fa-calculator"></i> Calcular
+          </button>
+          <div id="goal-result" style="margin-top:12px;font-size:13px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORIAL TABLE -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title"><i class="fas fa-list" style="color:var(--text-muted)"></i> Historial de Mediciones</div>
+          <div class="card-subtitle" id="log-count">-- registros</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="exportCSV()" title="Exportar CSV">
+            <i class="fas fa-download"></i> CSV
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="clearAllWeight()" title="Borrar todo" style="color:var(--danger)">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Peso</th>
+              <th>Variación</th>
+              <th>% Grasa</th>
+              <th>Masa Grasa</th>
+              <th>Masa Magra</th>
+              <th>% Músculo</th>
+              <th>IMC</th>
+              <th>W/kg</th>
+              <th>Nota</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="weight-table-body">
+            <tr id="empty-row">
+              <td colspan="11" style="text-align:center;padding:32px;color:var(--text-muted)">
+                <i class="fas fa-weight" style="font-size:24px;display:block;margin-bottom:8px"></i>
+                Aún no hay registros. Pulsa "+ Registrar peso" para empezar.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- EDIT MODAL -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-xl);max-width:440px;width:100%;padding:24px;box-shadow:var(--shadow-md)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700">Editar medición</h2>
+      <button onclick="closeEditModal()" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
+    </div>
+    <input type="hidden" id="edit-original-date" />
+    <div class="form-group">
+      <label class="form-label">Fecha</label>
+      <input type="date" id="edit-date" class="form-control" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Peso (kg)</label>
+        <input type="number" id="edit-weight" class="form-control" step="0.1" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">% Grasa</label>
+        <input type="number" id="edit-fat" class="form-control" step="0.1" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">% Músculo</label>
+        <input type="number" id="edit-muscle" class="form-control" step="0.1" />
+      </div>
+      <div class="form-group" style="grid-column:span 1"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nota</label>
+      <input type="text" id="edit-note" class="form-control" />
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn btn-primary flex-1" onclick="saveEdit()"><i class="fas fa-save"></i> Guardar</button>
+      <button class="btn btn-secondary" onclick="closeEditModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/app.js"></script>
+<script src="js/backend-sync.js"></script>
+<script>
+let weightChart = null;
+let chartPeriodDays = 30;
+
+const HEIGHT_KEY = 'velomind_height';
+
+// W/kg categorías para ciclistas masculinos (Coggan Power Profile)
+const WKG_CATEGORIES = [
+  { min: 0,    max: 2.0,  label: 'Principiante',     color: '#6B7280' },
+  { min: 2.0,  max: 2.99, label: 'Aficionado C4',    color: '#3B82F6' },
+  { min: 2.99, max: 3.49, label: 'Aficionado C3',    color: '#10B981' },
+  { min: 3.49, max: 3.99, label: 'Aficionado C2',    color: '#F59E0B' },
+  { min: 3.99, max: 4.49, label: 'Aficionado C1',    color: '#EF4444' },
+  { min: 4.49, max: 5.29, label: 'Amateur Élite',    color: '#8B5CF6' },
+  { min: 5.29, max: 99,   label: 'Élite / Pro',      color: '#EC4899' },
+];
+
+async function init() {
+  await AppState.init();
+  // Cargar peso desde backend
+  if (typeof BackendSync !== 'undefined') {
+    await BackendSync.loadWeightLog().catch(() => {});
+    await BackendSync.loadProfile().catch(() => {});
+  }
+  updateSidebar();
+  setDefaultDate();
+  renderStats();
+  renderChart();
+  renderTable();
+  renderWkg();
+  renderComposition();
+  loadGoal();
+}
+
+function setDefaultDate() {
+  const today = new Date().toISOString().substring(0, 10);
+  document.getElementById('entry-date').value = today;
+}
+
+function updateSidebar() {
+  const a = AppState.athlete;
+  if (!a) return;
+  const n = a.name || 'Atleta';
+  document.getElementById('athlete-avatar').textContent = n[0].toUpperCase();
+  document.getElementById('athlete-sidebar-name').textContent = n;
+  document.getElementById('athlete-sidebar-ftp').textContent = `FTP: ${a.ftp || '--'} W`;
+}
+
+function renderStats() {
+  const entries = AppState.weightLog;
+  const sorted = [...entries].sort((a, b) => a.date < b.date ? -1 : 1);
+  const current = sorted.length ? sorted[sorted.length - 1] : null;
+  const initial = sorted.length ? sorted[0] : null;
+  const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
+
+  const ftp = AppState.athlete?.ftp || null;
+  const height = parseFloat(localStorage.getItem(HEIGHT_KEY)) || null;
+
+  const delta = current && prev ? (current.weight - prev.weight) : null;
+  const total = current && initial ? (current.weight - initial.weight) : null;
+  const wkg   = ftp && current ? (ftp / current.weight) : null;
+  const bmi   = height && current ? (current.weight / (height / 100) ** 2) : null;
+
+  const statsHTML = [
+    {
+      label: 'Peso Actual',
+      value: current ? current.weight.toFixed(1) : '--',
+      unit: 'kg',
+      sub: current ? Utils.formatDate(current.date) : 'Sin registros',
+      color: 'var(--primary)',
+    },
+    {
+      label: 'Desde anterior',
+      value: delta !== null ? (delta >= 0 ? '+' : '') + delta.toFixed(1) : '--',
+      unit: 'kg',
+      sub: delta !== null ? (delta < 0 ? '↘ Bajando' : delta > 0 ? '↗ Subiendo' : '→ Estable') : '',
+      color: delta === null ? 'var(--text-primary)' : delta <= 0 ? 'var(--success)' : 'var(--danger)',
+    },
+    {
+      label: 'Variación Total',
+      value: total !== null ? (total >= 0 ? '+' : '') + total.toFixed(1) : '--',
+      unit: 'kg',
+      sub: initial ? `Desde ${Utils.formatDate(initial.date)}` : '',
+      color: total === null ? 'var(--text-primary)' : total <= 0 ? 'var(--success)' : 'var(--danger)',
+    },
+    {
+      label: 'W/kg (FTP)',
+      value: wkg ? wkg.toFixed(2) : '--',
+      unit: 'W/kg',
+      sub: wkg ? WKG_CATEGORIES.find(c => wkg >= c.min && wkg < c.max)?.label || 'Élite' : ftp ? 'Registra peso' : 'Configura FTP',
+      color: 'var(--warning)',
+    },
+    {
+      label: 'IMC',
+      value: bmi ? bmi.toFixed(1) : '--',
+      unit: '',
+      sub: bmi ? getBMILabel(bmi) : height ? 'Registra peso' : 'Configura altura',
+      color: 'var(--accent)',
+    },
+  ].map(s => `
+    <div class="metric-card" style="text-align:center">
+      <div class="metric-label">${s.label}</div>
+      <div style="display:flex;align-items:baseline;justify-content:center;gap:4px">
+        <div class="metric-value" style="color:${s.color}">${s.value}</div>
+        <span class="metric-unit">${s.unit}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${s.sub}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('stats-row').innerHTML = statsHTML;
+}
+
+function getBMILabel(bmi) {
+  if (bmi < 18.5) return '⬇️ Bajo peso';
+  if (bmi < 25)   return '✅ Normopeso';
+  if (bmi < 30)   return '⚠️ Sobrepeso';
+  return '🔴 Obesidad';
+}
+
+function renderChart() {
+  if (weightChart) { weightChart.destroy(); weightChart = null; }
+
+  const entries = AppState.weightLog;
+  const sorted = [...entries].sort((a, b) => a.date < b.date ? -1 : 1);
+
+  // Filter by period
+  const cutoff = new Date();
+  if (chartPeriodDays < 9999) cutoff.setDate(cutoff.getDate() - chartPeriodDays);
+  const filtered = chartPeriodDays < 9999
+    ? sorted.filter(e => new Date(e.date) >= cutoff) : sorted;
+
+  const noData = document.getElementById('weight-no-data');
+  const chartWrap = document.getElementById('weight-chart-wrap');
+
+  if (!filtered.length) {
+    noData.style.display = 'block';
+    chartWrap.style.display = 'none';
+    return;
+  }
+
+  noData.style.display = 'none';
+  chartWrap.style.display = 'block';
+  document.getElementById('chart-period-label').textContent =
+    `${filtered.length} medición${filtered.length !== 1 ? 'es' : ''} · ${chartPeriodDays < 9999 ? 'últimos ' + chartPeriodDays + 'd' : 'todo el historial'}`;
+
+  weightChart = Charts.createWeightChart('weight-chart', filtered);
+}
+
+function setChartPeriod(days, btn) {
+  chartPeriodDays = days;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderChart();
+}
+
+function renderWkg() {
+  const ftp = AppState.athlete?.ftp;
+  const entries = AppState.weightLog;
+  const sorted = [...entries].sort((a, b) => a.date < b.date ? -1 : 1);
+  const current = sorted.length ? sorted[sorted.length - 1] : null;
+
+  const wkgVal = document.getElementById('wkg-value');
+  const wkgCat = document.getElementById('wkg-category');
+  const wkgScale = document.getElementById('wkg-scale');
+
+  if (!ftp) {
+    wkgVal.textContent = '--';
+    wkgCat.textContent = 'Configura tu FTP en el perfil';
+    wkgScale.innerHTML = '';
+    return;
+  }
+
+  if (!current) {
+    wkgVal.textContent = '--';
+    wkgCat.textContent = 'Registra tu peso para calcular';
+    return;
+  }
+
+  const wkg = ftp / current.weight;
+  const cat = WKG_CATEGORIES.find(c => wkg >= c.min && wkg < c.max) || WKG_CATEGORIES[WKG_CATEGORIES.length - 1];
+
+  wkgVal.textContent = wkg.toFixed(2);
+  wkgVal.style.color = cat.color;
+  wkgCat.innerHTML = `<span style="color:${cat.color}">${cat.label}</span>`;
+
+  // Scale
+  wkgScale.innerHTML = WKG_CATEGORIES.map(c => {
+    const isActive = c.label === cat.label;
+    return `
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <div style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;${isActive?'box-shadow:0 0 6px '+c.color:''}"></div>
+        <div style="flex:1;font-size:11px;color:${isActive ? 'var(--text-primary)' : 'var(--text-muted)'};font-weight:${isActive?'700':'400'}">${c.label}</div>
+        <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:${isActive?c.color:'var(--text-muted)'}">${c.min.toFixed(1)}–${c.max < 99 ? c.max.toFixed(1) : '∞'}</div>
+        ${isActive ? `<div style="font-size:10px;font-weight:700;color:${c.color};background:${c.color}22;padding:2px 6px;border-radius:99px">← TÚ</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderComposition() {
+  const entries = AppState.weightLog;
+  const sorted = [...entries].sort((a, b) => a.date < b.date ? -1 : 1);
+  const current = sorted.length ? sorted[sorted.length - 1] : null;
+  const container = document.getElementById('composition-body');
+  const height = parseFloat(localStorage.getItem(HEIGHT_KEY)) || AppState.athlete?.height || null;
+
+  if (!current) {
+    container.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:20px;font-size:13px">Registra peso para ver composición</div>`;
+    return;
+  }
+
+  const weight = current.weight;
+  const fatPct = current.fat || null;
+  const musclePct = current.muscle || null;
+  const bmi = height ? (weight / (height / 100) ** 2) : null;
+
+  const fatMass    = fatPct ? (weight * fatPct / 100).toFixed(1) : null;
+  const leanMass   = fatPct ? (weight * (1 - fatPct / 100)).toFixed(1) : null;
+  const muscleMass = musclePct ? (weight * musclePct / 100).toFixed(1) : null;
+
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      ${bmi ? `
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-size:12px;color:var(--text-muted)">IMC</span>
+            <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:var(--accent)">${bmi.toFixed(1)}</span>
+          </div>
+          <div class="progress-bar-wrap" style="height:6px">
+            <div class="progress-bar-fill" style="width:${Math.min(100, ((bmi - 15) / 25) * 100)}%;background:${bmi < 18.5 ? '#3B82F6' : bmi < 25 ? '#2ECC71' : bmi < 30 ? '#F59E0B' : '#EF4444'}"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">${getBMILabel(bmi)}</div>
+        </div>
+      ` : `
+        <div style="font-size:12px;color:var(--text-muted)">Configura tu altura en el perfil para calcular el IMC</div>
+      `}
+
+      ${fatPct ? `
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:12px;color:var(--text-muted)">Grasa corporal</span>
+            <span style="font-weight:700;color:#8B5CF6">${fatPct.toFixed(1)}% · ${fatMass} kg</span>
+          </div>
+          <div class="progress-bar-wrap" style="height:6px">
+            <div class="progress-bar-fill" style="width:${Math.min(100, fatPct * 2)}%;background:#8B5CF6"></div>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:12px;color:var(--text-muted)">Masa magra</span>
+            <span style="font-weight:700;color:#10B981">${(100 - fatPct).toFixed(1)}% · ${leanMass} kg</span>
+          </div>
+          <div class="progress-bar-wrap" style="height:6px">
+            <div class="progress-bar-fill" style="width:${Math.min(100, (100 - fatPct))}%;background:#10B981"></div>
+          </div>
+        </div>
+      ` : `<div style="font-size:12px;color:var(--text-muted)">Añade % de grasa para ver composición detallada</div>`}
+
+      ${musclePct ? `
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:12px;color:var(--text-muted)">Masa muscular</span>
+            <span style="font-weight:700;color:#F59E0B">${musclePct.toFixed(1)}% · ${muscleMass} kg</span>
+          </div>
+          <div class="progress-bar-wrap" style="height:6px">
+            <div class="progress-bar-fill" style="width:${Math.min(100, musclePct * 1.5)}%;background:#F59E0B"></div>
+          </div>
+        </div>
+      ` : ''}
+
+      <div style="padding-top:8px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)">
+        Última medición: <strong style="color:var(--text-secondary)">${weight} kg</strong> el ${Utils.formatDate(current.date)}
+      </div>
+    </div>
+  `;
+}
+
+function renderTable() {
+  const entries = AppState.weightLog;
+  const sorted = [...entries].sort((a, b) => a.date > b.date ? -1 : 1);
+  const ftp = AppState.athlete?.ftp;
+  const height = parseFloat(localStorage.getItem(HEIGHT_KEY)) || AppState.athlete?.height || null;
+  const tbody = document.getElementById('weight-table-body');
+  const countEl = document.getElementById('log-count');
+  countEl.textContent = `${sorted.length} registro${sorted.length !== 1 ? 's' : ''}`;
+
+  if (!sorted.length) {
+    tbody.innerHTML = `
+      <tr id="empty-row">
+        <td colspan="11" style="text-align:center;padding:32px;color:var(--text-muted)">
+          <i class="fas fa-weight" style="font-size:24px;display:block;margin-bottom:8px"></i>
+          Aún no hay registros. Pulsa "+ Registrar peso" para empezar.
+        </td>
+      </tr>`;
+    return;
+  }
+
+  tbody.innerHTML = sorted.map((e, i) => {
+    const prev = sorted[i + 1]; // sorted desc, so prev is the next one
+    const delta = prev ? (e.weight - prev.weight) : null;
+    const bmi = height ? (e.weight / (height / 100) ** 2) : null;
+    const wkg = ftp ? (ftp / e.weight) : null;
+    const fatMass = e.fat ? (e.weight * e.fat / 100).toFixed(1) : '--';
+    const leanMass = e.fat ? (e.weight * (1 - e.fat / 100)).toFixed(1) : '--';
+
+    const deltaColor = delta === null ? 'var(--text-muted)' : delta < 0 ? 'var(--success)' : delta > 0 ? 'var(--danger)' : 'var(--text-muted)';
+    const deltaStr = delta !== null ? (delta >= 0 ? '+' : '') + delta.toFixed(2) + ' kg' : '--';
+
+    return `
+      <tr>
+        <td>
+          <span class="value-bold">${Utils.formatDate(e.date)}</span>
+          ${i === 0 ? '<span class="badge badge-green" style="font-size:9px;margin-left:4px">HOY</span>' : ''}
+        </td>
+        <td><span class="value-bold" style="font-size:15px">${e.weight.toFixed(1)} kg</span></td>
+        <td style="color:${deltaColor};font-weight:600">${deltaStr}</td>
+        <td>${e.fat ? e.fat.toFixed(1) + '%' : '--'}</td>
+        <td>${fatMass !== '--' ? fatMass + ' kg' : '--'}</td>
+        <td>${leanMass !== '--' ? leanMass + ' kg' : '--'}</td>
+        <td>${e.muscle ? e.muscle.toFixed(1) + '%' : '--'}</td>
+        <td>${bmi ? bmi.toFixed(1) : '--'}</td>
+        <td style="color:var(--warning);font-weight:600">${wkg ? wkg.toFixed(2) : '--'}</td>
+        <td style="color:var(--text-muted);font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.note || ''}</td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-ghost btn-sm" onclick="editEntry('${e.date}')" title="Editar"><i class="fas fa-edit" style="font-size:11px"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteEntry('${e.date}')" style="color:var(--danger)" title="Eliminar"><i class="fas fa-trash" style="font-size:11px"></i></button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function saveQuickEntry() {
+  const date   = document.getElementById('entry-date').value;
+  const weight = parseFloat(document.getElementById('entry-weight').value);
+  const fat    = parseFloat(document.getElementById('entry-fat').value) || null;
+  const muscle = parseFloat(document.getElementById('entry-muscle').value) || null;
+  const note   = document.getElementById('entry-note').value.trim();
+  const fb     = document.getElementById('entry-feedback');
+
+  if (!date) { showFeedback(fb, '⚠️ Selecciona una fecha', 'danger'); return; }
+  if (!weight || weight < 30 || weight > 200) { showFeedback(fb, '⚠️ Peso inválido (30-200 kg)', 'danger'); return; }
+
+  const entry = { date, weight, fat, muscle, note };
+  AppState.saveWeightEntry(entry);
+  if (AppState.athlete) AppState.saveAthlete({ weight });
+  // Guardar en backend
+  if (typeof BackendSync !== 'undefined') {
+    BackendSync.saveWeight(entry).catch(() => {});
+  }
+
+  showFeedback(fb, '✅ Registro guardado', 'success');
+  document.getElementById('entry-weight').value = '';
+  document.getElementById('entry-fat').value = '';
+  document.getElementById('entry-muscle').value = '';
+  document.getElementById('entry-note').value = '';
+
+  renderStats();
+  renderChart();
+  renderTable();
+  renderWkg();
+  renderComposition();
+}
+
+function showFeedback(el, msg, type) {
+  el.style.display = 'block';
+  el.style.color = type === 'success' ? 'var(--success)' : 'var(--danger)';
+  el.textContent = msg;
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function editEntry(date) {
+  const entry = AppState.weightLog.find(e => e.date === date);
+  if (!entry) return;
+  document.getElementById('edit-original-date').value = date;
+  document.getElementById('edit-date').value = entry.date;
+  document.getElementById('edit-weight').value = entry.weight;
+  document.getElementById('edit-fat').value = entry.fat || '';
+  document.getElementById('edit-muscle').value = entry.muscle || '';
+  document.getElementById('edit-note').value = entry.note || '';
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+}
+
+function saveEdit() {
+  const originalDate = document.getElementById('edit-original-date').value;
+  const date   = document.getElementById('edit-date').value;
+  const weight = parseFloat(document.getElementById('edit-weight').value);
+  const fat    = parseFloat(document.getElementById('edit-fat').value) || null;
+  const muscle = parseFloat(document.getElementById('edit-muscle').value) || null;
+  const note   = document.getElementById('edit-note').value.trim();
+
+  if (!weight || weight < 30 || weight > 200) { alert('Peso inválido'); return; }
+
+  // Remove old entry and save new
+  AppState.removeWeightEntry(originalDate);
+  AppState.saveWeightEntry({ date, weight, fat, muscle, note });
+
+  closeEditModal();
+  renderStats(); renderChart(); renderTable(); renderWkg(); renderComposition();
+}
+
+function deleteEntry(date) {
+  if (!confirm(`¿Eliminar medición del ${Utils.formatDate(date)}?`)) return;
+  AppState.removeWeightEntry(date);
+  if (typeof BackendSync !== 'undefined') BackendSync.deleteWeight(date).catch(() => {});
+  renderStats(); renderChart(); renderTable(); renderWkg(); renderComposition();
+}
+
+function openAddModal() {
+  document.getElementById('entry-date').focus();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.getElementById('entry-weight').focus();
+}
+
+function calcGoal() {
+  const entries = AppState.weightLog;
+  const sorted = [...entries].sort((a, b) => a.date < b.date ? -1 : 1);
+  const current = sorted.length ? sorted[sorted.length - 1] : null;
+  const goalWeight = parseFloat(document.getElementById('goal-weight').value);
+  const strategy = document.getElementById('goal-strategy').value;
+  const result = document.getElementById('goal-result');
+
+  if (!current) { result.innerHTML = '<span style="color:var(--danger)">Registra tu peso actual primero</span>'; return; }
+  if (!goalWeight || goalWeight < 30) { result.innerHTML = '<span style="color:var(--danger)">Introduce un peso objetivo válido</span>'; return; }
+
+  const diff = goalWeight - current.weight;
+  const rateMap = { conservadora: 0.3, moderada: 0.5, agresiva: 0.7, ganancia: 0.3 };
+  const rate = rateMap[strategy] || 0.5;
+  const weeks = Math.abs(diff) / rate;
+  const days = Math.round(weeks * 7);
+  const targetDate = new Date();
+  targetDate.setDate(targetDate.getDate() + days);
+
+  const kcalDeficit = strategy === 'ganancia' ? rate * 7700 / 7 : -(rate * 7700 / 7);
+  const ftp = AppState.athlete?.ftp;
+  const targetWkg = ftp ? (ftp / goalWeight).toFixed(2) : null;
+
+  result.innerHTML = `
+    <div style="background:var(--bg-input);border-radius:var(--radius-md);padding:12px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-weight:700;color:var(--text-primary);margin-bottom:4px">${diff < 0 ? '↘ Perder' : diff > 0 ? '↗ Ganar' : '→'} ${Math.abs(diff).toFixed(1)} kg</div>
+      <div style="font-size:12px;color:var(--text-muted)">⏱ ${Math.round(weeks)} semanas (~${days} días)</div>
+      <div style="font-size:12px;color:var(--text-muted)">📅 Fecha estimada: <strong style="color:var(--text-secondary)">${targetDate.toLocaleDateString('es-ES', {day:'numeric',month:'short',year:'numeric'})}</strong></div>
+      <div style="font-size:12px;color:var(--text-muted)">🔥 ${Math.abs(Math.round(kcalDeficit))} kcal/día de ${diff < 0 ? 'déficit' : 'superávit'}</div>
+      ${targetWkg ? `<div style="font-size:12px;color:var(--warning)">⚡ W/kg objetivo: <strong>${targetWkg}</strong></div>` : ''}
+      ${strategy === 'agresiva' ? '<div style="font-size:11px;color:var(--danger);margin-top:4px">⚠️ Pérdida agresiva puede reducir potencia. Monitoriza el rendimiento.</div>' : ''}
+    </div>
+  `;
+
+  // Save goal to localStorage
+  localStorage.setItem('velomind_weight_goal', JSON.stringify({ goalWeight, strategy }));
+}
+
+function loadGoal() {
+  const saved = localStorage.getItem('velomind_weight_goal');
+  if (!saved) return;
+  try {
+    const g = JSON.parse(saved);
+    document.getElementById('goal-weight').value = g.goalWeight || '';
+    document.getElementById('goal-strategy').value = g.strategy || 'moderada';
+  } catch {}
+}
+
+function exportCSV() {
+  const entries = AppState.weightLog;
+  if (!entries.length) { alert('No hay datos para exportar'); return; }
+  const sorted = [...entries].sort((a, b) => a.date > b.date ? -1 : 1);
+  const header = 'Fecha,Peso(kg),Grasa(%),Musculo(%),IMC,Nota\n';
+  const height = parseFloat(localStorage.getItem(HEIGHT_KEY)) || AppState.athlete?.height || null;
+  const rows = sorted.map(e => {
+    const bmi = height ? (e.weight / (height/100)**2).toFixed(1) : '';
+    return `${e.date},${e.weight},${e.fat||''},${e.muscle||''},${bmi},"${e.note||''}"`;
+  }).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cyclocoach_peso.csv';
+  a.click();
+}
+
+function clearAllWeight() {
+  if (!confirm('¿Eliminar TODOS los registros de peso? Esta acción no se puede deshacer.')) return;
+  localStorage.removeItem('velomind_weight_log'); // Ya usa velomind_
+  AppState.weightLog = [];
+  renderStats(); renderChart(); renderTable(); renderWkg(); renderComposition();
+}
+
+init();
+</script>
+</body>
+</html>

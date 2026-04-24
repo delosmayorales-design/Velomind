@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integraciones — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <style>
+    .integration-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .integration-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--accent-color, var(--primary));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .integration-card.connected::before { opacity: 1; }
+    .integration-card.connected { border-color: rgba(52,211,153,0.25); }
+
+    .int-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .int-logo {
+      width: 52px; height: 52px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+    .int-logo.strava { background: rgba(252,76,2,0.12); }
+    .int-logo.garmin { background: rgba(0,122,199,0.12); }
+    .int-logo.wahoo { background: rgba(0,180,255,0.12); }
+
+    .int-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .int-tagline { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+    .int-status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+    .int-status.connected {
+      background: rgba(52,211,153,0.1);
+      color: var(--success);
+      border: 1px solid rgba(52,211,153,0.25);
+    }
+    .int-status.disconnected {
+      background: var(--bg-input);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .int-features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .int-feature {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .int-feature i { color: var(--primary); font-size: 11px; }
+
+    .int-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .btn-connect {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-family: inherit;
+    }
+    .btn-strava { background: #FC4C02; color: white; }
+    .btn-strava:hover { background: #e04400; transform: translateY(-1px); }
+    .btn-garmin { background: #007AC7; color: white; }
+    .btn-garmin:hover { background: #0069aa; transform: translateY(-1px); }
+    .btn-wahoo { background: #00B4FF; color: white; }
+    .btn-wahoo:hover { background: #0097d9; transform: translateY(-1px); }
+    .btn-sync { background: var(--bg-input); color: var(--text-secondary); border: 1px solid var(--border); }
+    .btn-sync:hover { border-color: var(--primary); color: var(--text); }
+    .btn-disconnect { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-disconnect:hover { border-color: var(--danger); color: var(--danger); }
+
+    .sync-log {
+      background: var(--bg-input);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      font-size: 12px;
+      font-family: monospace;
+      color: var(--text-secondary);
+      max-height: 140px;
+      overflow-y: auto;
+      margin-top: 16px;
+      display: none;
+    }
+    .sync-log.show { display: block; }
+    .log-line { padding: 2px 0; }
+    .log-line.ok { color: var(--success); }
+    .log-line.err { color: #ff4757; }
+    .log-line.info { color: var(--accent); }
+
+    .last-sync {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .scope-list {
+      margin: 12px 0;
+    }
+    .scope-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 4px 0;
+    }
+    .scope-item .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .setup-steps {
+      background: var(--bg-input);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      margin-top: 12px;
+    }
+    .setup-step {
+      display: flex;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .setup-step:last-child { border-bottom: none; }
+    .step-num {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: rgba(255,107,53,0.15);
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+    .step-text a { color: var(--primary); text-decoration: none; }
+    .step-text code {
+      background: var(--bg-card);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    .integrations-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) { .integrations-grid { grid-template-columns: 1fr; } }
+
+    .tab-row {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-input);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 28px;
+      width: fit-content;
+    }
+    .tab-btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .tab-btn.active { background: var(--primary); color: #111; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo2.png" alt="VeloMind" style="width:100%; max-width:140px; height:auto; display:block; margin:0 auto">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="analytics.html" class="nav-item">
+      <i class="fas fa-chart-bar"></i> Métricas
+    </a>
+    <a href="activities.html" class="nav-item">
+      <i class="fas fa-history"></i> Actividades
+    </a>
+
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item">
+      <i class="fas fa-calendar-check"></i> Mi Plan
+    </a>
+    <a href="nutrition.html" class="nav-item">
+      <i class="fas fa-apple-alt"></i> Nutrición
+    </a>
+    <a href="body-weight.html" class="nav-item">
+      <i class="fas fa-weight"></i> Peso y W/Kg
+    </a>
+
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="mecanica-general.html" class="nav-item"><i class="fas fa-wrench"></i> Mecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
+
+    <div class="nav-section-title">Equipación</div>
+    <a href="kit-designer.html" class="nav-item"><i class="fas fa-tshirt"></i> Diseñador Ropa</a>
+
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item active"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card" id="athlete-sidebar-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-sidebar-name">Cargando...</div>
+        <div class="ftp" id="athlete-sidebar-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1>Integraciones</h1>
+      <p>Conecta tus plataformas de entrenamiento para sincronizar actividades automáticamente</p>
+    </div>
+  </header>
+
+  <div class="page-body">
+
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchTab('platforms')">Plataformas</button>
+      <button class="tab-btn" onclick="switchTab('setup')">Guía de configuración</button>
+    </div>
+
+    <!-- TAB: PLATFORMS -->
+    <div class="tab-panel active" id="tab-platforms">
+      <div class="integrations-grid">
+
+        <!-- STRAVA -->
+        <div class="integration-card" id="card-strava">
+          <div class="int-header">
+            <div class="int-logo strava">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+            </div>
+            <div>
+              <div class="int-name">Strava</div>
+              <div class="int-tagline">Importa actividades automáticamente</div>
+            </div>
+            <div class="int-status disconnected" id="strava-status">
+              <i class="fas fa-circle" style="font-size:8px"></i> No conectado
+            </div>
+          </div>
+
+          <div class="int-features">
+            <div class="int-feature"><i class="fas fa-check"></i> Sincronización automática</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Potencia, FC, cadencia</div>
+            <div class="int-feature"><i class="fas fa-check"></i> GPS y altimetría</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Actividades históricas</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Webhook en tiempo real</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Segmentos y KOMs</div>
+          </div>
+
+          <div class="int-actions" id="strava-actions">
+            <button class="btn-connect btn-strava" id="btn-strava-oauth" onclick="connectStrava()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+              Conectar con Strava
+            </button>
+            <div style="margin-top:8px;text-align:center">
+              <a href="#" onclick="showStravaTokenInput();return false;" style="font-size:11px;color:var(--text-muted)">Pegar token manualmente (avanzado)</a>
+            </div>
+            <div id="strava-token-input" style="display:none;margin-top:12px;padding:12px;background:var(--bg-input);border-radius:8px">
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">⚠️ Los tokens manuales expiran en 6h y no permiten sync automático.</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Usa el botón de arriba para una conexión permanente. Solo pega el token si sabes lo que haces.</div>
+              <div style="display:flex;gap:8px">
+                <input type="password" id="strava-access-token" class="form-input" placeholder="access_token de Strava..." style="flex:1">
+                <button class="btn btn-primary btn-sm" id="btn-save-token" onclick="saveStravaToken()">Guardar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="last-sync hidden" id="strava-last-sync">
+            <i class="fas fa-clock"></i> <span></span>
+          </div>
+
+          <div class="sync-log" id="strava-log"></div>
+        </div>
+
+        <!-- GARMIN CONNECT -->
+        <div class="integration-card" id="card-garmin">
+          <div class="int-header">
+            <div class="int-logo garmin">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="#007AC7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+            </div>
+            <div>
+              <div class="int-name">Garmin Connect</div>
+              <div class="int-tagline">Dispositivos Garmin y métricas avanzadas</div>
+            </div>
+            <div class="int-status disconnected" id="garmin-status">
+              <i class="fas fa-circle" style="font-size:8px"></i> No conectado
+            </div>
+          </div>
+
+          <div class="int-features">
+            <div class="int-feature"><i class="fas fa-check"></i> Archivos .FIT nativos</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Métricas de salud (VO2max)</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Variabilidad FC (HRV)</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Training Status Garmin</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Body Battery y sueño</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Historial completo</div>
+          </div>
+
+          <div class="int-actions" id="garmin-actions">
+            <button class="btn-connect btn-garmin" onclick="connectGarmin()">
+              <i class="fas fa-link"></i> Conectar Garmin
+            </button>
+          </div>
+
+          <div class="last-sync hidden" id="garmin-last-sync">
+            <i class="fas fa-clock"></i> <span></span>
+          </div>
+
+          <div class="sync-log" id="garmin-log"></div>
+        </div>
+
+        <!-- WAHOO (coming soon) -->
+        <div class="integration-card" style="opacity:0.6">
+          <div class="int-header">
+            <div class="int-logo wahoo">
+              <i class="fas fa-satellite-dish" style="color:#00B4FF;font-size:22px"></i>
+            </div>
+            <div>
+              <div class="int-name">Wahoo ELEMNT</div>
+              <div class="int-tagline">Ciclocomputadores Wahoo</div>
+            </div>
+            <div class="int-status disconnected">
+              <i class="fas fa-clock" style="font-size:8px"></i> Próximamente
+            </div>
+          </div>
+          <div class="int-features">
+            <div class="int-feature"><i class="fas fa-check"></i> Actividades desde ELEMNT</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Intervalos estructurados</div>
+          </div>
+          <div class="int-actions">
+            <button class="btn-connect" style="background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border);cursor:not-allowed" disabled>
+              <i class="fas fa-clock"></i> Próximamente
+            </button>
+          </div>
+        </div>
+
+        <!-- POLAR -->
+        <div class="integration-card" style="opacity:0.6">
+          <div class="int-header">
+            <div class="int-logo" style="background:rgba(192,0,0,0.12)">
+              <i class="fas fa-heartbeat" style="color:#C00000;font-size:22px"></i>
+            </div>
+            <div>
+              <div class="int-name">Polar Flow</div>
+              <div class="int-tagline">Relojes y sensores Polar</div>
+            </div>
+            <div class="int-status disconnected">
+              <i class="fas fa-clock" style="font-size:8px"></i> Próximamente
+            </div>
+          </div>
+          <div class="int-features">
+            <div class="int-feature"><i class="fas fa-check"></i> Actividades Polar</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Nightly Recharge</div>
+          </div>
+          <div class="int-actions">
+            <button class="btn-connect" style="background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border);cursor:not-allowed" disabled>
+              <i class="fas fa-clock"></i> Próximamente
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /integrations-grid -->
+    </div><!-- /tab-platforms -->
+
+    <!-- TAB: SETUP GUIDE -->
+    <div class="tab-panel" id="tab-setup">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+
+        <!-- Strava Setup -->
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+            <h3 style="font-size:18px;font-weight:700">Configurar Strava OAuth</h3>
+          </div>
+
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px">
+            Strava usa OAuth 2.0. Solo necesitas crear una aplicación gratuita en su portal de desarrolladores.
+          </p>
+
+          <div class="setup-steps">
+            <div class="setup-step">
+              <div class="step-num">1</div>
+              <div class="step-text">Ve a <a href="https://www.strava.com/settings/api" target="_blank">strava.com/settings/api</a> e inicia sesión</div>
+            </div>
+            <div class="setup-step">
+              <div class="step-num">2</div>
+              <div class="step-text">Crea una nueva aplicación. En "Authorization Callback Domain" pon tu dominio (o localhost para desarrollo)</div>
+            </div>
+            <div class="setup-step">
+              <div class="step-num">3</div>
+              <div class="step-text">Copia tu <strong>Client ID</strong> y <strong>Client Secret</strong></div>
+            </div>
+            <div class="setup-step">
+              <div class="step-num">4</div>
+              <div class="step-text">Configura en backend: <code>STRAVA_CLIENT_ID</code>, <code>STRAVA_CLIENT_SECRET</code> y <code>STRAVA_REDIRECT_URI</code> en <code>backend/.env</code></div>
+            </div>
+            <div class="setup-step">
+              <div class="step-num">5</div>
+              <div class="step-text">Usa los endpoints backend ya disponibles: <code>/api/providers/strava/connect</code> y <code>/api/providers/strava/callback</code></div>
+            </div>
+          </div>
+
+          <div style="background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-secondary)">
+            <strong style="color:var(--primary)">Scopes necesarios:</strong><br>
+<div class="scope-list">
+              <div class="scope-item"><div class="dot"></div> read - Perfil publico del atleta</div>
+              <div class="scope-item"><div class="dot"></div> activity:read_all - Todas las actividades</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Garmin Setup -->
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#007AC7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+            <h3 style="font-size:18px;font-weight:700">Configurar Garmin Connect</h3>
+          </div>
+
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px">
+            Garmin usa OAuth 1.0a y requiere aprobación de su Developer Program. El proceso es más complejo pero da acceso a datos muy ricos.
+          </p>
+
+          <div class="setup-steps">
+            <div class="setup-step">
+              <div class="step-num">1</div>
+              <div class="step-text">Regístrate en <a href="https://developer.garmin.com/gc-developer-program/overview/" target="_blank">Garmin Developer Program</a> (puede tardar unos días en aprobarse)</div>
+            </div>
+            <div class="setup-step">
+              <div class="step-num">2</div>
+              <div class="step-text">Crea una aplicación y obtén tu Consumer Key y Consumer Secret</div>
+            </div>
+            <div class="setup-step">
+              <div class="step-num">3</div>
+              <div class="step-text">Instala el paquete npm: <code>npm install garmin-connect</code> en tu backend Node.js</div>
+            </div>
+            <div class="setup-step">
+              <div class="step-num">4</div>
+              <div class="step-text">Crea rutas backend: <code>/api/auth/garmin/start</code> y <code>/api/auth/garmin/callback</code></div>
+            </div>
+            <div class="setup-step">
+              <div class="step-num">5</div>
+              <div class="step-text">Alternativamente, usa la <a href="https://developer.garmin.com/gc-developer-program/health-api/" target="_blank">Garmin Health API</a> para acceso simplificado a datos de salud</div>
+            </div>
+          </div>
+
+          <div style="background:rgba(0,122,199,0.08);border:1px solid rgba(0,122,199,0.2);border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-secondary)">
+            <strong style="color:#007AC7">Datos disponibles:</strong><br>
+            <div class="scope-list">
+              <div class="scope-item"><div class="dot" style="background:#007AC7"></div> Actividades con archivos .FIT completos</div>
+              <div class="scope-item"><div class="dot" style="background:#007AC7"></div> VO2max, Training Status, HRV</div>
+              <div class="scope-item"><div class="dot" style="background:#007AC7"></div> Body Battery, sueño, estrés diario</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Backend example -->
+        <div class="card" style="grid-column:1/-1">
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:16px"><i class="fas fa-code" style="color:var(--primary)"></i> Ejemplo de backend (Node.js / Express)</h3>
+          <pre style="background:var(--bg-input);border-radius:8px;padding:16px;overflow-x:auto;font-size:12px;color:var(--text-secondary);line-height:1.8"><code>// server.js â€” Backend para OAuth Strava
+const express = require('express');
+const axios = require('axios');
+const app = express();
+
+const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID;
+const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
+const REDIRECT_URI = 'https://tudominio.com/oauth-callback.html';
+
+// Intercambio de código por tokens
+app.get('/api/auth/strava/callback', async (req, res) => {
+  const { code } = req.query;
+  const response = await axios.post('https://www.strava.com/oauth/token', {
+    client_id: STRAVA_CLIENT_ID,
+    client_secret: STRAVA_CLIENT_SECRET,
+    code,
+    grant_type: 'authorization_code'
+  });
+  const { access_token, refresh_token, expires_at, athlete } = response.data;
+  // Guardar tokens en DB, crear sesión JWT...
+  res.json({ access_token, athlete });
+});
+
+// Sincronizar actividades
+app.get('/api/strava/activities', async (req, res) => {
+  const { access_token } = req.user; // from JWT middleware
+  const activities = await axios.get('https://www.strava.com/api/v3/athlete/activities', {
+    headers: { Authorization: `Bearer ${access_token}` },
+    params: { per_page: 50, after: req.query.after }
+  });
+  res.json(activities.data);
+});</code></pre>
+        </div>
+
+      </div>
+    </div><!-- /tab-setup -->
+
+  </div><!-- /page-body -->
+</main>
+
+<script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "/api";</script>
+  <script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/backend-sync.js"></script>
+<script>
+  function doLogout() {
+    if (window.Auth) {
+      Auth.logout();
+      return;
+    }
+    localStorage.removeItem('velomind_token');
+    localStorage.removeItem('velomind_user');
+    window.location.href = 'login.html';
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+      b.classList.toggle('active', (i === 0 && tab === 'platforms') || (i === 1 && tab === 'setup'));
+    });
+    document.getElementById('tab-platforms').classList.toggle('active', tab === 'platforms');
+    document.getElementById('tab-setup').classList.toggle('active', tab === 'setup');
+  }
+
+  // Check connection status
+  function checkConnections() {
+    // El estado real se consulta al backend en `BackendSync.getProviderStatus()`.
+  }
+
+  function setConnected(provider) {
+    const card = document.getElementById('card-' + provider);
+    const status = document.getElementById(provider + '-status');
+    const actions = document.getElementById(provider + '-actions');
+    const lastSync = document.getElementById(provider + '-last-sync');
+
+    card.classList.add('connected');
+    status.className = 'int-status connected';
+    status.innerHTML = `<i class="fas fa-circle" style="font-size:8px"></i> Conectado`;
+
+    const syncDate = localStorage.getItem('velomind_' + provider + '_last_sync');
+    actions.innerHTML = `
+      <button type="button" class="btn-connect btn-sync" onclick="doSync('${provider}')">
+        <i class="fas fa-sync-alt"></i> Sincronizar ahora
+      </button>
+      ${provider === 'strava' ? `<button type="button" class="btn btn-ghost btn-sm" onclick="debugStrava()" style="margin-top:6px"><i class="fas fa-bug"></i> Ver últimas actividades Strava</button>` : ''}
+      <button type="button" class="btn-connect btn-disconnect" onclick="doDisconnect('${provider}')">
+        <i class="fas fa-unlink"></i> Desconectar
+      </button>
+    `;
+    if (syncDate) {
+      lastSync.classList.remove('hidden');
+      lastSync.querySelector('span').textContent = 'Última sync: ' + new Date(parseInt(syncDate)).toLocaleString('es-ES');
+    }
+  }
+
+  async function connectStrava() {
+    const btn = document.getElementById('btn-strava-oauth');
+    if (!window.Auth || !Auth.getToken()) {
+      window.location.href = 'login.html';
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Conectando...'; }
+    try {
+      const res = await fetch(`${window.API_URL}/providers/strava/connect`, {
+        headers: Auth.getHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 501) {
+          alert('El administrador aún no ha configurado las credenciales OAuth de Strava (STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET en el .env del servidor).\n\nPor ahora usa "Pegar token manualmente" como alternativa temporal.');
+          showStravaTokenInput();
+          return;
+        }
+        throw new Error(data.error || 'No se pudo iniciar OAuth de Strava');
+      }
+      if (!data.url) throw new Error('Respuesta de Strava inválida');
+      window.location.href = data.url;
+    } catch (e) {
+      alert(e.message || 'No se pudo conectar con Strava');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Conectar con Strava';
+      }
+    }
+  }
+
+  function showStravaTokenInput() {
+    const inputDiv = document.getElementById('strava-token-input');
+    inputDiv.style.display = inputDiv.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function saveStravaToken() {
+    const token = document.getElementById('strava-access-token').value.trim();
+    if (!token) { alert('Pega tu token de acceso'); return; }
+    if (token.length < 20) { alert('El token parece muy corto. ¿Lo copiaste bien?'); return; }
+
+    const btn = document.getElementById('btn-save-token');
+    if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+    try {
+      const data = await Auth.saveStravaToken(token);
+      localStorage.setItem('velomind_strava_connected', '1');
+      setConnected('strava');
+      alert('✅ Token guardado. Recuerda que expira en ~6h y necesitarás reconectar. Para sync permanente usa el botón "Conectar con Strava".');
+    } catch (e) {
+      alert('Error al guardar: ' + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
+    }
+  }
+
+  function connectGarmin() {
+    alert('La conexión Garmin real está pendiente de backend OAuth. De momento usa Strava o carga manual GPX/TCX/CSV.');
+  }
+
+  async function doSync(provider) {
+    const log = document.getElementById(provider + '-log');
+    log.classList.add('show');
+    log.innerHTML = '';
+
+    const addLog = (msg, type = '') => {
+      const div = document.createElement('div');
+      div.className = 'log-line ' + type;
+      div.textContent = new Date().toLocaleTimeString('es') + ' â€” ' + msg;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    };
+
+    addLog(`Iniciando sincronización con ${provider === 'strava' ? 'Strava' : 'Garmin Connect'}...`, 'info');
+
+    try {
+      if (typeof BackendSync === 'undefined') throw new Error('BackendSync no disponible');
+      const result = await (provider === 'strava'
+        ? BackendSync.syncStrava((msg) => addLog(msg, 'info'))
+        : BackendSync.syncGarmin((msg) => addLog(msg, 'info')));
+      const count = Number(result?.synced || 0);
+      await BackendSync.loadActivities().catch(() => {});
+
+      if (result?.total_strava !== undefined) {
+        addLog(`Strava: ${result.total_strava} actividades encontradas → ${result.total_cycling} de ciclismo procesadas.`, 'info');
+        if (result.filtered_types?.length) {
+          addLog(`Descartadas por tipo (no ciclismo): ${result.filtered_types.join(', ')}`, 'info');
+        }
+      }
+      if (!count) {
+        addLog('Todas las actividades de ciclismo ya estaban actualizadas.', 'info');
+      }
+
+      const imported = AppState.activities.slice(-Math.max(0, count));
+      for (const a of imported.slice(0, 5)) {
+        const dur = Utils.formatDuration(a.duration);
+        addLog(`âœ“ "${a.name}" â€” ${dur}, ${a.np ? a.np + 'W NP, ' : ''}TSS: ${a.tss}`, 'ok');
+      }
+      if (count > 5) addLog(`... y ${count - 5} actividades mÃ¡s`, 'ok');
+
+      addLog(`âœ… ${count} actividades sincronizadas y guardadas.`, 'ok');
+      addLog('PMC (CTL/ATL/TSB) recalculado.', 'ok');
+
+      const now = Date.now();
+      localStorage.setItem('velomind_' + provider + '_last_sync', now.toString());
+      const lastSync = document.getElementById(provider + '-last-sync');
+      if (lastSync) {
+        lastSync.classList.remove('hidden');
+        lastSync.querySelector('span').textContent = 'Ãšltima sync: ' + new Date(now).toLocaleString('es-ES');
+      }
+    } catch(err) {
+      addLog('âŒ Error: ' + err.message, 'err');
+    }
+  }
+
+  function doDisconnect(provider) {
+    if (!confirm(`Â¿Desconectar ${provider === 'strava' ? 'Strava' : 'Garmin'}? Se mantendrÃ¡n las actividades ya importadas.`)) return;
+
+    localStorage.removeItem('velomind_' + provider + '_connected');
+    localStorage.removeItem('velomind_' + provider + '_token');
+    localStorage.removeItem('velomind_' + provider + '_last_sync');
+
+    const card = document.getElementById('card-' + provider);
+    const status = document.getElementById(provider + '-status');
+    const actions = document.getElementById(provider + '-actions');
+    const log = document.getElementById(provider + '-log');
+
+    card.classList.remove('connected');
+    status.className = 'int-status disconnected';
+    status.innerHTML = `<i class="fas fa-circle" style="font-size:8px"></i> No conectado`;
+    log.classList.remove('show');
+
+    if (provider === 'strava') {
+      actions.innerHTML = `<button class="btn-connect btn-strava" onclick="connectStrava()"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Conectar con Strava</button>`;
+    } else {
+      actions.innerHTML = `<button class="btn-connect btn-garmin" onclick="connectGarmin()"><i class="fas fa-link"></i> Conectar Garmin</button>`;
+    }
+
+    document.getElementById(provider + '-last-sync').classList.add('hidden');
+  }
+
+  // Auth guard
+  (function() {
+    if (!window.Auth || !Auth.getToken()) {
+      window.location.href = 'login.html';
+      return;
+    }
+    const user = Auth.getUser() || {};
+    const name = user.name || user.email?.split('@')[0] || 'Atleta';
+    document.getElementById('athlete-sidebar-name').textContent = name;
+    document.getElementById('athlete-avatar').textContent = (name[0] || 'A').toUpperCase();
+  })();
+
+  checkConnections();
+  if (typeof AppState !== 'undefined') AppState.init();
+
+  // Detectar retorno exitoso del OAuth de Strava
+  (async function handleStravaReturn() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('strava') === 'connected') {
+      // Limpiar el parámetro de la URL sin recargar
+      history.replaceState({}, '', window.location.pathname);
+      // Marcar como conectado
+      localStorage.setItem('velomind_strava_connected', '1');
+      setConnected('strava');
+      // Mostrar toast de éxito
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--bg-card);border:1px solid #FC4C02;color:#FC4C02;padding:14px 22px;border-radius:12px;font-size:14px;font-weight:700;z-index:9999;display:flex;gap:10px;align-items:center';
+      toast.innerHTML = '<i class="fab fa-strava"></i> ¡Strava conectado! Sincronizando actividades...';
+      document.body.appendChild(toast);
+      // Auto-sincronizar actividades
+      try {
+        await doSync('strava');
+      } catch(e) {}
+      toast.textContent = '✅ Strava conectado y actividades importadas';
+      toast.style.borderColor = 'var(--accent-green)';
+      toast.style.color = 'var(--accent-green)';
+      setTimeout(() => toast.remove(), 4000);
+    }
+  })();
+
+  // Cargar estado de integraciones desde backend
+  if (typeof BackendSync !== 'undefined') {
+    BackendSync.getProviderStatus().then(status => {
+      if (status?.strava?.connected) {
+        localStorage.setItem('velomind_strava_connected', '1');
+        setConnected('strava');
+      }
+      if (status?.garmin?.connected) {
+        localStorage.setItem('velomind_garmin_connected', '1');
+        setConnected('garmin');
+      }
+    }).catch(()=>{});
+  }
+
+  async function debugStrava() {
+    const log = document.getElementById('strava-log');
+    log.classList.add('show');
+    const addLog = (msg, type = '') => {
+      const div = document.createElement('div');
+      div.className = 'log-line ' + type;
+      div.innerHTML = new Date().toLocaleTimeString('es') + ' — ' + msg;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    };
+    addLog('Consultando últimas 10 actividades en Strava...', 'info');
+    try {
+      const res = await fetch(`${window.API_URL}/providers/strava/debug-activities`, {
+        headers: Auth.getHeaders()
+      });
+      const acts = await res.json();
+      if (!res.ok) { addLog('❌ ' + (acts.error || 'Error'), 'err'); return; }
+      if (!acts.length) { addLog('Strava no devolvió actividades. ¿Token expirado?', 'err'); return; }
+      addLog(`Strava devuelve ${acts.length} actividades recientes:`, 'info');
+      acts.forEach(a => {
+        const flag = a.manual ? ' [manual]' : '';
+        addLog(`📅 ${a.date} — <strong>${a.name}</strong> | type: <strong>${a.type || '?'}</strong> | sport_type: <strong>${a.sport_type || '?'}</strong>${flag} | ${a.distance_km || '--'}km`, 'info');
+      });
+    } catch(e) {
+      addLog('❌ ' + e.message, 'err');
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VeloMind — Planes y Precios</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #FF6B35;
+      --primary-dark: #e85a24;
+      --accent: #00D4FF;
+      --bg: #0a0b0f;
+      --bg-card: #13151c;
+      --bg-card2: #1a1d26;
+      --border: rgba(255,255,255,0.08);
+      --text: #f0f2f5;
+      --text-muted: #6b7280;
+      --text-secondary: #9ca3af;
+      --radius: 16px;
+      --green: #22c55e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* NAV */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(10,11,15,0.92);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px; font-weight: 800;
+      text-decoration: none; color: var(--text);
+    }
+    .nav-links { display: flex; gap: 12px; align-items: center; }
+    .btn-ghost {
+      padding: 8px 20px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--text); }
+    .btn-primary {
+      padding: 9px 22px;
+      border: none;
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+    /* HERO */
+    .hero {
+      text-align: center;
+      padding: 80px 20px 60px;
+      position: relative;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255,107,53,0.10) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px;
+      background: rgba(255,107,53,0.10);
+      border: 1px solid rgba(255,107,53,0.25);
+      border-radius: 20px;
+      font-size: 13px; color: var(--primary);
+      font-weight: 600; margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 20px;
+    }
+    .hero h1 span { color: var(--primary); }
+    .hero p {
+      font-size: 18px; color: var(--text-secondary);
+      max-width: 560px; margin: 0 auto 40px;
+      line-height: 1.6;
+    }
+
+    /* TOGGLE BILLING */
+    .billing-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 4px;
+      margin-bottom: 56px;
+    }
+    .toggle-option {
+      padding: 8px 20px;
+      border-radius: 36px;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+      color: var(--text-muted);
+    }
+    .toggle-option.active {
+      background: var(--primary);
+      color: #fff;
+    }
+    .save-badge {
+      background: rgba(34,197,94,0.15);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--green);
+      font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 10px;
+    }
+
+    /* PRICING CARDS */
+    .plans {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      flex-wrap: wrap;
+      padding: 0 20px 80px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .plan-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 32px;
+      flex: 1;
+      min-width: 280px;
+      max-width: 380px;
+      position: relative;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .plan-card:hover { transform: translateY(-4px); }
+    .plan-card.featured {
+      border-color: var(--primary);
+      background: linear-gradient(135deg, rgba(255,107,53,0.05) 0%, var(--bg-card) 50%);
+    }
+    .plan-badge {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--primary);
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px; font-weight: 700;
+      padding: 4px 14px; border-radius: 10px;
+      white-space: nowrap;
+    }
+    .plan-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px; font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .plan-desc { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
+    .plan-price {
+      display: flex; align-items: flex-end; gap: 4px;
+      margin-bottom: 6px;
+    }
+    .price-amount {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 48px; font-weight: 800; line-height: 1;
+    }
+    .price-currency { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .price-period { font-size: 14px; color: var(--text-muted); margin-bottom: 4px; }
+    .price-annual { font-size: 12px; color: var(--green); margin-bottom: 24px; min-height: 18px; }
+
+    .plan-cta {
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      margin-bottom: 28px;
+    }
+    .plan-cta.primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .plan-cta.primary:hover { background: var(--primary-dark); }
+    .plan-cta.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .plan-cta.secondary:hover { border-color: var(--text); color: var(--text); }
+    .plan-cta:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .features-label {
+      font-size: 12px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+    .feature-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .feature-list li {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 14px; line-height: 1.4;
+    }
+    .feature-list li .ico {
+      flex-shrink: 0; margin-top: 2px;
+      font-size: 14px;
+    }
+    .ico.yes { color: var(--green); }
+    .ico.no  { color: var(--text-muted); }
+
+    /* COMPARISON TABLE */
+    .comparison {
+      max-width: 760px; margin: 0 auto 80px;
+      padding: 0 20px;
+    }
+    .comparison h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px; font-weight: 700;
+      text-align: center; margin-bottom: 32px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    thead th {
+      padding: 12px 16px;
+      text-align: center;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    thead th:first-child { text-align: left; }
+    thead th.col-premium { color: var(--primary); }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td {
+      padding: 12px 16px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+    tbody td:first-child { text-align: left; color: var(--text); }
+    tbody td .check { color: var(--green); font-size: 16px; }
+    tbody td .dash  { color: var(--text-muted); }
+
+    /* FAQ */
+    .faq {
+      max-width: 680px; margin: 0 auto 80px;
+      padding: 0 20px;
+    }
+    .faq h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px; font-weight: 700;
+      text-align: center; margin-bottom: 32px;
+    }
+    .faq-item {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+    }
+    .faq-q {
+      font-weight: 600; margin-bottom: 8px;
+      cursor: pointer;
+      display: flex; justify-content: space-between;
+    }
+    .faq-a { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+    /* FOOTER */
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 600px) {
+      nav { padding: 14px 20px; }
+      .hero { padding: 60px 16px 40px; }
+      .plans { padding: 0 16px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="login.html" class="nav-logo">🚴 VeloMind</a>
+  <div class="nav-links">
+    <a href="login.html" class="btn-ghost">Iniciar sesión</a>
+    <a href="login.html" class="btn-primary">Empezar gratis</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge"><i class="fas fa-bolt"></i> Tu entrenador de ciclismo con IA</div>
+  <h1>Entrena como un <span>profesional</span></h1>
+  <p>Análisis de potencia, planes de entrenamiento personalizados con IA, biomecánica y nutrición adaptada a tu nivel.</p>
+
+  <div class="billing-toggle">
+    <div class="toggle-option active" id="toggle-monthly" onclick="setBilling('monthly')">Mensual</div>
+    <div class="toggle-option" id="toggle-yearly" onclick="setBilling('yearly')">
+      Anual <span class="save-badge">-37%</span>
+    </div>
+  </div>
+
+  <div class="plans">
+    <!-- FREE -->
+    <div class="plan-card">
+      <div class="plan-name">Free</div>
+      <div class="plan-desc">Todo lo esencial para empezar</div>
+      <div class="plan-price">
+        <span class="price-currency">€</span>
+        <span class="price-amount">0</span>
+      </div>
+      <div class="price-period">para siempre</div>
+      <div class="price-annual">&nbsp;</div>
+      <button class="plan-cta secondary" onclick="location.href='login.html'">
+        Crear cuenta gratis
+      </button>
+      <div class="features-label">Incluye</div>
+      <ul class="feature-list">
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>Registro de actividades (ilimitado)</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>PMC: CTL, ATL y TSB</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>Analíticas básicas y curva de potencia</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>Recomendaciones algorítmicas semanales</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>Mi Garaje (bicicletas y componentes)</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>Integración Strava / Garmin</li>
+        <li><span class="ico no"><i class="fas fa-times-circle"></i></span><span style="color:var(--text-muted)">Análisis IA del Coach</span></li>
+        <li><span class="ico no"><i class="fas fa-times-circle"></i></span><span style="color:var(--text-muted)">Biomecánica con IA</span></li>
+      </ul>
+    </div>
+
+    <!-- PREMIUM -->
+    <div class="plan-card featured">
+      <div class="plan-badge">⭐ Más popular</div>
+      <div class="plan-name">Premium</div>
+      <div class="plan-desc">El coach IA completo</div>
+      <div class="plan-price">
+        <span class="price-currency">€</span>
+        <span class="price-amount" id="price-display">7</span>
+      </div>
+      <div class="price-period" id="period-display">/mes</div>
+      <div class="price-annual" id="annual-savings">O €59.99/año — ahorra €24</div>
+      <button class="plan-cta primary" id="btn-premium" onclick="startCheckout('monthly')">
+        Empezar Premium
+      </button>
+      <div class="features-label">Todo en Free, más</div>
+      <ul class="feature-list">
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span><strong>Coach IA completo</strong> (Claude / Gemini)</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span><strong>Análisis biomecánico</strong> por fotos con IA</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>Planes de entrenamiento personalizados</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>Nutrición periodizada por fase y objetivo</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>Diagnóstico de distribución de zonas</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>Alertas de sobreentrenamiento</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>Guía de mecánica de emergencia</li>
+        <li><span class="ico yes"><i class="fas fa-check-circle"></i></span>Soporte prioritario</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="comparison">
+  <h2>Comparativa completa</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Función</th>
+        <th>Free</th>
+        <th class="col-premium">Premium</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Registro de actividades</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+      <tr><td>PMC (CTL / ATL / TSB)</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+      <tr><td>Curva de potencia</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+      <tr><td>Registro de peso corporal</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+      <tr><td>Mi Garaje</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+      <tr><td>Integración Strava / Garmin</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+      <tr><td>Recomendaciones semanales (algoritmo)</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+      <tr><td><strong>Coach IA — análisis profundo</strong></td><td><span class="dash">—</span></td><td><span class="check">✓</span></td></tr>
+      <tr><td><strong>Biomecánica con IA por fotos</strong></td><td><span class="dash">—</span></td><td><span class="check">✓</span></td></tr>
+      <tr><td><strong>Plan semanal con IA</strong></td><td><span class="dash">—</span></td><td><span class="check">✓</span></td></tr>
+      <tr><td><strong>Nutrición periodizada con IA</strong></td><td><span class="dash">—</span></td><td><span class="check">✓</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="faq">
+  <h2>Preguntas frecuentes</h2>
+  <div class="faq-item">
+    <div class="faq-q">¿Puedo cancelar cuando quiera? <i class="fas fa-chevron-down"></i></div>
+    <div class="faq-a">Sí, en cualquier momento desde tu perfil. No hay permanencias. El acceso Premium se mantiene hasta el final del período pagado.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">¿Qué IA usa el análisis del coach? <i class="fas fa-chevron-down"></i></div>
+    <div class="faq-a">Usamos Claude (Anthropic) y Google Gemini. Los modelos analizan tus datos reales de entrenamiento para darte recomendaciones precisas.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">¿Cuántos análisis de biomecánica puedo hacer? <i class="fas fa-chevron-down"></i></div>
+    <div class="faq-a">Ilimitados con el plan Premium. Puedes subir hasta 4 fotos por análisis.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">¿Qué pasa con mis datos si cancelo? <i class="fas fa-chevron-down"></i></div>
+    <div class="faq-a">Tus actividades, peso e historial se conservan en tu cuenta gratuita. Solo pierdes acceso a las funciones IA Premium.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">¿Hay prueba gratuita? <i class="fas fa-chevron-down"></i></div>
+    <div class="faq-a">El plan Free es permanente y ya incluye las funciones más usadas. Para las funciones IA puedes suscribirte y cancelar el primer mes si no estás satisfecho.</div>
+  </div>
+</section>
+
+<footer>
+  <p>© 2025 CycloCoach Pro · <a href="mailto:soporte@cyclocoach.pro">Contacto</a></p>
+</footer>
+
+<script>
+  const API_URL = window.API_URL || (location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api');
+
+  let currentBilling = 'monthly';
+
+  function setBilling(plan) {
+    currentBilling = plan;
+    document.getElementById('toggle-monthly').classList.toggle('active', plan === 'monthly');
+    document.getElementById('toggle-yearly').classList.toggle('active', plan === 'yearly');
+
+    if (plan === 'monthly') {
+      document.getElementById('price-display').textContent = '7';
+      document.getElementById('period-display').textContent = '/mes';
+      document.getElementById('annual-savings').textContent = 'O €59.99/año — ahorra €24';
+    } else {
+      document.getElementById('price-display').textContent = '5';
+      document.getElementById('period-display').textContent = '/mes · facturado anualmente';
+      document.getElementById('annual-savings').textContent = '€59.99/año — ahorras €24 vs mensual';
+    }
+    document.getElementById('btn-premium').onclick = () => startCheckout(plan);
+  }
+
+  async function startCheckout(plan) {
+    const token = localStorage.getItem('cyclocoach_token');
+    if (!token) {
+      location.href = 'login.html?redirect=pricing.html';
+      return;
+    }
+    const btn = document.getElementById('btn-premium');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Redirigiendo...';
+
+    try {
+      const res = await fetch(`${API_URL}/payments/create-checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json();
+    if (res.ok && data.url) {
+        location.href = data.url;
+      } else {
+        alert(data.error || 'Error al iniciar el pago. Inténtalo de nuevo.');
+        btn.disabled = false;
+        btn.innerHTML = 'Empezar Premium';
+      }
+    } catch (e) {
+      alert('Error de conexión. Inténtalo de nuevo.');
+      btn.disabled = false;
+      btn.innerHTML = 'Empezar Premium';
+    }
+  }
+
+  // Si viene de cancelar Stripe
+  if (location.search.includes('canceled=1')) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#1a1d26;border:1px solid rgba(255,107,53,0.3);border-radius:10px;padding:12px 24px;color:#f0f2f5;font-size:14px;z-index:999';
+    banner.textContent = 'Pago cancelado — puedes intentarlo de nuevo cuando quieras.';
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), 5000);
+  }
+</script>
+</body>
+</html>

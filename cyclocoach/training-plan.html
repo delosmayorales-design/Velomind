@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Entrenamiento — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "/api";</script>
+  <script src="js/auth.js"></script>
+  <style>
+    /* ── Session cards ───────────────────────────────────────── */
+    .session-cards-grid { display: flex; flex-direction: column; gap: 10px; }
+
+    .session-card-item {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      overflow: hidden;
+      transition: var(--transition);
+    }
+    .session-card-item:hover { border-color: var(--border-light); }
+    .session-card-item.rest { opacity: 0.6; }
+
+    .session-row {
+      display: flex; gap: 16px; align-items: center;
+      padding: 16px 20px; cursor: pointer;
+      transition: background .15s;
+    }
+    .session-row:hover { background: var(--bg-card-hover); }
+
+    /* ── Adapt inline section ───── */
+    .adapt-zone {
+      border-top: 1px solid rgba(196,239,68,.1);
+      background: rgba(158,214,43,.03);
+    }
+    .adapt-trigger {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 20px; cursor: pointer;
+      font-size: 11px; color: rgba(196,239,68,.7);
+      transition: color .15s;
+      user-select: none;
+    }
+    .adapt-trigger:hover { color: #C4EF44; }
+    .adapt-body { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+    .adapt-input-row { display: flex; gap: 8px; align-items: center; }
+    .adapt-input {
+      flex: 1; padding: 7px 11px;
+      background: var(--bg-card); border: 1px solid rgba(196,239,68,.2);
+      border-radius: 8px; color: var(--text); font-size: 12px; font-family: inherit;
+      outline: none; transition: border-color .15s;
+    }
+    .adapt-input:focus { border-color: rgba(196,239,68,.5); }
+    .adapt-submit {
+      padding: 7px 14px; background: rgba(158,214,43,.15);
+      border: 1px solid rgba(139,92,246,.3); border-radius: 8px;
+      color: #C4EF44; font-size: 12px; font-weight: 600; cursor: pointer;
+      white-space: nowrap; font-family: inherit; transition: background .15s;
+    }
+    .adapt-submit:hover { background: rgba(158,214,43,.25); }
+    .adapt-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+    .day-badge { min-width: 56px; text-align: center; }
+    .day-badge .dn { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); }
+    .day-badge .dd { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; color: var(--text-primary); line-height: 1; }
+
+    .session-content { flex: 1; }
+    .session-meta { display: flex; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
+    .meta-tag { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); }
+
+    .phase-card {
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-input));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .intensity-card { background: var(--bg-input); border-radius: var(--radius-sm); padding: 14px; }
+
+    /* ── Phase badges ────────────────────────────────────────── */
+    .phase-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .phase-base     { background: rgba(0,212,255,0.12); color: #00D4FF; border: 1px solid rgba(0,212,255,0.2); }
+    .phase-build    { background: rgba(255,107,53,0.12); color: #FF6B35; border: 1px solid rgba(255,107,53,0.2); }
+    .phase-peak     { background: rgba(255,200,0,0.12);  color: #FFC800; border: 1px solid rgba(255,200,0,0.2); }
+    .phase-recovery { background: rgba(0,200,130,0.12);  color: #00C882; border: 1px solid rgba(0,200,130,0.2); }
+    .phase-race     { background: rgba(236,72,153,0.12); color: #EC4899; border: 1px solid rgba(236,72,153,0.2); }
+
+    .form-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;
+    }
+    .form-blue   { background:rgba(100,160,255,0.15); color:#64a0ff; }
+    .form-green  { background:rgba(0,200,130,0.15);   color:#00C882; }
+    .form-lime   { background:rgba(180,230,0,0.15);   color:#b4e600; }
+    .form-yellow { background:rgba(255,200,0,0.15);   color:#FFC800; }
+    .form-orange { background:rgba(255,150,50,0.15);  color:#FF9632; }
+    .form-red    { background:rgba(255,71,87,0.15);   color:#ff4757; }
+
+    /* ── Coach alerts ────────────────────────────────────────── */
+    .coach-alert {
+      display:flex; align-items:flex-start; gap:10px;
+      padding:12px 16px; border-radius:10px; font-size:14px; margin-bottom:10px; line-height:1.5;
+    }
+    .alert-warning { background:rgba(255,200,0,.08);  border:1px solid rgba(255,200,0,.2);  color:#FFC800; }
+    .alert-info    { background:rgba(0,212,255,.08);  border:1px solid rgba(0,212,255,.2);  color:#00D4FF; }
+    .alert-success { background:rgba(0,200,130,.08);  border:1px solid rgba(0,200,130,.2);  color:#00C882; }
+    .alert-danger  { background:rgba(255,71,87,.08);  border:1px solid rgba(255,71,87,.2);  color:#ff4757; }
+
+    /* ── Stat rows ───────────────────────────────────────────── */
+    .stat-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0;
+                border-bottom:1px solid rgba(255,255,255,.05); font-size:14px; }
+    .stat-row:last-child { border-bottom:none; }
+    .stat-val { font-weight:700; color:var(--text,#f0f2f5); }
+
+    /* ── Zone bars ───────────────────────────────────────────── */
+    .zone-bar-row { margin-bottom:8px; }
+    .zone-bar-row-labels { display:flex; justify-content:space-between; font-size:12px; margin-bottom:3px; }
+    .zone-bar-track { height:5px; background:rgba(255,255,255,.06); border-radius:3px; overflow:hidden; }
+    .zone-bar-fill  { height:100%; border-radius:3px; transition:width .6s; }
+
+    /* ── Estado de Forma ─────────────────────────────────────── */
+    .fs-header { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+    .fs-date { margin-left:auto; font-size:10px; color:var(--text-muted); font-weight:600;
+               text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; }
+    .fs-pmc-grid {
+      display:grid; grid-template-columns:1fr 1px 1fr 1px 1fr;
+      gap:0; margin-bottom:11px;
+    }
+    .fs-vdiv { background:rgba(255,255,255,.07); }
+    .fs-metric { display:flex; flex-direction:column; align-items:center; padding:4px 8px; gap:2px; }
+    .fs-val { font-size:26px; font-weight:800; font-family:'Space Grotesk',sans-serif; line-height:1; }
+    .fs-name { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.7px;
+               color:var(--text-muted); display:flex; gap:3px; align-items:center; }
+    .fs-name span { font-weight:400; opacity:.65; }
+    .fs-bar-track { width:72px; height:3px; background:rgba(255,255,255,.08); border-radius:2px;
+                    overflow:hidden; margin:3px 0 1px; }
+    .fs-bar-fill  { height:100%; border-radius:2px; transition:width .7s ease; }
+    .fs-period { font-size:9px; color:var(--text-muted); opacity:.55; }
+    .fs-tsb-chip { font-size:10px; font-weight:700; padding:2px 9px; border-radius:8px;
+                   margin:3px 0 1px; }
+    .fs-secondary {
+      display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+      padding-top:9px; border-top:1px solid rgba(255,255,255,.06);
+      font-size:11px; color:var(--text-muted);
+    }
+    .fs-secondary i { margin-right:3px; opacity:.7; }
+
+
+    /* ── Helpers ─────────────────────────────────────────────── */
+    .sync-btn {
+      display:inline-flex; align-items:center; gap:8px; padding:10px 20px;
+      background:rgba(252,76,2,.15); border:1px solid rgba(252,76,2,.3); color:#FC4C02;
+      border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;
+      font-family:inherit; transition:all .2s;
+    }
+    .sync-btn:hover { background:rgba(252,76,2,.25); }
+    .loading-pulse { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .section-divider {
+      display:flex; align-items:center; gap:12px; margin: 28px 0 20px;
+    }
+    .section-divider hr { flex:1; border:none; border-top:1px solid rgba(255,255,255,.08); }
+    .section-divider span { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); white-space:nowrap; }
+
+    .plan-label {
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(0,212,255,.08); border:1px solid rgba(0,212,255,.15);
+      color:#00D4FF; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px;
+    }
+
+    /* ── AI Coach ────────────────────────────────────────────── */
+    .btn-ai {
+      background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(59,130,246,0.2));
+      border: 1px solid rgba(139,92,246,0.4);
+      color: #C4EF44;
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 16px; border-radius:10px; font-size:14px; font-weight:600;
+      cursor:pointer; font-family:inherit; transition:all .2s;
+    }
+    .btn-ai:hover { background:linear-gradient(135deg,rgba(139,92,246,0.35),rgba(59,130,246,0.35)); }
+    .btn-ai:disabled { opacity:.5; cursor:not-allowed; }
+
+    .ai-section {
+      border:1px solid rgba(139,92,246,0.25);
+      border-radius:var(--radius-lg);
+      background:linear-gradient(135deg, rgba(139,92,246,0.04), rgba(59,130,246,0.04));
+      margin-bottom:24px; overflow:hidden;
+    }
+    .ai-section-header {
+      display:flex; align-items:center; gap:14px; padding:18px 24px;
+      border-bottom:1px solid rgba(139,92,246,0.12);
+      background:linear-gradient(135deg,rgba(158,214,43,.04),rgba(59,130,246,.03));
+    }
+    .ai-badge {
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3);
+      color:#C4EF44; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px;
+      text-transform:uppercase; letter-spacing:.5px;
+    }
+    .ai-body { padding:20px; }
+
+    .ai-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    @media(max-width:900px){ .ai-grid-3 { grid-template-columns:1fr; } }
+
+    .ai-card {
+      background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
+      border-radius:var(--radius-md); padding:16px;
+    }
+    .ai-card-title {
+      font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.7px;
+      color:var(--text-muted); margin-bottom:12px; display:flex; align-items:center; gap:6px;
+    }
+
+    .priority-alta  { color:#ff4757; }
+    .priority-media { color:#FFC800; }
+    .priority-baja  { color:#00C882; }
+
+    .mechanic-step {
+      display:flex; gap:10px; margin-bottom:8px; align-items:flex-start;
+    }
+    .step-num {
+      min-width:22px; height:22px; background:rgba(139,92,246,0.2); border:1px solid rgba(139,92,246,0.3);
+      border-radius:50%; display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-weight:700; color:#C4EF44; flex-shrink:0;
+    }
+
+    .estado-chip {
+      padding:6px 14px; border-radius:20px; font-size:12px; font-weight:500; cursor:pointer;
+      background:var(--bg-input); border:1px solid var(--border); color:var(--text-muted);
+      font-family:inherit; transition:all .18s;
+    }
+    .estado-chip:hover { border-color:rgba(139,92,246,.5); color:var(--text-primary); }
+    .estado-chip.active {
+      background:rgba(139,92,246,.18); border-color:rgba(139,92,246,.6);
+      color:#c4b5fd; font-weight:600;
+    }
+
+    .ai-loading {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:48px 20px; gap:16px; text-align:center;
+    }
+    .ai-spinner {
+      width:48px; height:48px; border:3px solid rgba(139,92,246,0.2);
+      border-top-color:#C4EF44; border-radius:50%; animation:spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Plan params strip ───────────────────────────────────── */
+    .plan-params-strip {
+      background: var(--bg-input, #1a1f2e);
+      border: 1px solid var(--border, rgba(255,255,255,.08));
+      border-radius: var(--radius-md, 10px);
+    }
+    .params-strip-inner {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 14px; flex-wrap: wrap;
+    }
+    .params-strip-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--text-muted);
+      white-space: nowrap; margin-right: 4px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .params-field {
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .params-field label {
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--text-muted); white-space: nowrap;
+    }
+    .params-input {
+      height: 32px; padding: 0 10px;
+      background: var(--bg-card, #12172b);
+      border: 1px solid var(--border, rgba(255,255,255,.08));
+      border-radius: 7px; color: var(--text, #f0f2f5);
+      font-size: 13px; font-family: inherit; outline: none;
+      transition: border-color .15s;
+      min-width: 0;
+    }
+    .params-input:focus { border-color: rgba(196,239,68,.4); }
+    input[type=number].params-input { width: 72px; }
+    select.params-input { width: 150px; cursor: pointer; }
+    input[type=date].params-input { width: 140px; color-scheme: dark; }
+    .params-apply-btn {
+      height: 32px; padding: 0 16px; margin-left: 4px;
+      background: rgba(196,239,68,.12);
+      border: 1px solid rgba(196,239,68,.3);
+      border-radius: 7px; color: #C4EF44;
+      font-size: 12px; font-weight: 700; font-family: inherit;
+      cursor: pointer; white-space: nowrap;
+      display: flex; align-items: center; gap: 6px;
+      transition: background .15s;
+    }
+    .params-apply-btn:hover { background: rgba(196,239,68,.22); }
+  </style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo2.png" alt="VeloMind" style="width:100%; max-width:140px; height:auto; display:block; margin:0 auto">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="analytics.html" class="nav-item">
+      <i class="fas fa-chart-bar"></i> Métricas
+    </a>
+    <a href="activities.html" class="nav-item">
+      <i class="fas fa-history"></i> Actividades
+    </a>
+
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item active">
+      <i class="fas fa-calendar-check"></i> Mi Plan
+    </a>
+    <a href="nutrition.html" class="nav-item">
+      <i class="fas fa-apple-alt"></i> Nutrición
+    </a>
+    <a href="body-weight.html" class="nav-item">
+      <i class="fas fa-weight"></i> Peso y W/Kg
+    </a>
+
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="mecanica-general.html" class="nav-item"><i class="fas fa-wrench"></i> Mecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
+
+    <div class="nav-section-title">Equipación</div>
+    <a href="kit-designer.html" class="nav-item"><i class="fas fa-tshirt"></i> Diseñador Ropa</a>
+
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-name">Cargando...</div>
+        <div class="ftp" id="athlete-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1><i class="fas fa-dumbbell" style="color:var(--primary)"></i> Mi Entrenamiento</h1>
+      <p>Estado de forma, plan semanal y análisis de rendimiento basados en tus salidas reales</p>
+    </div>
+    <div class="header-actions" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="sync-btn" id="sync-strava-btn" onclick="syncStrava()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+        Sincronizar Strava
+      </button>
+      <button class="btn btn-ai btn-sm" id="btn-ai-coach" onclick="runAICoach()">
+        <i class="fas fa-robot"></i> Análisis IA
+      </button>
+      <button class="btn btn-secondary btn-sm" id="btn-export-garmin" onclick="exportWeekToGarmin()" style="background:rgba(52,211,153,0.12);border-color:rgba(52,211,153,0.35);color:var(--success);" title="Exporta todos los entrenamientos de la semana como archivos .fit para Garmin">
+        <i class="fas fa-watch"></i> Exportar a Garmin
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="regeneratePlan()">
+        <i class="fas fa-sync-alt"></i> Regenerar
+      </button>
+      <button class="btn btn-primary btn-sm" id="btn-save-plan" onclick="savePlan()">
+        <i class="fas fa-save"></i> Guardar plan
+      </button>
+    </div>
+  </header>
+
+  <div class="page-body">
+
+    <!-- ══ DASHBOARD ESTRATÉGICO: DISTRIBUCIÓN 2x2 UNIFICADA ════ -->
+    <div class="mb-6" style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch;">
+      
+      <!-- 1. Datos PMC (Superior Izquierda) -->
+      <div id="form-state-section" class="card" style="display:flex; flex-direction:column; min-height:160px">
+        <div class="card-header" style="padding:8px 12px; border-bottom:1px solid var(--border)">
+          <div class="card-title" style="font-size:11px"><i class="fas fa-chart-line" style="color:var(--primary)"></i> Estado de Forma</div>
+        </div>
+        <div id="form-state-loading" style="flex:1; display:flex; align-items:center; justify-content:center">
+          <div style="text-align:center">
+            <div class="loading-pulse" style="font-size:20px">🧠</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Analizando...</div>
+          </div>
+        </div>
+        <div id="form-state-content" class="hidden" style="flex:1; padding:15px"></div>
+      </div>
+
+      <!-- 2. Diagnóstico Coach (Superior Derecha) -->
+      <div id="insights-section" class="card hidden" style="display:flex; flex-direction:column; min-height:160px">
+        <div class="card-header" style="padding:8px 12px; border-bottom:1px solid var(--border)">
+          <div class="card-title" style="font-size:11px"><i class="fas fa-lightbulb" style="color:#FFC800"></i> Diagnóstico Coach</div>
+        </div>
+        <div class="card-body" style="padding:12px; flex:1; overflow-y:auto; max-height:160px">
+          <div id="insights-content"></div>
+        </div>
+      </div>
+
+      <!-- 3. Parámetros (Inferior Izquierda) -->
+      <div class="card" style="display:flex; flex-direction:column; min-height:160px">
+        <div class="card-header" style="padding:8px 12px; border-bottom:1px solid var(--border)">
+          <div class="card-title" style="font-size:11px"><i class="fas fa-sliders-h" style="color:var(--primary)"></i> Configuración Plan</div>
+        </div>
+        <div class="card-body" style="padding:12px; display:grid; grid-template-columns:1fr 1fr; gap:10px; flex:1">
+          <div class="params-field">
+            <label style="font-size:8px; font-weight:700; color:var(--text-muted); text-transform:uppercase">Horas semanales</label>
+            <input type="number" id="adj-hours" class="params-input" value="8" style="height:24px; font-size:11px; padding:0 8px; width:100%">
+          </div>
+          <div class="params-field">
+            <label style="font-size:8px; font-weight:700; color:var(--text-muted); text-transform:uppercase">FTP (W)</label>
+            <input type="number" id="adj-ftp" class="params-input" placeholder="200" style="height:24px; font-size:11px; padding:0 8px; width:100%">
+          </div>
+          <div class="params-field" style="grid-column: span 1">
+            <label style="font-size:8px; font-weight:700; color:var(--text-muted); text-transform:uppercase">Objetivo</label>
+            <select id="adj-goal" class="params-input params-select" style="height:24px; font-size:11px; padding:0 8px; width:100%">
+              <option value="resistencia">Resistencia</option>
+              <option value="ftp">Subir FTP</option>
+              <option value="vo2max">VO2 Max</option>
+              <option value="sprint">Sprint / Velocidad</option>
+              <option value="gran_fondo">Gran Fondo / Marchas</option>
+              <option value="perdida_peso">Perder peso</option>
+            </select>
+          </div>
+          <div class="params-field">
+            <label style="font-size:8px; font-weight:700; color:var(--text-muted); text-transform:uppercase">Peso (kg)</label>
+            <input type="number" id="adj-weight" class="params-input" placeholder="70" style="height:24px; font-size:11px; padding:0 8px; width:100%">
+          </div>
+          <button class="params-apply-btn" onclick="applyAdjustments()" style="grid-column: span 2; height:28px; margin-top:4px; font-size:11px; justify-content:center; width:100%">
+            <i class="fas fa-sync-alt"></i> Actualizar
+          </button>
+        </div>
+      </div>
+
+      <!-- 4. Principios (Inferior Derecha) -->
+      <div class="card" id="principles-card" style="display:flex; flex-direction:column; min-height:160px">
+        <div class="card-header" style="padding:8px 12px; border-bottom:1px solid var(--border)">
+          <div class="card-title" style="font-size:11px"><i class="fas fa-graduation-cap" style="color:var(--accent)"></i> Principios de Fase</div>
+        </div>
+        <div class="card-body" style="padding:12px; flex:1; overflow-y:auto; max-height:160px">
+          <div id="training-principles"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- NO ATHLETE ALERT -->
+    <div id="no-athlete-alert" class="hidden">
+      <div class="alert alert-warning" style="margin-bottom:24px">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+          <strong>Perfil incompleto</strong> — Para generar un plan personalizado, primero
+          <a href="index.html" style="color:var(--accent-yellow);text-decoration:underline">configura tu perfil</a>
+          con tu FTP y objetivos.
+        </div>
+      </div>
+    </div>
+
+    <!-- PLAN SEMANAL -->
+    <div id="coach-alerts-section" class="hidden" style="margin-bottom:20px"></div>
+
+    <div class="card mb-6">
+      <div class="card-header">
+        <div>
+          <div class="card-title"><i class="fas fa-calendar-week" style="color:var(--accent)"></i> Plan Semanal</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
+            <span id="plan-summary-inline">Cargando objetivos...</span>
+          </div>
+        </div>
+        <div id="week-dates" style="font-size:13px;color:var(--text-muted)"></div>
+      </div>
+      <div id="weekly-plan" class="session-cards-grid">
+        <div style="text-align:center;padding:40px;color:var(--text-muted)">
+          <i class="fas fa-spinner spinning" style="font-size:32px;margin-bottom:12px"></i>
+          <div>Generando tu plan personalizado...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECCIÓN 6: PROGRESIÓN 12 SEMANAS ════════════════════ -->
+    <div class="section-divider">
+      <hr><span>Progresión proyectada</span><hr>
+    </div>
+    <div class="card mb-6">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-chart-line" style="color:var(--accent-green)"></i> Progresión de Carga Sugerida (12 semanas)</div>
+        <span class="badge badge-green">Modelo de periodización</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="progression-chart"></canvas>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- SESSION DETAIL MODAL -->
+<div id="session-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xl);max-width:560px;width:100%;max-height:80vh;overflow-y:auto;padding:28px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 id="modal-title" style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700">Sesión</h2>
+      <button onclick="closeModal()" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/app.js"></script>
+<script src="js/backend-sync.js"></script>
+<script src="js/fit-encoder.js"></script>
+<script>
+const API = window.API_URL;
+
+
+
+
+let currentPlan = null;
+let progressionChart = null;
+
+// ── Sync Strava ─────────────────────────────────────────────
+async function syncStrava() {
+  const btn = document.getElementById('sync-strava-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+  try {
+    const res = await fetch(`${API}/providers/strava/sync`, {
+      method: 'POST', headers: Auth.getHeaders(),
+    });
+    const d = await res.json();
+    if (!res.ok) {
+      if (d.error?.includes('no conectado')) { window.location.href = 'integrations.html'; return; }
+      throw new Error(d.error);
+    }
+    btn.innerHTML = `<i class="fas fa-check"></i> ${d.synced} actividades`;
+    setTimeout(() => { loadCoachData(); btn.disabled = false; }, 1000);
+  } catch(e) {
+    btn.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${e.message}`;
+    setTimeout(() => {
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar Strava';
+      btn.disabled = false;
+    }, 3000);
+  }
+}
+
+// ── Load coach data from backend ─────────────────────────────
+async function loadCoachData() {
+  try {
+    const recRes = await fetch(`${API}/coach/recommendations`, { headers: Auth.getHeaders() });
+    if (!recRes.ok) throw new Error('Sin conexión al backend');
+    const rec = await recRes.json();
+    const summaryToRender = (rec.summary && rec.summary.pmc && (rec.summary.pmc.ctl > 0 || rec.summary.pmc.atl > 0))
+      ? rec.summary
+      : { ...rec.summary, pmc: AppState.pmcData[AppState.pmcData.length - 1] || { ctl: 0, atl: 0, tsb: 0 } };
+
+    renderFormState(summaryToRender, rec.training);
+    renderCoachAlerts(rec.training.alerts);
+    if (rec.training.insights?.length) renderInsights(rec.training.insights);
+  } catch(e) {
+    // Backend no disponible: ocultar loading, no mostrar error
+    document.getElementById('form-state-loading').style.display = 'none';
+    console.info('[Coach] Backend no disponible, modo offline:', e.message);
+  }
+}
+
+// ── Render form state ────────────────────────────────────────
+function renderFormState(s, training) {
+  document.getElementById('form-state-loading').style.display = 'none';
+  const phaseClass = { base:'phase-base', build:'phase-build', peak:'phase-peak', recovery:'phase-recovery', race:'phase-race' }[s.phase] || 'phase-base';
+  const formClass  = { blue:'form-blue', green:'form-green', lime:'form-lime', yellow:'form-yellow', orange:'form-orange', red:'form-red' }[s.form?.color] || 'form-lime';
+
+  const tsb = s.pmc.tsb;
+  const tsbSign = tsb > 0 ? '+' : '';
+
+  function tsbState(v) {
+    if (v <= -30) return { label:'Agotado',    emoji:'😢', color:'#ff4757', bg:'rgba(255,71,87,.14)' };
+    if (v <= -10) return { label:'Fatigado',   emoji:'😓', color:'#F97316', bg:'rgba(249,115,22,.14)' };
+    if (v <=   5) return { label:'Neutro',     emoji:'😐', color:'#94a3b8', bg:'rgba(148,163,184,.12)' };
+    if (v <=  25) return { label:'Fresco',     emoji:'💪', color:'#00C882', bg:'rgba(0,200,130,.14)' };
+    return              { label:'Muy fresco',  emoji:'🚀', color:'#38BDF8', bg:'rgba(56,189,248,.14)' };
+  }
+  const tsbs = tsbState(tsb);
+
+  // CTL escala relativa /100, ATL /80 — valores típicos para amateur
+  const ctlPct  = Math.min(100, Math.round((s.pmc.ctl / 100) * 100));
+  const atlPct  = Math.min(100, Math.round((s.pmc.atl / 80)  * 100));
+
+  const today = new Date().toLocaleDateString('es-ES', { day:'numeric', month:'short' });
+
+  const content = document.getElementById('form-state-content');
+  content.innerHTML = `
+    <div class="fs-header">
+      <span class="phase-badge ${phaseClass}">${phaseLabel(s.phase)}</span>
+      <span class="form-pill ${formClass}">${s.form?.label || 'En forma'}</span>
+      <span class="fs-date"><i class="fas fa-calendar-day" style="margin-right:4px;opacity:.5"></i>${today}</span>
+    </div>
+
+    <div class="fs-pmc-grid">
+      <div class="fs-metric">
+        <div class="fs-val" style="color:#38BDF8">${s.pmc.ctl}</div>
+        <div class="fs-name">CTL <span>fitness</span></div>
+        <div class="fs-bar-track"><div class="fs-bar-fill" style="width:${ctlPct}%;background:#38BDF8;opacity:.85"></div></div>
+        <div class="fs-period">media 42 días</div>
+      </div>
+      <div class="fs-vdiv"></div>
+      <div class="fs-metric">
+        <div class="fs-val" style="color:#F97316">${s.pmc.atl}</div>
+        <div class="fs-name">ATL <span>fatiga</span></div>
+        <div class="fs-bar-track"><div class="fs-bar-fill" style="width:${atlPct}%;background:#F97316;opacity:.85"></div></div>
+        <div class="fs-period">media 7 días</div>
+      </div>
+      <div class="fs-vdiv"></div>
+      <div class="fs-metric">
+        <div class="fs-val" style="color:${tsbs.color}">${tsbSign}${tsb}</div>
+        <div class="fs-name">TSB <span>forma</span></div>
+        <div class="fs-tsb-chip" style="color:${tsbs.color};background:${tsbs.bg}">${tsbs.emoji} ${tsbs.label}</div>
+        <div class="fs-period">CTL − ATL · hoy</div>
+      </div>
+    </div>
+
+    <div class="fs-secondary">
+      <span><i class="fas fa-bicycle"></i>${s.rides} salidas · 30d</span>
+      <span><i class="fas fa-gauge-high"></i>${s.avgTSS} TSS/sal.</span>
+      ${s.wkg ? `<span><i class="fas fa-bolt"></i>${s.wkg} W/kg</span>` : ''}
+    </div>
+  `;
+  content.classList.remove('hidden');
+}
+
+function renderZoneBars(z) {
+  const zones = [
+    { label:'Z1 Recuperación', pct: z.z1, color:'#4a90d9' },
+    { label:'Z2 Aeróbico',     pct: z.z2, color:'#5bc86e' },
+    { label:'Z3 Tempo',        pct: z.z3, color:'#f0c419' },
+    { label:'Z4 Umbral',       pct: z.z4, color:'#f07d19' },
+    { label:'Z5 VO₂Max',       pct: z.z5, color:'#e83e3e' },
+    { label:'Z6 Anaeróbico',   pct: z.z6, color:'#9b3fe8' },
+    { label:'Z7 Neuromuscular',pct: z.z7, color:'#ff6eb4' },
+  ];
+  return zones.map(z => `
+    <div class="zone-bar-row">
+      <div class="zone-bar-row-labels">
+        <span style="color:var(--text-secondary)">${z.label}</span>
+        <span style="color:var(--text-muted);font-weight:700">${z.pct}%</span>
+      </div>
+      <div class="zone-bar-track">
+        <div class="zone-bar-fill" style="width:${z.pct}%;background:${z.color}"></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderCoachAlerts(alerts) {
+  const section = document.getElementById('coach-alerts-section');
+  if (!alerts?.length) { section.classList.add('hidden'); return; }
+  section.innerHTML = alerts.map(a => {
+    const type = a.startsWith('⚠️') ? 'alert-warning' : a.startsWith('📈') ? 'alert-warning' : 'alert-info';
+    return `<div class="coach-alert ${type}"><span style="font-size:18px;flex-shrink:0">${a.substring(0,2)}</span><span>${a.substring(2).trim()}</span></div>`;
+  }).join('');
+  section.classList.remove('hidden');
+}
+
+
+function renderInsights(insights) {
+  const icons = { fitness:'fa-heart-pulse', power:'fa-bolt', polarization:'fa-layer-group', volume:'fa-clock', data:'fa-database' };
+  const colors = { info:'alert-info', success:'alert-success', warning:'alert-warning', danger:'alert-danger' };
+  document.getElementById('insights-content').innerHTML = insights.map(ins => `
+    <div class="coach-alert ${colors[ins.level] || 'alert-info'}" style="padding: 8px 12px; margin-bottom: 6px; font-size: 11px; border-radius: 6px;">
+      <i class="fas ${icons[ins.type] || 'fa-info-circle'}" style="margin-top:2px;flex-shrink:0; font-size: 10px"></i>
+      <span>${ins.text}</span>
+    </div>`).join('');
+  document.getElementById('insights-section').classList.remove('hidden');
+}
+
+function phaseLabel(p) {
+  return { base:'Base', build:'Build', peak:'Peak', recovery:'Recuperación', race:'Carrera' }[p] || p;
+}
+
+// ── Training plan generation ─────────────────────────────────
+async function initTrainingPlan() {
+  console.log('[TP] Starting...');
+  try {
+    await AppState.init();
+    console.log('[TP] AppState ready, athlete:', AppState.athlete?.name);
+    
+    // 1. RENDERIZADO INMEDIATO (Optimistic UI)
+    // Cargar plan desde caché local súper rápido para no bloquear la pantalla
+    try {
+      const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan'));
+      if (local?.sessions) currentPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {} };
+    } catch(_) {}
+
+    renderAthleteSidebar();
+    renderWeekDates();
+
+    if (!AppState.athlete) {
+      console.log('[TP] No athlete');
+      document.getElementById('no-athlete-alert').classList.remove('hidden');
+      renderDefaultPlan();
+    } else {
+      fillAdjustmentForm();
+      if (currentPlan) {
+        renderPlan(currentPlan, AppState.athlete);
+      } else {
+        generatePlan();
+      }
+    }
+
+    loadCoachData(); // Llamada asíncrona a la IA, no bloquea UI
+
+    // 2. SINCRONIZACIÓN EN SEGUNDO PLANO (Background Sync)
+    if (typeof BackendSync !== 'undefined') {
+      if (BackendSync.loadProfile) BackendSync.loadProfile().then(() => { renderAthleteSidebar(); fillAdjustmentForm(); });
+      if (BackendSync.loadActivities) BackendSync.loadActivities(); // Descarga de base de datos sin congelar pantalla
+    }
+    
+    fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(savedPlan => {
+        if (savedPlan?.sessions) {
+          currentPlan = { sessions: savedPlan.sessions, phase: savedPlan.phase, targetTSS: savedPlan.tss_target, advice: savedPlan.advice || {} };
+          localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...savedPlan, savedAt: Date.now() }));
+          if (AppState.athlete) renderPlan(currentPlan, AppState.athlete); // Refresca si hay datos más nuevos en la nube
+        }
+      }).catch(e => console.log('[TP] Usando caché local'));
+
+    console.log('[TP] Done');
+  } catch(e) {
+    console.error('[TP] Error:', e);
+  }
+}
+
+function renderAthleteSidebar() {
+  const a = AppState.athlete;
+  if (!a) return;
+  const name = a.name || 'Atleta';
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+  document.getElementById('athlete-avatar').textContent = initials;
+  document.getElementById('athlete-name').textContent = name;
+  document.getElementById('athlete-ftp').textContent = `FTP: ${a.ftp || '--'} W`;
+}
+
+function fillAdjustmentForm() {
+  const a = AppState.athlete;
+  if (!a) return;
+  if (document.getElementById('adj-hours')) document.getElementById('adj-hours').value = a.weekly_hours || 8;
+  if (document.getElementById('adj-goal')) document.getElementById('adj-goal').value = window.GoalUtils ? window.GoalUtils.normalize(a.goal || 'resistencia') : (a.goal || 'resistencia');
+  if (document.getElementById('adj-event')) document.getElementById('adj-event').value = a.event_date || '';
+  if (document.getElementById('adj-ftp')) document.getElementById('adj-ftp').value = a.ftp || '';
+  if (document.getElementById('adj-weight')) document.getElementById('adj-weight').value = a.weight || '';
+}
+
+function renderWeekDates() {
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - now.getDay() + 1);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  document.getElementById('week-dates').textContent =
+    monday.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + ' — ' +
+    sunday.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function generatePlan() {
+  const athlete = AppState.athlete || getDefaultAthlete();
+  const plan = TrainingPlanGenerator.generate(athlete, AppState.activities);
+  currentPlan = plan;
+  renderPlan(plan, athlete);
+}
+
+function getDefaultAthlete() {
+  return { ftp: 200, weight: 70, weekly_hours: 8, goal: 'resistencia', experience: 'intermedio', age: 30 };
+}
+function renderDefaultPlan() { generatePlan(); }
+
+function renderPlan(plan, athlete) {
+  const metrics = AppState.getCurrentMetrics();
+  const ftp = athlete.ftp || 200;
+
+  // Actualizar objetivos en el panel superior (si ya se renderizó)
+  if (document.getElementById('plan-target-tss-val')) {
+    document.getElementById('plan-target-tss-val').textContent = plan.targetTSS;
+    document.getElementById('plan-hours-val').textContent = (athlete.weekly_hours || 8) + 'h';
+  }
+  document.getElementById('plan-summary-inline').innerHTML = 
+    `Objetivo: <strong style="color:var(--primary)">${plan.targetTSS} TSS</strong> · Disponibilidad: <strong>${athlete.weekly_hours || 8}h</strong> · Fase: <strong>${phaseLabel(plan.phase)}</strong>`;
+
+  const sessContainer = document.getElementById('weekly-plan');
+  const mondayDate = new Date();
+  mondayDate.setDate(mondayDate.getDate() - mondayDate.getDay() + 1);
+
+  // todayIdx: Mon=0 … Sun=6
+  const todayIdx = (new Date().getDay() + 6) % 7;
+
+  sessContainer.innerHTML = plan.sessions.map((sess, i) => {
+    const sessDate = new Date(mondayDate);
+    sessDate.setDate(mondayDate.getDate() + i);
+
+    if (sess.isRest) {
+      return `
+        <div class="session-card-item rest">
+          <div class="session-row" style="cursor:default">
+            <div class="day-badge">
+              <div class="dn">${sess.day.substring(0, 3)}</div>
+              <div class="dd">${sessDate.getDate()}</div>
+            </div>
+            <div style="width:1px;height:40px;background:var(--border)"></div>
+            <div style="font-size:20px">😴</div>
+            <div>
+              <div style="font-size:15px;font-weight:600;color:var(--text-secondary)">Descanso</div>
+              <div style="font-size:12px;color:var(--text-muted)">${sess.description}</div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    const typeColors = {
+      recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D',
+      threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899'
+    };
+    const sessionStructureTitle = 'Estructura detallada de la sesión';
+    const color  = typeColors[sess.type] || 'var(--text-secondary)';
+    const tssVal = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare || 0) * plan.targetTSS);
+    const durMin = Number.isFinite(sess.durationMin) ? sess.durationMin : (sess.ifTarget ? Math.round(tssVal / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
+    const targetWatts = Number.isFinite(sess.targetWatts) ? sess.targetWatts : (sess.ifTarget ? Math.round(ftp * sess.ifTarget) : null);
+    const ifVal = sess.ifTarget || 0;
+
+    const isToday    = i === todayIdx;
+    const isTomorrow = i === todayIdx + 1 && todayIdx + 1 <= 6;
+    const canAdapt   = isToday || isTomorrow;
+    const adaptLabel = isToday ? '¿Cómo te encuentras hoy?' : '¿Cómo crees que estarás mañana?';
+    const adaptDay   = isToday ? 0 : 1;
+
+    const adaptZone = canAdapt ? `
+      <div class="adapt-zone" onclick="event.stopPropagation()">
+        <div class="adapt-trigger" onclick="toggleAdaptForm(${i})">
+          <i class="fas fa-robot" style="font-size:10px"></i>
+          <span>${isToday ? 'Adaptar sesión de hoy (Pre-entreno)' : 'Adaptar sesión de mañana'}</span>
+          <i class="fas fa-chevron-down" id="adapt-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
+        </div>
+        <div id="adapt-body-${i}" class="adapt-body" style="display:none">
+          <div class="adapt-input-row">
+            <input class="adapt-input" id="adapt-input-${i}"
+              placeholder="${adaptLabel}"
+              onkeydown="if(event.key==='Enter')adaptSession(${i},${adaptDay})">
+            <button class="adapt-submit" id="adapt-btn-${i}" onclick="adaptSession(${i},${adaptDay})">
+              <i class="fas fa-sparkles"></i> Adaptar
+            </button>
+          </div>
+          <div id="adapt-result-${i}" style="display:none"></div>
+        </div>
+      </div>
+      ${isToday ? `
+      <div class="adapt-zone" style="background:rgba(255,107,53,.03);border-top:1px solid rgba(255,107,53,.1)" onclick="event.stopPropagation()">
+        <div class="adapt-trigger" onclick="toggleRealityForm(${i})" style="color:#FF6B35">
+          <i class="fas fa-pen-to-square" style="font-size:10px"></i>
+          <span>Registrar lo que realmente hice hoy (Post-entreno)</span>
+          <i class="fas fa-chevron-down" id="reality-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
+        </div>
+        <div id="reality-body-${i}" class="adapt-body" style="display:none">
+          <textarea class="adapt-input" id="reality-input-${i}" placeholder="Ej: Tuve un imprevisto e hice 30 min suaves. Me comí un bocadillo en vez de la ensalada..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px"></textarea>
+          <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(255,107,53,.15);color:#FF6B35;border-color:rgba(255,107,53,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
+            <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
+          </button>
+          <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
+        </div>
+      </div>` : ''}` : '';
+
+    return `
+      <div class="session-card-item">
+        <div class="session-row" onclick="showSessionDetail(${i})">
+          <div class="day-badge">
+            <div class="dn">${sess.day.substring(0, 3)}</div>
+            <div class="dd" style="color:${color}">${sessDate.getDate()}</div>
+          </div>
+          <div style="width:1px;height:50px;background:${color}44"></div>
+          <div style="font-size:20px">${sess.emoji}</div>
+          <div class="session-content">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:${color};margin-bottom:2px">${sess.name || sess.type || 'Sesión'}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;opacity:.8;line-height:1.4">${sess.description}</div>
+            <div class="session-meta">
+              ${tssVal > 0 ? `<span class="meta-tag"><i class="fas fa-star" style="color:${color}"></i> TSS: ${tssVal}</span>` : ''}
+              ${durMin > 0 ? `<span class="meta-tag"><i class="fas fa-clock"></i> ~${durMin} min</span>` : ''}
+              ${ifVal > 0 ? `<span class="meta-tag"><i class="fas fa-bolt" style="color:var(--primary)"></i> IF: ${ifVal.toFixed(2)}</span>` : ''}
+              ${targetWatts > 0 ? `<span class="meta-tag"><i class="fas fa-tachometer-alt"></i> ~${targetWatts}W</span>` : ''}
+            </div>
+          </div>
+          <div style="text-align:right;padding:8px;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+            <div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:${color}">${tssVal}</div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">TSS</div>
+            </div>
+            <button onclick="event.stopPropagation();exportSessionToGarmin(${i})" title="Exportar a Garmin"
+              style="background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.35);color:var(--success);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit">
+              <i class="fas fa-watch"></i> .fit
+            </button>
+          </div>
+          <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
+        </div>
+        ${adaptZone}
+      </div>`;
+  }).join('');
+
+  renderPrinciples(plan.phase);
+  renderProgressionChart(metrics.ctl || 40, plan.targetTSS);
+}
+
+// ── Adapt inline ─────────────────────────────────────────────
+function toggleAdaptForm(idx) {
+  const body  = document.getElementById(`adapt-body-${idx}`);
+  const chev  = document.getElementById(`adapt-chev-${idx}`);
+  const open  = body.style.display === 'none';
+  body.style.display = open ? '' : 'none';
+  chev.style.transform = open ? 'rotate(180deg)' : '';
+  if (open) document.getElementById(`adapt-input-${idx}`)?.focus();
+}
+
+async function adaptSession(idx, dayOffset) {
+  const input  = document.getElementById(`adapt-input-${idx}`);
+  const btn    = document.getElementById(`adapt-btn-${idx}`);
+  const result = document.getElementById(`adapt-result-${idx}`);
+  const text   = input?.value?.trim();
+
+  if (!text) { input?.focus(); return; }
+
+  const sess   = currentPlan.sessions[idx];
+  const ftp    = AppState.athlete?.ftp || 200;
+  const tssVal = Math.round(sess.tssShare * currentPlan.targetTSS);
+  const durMin = sess.durationMin || Math.round(tssVal / Math.pow(sess.ifTarget || 0.65, 2));
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+  try {
+    const res = await fetch(`${API}/coach/today-adaptation`, {
+      method: 'POST',
+      headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        estado_usuario: { chips: [], contexto_libre: text },
+        sesion_original: {
+          name: sess.name, type: sess.type, durationMin: durMin,
+          ifTarget: sess.ifTarget, targetWatts: sess.targetWatts || Math.round(ftp * (sess.ifTarget || 0.75)),
+          description: sess.description, tss: tssVal,
+        },
+        es_manana: dayOffset > 0,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+    renderAdaptResult(idx, data.today);
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sparkles"></i> Adaptar';
+    result.innerHTML = `<div style="padding:4px 0;font-size:11px;color:#f87171"><i class="fas fa-exclamation-circle"></i> ${e.message}</div>`;
+    result.style.display = '';
+  }
+}
+
+function renderAdaptResult(idx, t) {
+  if (!t) return;
+  const STYLE = {
+    mantener:  { c:'#10b981', icon:'fa-check-circle',    label:'Mantener' },
+    reducir:   { c:'#fbbf24', icon:'fa-arrow-down-circle',label:'Reducir' },
+    sustituir: { c:'#3b82f6', icon:'fa-shuffle',          label:'Sustituir' },
+    descanso:  { c:'#9ca3af', icon:'fa-moon',             label:'Descanso' },
+  };
+  const s = STYLE[t.recomendacion] || { c:'#C4EF44', icon:'fa-robot', label:'' };
+  const meta = [t.intensidad, t.duracion_min > 0 ? `${t.duracion_min} min` : ''].filter(Boolean).join(' · ');
+
+  document.getElementById(`adapt-btn-${idx}`).style.display = 'none';
+  document.getElementById(`adapt-input-${idx}`).style.display = 'none';
+
+  const result = document.getElementById(`adapt-result-${idx}`);
+  result.innerHTML = `
+    <div style="background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <i class="fas ${s.icon}" style="color:${s.c};font-size:13px;flex-shrink:0"></i>
+        <span style="font-size:13px;font-weight:700;color:var(--text-primary);flex:1">${t.titulo || s.label}</span>
+        ${meta ? `<span style="font-size:11px;color:${s.c};font-weight:600">${meta}</span>` : ''}
+        <button onclick="resetAdapt(${idx})" title="Volver a preguntar"
+          style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0;font-size:11px;flex-shrink:0">
+          <i class="fas fa-rotate-left"></i>
+        </button>
+      </div>
+      ${t.descripcion ? `<p style="margin:0;font-size:12px;color:var(--text-muted);line-height:1.55">${t.descripcion}</p>` : ''}
+      ${t.razon ? `<p style="margin:0;font-size:11px;color:rgba(196,239,68,.7);line-height:1.45;font-style:italic"><i class="fas fa-lightbulb" style="margin-right:4px"></i>${t.razon}</p>` : ''}
+      ${t.nutricion ? `<p style="margin:0;font-size:11px;color:rgba(16,185,129,.8);line-height:1.45"><i class="fas fa-utensils" style="margin-right:4px"></i>${t.nutricion}</p>` : ''}
+    </div>`;
+  result.style.display = '';
+}
+
+function resetAdapt(idx) {
+  const input  = document.getElementById(`adapt-input-${idx}`);
+  const btn    = document.getElementById(`adapt-btn-${idx}`);
+  const result = document.getElementById(`adapt-result-${idx}`);
+  input.value  = '';
+  input.style.display  = '';
+  btn.style.display    = '';
+  btn.disabled         = false;
+  btn.innerHTML        = '<i class="fas fa-sparkles"></i> Adaptar';
+  result.style.display = 'none';
+  input.focus();
+}
+
+// ── Registrar Realidad (Feedback Loop) ───────────────────────
+function toggleRealityForm(idx) {
+  const body  = document.getElementById(`reality-body-${idx}`);
+  const chev  = document.getElementById(`reality-chev-${idx}`);
+  const open  = body.style.display === 'none';
+  body.style.display = open ? '' : 'none';
+  chev.style.transform = open ? 'rotate(180deg)' : '';
+  if (open) document.getElementById(`reality-input-${idx}`)?.focus();
+}
+
+async function recalculateWeek(idx) {
+  const input = document.getElementById(`reality-input-${idx}`);
+  const btn = document.getElementById(`reality-btn-${idx}`);
+  const result = document.getElementById(`reality-result-${idx}`);
+  const feedback = input.value.trim();
+
+  if (!feedback) { input.focus(); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recalculando semana...';
+  result.style.display = 'none';
+
+  try {
+    const res = await fetch(`${API}/coach/recalculate-week`, {
+      method: 'POST', headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: currentPlan, todayIdx: idx, feedback })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al recalcular la semana');
+
+        // Reconstruir intervalos para que coincidan visualmente con el nuevo tiempo/tipo dictado por la IA
+        const ftp = AppState.athlete?.ftp || 200;
+        data.newPlan.sessions.forEach(s => {
+          if (s.isRest) {
+            s.intervals = []; s.alt_intervals = [];
+            s.description = 'Descanso.'; s.alt_description = '';
+          } else if (window.TrainingPlanGenerator) {
+            const ifT = s.ifTarget || 0.75;
+            s.intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'main');
+            s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'alt');
+            
+            const buildDesc = (ivs) => {
+              let parts = [];
+              for (let idx = 0; idx < ivs.length; idx++) {
+                let i = ivs[idx];
+                let repsMatch = i.label.match(/\(×(\d+)/);
+                let baseLabel = i.label.split(' (')[0].trim();
+                let durVal = i.dur.replace(' c/u', '').trim();
+                if (repsMatch) {
+                  let next = ivs[idx + 1];
+                  if (next && next.label.toLowerCase().match(/recuperación|descanso/) && next.label.includes('(×')) {
+                     parts.push(`${repsMatch[1]}×${durVal} ${baseLabel} (rec: ${next.dur.replace(' c/u', '').trim()})`); idx++;
+                  } else { parts.push(`${repsMatch[1]}×${durVal} ${baseLabel}`); }
+                } else { parts.push(`${durVal} ${baseLabel}`); }
+              }
+              return parts.join(' + ');
+            };
+            s.description = buildDesc(s.intervals);
+            s.alt_description = buildDesc(s.alt_intervals);
+          }
+        });
+
+    currentPlan.sessions = data.newPlan.sessions;
+    await savePlan(); // Persiste en DB y LocalStorage
+    renderPlan(currentPlan, AppState.athlete); // Actualiza la pantalla (cerrará el acordeón)
+    
+    showToast('✅ Entrenamiento y nutrición recalculados. ' + (data.newPlan.mensaje_coach || 'Resto de la semana reprogramado.'), 'var(--primary)');
+  } catch(e) {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Recalcular resto de la semana';
+    result.innerHTML = `<span style="color:#ff4757"><i class="fas fa-exclamation-triangle"></i> ${e.message}</span>`; result.style.display = '';
+  }
+}
+
+function renderPrinciples(phase) {
+  const principles = {
+    base: [
+      { icon: '📏', title: 'Regla 80/20', desc: '80% del entrenamiento en Z1-Z2. 20% en Z3+. La base aeróbica es el fundamento de todo.' },
+      { icon: '📈', title: 'Progresión gradual', desc: 'Aumenta el volumen máximo 5-10% por semana. Evita el sobreentrenamiento.' },
+      { icon: '😴', title: 'Recuperación = adaptación', desc: 'El cuerpo mejora durante el descanso, no en el entreno. Prioriza el sueño.' },
+    ],
+    build: [
+      { icon: '⚡', title: 'Especificidad', desc: 'Los intervalos al umbral y VO2 Max son la clave para subir el FTP.' },
+      { icon: '🔄', title: 'Semanas de descarga', desc: 'Cada 3-4 semanas, una semana con 30% menos carga para asimilar las mejoras.' },
+      { icon: '🎯', title: 'Calidad sobre cantidad', desc: 'Mejor hacer 2 sesiones de calidad que 5 mediocres. El descanso importa.' },
+    ],
+    peak: [
+      { icon: '🏔️', title: 'Taper = reducción', desc: 'Reduce el volumen 30-50% pero mantén algo de intensidad para no perder agudeza.' },
+      { icon: '💤', title: 'Maximiza el sueño', desc: '8-9h de sueño por noche en la semana de taper. El cuerpo se repara.' },
+      { icon: '🍽️', title: 'Carga de carbohidratos', desc: '2-3 días antes del evento, aumenta carbohidratos para llenar el glucógeno.' },
+    ],
+    recovery: [
+      { icon: '🔄', title: 'Recuperación activa', desc: 'El movimiento suave acelera la recuperación. Evita el sedentarismo total.' },
+      { icon: '🥩', title: 'Proteína para recuperar', desc: 'Alta ingesta de proteína (2g/kg) ayuda a reparar el tejido muscular.' },
+      { icon: '📊', title: 'Revisa y planifica', desc: 'Usa este tiempo para analizar los datos y planificar la próxima temporada.' },
+    ],
+    race: [
+      { icon: '🏆', title: 'Ejecuta el plan', desc: 'No improvises el día de carrera. Respeta el ritmo previsto.' },
+      { icon: '🍌', title: 'Nutrición ya testeada', desc: 'Usa solo geles/alimentos que ya has probado en entrenamientos.' },
+      { icon: '🧠', title: 'Gestión mental', desc: 'Divide la carrera en segmentos mentales. Foco en los primeros 30 minutos.' },
+    ],
+  };
+  const ps = principles[phase] || principles.base;
+  document.getElementById('training-principles').innerHTML = ps.map(p => `
+    <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">
+      <span style="font-size:18px;flex-shrink:0">${p.icon}</span>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:1px">${p.title}</div>
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.3">${p.desc}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderProgressionChart(currentCTL, weeklyTSS) {
+  const canvas = document.getElementById('progression-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const phases = ['Base 1', 'Base 2', 'Base 3', 'Build 1', 'Build 2', 'Build 3', 'Build 4', 'Peak 1', 'Peak 2', 'Peak 3', 'Rec.', 'Carrera'];
+  const phaseMultipliers = [0.85, 0.92, 0.78, 1.05, 1.12, 0.85, 1.15, 0.95, 0.75, 0.65, 0.45, 0.30];
+  const base = weeklyTSS;
+  const tssData = phaseMultipliers.map(m => Math.round(base * m));
+  let ctl = currentCTL;
+  const ctlData = [ctl];
+  tssData.forEach(tss => { ctl = ctl + (2 / (42 + 1)) * (tss / 7 - ctl); ctlData.push(Math.round(ctl * 10) / 10); });
+
+  // Gradientes para un acabado Premium (Colores del Logo)
+  const barGrad = ctx.createLinearGradient(0, 0, 0, 300);
+  barGrad.addColorStop(0, 'rgba(158, 214, 43, 0.4)'); // Verde Lima VeloMind
+  barGrad.addColorStop(1, 'rgba(158, 214, 43, 0.01)');
+
+  const lineGrad = ctx.createLinearGradient(0, 0, 0, 300);
+  lineGrad.addColorStop(0, 'rgba(0, 212, 255, 0.15)'); // Azul VeloMind
+  lineGrad.addColorStop(1, 'rgba(0, 212, 255, 0)');
+
+  if (progressionChart) progressionChart.destroy();
+  progressionChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: phases,
+      datasets: [
+        { 
+          label: 'Fitness (CTL) proyectado', 
+          data: ctlData.slice(1), 
+          type: 'line', 
+          borderColor: '#00D4FF', 
+          backgroundColor: lineGrad, 
+          borderWidth: 3, 
+          tension: 0.4, 
+          fill: true, 
+          pointRadius: 0, 
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#00D4FF',
+          pointBorderColor: '#0a0b0f',
+          pointBorderWidth: 2,
+          yAxisID: 'y1',
+          order: 1
+        },
+        { 
+          label: 'TSS semanal', 
+          data: tssData, 
+          backgroundColor: barGrad, 
+          borderColor: 'rgba(158, 214, 43, 0.5)', 
+          borderWidth: 1, 
+          borderRadius: 4, 
+          borderSkipped: false,
+          yAxisID: 'y',
+          barPercentage: 0.45,
+          order: 2
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      layout: { padding: { top: 10 } },
+      plugins: {
+        legend: { 
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: { color: '#9CA3AF', font: { size: 10, family: 'Space Grotesk', weight: '600' }, usePointStyle: true, boxWidth: 4, padding: 15 } 
+        },
+        tooltip: { 
+          backgroundColor: '#13151c', 
+          titleColor: '#f0f2f7', 
+          bodyColor: '#9CA3AF', 
+          borderColor: 'rgba(255,255,255,0.1)', 
+          borderWidth: 1,
+          padding: 12,
+          titleFont: { family: 'Space Grotesk', size: 13, weight: '700' },
+          bodyFont: { family: 'DM Sans', size: 12 },
+          cornerRadius: 8,
+          displayColors: true
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#4B5563', font: { size: 9, family: 'Space Grotesk' } } },
+        y: { 
+          type: 'linear', position: 'left', 
+          grid: { color: 'rgba(255,255,255,0.03)' }, 
+          ticks: { color: '#4B5563', font: { size: 9 } }
+        },
+        y1: { 
+          type: 'linear', position: 'right', 
+          grid: { display: false }, 
+          ticks: { color: '#00D4FF', font: { size: 10, weight: 'bold' } }
+        },
+      },
+    },
+  });
+}
+
+function showSessionDetail(idx, showAlt = false) {
+  if (!currentPlan) return;
+  const sess = currentPlan.sessions[idx];
+  const ftp = AppState.athlete?.ftp || 200;
+  const sessionStructureTitle = showAlt ? 'Opción Alternativa de la sesión' : 'Estructura detallada de la sesión';
+  const currentIntervals = showAlt && sess.alt_intervals ? sess.alt_intervals : sess.intervals;
+  const currentDesc = showAlt && sess.alt_description ? sess.alt_description : sess.description;
+  // Usar SIEMPRE la misma fuente de verdad que la tarjeta (valores ya calculados en el generador)
+  const tss = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare || 0) * currentPlan.targetTSS);
+  const durMin = Number.isFinite(sess.durationMin)
+    ? sess.durationMin
+    : (sess.ifTarget ? Math.round(tss / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
+  const targetWatts = Number.isFinite(sess.targetWatts)
+    ? sess.targetWatts
+    : (sess.ifTarget ? Math.round(ftp * sess.ifTarget) : null);
+  const ifVal = sess.ifTarget || 0;
+
+  if (sess.isRest) {
+    document.getElementById('modal-title').textContent = '😴 Día de Descanso';
+    document.getElementById('modal-content').innerHTML = `
+      <div style="text-align:center;padding:20px">
+        <div style="font-size:48px;margin-bottom:16px">😴</div>
+        <p style="color:var(--text-muted);font-size:15px;line-height:1.6">${sess.description}</p>
+        <div class="alert alert-info" style="margin-top:20px;text-align:left">
+          <i class="fas fa-info-circle"></i>
+          <div>El descanso es cuando el cuerpo se adapta y mejora. Aprovecha para estirar, hacer movilidad o simplemente descansar.</div>
+        </div>
+      </div>`;
+  } else {
+    const typeColors = { recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D', threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899' };
+    const color = typeColors[sess.type] || 'var(--text-secondary)';
+    document.getElementById('modal-title').textContent = `${sess.emoji} ${sess.name || 'Sesión'}`;
+    const _ma = Object.assign({}, AppState.athlete || {weight:70,height:175,age:30,ftp:200,goal:'resistencia',experience:'intermedio'});
+    _ma.goal = window.GoalUtils ? window.GoalUtils.normalize(_ma.goal) : (_ma.goal||'resistencia');
+    const _mact = {duration:durMin*60, avg_power:targetWatts||Math.round((_ma.ftp||200)*(ifVal||0.70)), if_value:ifVal||0.70, tss};
+    const _mn = NutritionPlanner.generate(_ma, _mact);
+    const _mwn = _mn.workoutNutrition;
+    document.getElementById('modal-content').innerHTML = `
+      <div class="badge" style="background:${color}22;color:${color};margin-bottom:16px">${sess.type || ''} — ${sess.name || 'Sesión'}</div>
+      ${sess.advice ? `<p style="color:var(--text-primary);font-size:14px;font-weight:600;margin-bottom:8px">${sess.advice}</p>` : ''}
+      <p style="color:var(--text-secondary);font-size:13px;line-height:1.5;margin-bottom:20px">${currentDesc}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+        <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);text-align:center">
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:${color}">${tss}</div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">TSS objetivo</div>
+        </div>
+        <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);text-align:center">
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:var(--text-primary)">${durMin} min</div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Duración est.</div>
+        </div>
+        <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);text-align:center">
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:var(--primary)">${targetWatts ? targetWatts : '--'}${targetWatts ? 'W' : ''}</div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Potencia</div>
+        </div>
+        <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);text-align:center">
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:var(--primary)">${ifVal > 0 ? ifVal.toFixed(2) : '--'}</div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">IF</div>
+        </div>
+      </div>
+      ${currentIntervals?.length ? `
+      <div style="margin-bottom:20px">
+        <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:12px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <i class="fas fa-chart-area" style="color:${color}"></i> Gráfica del entreno
+          </div>
+          <div style="height:82px;display:flex;align-items:flex-end;gap:2px;width:100%">
+            ${(() => {
+              const expanded = [];
+              const intervals = currentIntervals || [];
+              const getReps = (lbl) => {
+                const m = String(lbl || '').match(/\(×\s*(\d+(?:-\d+)?)/i);
+                if (!m) return 1;
+                const p = m[1].split('-').map(Number);
+                return p.length === 2 ? Math.round((p[0] + p[1]) / 2) : (parseInt(m[1], 10) || 1);
+              };
+              for (let i = 0; i < intervals.length; i++) {
+                const iv = intervals[i];
+                const reps = getReps(iv.label);
+                const nextIv = intervals[i + 1];
+                const nextReps = nextIv ? getReps(nextIv.label) : 1;
+                const isRec = (lbl) => String(lbl || '').toLowerCase().match(/recuperaci|descanso/);
+                
+                if (reps > 1 && nextIv && nextReps === reps && isRec(nextIv.label)) {
+                  for (let r = 0; r < reps; r++) {
+                    expanded.push({ ...iv, _baseIdx: i, _repIdx: r + 1, _repTotal: reps });
+                    expanded.push({ ...nextIv, _baseIdx: i + 1, _repIdx: r + 1, _repTotal: reps });
+                  }
+                  i++; // Saltamos el intervalo de recuperación ya que lo hemos intercalado
+                } else {
+                  for (let r = 0; r < Math.max(1, reps); r++) {
+                    expanded.push({ ...iv, _baseIdx: i, _repIdx: r + 1, _repTotal: Math.max(1, reps) });
+                  }
+                }
+              }
+              return expanded.map((iv, ivIdx) => {
+              const durationText = String(iv.dur || '').replace(',', '.');
+              const durationMatch = durationText.match(/(\d+(?:\.\d+)?)/);
+              const durationMin = durationMatch ? parseFloat(durationMatch[1]) : 1;
+              const wattsText = String(iv.watts || '');
+              const wattsNums = (wattsText.match(/\d+/g) || []).map(n => parseInt(n, 10)).filter(n => Number.isFinite(n));
+              let intensity = 0.35;
+              if (wattsNums.length >= 2) {
+                intensity = Math.max(0.2, Math.min(1.1, (((wattsNums[0] + wattsNums[1]) / 2) / ftp)));
+              } else if (wattsNums.length === 1) {
+                intensity = Math.max(0.2, Math.min(1.1, wattsNums[0] / ftp));
+              } else if (String(iv.label || '').toLowerCase().includes('recuper')) {
+                intensity = 0.4;
+              }
+              const h = Math.round(16 + intensity * 54);
+              const flexWeight = Math.max(0.5, durationMin);
+              const op = (0.45 + Math.min(0.5, intensity * 0.35)).toFixed(2);
+              const repText = iv._repTotal > 1 ? ` · rep ${iv._repIdx}/${iv._repTotal}` : '';
+              return `<div title="${ivIdx + 1}. ${iv.label}${repText} · ${iv.dur}${iv.watts ? ' · ' + iv.watts : ''}" style="flex:${flexWeight};min-width:4px;height:${h}px;background:${color};opacity:${op};border-radius:4px 4px 0 0"></div>`;
+            }).join('');
+          })()}
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--text-muted);">
+            <i class="fas fa-list-ol" style="margin-right:6px"></i>${sessionStructureTitle}
+          </div>
+          ${sess.alt_intervals ? `
+          <button onclick="showSessionDetail(${idx}, ${!showAlt})" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--text-primary);padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s">
+            <i class="fas fa-exchange-alt"></i> ${showAlt ? 'Ver Opción Clásica' : 'Ver Opción Alternativa'}
+          </button>
+          ` : ''}
+        </div>
+        ${currentIntervals.map((iv, ivIdx) => `
+          <div class="interval-block" style="border-left-color:${color};margin-bottom:8px">
+            <div class="interval-title">${ivIdx + 1}. ${iv.label}</div>
+            ${iv.desc ? `<div class="interval-desc">${iv.desc}</div>` : ''}
+            <div class="interval-meta">
+              <span>⏱ ${iv.dur}</span>
+              ${iv.watts ? `<span>⚡ ${iv.watts}</span>` : ''}
+              ${iv.rpm ? `<span>🔄 ${iv.rpm}</span>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>` : ''}
+      ${sess.ifTarget ? `
+      <div style="background:var(--bg-input);padding:14px;border-radius:var(--radius-md);margin-bottom:16px">
+        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px">Zona principal</div>
+        ${ZONES_COGGAN.filter(z => {
+          const ratio = sess.ifTarget;
+          return ratio >= z.min && ratio < z.max;
+        }).map(z => `
+          <div style="display:flex;align-items:center;gap:8px;padding:8px;background:${z.color}15;border-radius:6px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${z.color}"></div>
+            <strong style="color:${z.color};font-size:13px">${z.name}</strong>
+            <span style="color:var(--text-muted);font-size:12px;margin-left:auto">${Math.round(z.min * ftp)}–${z.max === 99 ? '∞' : Math.round(z.max * ftp)}W</span>
+          </div>`).join('')}
+      </div>` : ''}
+      <div class="alert alert-info">
+        <i class="fas fa-lightbulb"></i>
+        <div><strong>Consejo:</strong> ${getSessionTip(sess.type)}</div>
+      </div>
+      <div style="margin-top:20px;border-top:1px solid rgba(255,255,255,.07);padding-top:18px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted);margin-bottom:12px;display:flex;align-items:center;gap:6px">
+          <i class="fas fa-utensils" style="color:#10b981"></i> Nutrición para este entreno
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${_mwn ? `
+          <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">⏱️ Antes — ${_mwn.pre.timing}</div>
+            <div style="font-size:13px;color:var(--text-secondary);margin-bottom:5px">${_mwn.pre.description}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${_mwn.pre.examples.slice(0,2).map(e=>'• '+e).join('&nbsp;&nbsp;')}</div>
+          </div>
+          ${_mwn.during ? `
+          <div style="background:rgba(255,107,53,.05);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#FF6B35;margin-bottom:8px">🚴 Durante</div>
+            <div style="display:flex;gap:10px;margin-bottom:7px">
+              <div style="text-align:center;background:rgba(255,107,53,.1);padding:7px 12px;border-radius:8px;flex:1">
+                <div style="font-size:17px;font-weight:700;color:#FF6B35">${_mwn.during.carbsPerHour}g</div>
+                <div style="font-size:10px;color:var(--text-muted)">CH/hora</div>
+              </div>
+              <div style="text-align:center;background:rgba(0,212,255,.1);padding:7px 12px;border-radius:8px;flex:1">
+                <div style="font-size:17px;font-weight:700;color:#00D4FF">${_mwn.during.hydration}ml</div>
+                <div style="font-size:10px;color:var(--text-muted)">Hidra/h</div>
+              </div>
+              <div style="text-align:center;background:rgba(255,200,0,.1);padding:7px 12px;border-radius:8px;flex:1">
+                <div style="font-size:17px;font-weight:700;color:#FFC800">${_mwn.during.sodium}mg</div>
+                <div style="font-size:10px;color:var(--text-muted)">Sodio/h</div>
+              </div>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted)">${_mwn.during.examples.slice(0,2).map(e=>'• '+e).join('&nbsp;&nbsp;')}</div>
+          </div>` : `
+          <div style="background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.15);border-radius:10px;padding:10px">
+            <div style="font-size:12px;color:#00D4FF"><i class="fas fa-tint" style="margin-right:5px"></i>Solo agua — entreno &lt;1h. 500-700ml/hora.</div>
+          </div>`}
+          <div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#10b981;margin-bottom:8px">⚡ Post — ${_mwn.post.timing}</div>
+            <div style="display:flex;gap:10px;margin-bottom:7px">
+              <div style="text-align:center;background:rgba(16,185,129,.1);padding:7px 12px;border-radius:8px;flex:1">
+                <div style="font-size:17px;font-weight:700;color:#10b981">${_mwn.post.protein}g</div>
+                <div style="font-size:10px;color:var(--text-muted)">Proteína</div>
+              </div>
+              <div style="text-align:center;background:rgba(196,239,68,.1);padding:7px 12px;border-radius:8px;flex:1">
+                <div style="font-size:17px;font-weight:700;color:#C4EF44">${_mwn.post.carbs}g</div>
+                <div style="font-size:10px;color:var(--text-muted)">CH</div>
+              </div>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted)">${_mwn.post.examples.slice(0,2).map(e=>'• '+e).join('&nbsp;&nbsp;')}</div>
+          </div>
+          ` : `
+          <div style="background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.15);border-radius:10px;padding:10px">
+            <div style="font-size:12px;color:#00D4FF"><i class="fas fa-tint" style="margin-right:5px"></i>Entreno corto — hidrata bien antes y después.</div>
+          </div>`}
+          <div style="padding:10px 14px;background:rgba(196,239,68,.05);border:1px solid rgba(196,239,68,.15);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;color:var(--text-muted)">Calorías totales del día</span>
+            <span style="font-size:16px;font-weight:700;color:#C4EF44">${_mn.dailyCalories.toLocaleString()} kcal</span>
+          </div>
+        </div>
+      </div>`;
+  }
+  document.getElementById('session-modal').style.display = 'flex';
+}
+
+function getSessionTip(type) {
+  const tips = {
+    recovery: 'Cadencia alta (90-95 rpm) y sin esfuerzo. Si tienes dudas de si vas demasiado fuerte, ve más suave.',
+    endurance: 'Mantén conversación cómoda. Respira por nariz si puedes. La cadencia óptima es 85-95 rpm.',
+    tempo: 'Ritmo sostenido pero controlado. Debes poder decir frases cortas. No "ponerte rojo".',
+    threshold: 'Al límite de lo que puedes sostener. Concentración máxima. Calentamiento largo (20-30 min) obligatorio.',
+    vo2max: 'Alta intensidad, corta duración. Recuperación completa entre series. No vayas al máximo absoluto.',
+    sprint: 'Máxima potencia instantánea. Cadencia >100 rpm. Series muy cortas (<20s) con recuperación larga.',
+    long: 'Hidratación cada 15-20 min. Come antes de tener hambre. Mantén Z2 el 70% del tiempo.',
+    race: '¡A por todo! Ejecuta el plan previamente diseñado. No salgas demasiado fuerte.',
+  };
+  return tips[type] || 'Escucha a tu cuerpo y adapta la intensidad a cómo te sientes.';
+}
+
+function closeModal() { document.getElementById('session-modal').style.display = 'none'; }
+
+function showToast(text, color = 'var(--primary)') {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;background:var(--bg-card);border:1px solid ${color};color:${color};padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;transition:opacity .3s`;
+  t.textContent = text;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 3500);
+}
+
+function regeneratePlan() { 
+  generatePlan(); 
+  showToast('✅ Plan de entrenamiento y nutrición recalculado', 'var(--accent-green)');
+}
+
+async function applyAdjustments() {
+  const hours  = parseFloat(document.getElementById('adj-hours')?.value || 8);
+  const goal   = window.GoalUtils ? window.GoalUtils.normalize(document.getElementById('adj-goal')?.value || 'resistencia') : (document.getElementById('adj-goal')?.value || 'resistencia');
+  const event  = document.getElementById('adj-event')?.value || '';
+  const ftp    = parseFloat(document.getElementById('adj-ftp')?.value || 200);
+  const weight = parseFloat(document.getElementById('adj-weight')?.value || 70);
+
+  if (AppState.athlete) {
+    const updates = {};
+    if (hours)  updates.weekly_hours = hours;
+    if (goal)   updates.goal = goal;
+    if (event)  updates.event_date = event;
+    if (ftp)    updates.ftp = ftp;
+    if (weight) updates.weight = weight;
+    AppState.saveAthlete(updates);
+    if (typeof BackendSync !== 'undefined') BackendSync.saveProfile(updates).catch(() => {});
+  } else {
+    AppState.athlete = { ftp: ftp || 200, weight: weight || 70, weekly_hours: hours || 8, goal: goal || 'resistencia', experience: 'intermedio' };
+  }
+
+  generatePlan();
+  renderAthleteSidebar();
+
+  showToast('✅ Plan de entrenamiento y nutrición recalculado', 'var(--accent-green)');
+}
+
+async function savePlan() {
+  if (!currentPlan) return;
+  const btn = document.getElementById('btn-save-plan');
+  btn.innerHTML = '<i class="fas fa-spinner spinning"></i> Guardando...';
+  try {
+    const monday = new Date();
+    monday.setDate(monday.getDate() - monday.getDay() + 1);
+    const planData = {
+      week_start:       monday.toISOString().substring(0, 10),
+      sessions:         currentPlan.sessions,
+      tss_target:       currentPlan.targetTSS   || null,
+      phase:            currentPlan.phase        || null,
+      ftp_at_creation:  AppState.athlete?.ftp    || null,
+      advice:           currentPlan.advice       || null,
+    };
+
+    // Guardar en localStorage (copia local inmediata)
+    localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...planData, savedAt: Date.now() }));
+
+    // Guardar en Supabase (persistencia permanente)
+    const r = await fetch(`${window.API_URL}/plans/training`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
+      body: JSON.stringify(planData),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Error servidor');
+
+    btn.innerHTML = '<i class="fas fa-check"></i> ¡Plan guardado!';
+    btn.style.background = 'rgba(0,230,118,0.2)';
+    btn.style.color = 'var(--accent-green)';
+    btn.style.border = '1px solid var(--accent-green)';
+    setTimeout(() => { btn.innerHTML = '<i class="fas fa-save"></i> Guardar plan'; btn.style = ''; }, 3000);
+  } catch(e) {
+    console.error('[savePlan]', e.message);
+    btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error al guardar';
+    btn.style.color = '#FF4757';
+    setTimeout(() => { btn.innerHTML = '<i class="fas fa-save"></i> Guardar plan'; btn.style = ''; }, 3000);
+  }
+}
+
+// ── Estado chips ─────────────────────────────────────────────
+function toggleChip(el) {
+  el.classList.toggle('active');
+}
+
+function getEstadoUsuario() {
+  const chips = [...document.querySelectorAll('.estado-chip.active')].map(c => c.dataset.key);
+  const minutos = parseInt(document.getElementById('tiempo-disponible')?.value) || null;
+  const contexto = document.getElementById('contexto-libre')?.value?.trim?.() || '';
+  return { chips, minutos_disponibles: minutos, contexto_libre: contexto };
+}
+
+// ── Header button: scroll to today's adapt zone ──────────────
+function runAICoach() {
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  const body = document.getElementById(`adapt-body-${todayIdx}`);
+  if (body) {
+    body.style.display = '';
+    const chev = document.getElementById(`adapt-chev-${todayIdx}`);
+    if (chev) chev.style.transform = 'rotate(180deg)';
+    document.getElementById(`adapt-input-${todayIdx}`)?.focus();
+    body.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+initTrainingPlan();
+
+function exportSessionToGarmin(index) {
+  if (!currentPlan) { alert('El plan aún no está generado.'); return; }
+  const ftp = (AppState.athlete || {}).ftp || 200;
+  FITWorkoutEncoder.exportSession(currentPlan.sessions[index], ftp);
+}
+
+function exportWeekToGarmin() {
+  if (!currentPlan) { alert('El plan aún no está generado.'); return; }
+  const ftp = (AppState.athlete || {}).ftp || 200;
+  const trainSessions = currentPlan.sessions.filter(s => !s.isRest);
+  if (!trainSessions.length) { alert('No hay sesiones de entrenamiento esta semana.'); return; }
+  FITWorkoutEncoder.exportWeek(currentPlan.sessions, ftp);
+}
+</script>
+</body>
+</html>

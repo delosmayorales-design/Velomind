@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VeloMind — Crear Perfil</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <script>window.CYCLOCOACH_PUBLIC = true; window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "/api";</script>
+  <script src="js/auth.js"></script>
+  <style>
+    :root {
+      --primary:#9ED62B; --primary-dark:#84B422; --accent:#38BDF8;
+      --success:#34D399; --danger:#F87171;
+      --bg:#05070a; --bg-card:#0E1117; --bg-input:#161B24;
+      --border:rgba(255,255,255,0.055); --border-light:rgba(158,214,43,0.22);
+      --border-focus:rgba(158,214,43,0.55);
+      --text:#EEF2FF; --text-secondary:#CBD5E1; --text-muted:#64748B;
+      --radius-sm:8px; --radius-md:12px; --radius-lg:16px; --radius-xl:20px;
+      --transition:all 0.2s ease;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;-webkit-font-smoothing:antialiased;}
+
+    /* LEFT PANEL */
+    .left-panel{width:42%;background:linear-gradient(160deg,#070A0E,#05070a);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:48px;position:relative;overflow:hidden;flex-shrink:0;}
+    .left-panel::before{content:'';position:absolute;top:-120px;left:-120px;width:500px;height:500px;border-radius:50%;background:radial-gradient(ellipse,rgba(158,214,43,0.08),transparent 70%);pointer-events:none;}
+    .left-panel::after{content:'';position:absolute;bottom:-80px;right:-80px;width:360px;height:360px;border-radius:50%;background:radial-gradient(ellipse,rgba(56,189,248,0.06),transparent 70%);pointer-events:none;}
+    .logo{display:flex;align-items:center;gap:10px;margin-bottom:52px;position:relative;z-index:1;}
+    .left-content{position:relative;z-index:1;flex:1;}
+    .step-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(158,214,43,0.1);border:1px solid rgba(158,214,43,0.2);color:var(--primary);padding:5px 12px;border-radius:99px;font-size:12px;font-weight:600;margin-bottom:18px;}
+    .left-title{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:800;line-height:1.2;margin-bottom:14px;letter-spacing:-0.5px;}
+    .left-title .accent{color:var(--primary);}
+    .left-desc{font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:36px;}
+
+    /* Progress steps */
+    .progress-steps{display:flex;flex-direction:column;gap:0;}
+    .progress-step{display:flex;align-items:flex-start;gap:14px;padding:10px 0;position:relative;}
+    .progress-step:not(:last-child)::after{content:'';position:absolute;left:15px;top:42px;bottom:0;width:2px;background:var(--border);}
+    .progress-step.done::after{background:var(--primary);}
+    .progress-step.active::after{background:linear-gradient(to bottom,var(--primary),var(--border));}
+    .step-circle{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text-muted);flex-shrink:0;background:var(--bg-input);transition:var(--transition);position:relative;z-index:1;}
+    .progress-step.active .step-circle{border-color:var(--primary);color:var(--primary);background:rgba(158,214,43,0.1);box-shadow:0 0 12px rgba(158,214,43,0.25);}
+    .progress-step.done .step-circle{border-color:var(--success);background:rgba(52,211,153,0.12);color:var(--success);}
+    .step-info{flex:1;padding-top:5px;}
+    .step-info .step-name{font-size:13px;font-weight:600;color:var(--text-muted);transition:var(--transition);}
+    .progress-step.active .step-name{color:var(--text-primary);}
+    .progress-step.done .step-name{color:var(--success);}
+    .step-info .step-sub{font-size:11px;color:var(--text-muted);margin-top:2px;}
+
+    /* RIGHT PANEL */
+    .right-panel{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 56px;overflow-y:auto;}
+    .form-wrap{width:100%;max-width:440px;}
+    .step-content{display:none;}
+    .step-content.active{display:block;animation:fadeSlide 0.22s ease forwards;}
+    @keyframes fadeSlide{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+
+    .step-header{margin-bottom:26px;}
+    .step-num{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--primary);margin-bottom:6px;}
+    .step-title{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--text-primary);margin-bottom:5px;}
+    .step-subtitle{font-size:13px;color:var(--text-muted);line-height:1.5;}
+
+    /* Form elements */
+    .form-group{margin-bottom:16px;}
+    .form-label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-secondary);margin-bottom:6px;}
+    .form-input{width:100%;padding:11px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:14px;outline:none;transition:var(--transition);}
+    .form-input:focus{border-color:var(--border-focus);box-shadow:0 0 0 3px rgba(158,214,43,0.08);}
+    .form-hint{font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.4;}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .field-error{font-size:11px;color:var(--danger);margin-top:4px;display:none;}
+    .field-error.show{display:block;}
+
+    /* Goals */
+    .goal-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:18px;}
+    .goal-opt{background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);padding:13px 11px;cursor:pointer;text-align:center;transition:var(--transition);}
+    .goal-opt:hover{border-color:rgba(158,214,43,0.35);background:rgba(158,214,43,0.04);}
+    .goal-opt.selected{border-color:var(--primary);background:rgba(158,214,43,0.09);box-shadow:0 0 0 2px rgba(158,214,43,0.18);}
+    .goal-icon{font-size:20px;margin-bottom:5px;}
+    .goal-name{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:2px;}
+    .goal-desc{font-size:11px;color:var(--text-muted);}
+
+    /* Buttons */
+    .btn-row{display:flex;gap:10px;margin-top:22px;}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:12px 20px;border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:var(--transition);font-family:'Space Grotesk',sans-serif;}
+    .btn-primary{background:var(--primary);color:#05070a;flex:1;}
+    .btn-primary:hover{background:var(--primary-light);box-shadow:0 0 18px rgba(158,214,43,0.28);}
+    .btn-back{background:var(--bg-input);color:var(--text-secondary);border:1px solid var(--border);padding:12px 16px;}
+    .btn-back:hover{color:var(--text-primary);border-color:var(--border-light);}
+
+    /* Info boxes */
+    .info-box{background:rgba(158,214,43,0.05);border:1px solid rgba(158,214,43,0.14);border-radius:var(--radius-md);padding:11px 14px;margin-bottom:16px;font-size:12px;color:var(--text-secondary);line-height:1.55;}
+    .info-box strong{color:var(--primary-light);}
+
+    /* Summary */
+    .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+    .summary-stat{background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;text-align:center;}
+    .summary-stat .sv{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;}
+    .summary-stat .sl{font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-top:3px;}
+    .zones-list{display:flex;flex-direction:column;gap:5px;margin-bottom:18px;}
+    .zone-row{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-input);border-radius:var(--radius-sm);}
+    .zone-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .zone-name{flex:1;font-size:12px;color:var(--text-secondary);}
+    .zone-watts{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;}
+
+    @media(max-width:800px){
+      .left-panel{display:none;}
+      .right-panel{padding:24px 20px;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- LEFT PANEL -->
+<div class="left-panel">
+  <div class="logo">
+    <img src="logoPerfil.png" alt="VeloMind" style="width:100%; max-width:160px; height:auto; display:block">
+  </div>
+  <div class="left-content">
+    <div class="step-badge" id="left-badge"><i class="fas fa-circle" style="font-size:7px"></i> Paso 1 de 4</div>
+    <h2 class="left-title" id="left-title">Crea tu perfil<br>de <span class="accent">atleta</span></h2>
+    <p class="left-desc" id="left-desc">En 4 pasos rápidos configuramos tu plan completamente personalizado basado en tu FTP, objetivos y disponibilidad.</p>
+    <div class="progress-steps">
+      <div class="progress-step active" id="ps-1">
+        <div class="step-circle" id="sc-1">1</div>
+        <div class="step-info">
+          <div class="step-name">Datos personales</div>
+          <div class="step-sub">Nombre, edad, peso y altura</div>
+        </div>
+      </div>
+      <div class="progress-step" id="ps-2">
+        <div class="step-circle" id="sc-2">2</div>
+        <div class="step-info">
+          <div class="step-name">Rendimiento</div>
+          <div class="step-sub">FTP, frecuencia y nivel</div>
+        </div>
+      </div>
+      <div class="progress-step" id="ps-3">
+        <div class="step-circle" id="sc-3">3</div>
+        <div class="step-info">
+          <div class="step-name">Objetivos</div>
+          <div class="step-sub">Meta, horas y evento</div>
+        </div>
+      </div>
+      <div class="progress-step" id="ps-4">
+        <div class="step-circle" id="sc-4">4</div>
+        <div class="step-info">
+          <div class="step-name">Resumen y zonas</div>
+          <div class="step-sub">Tu perfil listo</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="right-panel">
+  <div class="form-wrap">
+
+    <!-- STEP 1 -->
+    <div class="step-content active" id="step-1">
+      <div class="step-header">
+        <div class="step-num">Paso 1 de 4</div>
+        <div class="step-title">¿Quién eres?</div>
+        <div class="step-subtitle">Datos básicos para personalizar tu experiencia</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nombre completo</label>
+        <input type="text" id="ob-name" class="form-input" placeholder="Ej: Carlos García" autocomplete="name">
+        <div class="field-error" id="err-name">Por favor introduce tu nombre</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Edad</label>
+          <input type="number" id="ob-age" class="form-input" placeholder="32" min="16" max="80">
+          <div class="field-error" id="err-age">Edad inválida (16–80)</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sexo</label>
+          <select id="ob-sex" class="form-input">
+            <option value="M">Masculino</option>
+            <option value="F">Femenino</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Peso (kg)</label>
+          <input type="number" id="ob-weight" class="form-input" placeholder="72" min="40" max="150" step="0.1">
+          <div class="field-error" id="err-weight">Peso inválido (40–150 kg)</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Altura (cm)</label>
+          <input type="number" id="ob-height" class="form-input" placeholder="175" min="140" max="220">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="goStep(1)">Continuar <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step-content" id="step-2">
+      <div class="step-header">
+        <div class="step-num">Paso 2 de 4</div>
+        <div class="step-title">Tu rendimiento</div>
+        <div class="step-subtitle">Estos datos generan tus zonas de potencia exactas</div>
+      </div>
+      <div class="info-box">
+        <strong>¿Qué es el FTP?</strong> La potencia máxima sostenible durante 1 hora.
+        Si no lo sabes, usa <strong>2.5 × peso</strong> como estimación inicial.
+        Un test de rampa (20 min al máximo) te dará un valor preciso.
+      </div>
+      <div class="form-group">
+        <label class="form-label">FTP — Umbral Funcional de Potencia (W)</label>
+        <input type="number" id="ob-ftp" class="form-input" placeholder="235" min="80" max="550" oninput="previewWkg()">
+        <div class="field-error" id="err-ftp">FTP inválido. Introduce entre 80 y 550 W.</div>
+        <div class="form-hint" id="ftp-hint" style="color:var(--primary);font-weight:600"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">FC Máxima (bpm)</label>
+          <input type="number" id="ob-maxhr" class="form-input" placeholder="188" min="140" max="220" oninput="autoLthr()">
+          <div class="form-hint" id="maxhr-hint">Si no la sabes: 220 − tu edad</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">FC Umbral (bpm)</label>
+          <input type="number" id="ob-lthr" class="form-input" placeholder="165" min="100" max="210">
+          <div class="form-hint">≈ 88% de tu FC máxima</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nivel de experiencia</label>
+        <select id="ob-experience" class="form-input">
+          <option value="principiante">Principiante — menos de 1 año</option>
+          <option value="intermedio" selected>Intermedio — 1 a 4 años</option>
+          <option value="avanzado">Avanzado — 4+ años, compites</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-back" onclick="backStep(2)"><i class="fas fa-arrow-left"></i></button>
+        <button class="btn btn-primary" onclick="goStep(2)">Continuar <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step-content" id="step-3">
+      <div class="step-header">
+        <div class="step-num">Paso 3 de 4</div>
+        <div class="step-title">Tu objetivo</div>
+        <div class="step-subtitle">El plan semanal se adapta completamente a tu meta</div>
+      </div>
+      <label class="form-label" style="margin-bottom:9px">Objetivo principal</label>
+      <div class="goal-grid">
+        <div class="goal-opt selected" data-val="resistencia" onclick="selectGoal(this)">
+          <div class="goal-icon">🔵</div>
+          <div class="goal-name">Resistencia</div>
+          <div class="goal-desc">Fondos largos, Z2</div>
+        </div>
+        <div class="goal-opt" data-val="ftp" onclick="selectGoal(this)">
+          <div class="goal-icon">🟡</div>
+          <div class="goal-name">Subir FTP</div>
+          <div class="goal-desc">Umbral y sweetspot</div>
+        </div>
+        <div class="goal-opt" data-val="vo2max" onclick="selectGoal(this)">
+          <div class="goal-icon">🔴</div>
+          <div class="goal-name">VO₂ Max</div>
+          <div class="goal-desc">Alta intensidad</div>
+        </div>
+        <div class="goal-opt" data-val="sprint" onclick="selectGoal(this)">
+          <div class="goal-icon">🟣</div>
+          <div class="goal-name">Sprints</div>
+          <div class="goal-desc">Potencia anaeróbica</div>
+        </div>
+        <div class="goal-opt" data-val="gran_fondo" onclick="selectGoal(this)">
+          <div class="goal-icon">🩵</div>
+          <div class="goal-name">Gran Fondo</div>
+          <div class="goal-desc">150+ km, Marmotte…</div>
+        </div>
+        <div class="goal-opt" data-val="perdida_peso" onclick="selectGoal(this)">
+          <div class="goal-icon">⚖️</div>
+          <div class="goal-name">Perder peso</div>
+          <div class="goal-desc">Mejorar W/kg</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Horas/semana en bici</label>
+          <select id="ob-hours" class="form-input">
+            <option value="4">4 horas</option>
+            <option value="6">6 horas</option>
+            <option value="8" selected>8 horas</option>
+            <option value="10">10 horas</option>
+            <option value="12">12 horas</option>
+            <option value="15">15 horas</option>
+            <option value="18">18 horas</option>
+            <option value="20">20+ (élite)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Días/semana</label>
+          <select id="ob-days" class="form-input">
+            <option value="3">3 días</option>
+            <option value="4">4 días</option>
+            <option value="5" selected>5 días</option>
+            <option value="6">6 días</option>
+            <option value="7">7 días</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Evento objetivo (opcional)</label>
+        <input type="date" id="ob-event" class="form-input">
+        <div class="form-hint">El plan se periodiza hacia esta fecha automáticamente</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-back" onclick="backStep(3)"><i class="fas fa-arrow-left"></i></button>
+        <button class="btn btn-primary" onclick="goStep(3)">Ver mi perfil <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step-content" id="step-4">
+      <div class="step-header">
+        <div class="step-num">Paso 4 de 4</div>
+        <div class="step-title">¡Perfil listo! 🎉</div>
+        <div class="step-subtitle">Aquí tienes tu resumen. Puedes volver para editar cualquier dato.</div>
+      </div>
+      <div class="summary-grid" id="summary-stats"></div>
+      <label class="form-label" style="margin-bottom:8px">Zonas de potencia Coggan</label>
+      <div class="zones-list" id="summary-zones"></div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-back" onclick="backStep(4)"><i class="fas fa-arrow-left"></i></button>
+        <button class="btn btn-primary" id="btn-save" onclick="saveAndGo()">
+          <i class="fas fa-rocket"></i> Empezar a entrenar
+        </button>
+      </div>
+      <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:14px">
+        Podrás modificar estos datos en cualquier momento desde el Plan de Entrenamiento.
+      </p>
+    </div>
+
+  </div>
+</div>
+<div style="position:fixed;bottom:24px;left:0;right:0;display:flex;justify-content:center;pointer-events:none;z-index:50;">
+  <button onclick="Utils.goBack()" class="btn btn-back" style="padding:10px 20px;font-size:13px;pointer-events:auto;">
+    <i class="fas fa-arrow-left"></i> Volver a Métricas
+  </button>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/backend-sync.js"></script>
+<script>
+let currentStep = 1;
+let data = { goal: 'resistencia' };
+
+const LEFT_META = {
+  1: { badge:'Paso 1 de 4', title:'Crea tu perfil<br>de <span class="accent">atleta</span>', desc:'En 4 pasos rápidos configuramos tu plan completamente personalizado basado en tu FTP y objetivos.' },
+  2: { badge:'Paso 2 de 4', title:'Configura tu<br><span class="accent">rendimiento</span>', desc:'El FTP es el número más importante en ciclismo de potencia. Todo el plan se calcula desde él.' },
+  3: { badge:'Paso 3 de 4', title:'Define tus<br><span class="accent">objetivos</span>', desc:'El plan semanal real se genera en función de tu meta, horas disponibles y nivel de experiencia.' },
+  4: { badge:'Paso 4 de 4', title:'Tu perfil está<br><span class="accent">listo</span>', desc:'Aquí tienes tu resumen con zonas de potencia reales. ¡Empieza a entrenar con datos!' },
+};
+
+const ZONES_DEF = [
+  {name:'Z1 Recuperación',min:0,   max:0.55,color:'#6B7280'},
+  {name:'Z2 Resistencia', min:0.56,max:0.75,color:'#3B82F6'},
+  {name:'Z3 Tempo',       min:0.76,max:0.90,color:'#10B981'},
+  {name:'Z4 Umbral',      min:0.91,max:1.05,color:'#F59E0B'},
+  {name:'Z5 VO₂ Max',     min:1.06,max:1.20,color:'#EF4444'},
+  {name:'Z6 Anaeróbico',  min:1.21,max:1.50,color:'#8B5CF6'},
+  {name:'Z7 Neuromuscular',min:1.51,max:99, color:'#EC4899'},
+];
+
+function goStep(from) {
+  if (!validate(from)) return;
+  collectData(from);
+  document.getElementById('step-'+from).classList.remove('active');
+  currentStep = from + 1;
+  document.getElementById('step-'+currentStep).classList.add('active');
+  updateLeft();
+  if (currentStep === 4) renderSummary();
+  window.scrollTo(0,0);
+}
+
+function backStep(from) {
+  document.getElementById('step-'+from).classList.remove('active');
+  currentStep = from - 1;
+  document.getElementById('step-'+currentStep).classList.add('active');
+  updateLeft();
+  window.scrollTo(0,0);
+}
+
+function updateLeft() {
+  const m = LEFT_META[currentStep];
+  document.getElementById('left-badge').innerHTML = '<i class="fas fa-circle" style="font-size:7px"></i> '+m.badge;
+  document.getElementById('left-title').innerHTML = m.title;
+  document.getElementById('left-desc').textContent = m.desc;
+  for (let i=1;i<=4;i++) {
+    const ps = document.getElementById('ps-'+i);
+    const sc = document.getElementById('sc-'+i);
+    ps.classList.remove('active','done');
+    if (i < currentStep) { ps.classList.add('done'); sc.innerHTML='<i class="fas fa-check" style="font-size:10px"></i>'; }
+    else if (i === currentStep) { ps.classList.add('active'); sc.textContent=i; }
+    else { sc.textContent=i; }
+  }
+}
+
+function validate(step) {
+  let ok = true;
+  const err = (id, show) => { const el = document.getElementById(id); if(el){ el.classList.toggle('show', !show); if(!show) ok=false; } };
+  if (step===1) {
+    err('err-name', document.getElementById('ob-name').value.trim().length > 0);
+    const age = parseInt(document.getElementById('ob-age').value);
+    err('err-age', age>=16 && age<=80);
+    const w = parseFloat(document.getElementById('ob-weight').value);
+    err('err-weight', w>=40 && w<=150);
+  }
+  if (step===2) {
+    const ftp = parseInt(document.getElementById('ob-ftp').value);
+    err('err-ftp', ftp>=80 && ftp<=550);
+  }
+  return ok;
+}
+
+function collectData(step) {
+  if (step===1) {
+    data.name   = document.getElementById('ob-name').value.trim();
+    data.age    = parseInt(document.getElementById('ob-age').value);
+    data.sex    = document.getElementById('ob-sex').value;
+    data.weight = parseFloat(document.getElementById('ob-weight').value);
+    data.height = parseInt(document.getElementById('ob-height').value) || 175;
+  }
+  if (step===2) {
+    data.ftp    = parseInt(document.getElementById('ob-ftp').value);
+    data.max_hr = parseInt(document.getElementById('ob-maxhr').value) || (220 - data.age);
+    data.lthr   = parseInt(document.getElementById('ob-lthr').value) || Math.round(data.max_hr * 0.88);
+    data.experience = document.getElementById('ob-experience').value;
+  }
+  if (step===3) {
+    data.weekly_hours  = parseFloat(document.getElementById('ob-hours').value) || 8;
+    data.days_per_week = parseInt(document.getElementById('ob-days').value) || 5;
+    data.event_date    = document.getElementById('ob-event').value || '';
+  }
+}
+
+function selectGoal(el) {
+  document.querySelectorAll('.goal-opt').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+  data.goal = el.dataset.val;
+}
+
+function previewWkg() {
+  const ftp = parseInt(document.getElementById('ob-ftp').value);
+  const w   = data.weight || parseFloat(document.getElementById('ob-weight').value) || 0;
+  const hint = document.getElementById('ftp-hint');
+  if (ftp>0 && w>0) {
+    const wkg = (ftp/w).toFixed(2);
+    const cats = [{v:2,l:'Principiante'},{v:3,l:'Aficionado C4'},{v:3.5,l:'Aficionado C3'},{v:4,l:'Aficionado C2'},{v:4.5,l:'Aficionado C1'},{v:5.3,l:'Amateur Élite'},{v:99,l:'Nivel Pro'}];
+    const cat = cats.find(c=>parseFloat(wkg)<c.v);
+    hint.textContent = `${wkg} W/kg — ${cat ? cat.l : 'Nivel Pro'}`;
+  } else if (ftp>0) {
+    hint.textContent = `${ftp} W configurado`;
+  } else { hint.textContent=''; }
+}
+
+function autoLthr() {
+  const maxHr = parseInt(document.getElementById('ob-maxhr').value);
+  const lthrEl = document.getElementById('ob-lthr');
+  if (maxHr>100 && !lthrEl.value) lthrEl.placeholder = Math.round(maxHr*0.88)+' (estimado)';
+}
+
+function renderSummary() {
+  const ftp = data.ftp || 0;
+  const wkg = ftp && data.weight ? (ftp/data.weight).toFixed(2) : '--';
+  const goalNames = {resistencia:'Resistencia',ftp:'Subir FTP',vo2max:'VO₂ Max',sprint:'Sprints',gran_fondo:'Gran Fondo',perdida_peso:'Perder peso'};
+
+  document.getElementById('summary-stats').innerHTML = [
+    {sv:ftp+'W',      sl:'FTP',        color:'#FF6B35'},
+    {sv:wkg,          sl:'W/kg',       color:'#FFD93D'},
+    {sv:data.weight+'kg', sl:'Peso',   color:'#00D4FF'},
+    {sv:data.max_hr+'bpm',sl:'FC Máx.',color:'#EF4444'},
+    {sv:data.weekly_hours+'h',sl:'Hrs/sem.',color:'#10B981'},
+    {sv:goalNames[data.goal]||data.goal,sl:'Objetivo',color:'#8B5CF6'},
+  ].map(s=>`<div class="summary-stat"><div class="sv" style="color:${s.color}">${s.sv}</div><div class="sl">${s.sl}</div></div>`).join('');
+
+  document.getElementById('summary-zones').innerHTML = ZONES_DEF.map(z=>{
+    const minW = Math.round(z.min*ftp);
+    const maxW = z.max===99 ? '∞' : Math.round(z.max*ftp);
+    return `<div class="zone-row"><div class="zone-dot" style="background:${z.color}"></div><div class="zone-name">${z.name}</div><div class="zone-watts" style="color:${z.color}">${minW}–${maxW}W</div></div>`;
+  }).join('');
+}
+
+async function saveAndGo() {
+  const btn = document.getElementById('btn-save');
+  btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Guardando...';
+  btn.disabled=true;
+
+  const athlete = { ...data, id:'athlete_'+Date.now(), createdAt:Date.now() };
+  localStorage.setItem('velomind_athlete', JSON.stringify(athlete));
+  if (data.height) localStorage.setItem('velomind_height', data.height.toString());
+
+  try {
+    const session = JSON.parse(localStorage.getItem('velomind_auth')||'{}');
+    if (data.name) { session.name=data.name; localStorage.setItem('cyclocoach_auth', JSON.stringify(session)); }
+  } catch(e){}
+
+  // Guardar peso inicial
+  if (data.weight) {
+    const today = new Date().toISOString().substring(0,10);
+    const existing = JSON.parse(localStorage.getItem('velomind_weight_log')||'[]');
+    if (!existing.find(e=>e.date===today)) {
+      existing.push({date:today,weight:data.weight,fat:null,muscle:null,note:'Registro inicial del perfil'});
+      localStorage.setItem('cyclocoach_weight_log', JSON.stringify(existing));
+    }
+  }
+
+  // Sincronizar perfil y peso con backend
+  try {
+    if (typeof BackendSync !== 'undefined') {
+      await Promise.allSettled([
+        BackendSync.saveProfile({
+          name:data.name, age:data.age, sex:data.sex, weight:data.weight, height:data.height,
+          ftp:data.ftp, max_hr:data.max_hr, lthr:data.lthr, experience:data.experience,
+          goal:data.goal, weekly_hours:data.weekly_hours, days_per_week:data.days_per_week,
+          event_date:data.event_date||'',
+        }),
+        data.weight ? BackendSync.saveWeight({
+          date:new Date().toISOString().substring(0,10),
+          weight:data.weight, fat:null, muscle:null, note:'Registro inicial'
+        }) : Promise.resolve(),
+      ]);
+    }
+  } catch(e) { console.warn('Backend no disponible, guardado localmente'); }
+
+  window.location.href='analytics.html';
+}
+
+// Auto-suggest FC max when age is entered
+document.getElementById('ob-age').addEventListener('input', function(){
+  const age = parseInt(this.value);
+  const el = document.getElementById('ob-maxhr');
+  if (age>=16&&age<=80&&!el.value) el.placeholder=(220-age)+' (estimado)';
+});
+
+// Pre-fill if existing profile
+(function prefill(){
+  try {
+    const a = JSON.parse(localStorage.getItem('velomind_athlete')||'null');
+    if (!a) return;
+    const set = (id,v)=>{ const el=document.getElementById(id); if(el&&v!=null&&v!=='') el.value=v; };
+    set('ob-name',a.name); set('ob-age',a.age); set('ob-sex',a.sex);
+    set('ob-weight',a.weight); set('ob-height',a.height);
+    set('ob-ftp',a.ftp); set('ob-maxhr',a.max_hr); set('ob-lthr',a.lthr);
+    set('ob-experience',a.experience);
+    set('ob-hours',a.weekly_hours); set('ob-days',a.days_per_week);
+    set('ob-event',a.event_date);
+    if (a.goal) {
+      data.goal = a.goal;
+      document.querySelectorAll('.goal-opt').forEach(o=>o.classList.toggle('selected',o.dataset.val===a.goal));
+    }
+    data = {...a};
+  } catch(e){}
+})();
+</script>
+</body>
+</html>

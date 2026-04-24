@@ -1,0 +1,15 @@
+# Backend
+backend/node_modules/
+backend/database.db
+backend/.env
+
+# Frontend
+cyclocoach/.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VeloMind — Acceder</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #9ED62B;
+      --primary-dark: #84B422;
+      --accent: #00D4FF;
+      --bg: #0a0b0f;
+      --bg-card: #1a1d26;
+      --bg-input: #1a1d26;
+      --border: rgba(255,255,255,0.08);
+      --border-focus: rgba(158,214,43,0.55);
+      --text: #f0f2f5;
+      --text-muted: #6b7280;
+      --text-secondary: #9ca3af;
+      --radius: 12px;
+      --shadow-glow: 0 0 40px rgba(158,214,43,0.14);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Left panel — branding */
+    .auth-left {
+      width: 55%;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px;
+      overflow: hidden;
+    }
+    .auth-left::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse 80% 60% at 20% 50%, rgba(158,214,43,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 80% at 80% 80%, rgba(0,212,255,0.06) 0%, transparent 60%);
+    }
+    .auth-left::after {
+      content: '';
+      position: absolute;
+      top: -200px; right: -200px;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      border: 1px solid rgba(158,214,43,0.08);
+      animation: rotate 30s linear infinite;
+    }
+    @keyframes rotate { to { transform: rotate(360deg); } }
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 64px;
+      position: relative;
+      z-index: 1;
+    }
+    .logo-emoji { font-size: 32px; }
+    .logo-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .logo-sub { font-size: 12px; color: var(--text-muted); }
+
+    .auth-headline {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 52px;
+      font-weight: 800;
+      line-height: 1.05;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .auth-headline .hl {
+      background: linear-gradient(135deg, var(--primary), #C4EF44);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .auth-tagline {
+      font-size: 17px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      max-width: 420px;
+      margin-bottom: 48px;
+      position: relative;
+      z-index: 1;
+    }
+    .features-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 15px;
+      color: var(--text-secondary);
+    }
+    .feature-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(158,214,43,0.12);
+      border: 1px solid rgba(158,214,43,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    /* Right panel — form */
+    .auth-right {
+      width: 45%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      border-left: 1px solid var(--border);
+      background: rgba(19,21,28,0.8);
+    }
+    .auth-box {
+      width: 100%;
+      max-width: 400px;
+    }
+    .auth-tabs {
+      display: flex;
+      background: var(--bg-input);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 32px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text-muted);
+      border: none;
+      background: none;
+    }
+    .auth-tab.active {
+      background: var(--primary);
+      color: #111;
+    }
+    .form-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .form-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 15px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    .form-input:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(158,214,43,0.1);
+    }
+    .form-input::placeholder { color: var(--text-muted); }
+
+    .input-with-icon {
+      position: relative;
+    }
+    .input-with-icon .form-input { padding-left: 44px; }
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    .input-toggle {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      background: none;
+      border: none;
+      padding: 4px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--primary);
+      color: #111;
+      border: none;
+      border-radius: var(--radius);
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-glow); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .divider span { font-size: 12px; color: var(--text-muted); }
+
+    .social-btn {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s;
+      margin-bottom: 10px;
+    }
+    .social-btn:hover {
+      border-color: var(--primary);
+      background: rgba(158,214,43,0.06);
+    }
+    .social-btn.strava { border-color: rgba(252,76,2,0.3); }
+    .social-btn.strava:hover { border-color: #FC4C02; background: rgba(252,76,2,0.08); }
+    .social-btn.garmin { border-color: rgba(0,122,199,0.3); }
+    .social-btn.garmin:hover { border-color: #007AC7; background: rgba(0,122,199,0.08); }
+
+    .strava-logo { color: #FC4C02; font-weight: 900; font-size: 16px; }
+    .garmin-logo { color: #007AC7; font-weight: 900; font-size: 14px; }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .alert-error { background: rgba(255,71,87,0.1); border: 1px solid rgba(255,71,87,0.3); color: #ff6b75; }
+    .alert-success { background: rgba(0,200,130,0.1); border: 1px solid rgba(0,200,130,0.3); color: #00c882; }
+    .alert.hidden { display: none; }
+
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+
+    .terms {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 20px;
+      line-height: 1.5;
+    }
+    .terms a { color: var(--primary); text-decoration: none; }
+
+    /* Spinner */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .auth-left { display: none; }
+      .auth-right { width: 100%; border-left: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LEFT: Branding -->
+<div class="auth-left">
+  <div class="logo-wrap">
+    <img src="logoPerfil.png" alt="VeloMind" style="width:100%; max-width:180px; height:auto; display:block; border-radius: 12px;">
+  </div>
+  <h1 class="auth-headline">Entrena con<br><span class="hl">datos reales.</span></h1>
+  <p class="auth-tagline">Analiza tu potencia, gestiona tu forma con el PMC y recibe planes personalizados. Sin suscripciones caras.</p>
+  <div class="features-list">
+    <div class="feature-item">
+      <div class="feature-dot"><i class="fas fa-bolt"></i></div>
+      <span>PMC completo: CTL, ATL, TSB en tiempo real</span>
+    </div>
+    <div class="feature-item">
+      <div class="feature-dot"><i class="fas fa-sync"></i></div>
+      <span>Sincronización automática con Strava y Garmin</span>
+    </div>
+    <div class="feature-item">
+      <div class="feature-dot"><i class="fas fa-calendar-alt"></i></div>
+      <span>Planes de entrenamiento generados por IA</span>
+    </div>
+    <div class="feature-item">
+      <div class="feature-dot"><i class="fas fa-apple-alt"></i></div>
+      <span>Nutrición personalizada por fase de entrenamiento</span>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT: Form -->
+<div class="auth-right">
+  <div class="auth-box">
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Iniciar sesión</button>
+      <button class="auth-tab" onclick="switchTab('register')">Crear cuenta</button>
+    </div>
+
+    <!-- ALERT -->
+    <div class="alert hidden" id="auth-alert"></div>
+
+    <!-- LOGIN PANEL -->
+    <div class="form-panel active" id="panel-login">
+      <h2 class="form-title">Bienvenido de vuelta</h2>
+      <p class="form-subtitle">Accede a tu entrenador personal</p>
+
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <div class="input-with-icon">
+          <i class="fas fa-envelope input-icon"></i>
+          <input type="email" class="form-input" id="login-email" placeholder="tu@email.com" autocomplete="email">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <div class="input-with-icon">
+          <i class="fas fa-lock input-icon"></i>
+          <input type="password" class="form-input" id="login-password" placeholder="••••••••" autocomplete="current-password">
+          <button class="input-toggle" onclick="togglePwd('login-password', this)" type="button">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btn-login" onclick="doLogin(event)">
+        <div class="spinner" id="spinner-login"></div>
+        <span id="login-label"><i class="fas fa-arrow-right"></i> Entrar</span>
+      </button>
+
+      <div class="divider"><span>o continúa con</span></div>
+
+      <button class="social-btn strava" onclick="connectStrava('login')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+        Conectar Strava (tras entrar)
+      </button>
+      <button class="social-btn garmin" onclick="connectGarmin('login')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#007AC7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+        Continuar con Garmin
+      </button>
+    </div>
+
+    <!-- REGISTER PANEL -->
+    <div class="form-panel" id="panel-register">
+      <h2 class="form-title">Crea tu cuenta</h2>
+      <p class="form-subtitle">Empieza a entrenar con datos</p>
+
+      <div class="form-group">
+        <label class="form-label">Nombre</label>
+        <div class="input-with-icon">
+          <i class="fas fa-user input-icon"></i>
+          <input type="text" class="form-input" id="reg-name" placeholder="Tu nombre" autocomplete="name">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <div class="input-with-icon">
+          <i class="fas fa-envelope input-icon"></i>
+          <input type="email" class="form-input" id="reg-email" placeholder="tu@email.com" autocomplete="email">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <div class="input-with-icon">
+          <i class="fas fa-lock input-icon"></i>
+          <input type="password" class="form-input" id="reg-password" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+          <button class="input-toggle" onclick="togglePwd('reg-password', this)" type="button">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirmar contraseña</label>
+        <div class="input-with-icon">
+          <i class="fas fa-lock input-icon"></i>
+          <input type="password" class="form-input" id="reg-password2" placeholder="Repite la contraseña">
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btn-register" onclick="doRegister(event)">
+        <div class="spinner" id="spinner-reg"></div>
+        <span id="reg-label"><i class="fas fa-user-plus"></i> Crear cuenta</span>
+      </button>
+
+      <div class="divider"><span>o regístrate con</span></div>
+
+      <button class="social-btn strava" onclick="connectStrava('register')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+        Conectar Strava (tras registro)
+      </button>
+      <button class="social-btn garmin" onclick="connectGarmin('register')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#007AC7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+        Registrarse con Garmin
+      </button>
+    </div>
+
+    <p class="terms">Al acceder aceptas los <a href="#">Términos de uso</a> y la <a href="#">Política de privacidad</a></p>
+  </div>
+</div>
+
+<script>window.CYCLOCOACH_PUBLIC = true;</script>
+<script src="js/auth.js"></script>
+<script>
+  function showAlert(msg, type = 'error') {
+    const el = document.getElementById('auth-alert');
+    el.className = `alert alert-${type}`;
+    el.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${msg}`;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 5000);
+  }
+
+  function setLoading(spinner, label, btn, on) {
+    document.getElementById(spinner).style.display = on ? 'block' : 'none';
+    document.getElementById(label).style.display = on ? 'none' : 'flex';
+    document.getElementById(btn).disabled = on;
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach((t, i) => {
+      t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+    });
+    document.getElementById('panel-login').classList.toggle('active', tab === 'login');
+    document.getElementById('panel-register').classList.toggle('active', tab === 'register');
+    document.getElementById('auth-alert').classList.add('hidden');
+  }
+
+  function togglePwd(id, btn) {
+    const input = document.getElementById(id);
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    btn.innerHTML = `<i class="fas fa-eye${showing ? '' : '-slash'}"></i>`;
+  }
+
+  async function doLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim().toLowerCase();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) { showAlert('Por favor completa todos los campos.'); return; }
+
+    setLoading('spinner-login', 'login-label', 'btn-login', true);
+
+    try {
+      // Login con backend JWT
+      const result = await Auth.login(email, password);
+      showAlert('¡Bienvenido de vuelta, ' + result.user.name + '!', 'success');
+      const pendingCode = localStorage.getItem('pending_strava_code');
+      if (pendingCode) {
+        localStorage.removeItem('pending_strava_code');
+        setTimeout(() => window.location.href = `oauth-callback.html?code=${encodeURIComponent(pendingCode)}`, 300);
+        return;
+      }
+      const hasProfile = result.user?.ftp && result.user?.weight;
+      setTimeout(() => window.location.href = hasProfile ? 'analytics.html' : 'index.html', 700);
+    } catch(e) {
+      setLoading('spinner-login', 'login-label', 'btn-login', false);
+      showAlert(e.message || 'Email o contraseña incorrectos.');
+    }
+  }
+
+  async function doRegister(e) {
+    e.preventDefault();
+    const name = document.getElementById('reg-name').value.trim();
+    const email = document.getElementById('reg-email').value.trim().toLowerCase();
+    const pwd = document.getElementById('reg-password').value;
+    const pwd2 = document.getElementById('reg-password2').value;
+
+    if (!name || !email || !pwd) { showAlert('Por favor completa todos los campos.'); return; }
+    if (pwd.length < 6) { showAlert('La contraseña debe tener al menos 6 caracteres.'); return; }
+    if (pwd !== pwd2) { showAlert('Las contraseñas no coinciden.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAlert('Email no válido.'); return; }
+
+    setLoading('spinner-reg', 'reg-label', 'btn-register', true);
+
+    try {
+      // Registro con backend JWT
+      const result = await Auth.register(email, pwd, name);
+      showAlert('¡Cuenta creada! Configurando tu perfil...', 'success');
+      const pendingCode = localStorage.getItem('pending_strava_code');
+      if (pendingCode) {
+        localStorage.removeItem('pending_strava_code');
+        setTimeout(() => window.location.href = `oauth-callback.html?code=${encodeURIComponent(pendingCode)}`, 300);
+        return;
+      }
+      setTimeout(() => window.location.href = 'index.html', 800);
+    } catch(e) {
+      setLoading('spinner-reg', 'reg-label', 'btn-register', false);
+      showAlert(e.message || 'Error al crear la cuenta.');
+    }
+  }
+
+  // ── Strava OAuth ───────────────────────────────────────────
+  function connectStrava(mode) {
+    const token = Auth.getToken ? Auth.getToken() : localStorage.getItem('velomind_token');
+    if (!token) {
+      showAlert(
+        mode === 'register'
+          ? 'Primero crea tu cuenta. Luego conecta Strava desde Integraciones.'
+          : 'Primero inicia sesión. Luego conecta Strava desde Integraciones.'
+      );
+      return;
+    }
+    window.location.href = 'integrations.html';
+  }
+
+  // ── Garmin OAuth ───────────────────────────────────────────
+  function connectGarmin(mode) {
+    // Garmin uses OAuth 1.0a — requires backend proxy
+    // In production: redirect to your backend /auth/garmin/start
+    const BACKEND_URL = '/api/auth/garmin/start';
+
+    localStorage.setItem('oauth_mode', mode);
+    localStorage.setItem('oauth_provider', 'garmin');
+
+    // Demo mode
+    showGarminModal();
+  }
+
+  // ── Setup Modals ───────────────────────────────────────────
+  function showStravaModal() {
+    showConfigModal(
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Conectar Strava',
+      `<p style="color:var(--text-secondary);line-height:1.6;margin-bottom:16px">Para conectar Strava necesitas configurar tu aplicación OAuth en Strava Developers:</p>
+      <ol style="color:var(--text-secondary);line-height:2;padding-left:20px;font-size:14px">
+        <li>Ve a <a href="https://www.strava.com/settings/api" target="_blank" style="color:#FC4C02">strava.com/settings/api</a></li>
+        <li>Crea una nueva aplicación</li>
+        <li>Copia tu <strong style="color:var(--text)">Client ID</strong></li>
+        <li>Configura el redirect a: <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;font-size:12px">${window.location.origin}/oauth-callback.html</code></li>
+        <li>Edita <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;font-size:12px">login.html</code> y reemplaza <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;font-size:12px">YOUR_STRAVA_CLIENT_ID</code></li>
+      </ol>`
+    );
+  }
+
+  function showGarminModal() {
+    showConfigModal(
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="#007AC7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg> Conectar Garmin',
+      `<p style="color:var(--text-secondary);line-height:1.6;margin-bottom:16px">Garmin Connect usa OAuth 1.0a y requiere un backend server. Pasos:</p>
+      <ol style="color:var(--text-secondary);line-height:2;padding-left:20px;font-size:14px">
+        <li>Regístrate en <a href="https://developer.garmin.com/gc-developer-program/overview/" target="_blank" style="color:#007AC7">Garmin Developer Program</a></li>
+        <li>Crea una aplicación y obtén tus credenciales OAuth 1.0a</li>
+        <li>Configura un servidor backend (Node.js/Python) con las rutas OAuth</li>
+        <li>Usa <strong style="color:var(--text)">garmin-connect</strong> npm package o la API REST oficial</li>
+        <li>El backend debe manejar el flujo: request token → authorize → access token</li>
+      </ol>
+      <p style="color:var(--text-muted);font-size:12px;margin-top:12px">Alternativamente, usa el endpoint <strong>Health API</strong> de Garmin para acceso simplificado.</p>`
+    );
+  }
+
+  function showConfigModal(title, content) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px`;
+    modal.innerHTML = `
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:500px;width:100%;position:relative">
+        <h3 style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:10px">${title}</h3>
+        ${content}
+        <div style="display:flex;gap:12px;margin-top:24px">
+          <button onclick="this.closest('[style]').remove()" style="flex:1;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;color:var(--text);cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif">Cerrar</button>
+          <button onclick="this.closest('[style]').remove();switchTab('register')" style="flex:1;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;color:var(--text);cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif">Registrarme con email</button>
+          <button onclick="demoLogin()" style="flex:1;padding:12px;background:var(--primary);border:none;border-radius:10px;color:#111;cursor:pointer;font-size:14px;font-weight:600;font-family:'Space Grotesk',sans-serif">🚀 Entrar en modo demo</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  }
+
+  // ── Check if already logged in (JWT) ───────────────────────
+  (function checkAuth() {
+    // Limpiar sesión legacy para evitar loops de redirección
+    const legacy = ['cyclocoach_auth', 'cyclocoach_users', 'cyclocoach_token', 'cyclocoach_user', 'cyclocoach_athlete', 'cyclocoach_height', 'pending_strava_code'];
+    legacy.forEach(k => localStorage.removeItem(k));
+
+    const token = localStorage.getItem('velomind_token');
+    if (!token) return;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.exp && payload.exp * 1000 > Date.now()) {
+        window.location.href = 'analytics.html';
+        return;
+      }
+    } catch {}
+    // Token inválido: limpiarlo
+    localStorage.removeItem('velomind_token');
+    localStorage.removeItem('velomind_user');
+  })();
+
+  // Enter key support
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const panel = document.querySelector('.form-panel.active').id;
+      if (panel === 'panel-login') doLogin(e);
+      else doRegister(e);
+    }
+  });
+  // ── Demo login ───────────────────────────────────────────────
+  async function demoLogin() {
+    document.querySelectorAll('[style*="position:fixed"]').forEach(m => m.remove());
+    try {
+      // Intentar login demo con backend (ahora usa Supabase)
+      await Auth.demoLogin();
+      window.location.href = 'analytics.html';
+    } catch(e) {
+      // Fallback offline: demo sin backend
+      const demoUser = { id:'demo_'+Date.now(), name:'Demo Ciclista', email:'demo@cyclocoach.local', loginAt:Date.now() };
+      localStorage.setItem('velomind_user', JSON.stringify(demoUser));
+      if (!localStorage.getItem('velomind_athlete')) {
+        localStorage.setItem('velomind_athlete', JSON.stringify({
+          name:'Demo Ciclista', age:32, weight:72, height:175,
+          ftp:235, max_hr:188, lthr:165, experience:'intermedio', weekly_hours:9, goal:'resistencia'
+        }));
+      }
+      window.location.href = 'analytics.html';
+    }
+  }
+
+</script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CycloCoach Pro — Conectando...</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=DM+Sans:wght@400&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary:#FF6B35; --bg:#0a0b0f; --bg-card:#13151c; --border:rgba(255,255,255,0.08); --text:#f0f2f5; --text-muted:#6b7280; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .card { background:var(--bg-card); border:1px solid var(--border); border-radius:20px; padding:48px; max-width:440px; width:100%; margin:20px; text-align:center; }
+    .spinner { width:72px; height:72px; border:3px solid rgba(255,107,53,0.15); border-top-color:var(--primary); border-radius:50%; animation:spin 0.9s linear infinite; margin:0 auto 28px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .status-icon { font-size:52px; margin-bottom:20px; display:none; }
+    h2 { font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:700; margin-bottom:10px; }
+    p { color:var(--text-muted); font-size:15px; line-height:1.6; }
+    .btn { display:none; margin-top:24px; padding:12px 28px; background:var(--primary); color:#111; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; font-family:'Space Grotesk',sans-serif; text-decoration:none; }
+    .step { color:var(--text-muted); font-size:13px; margin-top:12px; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div id="spinner" class="spinner"></div>
+  <div id="icon" class="status-icon"></div>
+  <h2 id="title">Conectando con Strava...</h2>
+  <p id="desc">Intercambiando tokens de acceso, por favor espera.</p>
+  <p id="step" class="step"></p>
+  <a href="integrations.html" id="btn" class="btn">Ir a Integraciones →</a>
+</div>
+
+<script>
+  const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : '/api';
+
+  function setStatus(icon, title, desc, step, btnText, btnHref) {
+    document.getElementById('spinner').style.display = icon ? 'none' : 'block';
+    const ic = document.getElementById('icon');
+    ic.style.display = icon ? 'block' : 'none';
+    ic.textContent = icon || '';
+    document.getElementById('title').textContent = title;
+    document.getElementById('desc').textContent = desc;
+    document.getElementById('step').textContent = step || '';
+    if (btnText) {
+      const btn = document.getElementById('btn');
+      btn.textContent = btnText;
+      btn.href = btnHref || 'integrations.html';
+      btn.style.display = 'inline-block';
+    }
+  }
+
+  async function handleCallback() {
+    const params = new URLSearchParams(window.location.search);
+    const code  = params.get('code');
+    const error = params.get('error');
+    const scope = params.get('scope');
+
+    if (error) {
+      setStatus('❌', 'Autorización cancelada', 'El acceso a Strava fue denegado.', '', 'Volver al login', 'login.html');
+      return;
+    }
+    if (!code) {
+      setStatus('⚠️', 'Sin código de autorización', 'No se recibió el código. Intenta de nuevo.', '', 'Volver al login', 'login.html');
+      return;
+    }
+
+    const token = localStorage.getItem('velomind_token');
+    if (!token) {
+      // No hay sesión: guardar code y redirigir al login
+      localStorage.setItem('pending_strava_code', code);
+      setStatus('⚠️', 'Sesión no encontrada', 'Inicia sesión primero y luego conecta Strava desde Integraciones.', '', 'Ir al login', 'login.html');
+      return;
+    }
+
+    setStatus(null, 'Conectando con Strava...', 'Intercambiando código por tokens de acceso.', 'Paso 1/2: autenticando...');
+
+    try {
+      const res = await fetch(`${API}/providers/strava/callback`, {
+        method: 'POST',
+        headers: Auth.getHeaders(),
+        body: JSON.stringify({ code, scope }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al conectar Strava');
+
+      setStatus(null, 'Sincronizando actividades...', `Strava conectado${data.athlete?.name ? ' como ' + data.athlete.name : ''}. Importando tus salidas.`, 'Paso 2/2: importando actividades...');
+
+      // Sincronizar actividades automáticamente
+      const syncRes = await fetch(`${API}/providers/strava/sync`, {
+        method: 'POST',
+        headers: Auth.getHeaders(),
+      });
+      const syncData = await syncRes.json();
+      const count = syncData.synced || 0;
+      localStorage.setItem('velomind_strava_connected', '1');
+      localStorage.setItem('velomind_strava_last_sync', Date.now().toString());
+      localStorage.removeItem('pending_strava_code');
+
+      setStatus('✅', '¡Strava conectado!',
+        `Se importaron ${count} actividad${count !== 1 ? 'es' : ''} correctamente.`,
+        data.athlete?.name ? `Atleta: ${data.athlete.name}` : '',
+        'Ver mi análisis →', 'analytics.html');
+
+    } catch (e) {
+      setStatus('❌', 'Error al conectar', e.message || 'Algo salió mal. Intenta de nuevo.', '', 'Reintentar', 'integrations.html');
+    }
+  }
+
+  handleCallback();
+</script>
+</body>
+</html>

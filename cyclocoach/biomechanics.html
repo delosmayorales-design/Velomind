@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biomecánica — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦴</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "/api";</script>
+  <script src="js/app.js"></script>
+  <script src="js/backend-sync.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/biomechanicsUtils.js"></script>
+  <style>
+    /* ── Layout ─────────────────────────────────── */
+    .bio-layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 1100px) { .bio-layout { grid-template-columns: 1fr; } }
+
+    /* ── Left panel ─────────────────────────────── */
+    .bio-panel { display: flex; flex-direction: column; gap: 16px; }
+
+    .upload-zone {
+      border: 2px dashed var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--bg-input);
+      transition: border-color .2s, background .2s;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--primary);
+      background: var(--primary-glow);
+    }
+    .photo-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .photo-thumb {
+      width: 68px; height: 68px;
+      border-radius: 8px; overflow: hidden;
+      border: 2px solid transparent;
+      cursor: pointer; position: relative;
+      background: var(--bg-input);
+    }
+    .photo-thumb.active { border-color: var(--primary); }
+    .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-thumb .del {
+      position: absolute; top: 2px; right: 2px;
+      width: 18px; height: 18px;
+      background: var(--danger); color: #fff;
+      border-radius: 50%; border: none; cursor: pointer;
+      font-size: 11px; line-height: 18px; text-align: center;
+    }
+
+    /* ── Tabs ────────────────────────────────────── */
+    .tab-row {
+      display: flex; gap: 4px;
+      background: var(--bg-input);
+      border-radius: var(--radius-md);
+      padding: 4px;
+    }
+    .tab-btn {
+      flex: 1; padding: 9px 8px;
+      border: none; border-radius: 8px;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all .2s;
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      color: #111;
+    }
+
+    /* ── Form fields ─────────────────────────────── */
+    .field-label {
+      font-size: 11px; font-weight: 600;
+      color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: .06em; margin-bottom: 5px;
+    }
+    .field-group { margin-bottom: 12px; }
+    .field-input, .field-select {
+      width: 100%; padding: 9px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: inherit; font-size: 13px;
+    }
+    .field-input:focus, .field-select:focus {
+      outline: none; border-color: var(--primary);
+    }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field-section {
+      font-size: 11px; font-weight: 700;
+      color: var(--primary-light); text-transform: uppercase;
+      letter-spacing: .08em; margin: 14px 0 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .btn-full {
+      width: 100%; padding: 12px;
+      background: var(--primary); color: #111;
+      border: none; border-radius: var(--radius-md);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; gap: 8px; transition: all .2s;
+    }
+    .btn-full:hover { background: var(--primary-dark); }
+    .btn-full:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Manual results ──────────────────────────── */
+    .calc-results {
+      background: var(--bg-input);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 16px; margin-top: 12px;
+    }
+    .calc-row {
+      display: flex; justify-content: space-between;
+      align-items: center; padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .calc-row:last-child { border-bottom: none; }
+    .calc-label { color: var(--text-muted); }
+    .calc-value { font-weight: 700; color: var(--text-primary); }
+    .calc-value.good  { color: var(--success); }
+    .calc-value.warn  { color: var(--warning); }
+    .calc-value.bad   { color: var(--danger); }
+    .calc-rec {
+      font-size: 11px; color: var(--text-muted);
+      margin-top: 2px; text-align: right;
+    }
+
+    /* ── Right area ──────────────────────────────── */
+    .bio-main { display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Canvas toolbar ──────────────────────────── */
+    .canvas-toolbar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .tool-btn {
+      padding: 6px 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all .2s;
+    }
+    .tool-btn:hover { border-color: var(--primary); color: var(--primary-light); }
+    .tool-btn.active {
+      background: var(--primary-glow);
+      border-color: var(--primary);
+      color: var(--primary-light);
+    }
+    .toolbar-hint {
+      font-size: 12px; color: var(--text-muted);
+      margin-left: auto;
+    }
+    .placing-label {
+      font-size: 12px; font-weight: 600;
+      color: var(--accent);
+      background: var(--accent-glow);
+      padding: 4px 10px; border-radius: 6px;
+    }
+
+    /* ── Canvas wrapper ──────────────────────────── */
+    .canvas-wrapper {
+      position: relative;
+      background: #000;
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+      overflow: hidden;
+      min-height: 320px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #bioCanvas {
+      display: block;
+      cursor: default;
+      max-width: 100%;
+    }
+    #bioCanvas.edit-mode { cursor: crosshair; }
+    #canvas-placeholder {
+      position: absolute;
+      text-align: center;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    #canvas-placeholder .ph-icon { font-size: 52px; margin-bottom: 12px; }
+    #canvas-placeholder .ph-text { font-size: 14px; }
+    #canvas-placeholder .ph-sub  { font-size: 12px; margin-top: 4px; opacity: .6; }
+
+    /* ── Angles grid ─────────────────────────────── */
+    .angles-section { }
+    .angles-section h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px; font-weight: 700;
+      color: var(--text-primary); margin-bottom: 12px;
+    }
+    .angles-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 800px) { .angles-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .angle-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      transition: border-color .2s;
+    }
+    .angle-card.optimal { border-left: 3px solid var(--success); }
+    .angle-card.warning { border-left: 3px solid var(--warning); }
+    .angle-card.bad     { border-left: 3px solid var(--danger); }
+    .angle-card.unknown { border-left: 3px solid var(--border-light); }
+    .ac-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .ac-value {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px; font-weight: 800;
+      line-height: 1.1; margin: 4px 0;
+    }
+    .ac-value.optimal { color: var(--success); }
+    .ac-value.warning { color: var(--warning); }
+    .ac-value.bad     { color: var(--danger); }
+    .ac-value.unknown { color: var(--text-muted); }
+    .ac-range { font-size: 11px; color: var(--text-muted); }
+    .ac-bar {
+      height: 4px; border-radius: 2px;
+      background: var(--border); margin-top: 8px;
+      position: relative; overflow: hidden;
+    }
+    .ac-bar-fill {
+      height: 100%; border-radius: 2px;
+      position: absolute; left: 0; top: 0;
+      transition: width .3s;
+    }
+
+    /* ── Diagnosis box ───────────────────────────── */
+    .adj-item {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 12px;
+      background: var(--bg-input);
+      border-radius: var(--radius-md);
+      border-left: 3px solid var(--primary);
+      margin-bottom: 8px;
+    }
+    .adj-icon {
+      width: 34px; height: 34px; flex-shrink: 0;
+      background: var(--primary-glow);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .adj-comp { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+    .adj-delta { font-size: 12px; font-weight: 600; color: var(--accent); }
+    .adj-reason { font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+
+    .flag-item {
+      display: flex; gap: 8px;
+      font-size: 12px; color: var(--danger);
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Spinner ─────────────────────────────────── */
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: sp .7s linear infinite;
+    }
+    @keyframes sp { to { transform: rotate(360deg); } }
+
+    .load-overlay {
+      position: absolute; inset: 0;
+      background: rgba(4,6,15,.82);
+      display: none; align-items: center; justify-content: center;
+      flex-direction: column; gap: 10px; z-index: 10;
+    }
+    .load-overlay.active { display: flex; }
+    .load-overlay .spinner-lg {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: sp 1s linear infinite;
+    }
+
+    /* ── Measurement Guide ──────────────────────── */
+    .measure-guide-box {
+      background: rgba(0,212,255,0.05);
+      border: 1px solid rgba(0,212,255,0.15);
+      border-radius: var(--radius-md);
+      padding: 14px; margin-bottom: 16px;
+    }
+    .body-svg-container {
+      display: flex; justify-content: center;
+      margin: 10px 0; background: var(--bg-card);
+      border-radius: 8px; padding: 10px;
+    }
+    .guide-step { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: flex; gap: 8px; }
+    .guide-step i { color: var(--accent); margin-top: 2px; }
+    .guide-step strong { color: var(--text-primary); }
+
+    /* ── Side-by-side comparison ───────────────── */
+    .bio-canvas-container {
+      display: flex;
+      background: #000;
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+      overflow: hidden;
+      min-height: 400px;
+      border-top: 1px solid var(--border);
+    }
+    .canvas-box {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+    }
+    .canvas-box:last-child { border-right: none; background: #05070a; }
+    .video-panel-state {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .video-drop-zone {
+      width: 100%; max-width: 260px;
+      border: 2px dashed #1e3a5f; border-radius: 12px;
+      padding: 28px 20px; text-align: center; cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .video-drop-zone:hover, .video-drop-zone.drag-over {
+      border-color: #3b82f6; background: rgba(59,130,246,.06);
+    }
+    .video-spinner {
+      width: 42px; height: 42px;
+      border: 3px solid #1e293b; border-top-color: #3b82f6;
+      border-radius: 50%; animation: spin .9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .video-steps { margin-top:20px; display:flex; flex-direction:column; gap:8px; width:100%; max-width:220px; }
+    .vstep { font-size:12px; color:#334155; padding:6px 12px; border-radius:6px; background:rgba(255,255,255,.02); border:1px solid transparent; transition:all .3s; }
+    .vstep.active { color:#60a5fa; border-color:#1d4ed8; background:rgba(59,130,246,.08); font-weight:600; }
+    .vstep.done { color:#34d399; }
+    .video-result-card { background:rgba(255,255,255,.03); border:1px solid #1e293b; border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+    .video-result-card h4 { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:#60a5fa; margin:0 0 6px; }
+    .video-result-card p { font-size:12px; color:#94a3b8; margin:0; line-height:1.6; }
+    .video-red-flag { background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.25); border-radius:6px; padding:7px 10px; font-size:12px; color:#fca5a5; margin-bottom:6px; }
+    .video-adj-item { background:rgba(52,211,153,.06); border:1px solid rgba(52,211,153,.2); border-radius:6px; padding:8px 10px; font-size:12px; color:#6ee7b7; margin-bottom:6px; }
+    .video-section-label { font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; margin:10px 0 6px; }
+    .canvas-label-tag {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(0,0,0,0.6); color: var(--text-secondary);
+      padding: 4px 10px; border-radius: 6px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      z-index: 5; border: 1px solid var(--border-light);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo2.png" alt="VeloMind" style="width:100%; max-width:140px; height:auto; display:block; margin:0 auto">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="analytics.html" class="nav-item">
+      <i class="fas fa-chart-bar"></i> Métricas
+    </a>
+    <a href="activities.html" class="nav-item">
+      <i class="fas fa-history"></i> Actividades
+    </a>
+
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item">
+      <i class="fas fa-calendar-check"></i> Mi Plan
+    </a>
+    <a href="nutrition.html" class="nav-item">
+      <i class="fas fa-apple-alt"></i> Nutrición
+    </a>
+    <a href="body-weight.html" class="nav-item">
+      <i class="fas fa-weight"></i> Peso y W/Kg
+    </a>
+
+<div class="nav-section-title">Análisis y Técnica</div>
+    <a href="biomechanics.html" class="nav-item active"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="mecanica-general.html" class="nav-item"><i class="fas fa-wrench"></i> Mecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
+
+    <div class="nav-section-title">Equipación</div>
+    <a href="kit-designer.html" class="nav-item"><i class="fas fa-tshirt"></i> Diseñador Ropa</a>
+
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item">
+      <i class="fas fa-plug"></i> Integraciones
+    </a>
+    <a href="index.html" class="nav-item">
+      <i class="fas fa-user-cog"></i> Mi Perfil
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-name">Cargando...</div>
+        <div class="ftp" id="athlete-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1><i class="fas fa-ruler-combined" style="color:var(--primary)"></i> Análisis Biomecánico</h1>
+      <p>Posición en la bicicleta: análisis IA + ajuste manual de puntos + calculadora de medidas</p>
+    </div>
+  </header>
+
+  <div class="page-body">
+    <!-- ── PESTAÑAS PRINCIPALES ── -->
+    <div class="tab-row" style="max-width: 420px; margin-bottom: 24px;">
+      <button class="tab-btn active" id="tab-ai-btn" onclick="setTab('ai')"><i class="fas fa-robot" style="margin-right:6px"></i> Análisis IA (Foto/Video)</button>
+      <button class="tab-btn" id="tab-manual-btn" onclick="setTab('manual')"><i class="fas fa-ruler-combined" style="margin-right:6px"></i> Calculadora Manual</button>
+    </div>
+
+    <div class="bio-layout" id="tab-ai-content">
+
+      <!-- ══ LEFT PANEL ══════════════════════════════════════ -->
+      <div class="bio-panel">
+
+        <!-- Upload -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">📷 Fotos</div></div>
+          <div class="card-body">
+            <div class="upload-zone" id="dropZone">
+              <div style="font-size:28px">📷</div>
+              <div style="font-weight:600;font-size:13px;margin-top:6px">Arrastra o haz clic</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">JPG / PNG / WEBP · Máx 4 fotos · 4MB c/u</div>
+            </div>
+            <input type="file" id="fileInput" accept="image/*" multiple style="display:none">
+            <div class="photo-strip" id="photoStrip"></div>
+          </div>
+        </div>
+
+          <div class="card">
+            <div class="card-body">
+              <div class="field-group">
+                <div class="field-label">Disciplina</div>
+                <select id="discipline" class="field-select" onchange="draw(); updateAIDisciplineWarning();">
+                  <option value="carretera">Carretera</option>
+                  <option value="gravel">Gravel</option>
+                  <option value="mtb">MTB</option>
+                  <option value="triatlon">Triatlón / TT</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <div class="field-label">Objetivo principal</div>
+                <select id="objective" class="field-select" onchange="draw();">
+                  <option value="rendimiento">Rendimiento</option>
+                  <option value="confort">Confort</option>
+                  <option value="aero">Aerodinámica</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <div class="field-label">Zona de dolor (si hay)</div>
+                <input type="text" id="painArea" class="field-input"
+                  placeholder="rodilla, espalda, manos...">
+              </div>
+
+              <div class="measure-guide-box" style="margin-top: 15px; border-color: var(--primary-light); background: rgba(158,214,43, 0.03)">
+                <div class="field-label" style="color:var(--primary-light)"><i class="fas fa-camera"></i> La foto perfecta</div>
+                <div class="guide-step">
+                  <i class="fas fa-arrows-alt"></i>
+                  <div><strong>Vista Lateral:</strong> Cámara a la altura de la cadera, perpendicular a la bici.</div>
+                </div>
+                <div class="guide-step">
+                  <i class="fas fa-clock"></i>
+                  <div><strong>Posición Pedal:</strong> Biela vertical (el pie abajo del todo, a las 6 en punto).</div>
+                </div>
+                <div class="guide-step">
+                  <i class="fas fa-level-up-alt"></i>
+                  <div><strong>Nivelado:</strong> Bici en llano o rodillo. No saques la foto en cuesta.</div>
+                </div>
+                <div class="guide-step">
+                  <i class="fas fa-user-check"></i>
+                  <div><strong>Ropa:</strong> Ropa ajustada (culote) para que la IA detecte tus articulaciones.</div>
+                </div>
+                <div class="guide-step">
+                  <i class="fas fa-hand-paper"></i>
+                  <div><strong>Manos:</strong> En las <strong>manetas</strong> (carretera/gravel) para un análisis estándar, o abajo para posición Aero.</div>
+                </div>
+              </div>
+
+              <button class="btn-full" id="analyzeBtn" onclick="analyzeAI()">
+                <i class="fas fa-magic"></i> Autodetectar Puntos
+              </button>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">
+                Necesitas al menos 1 foto · Vista lateral recomendada
+              </div>
+            </div>
+          </div>
+
+      </div><!-- end left panel -->
+
+      <!-- ══ RIGHT AREA ══════════════════════════════════════ -->
+      <div class="bio-main">
+
+        <!-- Canvas -->
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="canvas-toolbar">
+            <button class="tool-btn" id="editBtn" onclick="toggleEdit()">
+              <i class="fas fa-arrows-alt"></i> Ajustar puntos
+            </button>
+            <button class="tool-btn" onclick="resetPoints()">
+              <i class="fas fa-undo"></i> Reset
+            </button>
+            <button class="tool-btn" onclick="loadDefaults()" title="Cargar posiciones de ejemplo" id="exampleBtn">
+              <i class="fas fa-user-alt"></i> Ejemplo
+            </button>
+            <span id="placing-label" class="placing-label" style="display:none"></span>
+            <span class="toolbar-hint" id="toolbar-hint">
+              Sube una foto y analiza, o usa el modo de ejemplo
+            </span>
+          </div>
+          <div class="bio-canvas-container" id="canvasWrapper">
+            <div class="canvas-box">
+              <div class="canvas-label-tag">Tu Posición</div>
+              <canvas id="bioCanvas"></canvas>
+              <div id="canvas-placeholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+                <div class="ph-icon">🦴</div>
+                <div class="ph-text">Sube una foto para comenzar</div>
+              </div>
+              <div class="load-overlay" id="loadOverlay">
+                <div class="spinner-lg"></div>
+                <div style="color:var(--text-secondary);font-size:13px" id="loadText">Analizando...</div>
+              </div>
+            </div>
+            <div class="canvas-box" id="videoPanelBox">
+              <div class="canvas-label-tag" style="color:#60a5fa">Análisis en Rodillo</div>
+
+              <!-- Estado: Upload -->
+              <div id="videoUploadArea" class="video-panel-state">
+                <div class="video-drop-zone" id="videoDropZone" onclick="document.getElementById('videoFileInput').click()">
+                  <div style="font-size:36px;margin-bottom:12px">🎬</div>
+                  <div style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:6px">Sube un video en rodillo</div>
+                  <div style="font-size:11px;color:#64748b;margin-bottom:16px">MP4 · MOV · hasta 50 MB</div>
+                  <button class="tool-btn" onclick="event.stopPropagation();document.getElementById('videoFileInput').click()">
+                    <i class="fas fa-upload"></i> Seleccionar video
+                  </button>
+                </div>
+                <input type="file" id="videoFileInput" accept="video/*" style="display:none" onchange="handleVideoSelect(this)">
+              </div>
+
+              <!-- Estado: Procesando -->
+              <div id="videoLoadingArea" class="video-panel-state" style="display:none">
+                <div class="video-spinner"></div>
+                <div id="videoStatusMsg" style="font-size:13px;color:#94a3b8;margin-top:16px;text-align:center">Subiendo video...</div>
+                <div class="video-steps" id="videoSteps">
+                  <div class="vstep" id="vstep1">📤 Subiendo video</div>
+                  <div class="vstep" id="vstep2">⚙️ Procesando fotogramas</div>
+                  <div class="vstep" id="vstep3">🧠 Analizando movimiento</div>
+                </div>
+              </div>
+
+              <!-- Estado: Resultados -->
+              <div id="videoResultsArea" class="video-panel-state" style="display:none;overflow-y:auto;justify-content:flex-start;padding:48px 16px 16px">
+                <div id="videoResultsContent" style="width:100%"></div>
+                <button class="tool-btn" style="margin-top:12px;width:100%" onclick="resetVideoPanel()">
+                  <i class="fas fa-redo"></i> Analizar otro video
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Angles grid -->
+        <div class="angles-section" id="anglesSection" style="display:none">
+          <h3>📐 Ángulos Articulares (se actualizan al mover los puntos)</h3>
+          <div class="angles-grid" id="anglesGrid"></div>
+        </div>
+
+        <!-- Diagnosis (from AI) -->
+        <div id="diagSection" style="display:none">
+          <!-- CAJA MATEMÁTICAS -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                 Ajustes Recomendados
+                <span id="diagBadge" style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:8px"></span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="diagFlags" style="margin-bottom:14px"></div>
+              <div id="diagAdj"></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end right area -->
+    </div> <!-- end tab-ai-content bio-layout -->
+
+    <!-- ── MANUAL TAB CONTENT (FULL WIDTH) ── -->
+    <div id="tab-manual-content" style="display:none;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 24px; align-items: start;">
+        
+        <!-- Columna Izquierda: Cuerpo -->
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i class="fas fa-user" style="color:var(--primary)"></i> Medidas Corporales</div></div>
+          <div class="card-body">
+            <div class="measure-guide-box" style="padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 24px;">
+              <div onclick="toggleGuide('guide-content', 'guide-icon')" style="font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;">
+                <span style="display:flex; align-items:center; gap:8px;"><i class="fas fa-book-open" style="color:var(--accent)"></i> Ver guía de medición</span>
+                <i id="guide-icon" class="fas fa-chevron-down" style="color:var(--text-muted); transition: transform 0.2s; transform: rotate(0deg);"></i>
+              </div>
+              
+              <div id="guide-content" style="display:none; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px;">
+                <div class="body-svg-container" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 10px; margin-bottom: 12px;">
+                  <svg width="100%" height="180" viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg">
+                     <line x1="20" y1="180" x2="300" y2="180" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+                     <g transform="translate(60, 0)">
+                       <circle cx="0" cy="30" r="14" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2.5"/>
+                       <path d="M0,44 L0,110 L-12,170 M0,110 L12,170" stroke="rgba(255,255,255,0.3)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                       <path d="M0,52 L20,95" stroke="rgba(255,255,255,0.3)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                       <line x1="18" y1="110" x2="18" y2="170" stroke="#38BDF8" stroke-width="2" stroke-dasharray="4,4"/>
+                       <circle cx="18" cy="110" r="4" fill="#38BDF8"/><circle cx="18" cy="170" r="4" fill="#38BDF8"/>
+                       <text x="26" y="145" fill="#38BDF8" font-size="11" font-weight="bold" font-family="Space Grotesk, sans-serif">Entrepierna</text>
+                       <line x1="-18" y1="52" x2="-18" y2="110" stroke="#9ED62B" stroke-width="2" stroke-dasharray="4,4"/>
+                       <circle cx="-18" cy="52" r="4" fill="#9ED62B"/><circle cx="-18" cy="110" r="4" fill="#9ED62B"/>
+                       <text x="-26" y="85" fill="#9ED62B" font-size="11" font-weight="bold" font-family="Space Grotesk, sans-serif" text-anchor="end">Torso</text>
+                       <line x1="8" y1="44" x2="28" y2="87" stroke="#FBBF24" stroke-width="2" stroke-dasharray="4,4"/>
+                       <circle cx="0" cy="52" r="3" fill="#FBBF24"/><circle cx="20" cy="95" r="3" fill="#FBBF24"/>
+                       <text x="34" y="65" fill="#FBBF24" font-size="11" font-weight="bold" font-family="Space Grotesk, sans-serif">Brazo</text>
+                     </g>
+                     <g transform="translate(220, 0)">
+                       <line x1="-40" y1="10" x2="-40" y2="170" stroke="rgba(255,255,255,0.15)" stroke-width="3"/>
+                       <text x="-48" y="90" fill="rgba(255,255,255,0.4)" font-size="10" font-weight="bold" font-family="sans-serif" transform="rotate(-90 -48 90)" text-anchor="middle">PARED</text>
+                       <circle cx="-20" cy="40" r="14" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2.5"/>
+                       <path d="M-20,54 L-20,110 L40,110 L40,170" stroke="rgba(255,255,255,0.3)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                       <line x1="-40" y1="95" x2="40" y2="95" stroke="#F87171" stroke-width="2" stroke-dasharray="4,4"/>
+                       <circle cx="-40" cy="95" r="4" fill="#F87171"/><circle cx="40" cy="95" r="4" fill="#F87171"/>
+                       <text x="0" y="88" fill="#F87171" font-size="11" font-weight="bold" font-family="Space Grotesk, sans-serif" text-anchor="middle">Fémur</text>
+                       <line x1="55" y1="110" x2="55" y2="170" stroke="#A855F7" stroke-width="2" stroke-dasharray="4,4"/>
+                       <circle cx="55" cy="110" r="4" fill="#A855F7"/><circle cx="55" cy="170" r="4" fill="#A855F7"/>
+                       <text x="63" y="145" fill="#A855F7" font-size="11" font-weight="bold" font-family="Space Grotesk, sans-serif">Tibia</text>
+                     </g>
+                  </svg>
+                </div>
+                <div style="display:flex; flex-direction:column; gap: 6px;">
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #38BDF8; font-size:11px;"><strong style="color:#38BDF8">Entrepierna:</strong> Borde superior de un libro en la ingle hasta el suelo.</div>
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #9ED62B; font-size:11px;"><strong style="color:#9ED62B">Torso:</strong> Del libro a la base del cuello ("V" del esternón).</div>
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #FBBF24; font-size:11px;"><strong style="color:#FBBF24">Brazo:</strong> Articulación del hombro al centro del puño.</div>
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #F87171; font-size:11px;"><strong style="color:#F87171">Fémur:</strong> Sentado en un cajón contra la pared. Pared a frente de la rótula.</div>
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #A855F7; font-size:11px;"><strong style="color:#A855F7">Tibia:</strong> Desde la parte superior de la rótula al suelo.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field-group"><div class="field-label">Altura (cm)</div><input type="number" id="m-height" class="field-input" placeholder="176"></div>
+              <div class="field-group"><div class="field-label">Entrepierna (cm)</div><input type="number" id="m-inseam" class="field-input" placeholder="82"></div>
+            </div>
+            <div class="field-group"><div class="field-label">Peso Corporal (kg)</div><input type="number" id="m-weight" class="field-input" placeholder="70"></div>
+            <div class="field-row">
+              <div class="field-group"><div class="field-label">Torso (cm)</div><input type="number" id="m-torso" class="field-input" placeholder="56"></div>
+              <div class="field-group"><div class="field-label">Brazos (cm)</div><input type="number" id="m-arm" class="field-input" placeholder="60"></div>
+            </div>
+            <div class="field-row">
+              <div class="field-group"><div class="field-label">Fémur (cm)</div><input type="number" id="m-femur" class="field-input" placeholder="42"></div>
+              <div class="field-group"><div class="field-label">Tibia (cm)</div><input type="number" id="m-tibia" class="field-input" placeholder="40"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Columna Derecha: Bici y Resultados -->
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i class="fas fa-bicycle" style="color:var(--accent)"></i> Medidas de la Bicicleta</div></div>
+          <div class="card-body">
+            
+            <div class="measure-guide-box" style="padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 24px;">
+              <div onclick="toggleGuide('guide-content-bike', 'guide-icon-bike')" style="font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;">
+                <span style="display:flex; align-items:center; gap:8px;"><i class="fas fa-book-open" style="color:var(--accent)"></i> Ver guía de medición de la bici</span>
+                <i id="guide-icon-bike" class="fas fa-chevron-down" style="color:var(--text-muted); transition: transform 0.2s; transform: rotate(0deg);"></i>
+              </div>
+              
+              <div id="guide-content-bike" style="display:none; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px;">
+                <div class="body-svg-container" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 10px; margin-bottom: 12px;">
+                  <svg width="100%" height="180" viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg">
+                     <line x1="20" y1="180" x2="300" y2="180" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+                     <circle cx="60" cy="140" r="40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="4"/>
+                     <circle cx="240" cy="140" r="40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="4"/>
+                     <g stroke="rgba(255,255,255,0.25)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                       <path d="M60,140 L130,140 L100,60 Z" />
+                       <path d="M130,140 L210,65 L100,60" />
+                       <path d="M210,65 L220,95 L130,140" />
+                       <path d="M220,95 L240,140" />
+                       <path d="M100,60 L90,40" />
+                       <path d="M210,65 L230,58" />
+                       <path d="M230,58 C240,58 240,75 230,75" />
+                     </g>
+                     <path d="M70,40 L105,40" stroke="rgba(255,255,255,0.5)" stroke-width="4" stroke-linecap="round"/>
+                     <circle cx="130" cy="140" r="4" fill="rgba(255,255,255,0.5)" />
+                     <line x1="130" y1="140" x2="130" y2="10" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="2,2"/>
+                     <line x1="60" y1="40" x2="280" y2="40" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="2,2"/>
+                     <line x1="130" y1="140" x2="130" y2="175" stroke="#38BDF8" stroke-width="2" stroke-dasharray="3,3"/>
+                     <circle cx="130" cy="175" r="3" fill="#38BDF8"/>
+                     <text x="138" y="165" fill="#38BDF8" font-size="10" font-weight="bold" font-family="Space Grotesk, sans-serif">Bielas</text>
+                     <line x1="130" y1="140" x2="85" y2="40" stroke="#9ED62B" stroke-width="2" stroke-dasharray="3,3"/>
+                     <text x="75" y="95" fill="#9ED62B" font-size="10" font-weight="bold" font-family="Space Grotesk, sans-serif" text-anchor="end">Altura</text>
+                     <line x1="105" y1="25" x2="130" y2="25" stroke="#FBBF24" stroke-width="2"/>
+                     <line x1="105" y1="20" x2="105" y2="45" stroke="#FBBF24" stroke-width="1"/>
+                     <text x="117" y="19" fill="#FBBF24" font-size="9" font-weight="bold" font-family="Space Grotesk, sans-serif" text-anchor="middle">Retroc.</text>
+                     <line x1="105" y1="15" x2="230" y2="15" stroke="#F87171" stroke-width="2"/>
+                     <line x1="230" y1="10" x2="230" y2="58" stroke="#F87171" stroke-width="1"/>
+                     <text x="180" y="11" fill="#F87171" font-size="10" font-weight="bold" font-family="Space Grotesk, sans-serif" text-anchor="middle">Alcance</text>
+                     <line x1="205" y1="58" x2="225" y2="51" stroke="#EC4899" stroke-width="2"/>
+                     <text x="210" y="49" fill="#EC4899" font-size="9" font-weight="bold" font-family="Space Grotesk, sans-serif" text-anchor="end">Potencia</text>
+                     <line x1="210" y1="65" x2="245" y2="65" stroke="rgba(255,255,255,0.3)" stroke-width="1" stroke-dasharray="2,2"/>
+                     <path d="M228,65 A18,18 0 0 0 226,59" fill="none" stroke="#6366F1" stroke-width="2"/>
+                     <text x="232" y="72" fill="#6366F1" font-size="9" font-weight="bold" font-family="Space Grotesk, sans-serif">Ángulo</text>
+                     <line x1="260" y1="40" x2="260" y2="58" stroke="#A855F7" stroke-width="2"/>
+                     <line x1="255" y1="58" x2="270" y2="58" stroke="#A855F7" stroke-width="1"/>
+                     <text x="265" y="53" fill="#A855F7" font-size="10" font-weight="bold" font-family="Space Grotesk, sans-serif">Desnivel</text>
+                  </svg>
+                </div>
+                <div style="display:flex; flex-direction:column; gap: 6px;">
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #38BDF8; font-size:11px;"><strong style="color:#38BDF8">Bielas:</strong> Del centro del eje de pedalier al centro del eje del pedal.</div>
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #9ED62B; font-size:11px;"><strong style="color:#9ED62B">Altura sillín:</strong> Del centro del pedalier a la parte superior del sillín (siguiendo el tubo).</div>
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #FBBF24; font-size:11px;"><strong style="color:#FBBF24">Retroceso:</strong> Distancia horizontal desde la punta del sillín hasta la vertical del eje de pedalier.</div>
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #F87171; font-size:11px;"><strong style="color:#F87171">Alcance (Reach):</strong> Distancia horizontal desde la punta del sillín hasta el centro del manillar.</div>
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #EC4899; font-size:11px;"><strong style="color:#EC4899">Potencia:</strong> Longitud desde el centro del tubo de dirección al centro del manillar.</div>
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #6366F1; font-size:11px;"><strong style="color:#6366F1">Ángulo Potencia:</strong> Inclinación de la potencia respecto a la horizontal (ej. ±6°).</div>
+                  <div style="background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius-sm); border-left: 2px solid #A855F7; font-size:11px;"><strong style="color:#A855F7">Desnivel (Drop):</strong> Diferencia vertical entre la altura del sillín y la del manillar.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field-group"><div class="field-label">Bielas (mm)</div><input type="number" id="m-crank" class="field-input" placeholder="172.5"></div>
+              <div class="field-group"><div class="field-label">Altura sillín (mm)</div><input type="number" id="m-saddle-h" class="field-input" placeholder="BB a sillín"></div>
+            </div>
+            <div class="field-row">
+              <div class="field-group"><div class="field-label">Retroceso sillín (mm)</div><input type="number" id="m-saddle-sb" class="field-input" placeholder="70"></div>
+              <div class="field-group"><div class="field-label">Alcance H (mm)</div><input type="number" id="m-reach" class="field-input" placeholder="sillín-manillar"></div>
+            </div>
+            <div class="field-row">
+              <div class="field-group"><div class="field-label">Desnivel sillín-manillar (mm)</div><input type="number" id="m-drop" class="field-input" placeholder="+ = barras más bajas"></div>
+              <div class="field-group"><div class="field-label">Potencia (mm)</div><input type="number" id="m-stem" class="field-input" placeholder="100"></div>
+            </div>
+            <div class="field-row">
+              <div class="field-group"><div class="field-label">Ángulo potencia (°)</div><input type="number" id="m-stem-angle" class="field-input" placeholder="6"></div>
+              <div class="field-group">
+                <div class="field-label">Disciplina</div>
+                <select id="m-discipline" class="field-select" onchange="if(document.getElementById('manual-results').style.display !== 'none') calcManual()">
+                  <option value="carretera">Carretera</option>
+                  <option value="gravel">Gravel</option>
+                  <option value="mtb">MTB</option>
+                  <option value="aero">Aero / TT</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:12px">
+              <button class="btn-full" onclick="calcManual()" style="flex:2"><i class="fas fa-calculator"></i> Calcular y Diagnosticar</button>
+              <button class="btn-full" onclick="saveMeasurements()" style="flex:1;background:var(--bg-input);border:1px solid var(--border-light);color:var(--text-secondary)"><i class="fas fa-save"></i> Guardar</button>
+            </div>
+
+            <div id="manual-results" style="display:none; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
+              <div class="calc-results" id="calc-results-content" style="margin-top: 0;"></div>
+              <div id="calc-colloquial-report" style="margin-top: 16px;"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// PHOTOS
+// ═══════════════════════════════════════════════════════════
+let photos = [], selIdx = 0;
+
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); loadFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', e => loadFiles(e.target.files));
+
+function loadFiles(files) {
+  Array.from(files).forEach(f => {
+    if (!f.type.startsWith('image/') || photos.length >= 4) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      photos.push({ dataUrl: ev.target.result, name: f.name });
+      renderStrip();
+      selectPhoto(photos.length - 1);
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+function renderStrip() {
+  document.getElementById('photoStrip').innerHTML = photos.map((p, i) => `
+    <div class="photo-thumb ${selIdx === i ? 'active' : ''}" onclick="selectPhoto(${i})">
+      <img src="${p.dataUrl}">
+      <button class="del" onclick="removePhoto(${i});event.stopPropagation()">×</button>
+    </div>`).join('');
+}
+
+function selectPhoto(i) {
+  selIdx = i;
+  renderStrip();
+  loadImageToCanvas(photos[i].dataUrl);
+}
+
+function removePhoto(i) {
+  photos.splice(i, 1);
+  selIdx = Math.max(0, Math.min(selIdx, photos.length - 1));
+  renderStrip();
+  if (photos.length) selectPhoto(selIdx);
+  else clearCanvas();
+}
+
+// ═══════════════════════════════════════════════════════════
+// CANVAS ENGINE
+// ═══════════════════════════════════════════════════════════
+const canvas  = document.getElementById('bioCanvas');
+const ctx     = canvas.getContext('2d');
+const wrapper = document.getElementById('canvasWrapper');
+
+let bioImg    = null;       // current HTMLImageElement
+let imgR      = null;       // { dx, dy, dw, dh } draw region in canvas px
+let editMode  = false;
+let dragging  = null;       // key name being dragged
+let placingIdx = -1;        // index into POINT_ORDER for sequential placement
+
+const POINT_ORDER = ['shoulder','elbow','wrist','hip','knee','ankle','foot_tip'];
+
+// Point storage in canvas px (null = not placed)
+const pts = {};
+POINT_ORDER.forEach(k => pts[k] = null);
+
+const PT_LABELS = {
+  shoulder:'Hombro', elbow:'Codo', wrist:'Muñeca',
+  hip:'Cadera', knee:'Rodilla', ankle:'Tobillo', foot_tip:'Pie'
+};
+
+const PT_COLOR = {
+  shoulder:'#60a5fa', elbow:'#38BDF8', wrist:'#7DD3FC',
+  hip:'#FF6B35', knee:'#22c55e', ankle:'#4ade80', foot_tip:'#facc15'
+};
+
+const SEGS = [
+  { a:'shoulder', b:'elbow',    c:'#38BDF8' },
+  { a:'elbow',    b:'wrist',    c:'#7DD3FC' },
+  { a:'shoulder', b:'hip',      c:'#FF6B35' },
+  { a:'hip',      b:'knee',     c:'#22c55e' },
+  { a:'knee',     b:'ankle',    c:'#4ade80' },
+  { a:'ankle',    b:'foot_tip', c:'#facc15' },
+];
+
+const ANGLE_DEFS = [
+  { key:'knee',     label:'Extensión Rodilla', a:'hip',      b:'knee',     c:'ankle',    opt:[140,150], desc:'PMI — eje BB' },
+  { key:'hip',      label:'Ángulo Cadera',     a:'shoulder', b:'hip',      c:'knee',     opt:[100,115], desc:'Apertura en PMI' },
+  { key:'trunk',    label:'Ángulo Tronco',     a:null,       b:null,       c:null,       opt:[40,55],   desc:'Inclinación tronco' },
+  { key:'elbow',    label:'Ángulo Codo',       a:'shoulder', b:'elbow',    c:'wrist',    opt:[145,165], desc:'Flexión codos' },
+  { key:'ankle',    label:'Ángulo Tobillo',    a:'knee',     b:'ankle',    c:'foot_tip', opt:[100,120], desc:'Tibia-Pie en PMI' },
+  { key:'shoulder', label:'Ángulo Hombro',     a:'hip',      b:'shoulder', c:'elbow',   opt:[85,105],  desc:'Posición hombros' },
+];
+
+// ─── Resize canvas to wrapper ───────────────────────────────
+function resizeCanvas() {
+  const totalW = wrapper.clientWidth || 700;
+  const W = totalW / 2;
+  canvas.width = W;
+  canvas.height = bioImg ? Math.round(W / (bioImg.width / bioImg.height)) : 420;
+  canvas.height = Math.min(canvas.height, 560);
+  updateImgRegion();
+  draw();
+}
+
+function updateImgRegion() {
+  if (!bioImg) { imgR = null; return; }
+  const cW = canvas.width, cH = canvas.height;
+  const imgAR = bioImg.width / bioImg.height;
+  const canAR = cW / cH;
+  let dw, dh, dx, dy;
+  if (imgAR > canAR) {
+    dw = cW; dh = cW / imgAR; dx = 0; dy = (cH - dh) / 2;
+  } else {
+    dh = cH; dw = cH * imgAR; dy = 0; dx = (cW - dw) / 2;
+  }
+  imgR = { dx, dy, dw, dh };
+}
+
+function loadImageToCanvas(dataUrl) {
+  document.getElementById('canvas-placeholder').style.display = 'none';
+  const image = new Image();
+  image.onload = () => {
+    bioImg = image;
+    resizeCanvas();
+    updateAnglesGrid();
+    document.getElementById('anglesSection').style.display = '';
+        if (!editMode) toggleEdit();
+  };
+  image.src = dataUrl;
+}
+
+function clearCanvas() {
+  bioImg = null;
+  imgR   = null;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('canvas-placeholder').style.display = '';
+  document.getElementById('anglesSection').style.display = 'none';
+}
+
+// ─── Draw ───────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Background
+  if (bioImg && imgR) {
+    ctx.drawImage(bioImg, imgR.dx, imgR.dy, imgR.dw, imgR.dh);
+    // Dark overlay for better point visibility in edit mode
+    if (editMode) {
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  // Skeleton lines
+  SEGS.forEach(({ a, b, c }) => {
+    const pa = pts[a], pb = pts[b];
+    if (!pa || !pb) return;
+    ctx.beginPath();
+    ctx.moveTo(pa.x, pa.y);
+    ctx.lineTo(pb.x, pb.y);
+    ctx.strokeStyle = c;
+    ctx.lineWidth   = 3;
+    ctx.globalAlpha = .85;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+
+  // Angle arcs + labels
+  const angles = computeAngles();
+  drawAngleArc(pts.hip,      pts.knee,     pts.ankle,    angles.knee,     '#22c55e');
+  drawAngleArc(pts.shoulder, pts.hip,      pts.knee,     angles.hip,      '#FF6B35');
+  drawAngleArc(pts.shoulder, pts.elbow,    pts.wrist,    angles.elbow,    '#38BDF8');
+  drawAngleArc(pts.knee,     pts.ankle,    pts.foot_tip, angles.ankle,    '#facc15');
+
+  // Trunk angle line
+  if (pts.shoulder && pts.hip) {
+    const dx = pts.hip.x - pts.shoulder.x;
+    const dy = pts.hip.y - pts.shoulder.y;
+    const trunkDeg = angles.trunk;
+    if (trunkDeg !== null) {
+      const mx = (pts.shoulder.x + pts.hip.x) / 2;
+      const my = (pts.shoulder.y + pts.hip.y) / 2;
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.fillStyle = '#FF6B35';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 4;
+      ctx.fillText(trunkDeg + '°', mx + 20, my);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // Points
+  POINT_ORDER.forEach((key, idx) => {
+    const p = pts[key];
+    const isPlacing = editMode && placingIdx === idx;
+
+    // Glow ring in edit mode
+    if (editMode && p) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
+      ctx.fillStyle = PT_COLOR[key] + '30';
+      ctx.fill();
+    }
+
+    if (p) {
+      // Circle
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
+      ctx.fillStyle   = PT_COLOR[key];
+      ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 6;
+      ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Label
+      ctx.font      = 'bold 11px Inter, sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 4;
+      ctx.fillText(PT_LABELS[key], p.x, p.y - 14);
+      ctx.shadowBlur = 0;
+    } else if (isPlacing) {
+      // Show hint cursor circle
+    }
+  });
+
+  updateAnglesGrid();
+}
+
+// ═══════════════════════════════════════════════════════════
+// VIDEO ANALYSIS PANEL
+// ═══════════════════════════════════════════════════════════
+(function initVideoDragDrop() {
+  const zone = document.getElementById('videoDropZone');
+  if (!zone) return;
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('video/')) handleVideoFile(file);
+    else alert('Por favor sube un archivo de video (MP4, MOV...)');
+  });
+})();
+
+function handleVideoSelect(input) {
+  const file = input.files[0];
+  if (file) handleVideoFile(file);
+}
+
+async function handleVideoFile(file) {
+  if (file.size > 50 * 1024 * 1024) { alert('El video no puede superar 50 MB.'); return; }
+  const token = Auth.getToken ? Auth.getToken() : localStorage.getItem('velomind_token');
+  if (!token) { alert('Inicia sesión primero.'); return; }
+
+  document.getElementById('videoUploadArea').style.display   = 'none';
+  document.getElementById('videoLoadingArea').style.display  = 'flex';
+  document.getElementById('videoResultsArea').style.display  = 'none';
+  setVideoStep(1);
+
+  const formData = new FormData();
+  formData.append('video', file);
+
+  // Avanzar pasos visualmente mientras espera el backend (~30-60 s)
+  const t2 = setTimeout(() => setVideoStep(2), 4000);
+  const t3 = setTimeout(() => setVideoStep(3), 12000);
+
+  try {
+    const res = await fetch(`${window.API_URL}/coach/biomechanics-video`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: formData
+    });
+    clearTimeout(t2); clearTimeout(t3);
+    const data = await res.json();
+    if (!res.ok || data.error) { alert(data.error || 'Error al analizar el video.'); resetVideoPanel(); return; }
+    setVideoStep(3);
+    setTimeout(() => showVideoResults(data), 300);
+  } catch(e) {
+    clearTimeout(t2); clearTimeout(t3);
+    alert('Error: ' + e.message);
+    resetVideoPanel();
+  }
+}
+
+function setVideoStep(n) {
+  ['vstep1','vstep2','vstep3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'vstep' + (i + 1 < n ? ' done' : i + 1 === n ? ' active' : '');
+  });
+}
+
+function showVideoResults(data) {
+  document.getElementById('videoLoadingArea').style.display = 'none';
+  document.getElementById('videoResultsArea').style.display = 'flex';
+
+  const da   = data.dynamic_analysis   || {};
+  const diag = data.expert_diagnosis   || {};
+
+  const dynLabels = {
+    hip_stability:       '🍑 Estabilidad de Cadera',
+    knee_tracking:       '🦵 Seguimiento de Rodilla',
+    ankle_technique:     '🦶 Técnica de Tobillo',
+    pedaling_smoothness: '🔄 Suavidad del Pedaleo'
+  };
+
+  let html = '';
+
+  if (diag.summary) {
+    html += `<div class="video-result-card" style="border-color:#1d4ed8;background:rgba(29,78,216,.08)">
+      <h4>Diagnóstico General</h4><p>${diag.summary}</p></div>`;
+  }
+
+  for (const [key, label] of Object.entries(dynLabels)) {
+    if (da[key]) html += `<div class="video-result-card"><h4>${label}</h4><p>${da[key]}</p></div>`;
+  }
+
+  if (diag.red_flags?.length) {
+    html += `<div class="video-section-label" style="color:#f87171">⚠️ Alertas</div>`;
+    diag.red_flags.forEach(f => { html += `<div class="video-red-flag">⚡ ${f}</div>`; });
+  }
+
+  if (diag.recommended_adjustments?.length) {
+    html += `<div class="video-section-label" style="color:#34d399">✅ Ajustes Recomendados</div>`;
+    diag.recommended_adjustments.forEach(adj => {
+      const comp = (adj.component || '').replace(/_/g, ' ');
+      html += `<div class="video-adj-item"><strong>${comp}</strong>: ${adj.action} — ${adj.reason}</div>`;
+    });
+  }
+
+  document.getElementById('videoResultsContent').innerHTML = html || '<p style="color:#64748b;font-size:13px">Sin resultados del análisis.</p>';
+}
+
+function resetVideoPanel() {
+  document.getElementById('videoFileInput').value = '';
+  document.getElementById('videoUploadArea').style.display  = 'flex';
+  document.getElementById('videoLoadingArea').style.display = 'none';
+  document.getElementById('videoResultsArea').style.display = 'none';
+  setVideoStep(0);
+}
+
+function drawAngleArc(pA, pB, pC, angleDeg, color) {
+  if (!pA || !pB || !pC || angleDeg === null) return;
+  const r  = 28;
+  const a1 = Math.atan2(pA.y - pB.y, pA.x - pB.x);
+  const a2 = Math.atan2(pC.y - pB.y, pC.x - pB.x);
+
+  ctx.beginPath();
+  ctx.arc(pB.x, pB.y, r, a1, a2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 2.5;
+  ctx.globalAlpha = .75;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Angle value label
+  let midA = (a1 + a2) / 2;
+  // Ensure label is inside the angle (not on the reflex side)
+  const testX = pB.x + Math.cos(midA) * (r + 18);
+  const testY = pB.y + Math.sin(midA) * (r + 18);
+  ctx.font      = 'bold 13px Inter, sans-serif';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 5;
+  ctx.fillText(angleDeg + '°', testX, testY + 4);
+  ctx.shadowBlur = 0;
+}
+
+// ─── Angle computations ─────────────────────────────────────
+function angle3(pA, pB, pC) {
+  if (!pA || !pB || !pC) return null;
+  const BA = { x: pA.x - pB.x, y: pA.y - pB.y };
+  const BC = { x: pC.x - pB.x, y: pC.y - pB.y };
+  const dot = BA.x * BC.x + BA.y * BC.y;
+  const m   = Math.sqrt(BA.x**2 + BA.y**2) * Math.sqrt(BC.x**2 + BC.y**2);
+  if (!m) return null;
+  return Math.round(Math.acos(Math.max(-1, Math.min(1, dot / m))) * 180 / Math.PI);
+}
+
+function computeAngles() {
+  const trunk = (pts.shoulder && pts.hip)
+    ? Math.round(Math.atan2(
+        Math.abs(pts.hip.y - pts.shoulder.y),
+        Math.abs(pts.hip.x - pts.shoulder.x)
+      ) * 180 / Math.PI)
+    : null;
+  return {
+    knee:     angle3(pts.hip,      pts.knee,     pts.ankle),
+    hip:      angle3(pts.shoulder, pts.hip,      pts.knee),
+    trunk,
+    elbow:    angle3(pts.shoulder, pts.elbow,    pts.wrist),
+    ankle:    angle3(pts.knee,     pts.ankle,    pts.foot_tip),
+    shoulder: angle3(pts.hip,      pts.shoulder, pts.elbow),
+  };
+}
+
+// ─── Angles UI ──────────────────────────────────────────────
+function updateAnglesGrid() {
+  const grid = document.getElementById('anglesGrid');
+  if (!grid) return;
+
+  // Obtener disciplina y objetivo actual para ajustar rangos dinámicos
+  const isManualTab = document.getElementById('tab-manual-content').style.display !== 'none';
+  const obj = isManualTab ? 'rendimiento' : document.getElementById('objective').value;
+
+  // 1. Usar el nuevo motor biomecánico para calcular y validar
+  const result = BiomechanicsUtils.processBiomechanics(pts, obj);
+
+  if (!result.isValid) {
+    grid.innerHTML = '<div style="grid-column: 1 / -1; padding: 20px; text-align: center; color: var(--text-muted);">Coloca todos los puntos en el visor para calcular los ángulos.</div>';
+    document.getElementById('diagSection').style.display = 'none';
+    return;
+  }
+
+  const uiMap = [
+    { key: 'knee_extension', label: 'Extensión Rodilla', ref: result.angles.knee_extension },
+    { key: 'hip_angle',      label: 'Ángulo Cadera',     ref: result.angles.hip_angle },
+    { key: 'trunk_angle',    label: 'Ángulo Tronco',     ref: result.angles.trunk_angle },
+    { key: 'elbow_angle',    label: 'Ángulo Codo',       ref: result.angles.elbow_angle },
+    { key: 'ankle_angle',    label: 'Ángulo Tobillo',    ref: result.angles.ankle_angle }
+  ];
+
+  grid.innerHTML = uiMap.map(item => {
+    const { value, status } = item.ref;
+    const ranges = BiomechanicsUtils.BIKE_FIT_RANGES[obj][item.key];
+    const valDeg = Math.round(value);
+    
+    const st = status === 'ok' ? 'optimal' : (status === 'warning' ? 'warning' : 'bad');
+    const barColor = { optimal:'var(--success)', warning:'var(--warning)', bad:'var(--danger)' }[st];
+    const stLabel = { optimal:'✓ Óptimo', warning:'⚠ Ajustar', bad:'✗ Corregir' }[st];
+    const pct = Math.min(100, Math.max(0, ((valDeg - ranges.min + 15) / (ranges.max - ranges.min + 30)) * 100));
+
+    return `
+      <div class="angle-card ${st}">
+        <div class="ac-label">${item.label}</div>
+        <div class="ac-value ${st}">${valDeg}°</div>
+        <div class="ac-range">Óptimo: ${ranges.min}–${ranges.max}°</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${stLabel}</div>
+        <div class="ac-bar">
+          <div class="ac-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // 2. Mostrar recomendaciones dinámicas siempre que haya puntos válidos
+  const recs = BiomechanicsUtils.getRecommendations(result.angles, obj);
+  document.getElementById('diagSection').style.display = '';
+  document.getElementById('diagBadge').textContent = editMode ? '(Calculando en Tiempo Real)' : '(Análisis Geométrico)';
+  
+  document.getElementById('diagFlags').innerHTML = result.warnings.map(w => 
+    `<div class="flag-item"><i class="fas fa-exclamation-triangle" style="color:var(--warning)"></i> ${w}</div>`
+  ).join('');
+
+  document.getElementById('diagAdj').innerHTML = recs.map(r => `
+    <div class="adj-item">
+      <div class="adj-icon">💡</div>
+      <div>
+        <div class="adj-comp">${r.angle}</div>
+        <div class="adj-reason" style="color:var(--text-primary)">${r.text}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ─── Edit mode & dragging ───────────────────────────────────
+function toggleEdit() {
+  editMode = !editMode;
+  placingIdx = editMode ? getNextUnplaced() : -1;
+  const btn = document.getElementById('editBtn');
+  btn.classList.toggle('active', editMode);
+  btn.innerHTML = editMode
+    ? '<i class="fas fa-check"></i> Listo'
+    : '<i class="fas fa-arrows-alt"></i> Ajustar puntos';
+  canvas.classList.toggle('edit-mode', editMode);
+  document.getElementById('toolbar-hint').textContent = editMode
+    ? 'Arrastra los puntos blancos para ajustar su posición'
+    : '';
+  updatePlacingLabel();
+  draw();
+}
+
+function getNextUnplaced() {
+  return POINT_ORDER.findIndex(k => pts[k] === null);
+}
+
+function updatePlacingLabel() {
+  const el = document.getElementById('placing-label');
+  if (!el) return;
+  if (editMode && placingIdx >= 0) {
+    el.style.display = '';
+    el.textContent = 'Coloca: ' + PT_LABELS[POINT_ORDER[placingIdx]];
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function canvasCoords(e) {
+  const rect  = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const src = e.touches ? (e.touches[0] || e.changedTouches[0]) : e;
+  return {
+    x: (src.clientX - rect.left) * scaleX,
+    y: (src.clientY - rect.top)  * scaleY,
+  };
+}
+
+function hitTest(pos) {
+  const R = 18;
+  for (const key of POINT_ORDER) {
+    const p = pts[key];
+    if (!p) continue;
+    if ((pos.x - p.x) ** 2 + (pos.y - p.y) ** 2 < R * R) return key;
+  }
+  return null;
+}
+
+canvas.addEventListener('mousedown', e => {
+  if (!editMode) return;
+  e.preventDefault();
+  const pos  = canvasCoords(e);
+  const hit  = hitTest(pos);
+  if (hit) {
+    dragging = hit;
+  } else if (placingIdx >= 0) {
+    // Place next unset point
+    const key = POINT_ORDER[placingIdx];
+    pts[key]  = pos;
+    placingIdx = getNextUnplaced();
+    updatePlacingLabel();
+    draw();
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  e.preventDefault();
+  pts[dragging] = canvasCoords(e);
+  draw();
+});
+
+canvas.addEventListener('mouseup', () => { dragging = null; });
+canvas.addEventListener('mouseleave', () => { dragging = null; });
+
+canvas.addEventListener('touchstart', e => {
+  if (!editMode) return; e.preventDefault();
+  const pos = canvasCoords(e);
+  const hit = hitTest(pos);
+  if (hit) dragging = hit;
+  else if (placingIdx >= 0) {
+    const key = POINT_ORDER[placingIdx]; pts[key] = pos;
+    placingIdx = getNextUnplaced(); updatePlacingLabel(); draw();
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  if (!dragging) return; e.preventDefault();
+  pts[dragging] = canvasCoords(e); draw();
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => { dragging = null; });
+
+function resetPoints() {
+  POINT_ORDER.forEach(k => pts[k] = null);
+  placingIdx = editMode ? 0 : -1;
+  updatePlacingLabel();
+  draw();
+}
+
+// ─── Load default skeleton positions ───────────────────────
+function loadDefaults() {
+  if (!bioImg) {
+    // If no image, create a dark placeholder canvas
+    canvas.width  = wrapper.clientWidth || 700;
+    canvas.height = 480;
+    ctx.fillStyle = '#080D1C';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '16px Inter, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,.3)';
+    ctx.textAlign = 'center';
+    ctx.fillText('← Sube una foto lateral del ciclista', canvas.width / 2, canvas.height / 2);
+    imgR = { dx: 0, dy: 0, dw: canvas.width, dh: canvas.height };
+    document.getElementById('canvas-placeholder').style.display = 'none';
+    document.getElementById('anglesSection').style.display = '';
+  }
+  const W = canvas.width, H = canvas.height;
+  const { dx, dy, dw, dh } = imgR || { dx: 0, dy: 0, dw: W, dh: H };
+
+  // Typical lateral road cyclist position (normalized for left-side view)
+  const npts = {
+    shoulder: { x: .42, y: .25 },
+    elbow:    { x: .52, y: .37 },
+    wrist:    { x: .48, y: .46 },
+    hip:      { x: .48, y: .47 },
+    knee:     { x: .51, y: .64 },
+    ankle:    { x: .54, y: .82 },
+    foot_tip: { x: .59, y: .86 },
+  };
+  POINT_ORDER.forEach(k => {
+    pts[k] = { x: dx + npts[k].x * dw, y: dy + npts[k].y * dh };
+  });
+  draw();
+  document.getElementById('anglesSection').style.display = '';
+  updateAnglesGrid();
+  if (!editMode) toggleEdit();
+}
+
+// ─── Load AI keypoints ──────────────────────────────────────
+function loadAIKeypoints(normalized) {
+  if (!imgR) return;
+  const { dx, dy, dw, dh } = imgR;
+  POINT_ORDER.forEach(k => {
+    const v = normalized[k];
+    if (v && typeof v.x === 'number') {
+      pts[k] = { x: dx + v.x * dw, y: dy + v.y * dh };
+    }
+  });
+  draw();
+  document.getElementById('anglesSection').style.display = '';
+  updateAnglesGrid();
+}
+
+// ─── Resize observer ────────────────────────────────────────
+new ResizeObserver(() => { resizeCanvas(); }).observe(wrapper);
+resizeCanvas();
+
+// ═══════════════════════════════════════════════════════════
+// MOVENT POSE DETECTION (client-side, precise)
+// ═══════════════════════════════════════════════════════════
+let _poseDetector = null;
+
+async function _loadPoseLibs() {
+  if (window.poseDetection) return true;
+  const load = (src) => new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = src;
+    s.onload = () => res(true); s.onerror = () => rej();
+    document.head.appendChild(s);
+  });
+  try {
+    await load('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.22.0/dist/tf-core.min.js');
+    await load('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.22.0/dist/tf-backend-webgl.min.js');
+    await load('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.22.0/dist/tf-converter.min.js');
+    await load('https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js');
+    return true;
+  } catch { return false; }
+}
+
+async function detectWithMoveNet(imgEl) {
+  try {
+    const ok = await _loadPoseLibs();
+    if (!ok || !window.poseDetection) return null;
+
+    if (!_poseDetector) {
+      await tf.setBackend('webgl');
+      await tf.ready();
+      _poseDetector = await poseDetection.createDetector(
+        poseDetection.SupportedModels.MoveNet,
+        { modelType: poseDetection.movenet.modelType.SINGLEPOSE_THUNDER }
+      );
+    }
+
+    const poses = await _poseDetector.estimatePoses(imgEl);
+    if (!poses.length) return null;
+
+    const kps = poses[0].keypoints;
+    const W = imgEl.naturalWidth || imgEl.width;
+    const H = imgEl.naturalHeight || imgEl.height;
+
+    // MoveNet indices: 5=L.shoulder 6=R.shoulder 7=L.elbow 8=R.elbow
+    //   9=L.wrist 10=R.wrist 11=L.hip 12=R.hip 13=L.knee 14=R.knee
+    //   15=L.ankle 16=R.ankle
+    const LEFT  = { shoulder:5, elbow:7, wrist:9,  hip:11, knee:13, ankle:15 };
+    const RIGHT = { shoulder:6, elbow:8, wrist:10, hip:12, knee:14, ankle:16 };
+
+    const score = (side) => Object.values(side).reduce((s,i) => s + (kps[i]?.score||0), 0);
+    const sideMap = score(LEFT) >= score(RIGHT) ? LEFT : RIGHT;
+
+    const result = {};
+    for (const [joint, idx] of Object.entries(sideMap)) {
+      const kp = kps[idx];
+      if (kp && kp.score > 0.15) result[joint] = { x: kp.x / W, y: kp.y / H };
+    }
+
+    // Estimar foot_tip desde la dirección rodilla→tobillo
+    if (result.ankle && result.knee) {
+      const dx = result.ankle.x - result.knee.x;
+      const dy = result.ankle.y - result.knee.y;
+      const len = Math.sqrt(dx*dx + dy*dy) || 1;
+      result.foot_tip = {
+        x: Math.max(0, Math.min(1, result.ankle.x + (dx/len)*0.05)),
+        y: Math.max(0, Math.min(1, result.ankle.y + (dy/len)*0.03))
+      };
+    }
+
+    return Object.keys(result).length >= 5 ? result : null;
+  } catch(e) {
+    console.warn('[MoveNet]', e.message);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI ANALYSIS
+// ═══════════════════════════════════════════════════════════
+async function analyzeAI() {
+  const token = Auth.getToken ? Auth.getToken() : localStorage.getItem('velomind_token');
+  if (!token) { alert('Inicia sesión primero'); return; }
+  if (photos.length === 0) { alert('Sube al menos una foto'); return; }
+
+  // Detectar si el usuario ya ha colocado puntos (manualmente o por análisis previo)
+  const pointsAlreadyPlaced = POINT_ORDER.some(k => pts[k] !== null);
+
+  showLoad('Detectando articulaciones...');
+  document.getElementById('analyzeBtn').disabled = true;
+
+  // ── 1. MoveNet: detección precisa en el navegador ──
+  if (!pointsAlreadyPlaced && bioImg) {
+    try {
+      showLoad('Cargando modelo de detección...');
+      const moveNetPts = await detectWithMoveNet(bioImg);
+      if (moveNetPts) {
+        hideLoad();
+        loadAIKeypoints(moveNetPts);
+        document.getElementById('analyzeBtn').disabled = false;
+        document.getElementById('exampleBtn').style.display = 'none';
+        return;
+      }
+    } catch(e) { console.warn('[MoveNet] fallback to AI:', e.message); }
+  }
+
+  showLoad('Analizando con IA...');
+
+  const rider = {
+    discipline: document.getElementById('discipline').value,
+    objective:  document.getElementById('objective').value,
+    pain:       document.getElementById('painArea').value,
+    heightCm:   document.getElementById('m-height').value,
+    inseamCm:   document.getElementById('m-inseam').value
+  };
+
+  // Normalizar puntos actuales para enviarlos si se solicita refinamiento
+  let user_points = {};
+  if (imgR) {
+    POINT_ORDER.forEach(k => {
+      if (pts[k]) {
+        user_points[k] = { 
+          x: (pts[k].x - imgR.dx) / imgR.dw, 
+          y: (pts[k].y - imgR.dy) / imgR.dh 
+        };
+      }
+    });
+  }
+
+  try {
+    const res = await fetch(`${window.API_URL}/coach/biomechanics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ 
+        photos: photos.map(p => ({ dataUrl: p.dataUrl, view: 'lateral_izq' })), 
+        rider,
+        user_points: Object.keys(user_points).length ? user_points : undefined
+      }),
+    });
+    const data = await res.json();
+    hideLoad();
+
+    if (data.error) { alert(data.error); return; }
+
+    // Solo cargar puntos si NO teníamos puntos previos (análisis inicial)
+    if (!pointsAlreadyPlaced) {
+      const hasValidPoints = data.points && Object.keys(data.points).length >= 5;
+      if (hasValidPoints) {
+        loadAIKeypoints(data.points);
+      } else {
+        alert('La IA no pudo detectar las articulaciones con claridad en esta foto. Por favor, colócalas manualmente.');
+        if (!editMode) toggleEdit();
+      }
+    }
+    
+    document.getElementById('exampleBtn').style.display = 'none';
+
+  } catch (e) {
+    hideLoad();
+    alert('Error al analizar: ' + e.message);
+  } finally {
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+function showLoad(txt) {
+  document.getElementById('loadText').textContent = txt;
+  document.getElementById('loadOverlay').classList.add('active');
+}
+function hideLoad() {
+  document.getElementById('loadOverlay').classList.remove('active');
+}
+
+// ═══════════════════════════════════════════════════════════
+// MANUAL CALCULATOR
+// ═══════════════════════════════════════════════════════════
+function calcManual() {
+  const height   = +document.getElementById('m-height').value;
+  const inseam   = +document.getElementById('m-inseam').value;
+  const torso    = +document.getElementById('m-torso').value;
+  const arm      = +document.getElementById('m-arm').value;
+  const femur    = +document.getElementById('m-femur').value;
+  const tibia    = +document.getElementById('m-tibia').value;
+  const crank    = +document.getElementById('m-crank').value   || 172.5;
+  const saddleH  = +document.getElementById('m-saddle-h').value;
+  const saddleSB = +document.getElementById('m-saddle-sb').value;
+  const reach    = +document.getElementById('m-reach').value;
+  const drop     = +document.getElementById('m-drop').value;
+  const stem     = +document.getElementById('m-stem').value;
+  const disc     = document.getElementById('m-discipline').value;
+
+  if (!inseam) { alert('Introduce la medida de entrepierna'); return; }
+
+  const rows = [];
+
+  // ── Altura sillín ──────────────────────────────────────────
+  const sh_lemond   = Math.round(inseam * 8.83);
+  const sh_adjusted = Math.round(sh_lemond + (crank - 170) * 0.9);
+  rows.push({
+    label: 'Altura sillín (LeMond)',
+    formula: 'Entrepierna × 0.883',
+    rec: sh_lemond + ' mm',
+    val: saddleH ? saddleH + ' mm' : null,
+    status: saddleH ? diffStatus(saddleH, sh_lemond, 5) : 'neutral',
+    note: `Ajustado para bielas ${crank}mm: ${sh_adjusted} mm`,
+  });
+
+  // ── Ángulo rodilla estimado ────────────────────────────────
+  if (saddleH) {
+    const diff   = saddleH - sh_lemond;
+    let kneeEst  = Math.round(147 + diff * 0.7);
+    kneeEst      = Math.max(115, Math.min(175, kneeEst));
+    const kSt    = kneeEst >= 140 && kneeEst <= 155 ? 'good' : (kneeEst < 130 || kneeEst > 160 ? 'bad' : 'warn');
+    rows.push({
+      label: 'Ángulo rodilla estimado (PMI)',
+      formula: 'Estimación geométrica',
+      rec: '140 – 155°',
+      val: kneeEst + '°',
+      status: kSt,
+      note: diff >= 0 ? `Sillín ${diff}mm por encima de LeMond` : `Sillín ${Math.abs(diff)}mm por debajo de LeMond`,
+    });
+  }
+
+  // ── Retroceso sillín ──────────────────────────────────────
+  const sbMin = Math.round(inseam * 0.18 * 10);
+  const sbMax = Math.round(inseam * 0.24 * 10);
+  const sbRec = Math.round(inseam * 0.21 * 10);
+  rows.push({
+    label: 'Retroceso sillín (KOPS)',
+    formula: 'Entrepierna × 0.21',
+    rec: `${sbMin} – ${sbMax} mm`,
+    val: saddleSB ? saddleSB + ' mm' : null,
+    status: saddleSB ? (saddleSB >= sbMin && saddleSB <= sbMax ? 'good' : 'warn') : 'neutral',
+    note: `Recomendado: ${sbRec} mm`,
+  });
+
+  // ── Alcance ────────────────────────────────────────────────
+  if (torso && arm) {
+    const reachMin = Math.round((torso + arm * 0.7) * 0.88);
+    const reachMax = Math.round((torso + arm * 0.7) * 0.98);
+    rows.push({
+      label: 'Alcance sillín–manillar',
+      formula: '(Torso + Brazo × 0.7) × 0.88–0.98',
+      rec: `${reachMin} – ${reachMax} mm`,
+      val: reach ? reach + ' mm' : null,
+      status: reach ? (reach >= reachMin && reach <= reachMax ? 'good' : (reach < reachMin - 20 || reach > reachMax + 20 ? 'bad' : 'warn')) : 'neutral',
+      note: disc === 'aero' ? 'Triatlón: alcance hasta +50mm más agresivo' : '',
+    });
+  } else if (height) {
+    const reachMin = Math.round(height * 0.43 * 10);
+    const reachMax = Math.round(height * 0.48 * 10);
+    rows.push({
+      label: 'Alcance estimado (por altura)',
+      formula: 'Altura × 0.43–0.48',
+      rec: `${reachMin} – ${reachMax} mm`,
+      val: reach ? reach + ' mm' : null,
+      status: reach ? (reach >= reachMin && reach <= reachMax ? 'good' : 'warn') : 'neutral',
+      note: 'Usa torso + brazos para mayor precisión',
+    });
+  }
+
+  // ── Ángulo tronco (desnivel + alcance) ─────────────────────
+  if (reach && drop !== undefined && drop !== 0) {
+    const trunkEst = Math.round(Math.atan2(Math.abs(drop), reach) * 180 / Math.PI);
+    const TRUNK_OPT = { carretera: [40,50], gravel: [45,55], mtb: [55,70], aero: [20,35] };
+    const opt = TRUNK_OPT[disc] || [40,50];
+    rows.push({
+      label: 'Ángulo tronco estimado',
+      formula: 'arctan(desnivel / alcance)',
+      rec: `${opt[0]} – ${opt[1]}° (${disc})`,
+      val: trunkEst + '°',
+      status: trunkEst >= opt[0] && trunkEst <= opt[1] ? 'good' : 'warn',
+      note: '',
+    });
+  }
+
+  // ── Stack / Reach (si tenemos reach) ─────────────────────
+  if (reach && saddleH && drop !== undefined) {
+    const stackApprox = saddleH - (drop || 0);
+    const sr = (stackApprox / reach).toFixed(2);
+    const srSt = sr >= 1.30 && sr <= 1.65 ? 'good' : 'warn';
+    rows.push({
+      label: 'Ratio Stack / Reach (aprox.)',
+      formula: '(Altura sillín – Desnivel) / Alcance',
+      rec: '1.30 – 1.65',
+      val: sr,
+      status: srSt,
+      note: 'Menor = más agresivo · Mayor = más erguido',
+    });
+  }
+
+  // ── Fémur / entrepierna ────────────────────────────────────
+  if (femur && inseam) {
+    const ratio = (femur / inseam * 100).toFixed(1);
+    const note  = ratio > 52
+      ? 'Fémur largo → más retroceso de sillín'
+      : ratio < 46
+      ? 'Fémur corto → sillín más adelantado posible'
+      : 'Proporción neutral';
+    rows.push({
+      label: 'Ratio Fémur / Entrepierna',
+      formula: 'Fémur / Entrepierna × 100',
+      rec: '47 – 52 %',
+      val: ratio + ' %',
+      status: ratio >= 47 && ratio <= 52 ? 'good' : 'warn',
+      note,
+    });
+  }
+
+  // Render
+  document.getElementById('manual-results').style.display = '';
+  document.getElementById('calc-results-content').innerHTML = rows.map(r => `
+    <div class="calc-row">
+      <div>
+        <div class="calc-label">${r.label}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${r.formula}</div>
+        ${r.note ? `<div style="font-size:10px;color:var(--accent);margin-top:2px">${r.note}</div>` : ''}
+      </div>
+      <div style="text-align:right">
+        ${r.val ? `<div class="calc-value ${r.status === 'good' ? 'good' : r.status === 'bad' ? 'bad' : r.status === 'warn' ? 'warn' : ''}">${r.val}</div>` : ''}
+        <div class="calc-rec">${r.rec}</div>
+      </div>
+    </div>`).join('');
+    
+  // ── Generar informe coloquial ──
+  let consejos = [];
+  let faltanDatos = false;
+  
+  if (saddleH) {
+    const diffH = saddleH - sh_lemond;
+    if (diffH < -5) consejos.push(`🚲 <strong>Sube el sillín:</strong> Lo llevas unos ${Math.abs(diffH)} mm bajo. Subirlo te dará más potencia y protegerá la parte frontal de tu rodilla.`);
+    else if (diffH > 5) consejos.push(`🚲 <strong>Baja el sillín:</strong> Lo llevas unos ${diffH} mm alto. Bájalo para evitar que la cadera balancee al pedalear y proteger la zona posterior de la rodilla.`);
+  } else faltanDatos = true;
+  
+  if (saddleSB && inseam) {
+    if (saddleSB < sbMin) consejos.push(`📏 <strong>Atrasa el sillín:</strong> Vas muy adelantado. Échalo para atrás unos ${sbMin - saddleSB} mm para equilibrar el peso y no sobrecargar tanto las manos.`);
+    else if (saddleSB > sbMax) consejos.push(`📏 <strong>Adelanta el sillín:</strong> Vas muy retrasado. Acércalo unos ${saddleSB - sbMax} mm para mejorar tu eficiencia de pedaleo.`);
+  } else faltanDatos = true;
+  
+  let actualReachMin = 0, actualReachMax = 0;
+  if (torso && arm) { actualReachMin = Math.round((torso + arm * 0.7) * 0.88); actualReachMax = Math.round((torso + arm * 0.7) * 0.98); }
+  else if (height)  { actualReachMin = Math.round(height * 0.43 * 10); actualReachMax = Math.round(height * 0.48 * 10); }
+  
+  if (reach && actualReachMin && actualReachMax) {
+    if (reach < actualReachMin - 10) consejos.push(`👐 <strong>Alarga el alcance:</strong> Vas un poco encogido. Necesitas estirarte unos ${actualReachMin - reach} mm (prueba con una potencia más larga).`);
+    else if (reach > actualReachMax + 10) consejos.push(`👐 <strong>Acorta el alcance:</strong> Vas demasiado estirado. Acércate unos ${reach - actualReachMax} mm para relajar los hombros, el cuello y las lumbares.`);
+  } else faltanDatos = true;
+  
+  let reportHTML = '';
+  if (consejos.length > 0) {
+    reportHTML = `
+      <div style="background:var(--bg-input); border:1px solid var(--border); border-left:3px solid var(--primary); border-radius:var(--radius-md); padding:16px;">
+        <div style="font-size:13px; font-weight:700; color:var(--text-primary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+          <i class="fas fa-comment-dots" style="color:var(--primary)"></i> Lo que te dice el Biomecánico:
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:13px; color:var(--text-secondary); line-height:1.5;">
+          ${consejos.map(c => `<div>${c}</div>`).join('')}
+        </div>
+      </div>`;
+  } else if (!faltanDatos) {
+    reportHTML = `<div style="background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.2); border-left:3px solid var(--success); border-radius:var(--radius-md); padding:16px;"><div style="font-size:13px; font-weight:700; color:var(--success); margin-bottom:4px; display:flex; align-items:center; gap:8px;"><i class="fas fa-check-circle"></i> ¡Clavado!</div><div style="font-size:13px; color:var(--text-secondary); line-height:1.5;">Tus medidas actuales cuadran perfectamente con la teoría. Si no tienes dolores, ¡no toques nada y a dar pedales!</div></div>`;
+  } else {
+    reportHTML = `<div style="background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; text-align:center;"><div style="font-size:12px; color:var(--text-muted); line-height: 1.5;"><i class="fas fa-info-circle"></i> Introduce las <strong>Medidas de la Bicicleta</strong> (sillín, alcance...) para recibir un diagnóstico personalizado de lo que debes ajustar.</div></div>`;
+  }
+  
+  document.getElementById('calc-colloquial-report').innerHTML = reportHTML;
+}
+
+function diffStatus(actual, rec, tolerance) {
+  const diff = Math.abs(actual - rec);
+  if (diff <= tolerance)      return 'good';
+  if (diff <= tolerance * 3)  return 'warn';
+  return 'bad';
+}
+
+// ═══════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════
+function toggleGuide(contentId, iconId) {
+  const c = document.getElementById(contentId);
+  const i = document.getElementById(iconId);
+  if (c.style.display === 'none') {
+    c.style.display = 'block';
+    i.style.transform = 'rotate(180deg)';
+  } else {
+    c.style.display = 'none';
+    i.style.transform = 'rotate(0deg)';
+  }
+}
+
+function setTab(tab) {
+  document.getElementById('tab-ai-content').style.display     = tab === 'ai'     ? '' : 'none';
+  document.getElementById('tab-manual-content').style.display = tab === 'manual' ? '' : 'none';
+  document.getElementById('tab-ai-btn').classList.toggle('active',     tab === 'ai');
+  document.getElementById('tab-manual-btn').classList.toggle('active', tab === 'manual');
+  if (tab === 'ai') draw(); // Forzar actualización de rangos al cambiar de pestaña
+}
+
+function updateAIDisciplineWarning() {
+  const badge = document.getElementById('diagBadge');
+  if (document.getElementById('diagSection').style.display !== 'none' && badge) {
+    badge.innerHTML = '<span style="color:var(--warning);font-weight:700">⚠ Disciplina cambiada. Los ajustes podrían variar.</span>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════════════════════════
+const BIO_MEASURES_KEY = 'cyclocoach_bio_measures';
+
+async function saveMeasurements() {
+  const measures = {
+    weight:     document.getElementById('m-weight').value,
+    height:     document.getElementById('m-height').value,
+    inseam:     document.getElementById('m-inseam').value,
+    torso:      document.getElementById('m-torso').value,
+    arm:        document.getElementById('m-arm').value,
+    femur:      document.getElementById('m-femur').value,
+    tibia:      document.getElementById('m-tibia').value,
+    crank:      document.getElementById('m-crank').value,
+    saddleH:    document.getElementById('m-saddle-h').value,
+    saddleSB:   document.getElementById('m-saddle-sb').value,
+    reach:      document.getElementById('m-reach').value,
+    drop:       document.getElementById('m-drop').value,
+    stem:       document.getElementById('m-stem').value,
+    stemAngle:  document.getElementById('m-stem-angle').value,
+    discipline: document.getElementById('m-discipline').value
+  };
+
+  // Copia local inmediata
+  localStorage.setItem(BIO_MEASURES_KEY, JSON.stringify(measures));
+
+  // Sincronizar campos clave con perfil del atleta
+  const profileUpdates = {};
+  if (measures.height) profileUpdates.height = parseFloat(measures.height);
+  if (measures.weight) profileUpdates.weight = parseFloat(measures.weight);
+  if (Object.keys(profileUpdates).length && window.BackendSync) {
+    BackendSync.saveProfile(profileUpdates).catch(() => {});
+  }
+  if (measures.weight && window.BackendSync) {
+    BackendSync.saveWeight({ date: new Date().toISOString().split('T')[0], weight: parseFloat(measures.weight) }).catch(() => {});
+  }
+
+  // Guardar medidas completas en Supabase
+  let saved = false;
+  try {
+    const r = await fetch(`${window.API_URL}/plans/biomechanics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
+      body: JSON.stringify({ measurements: measures }),
+    });
+    if (r.ok) saved = true;
+    else console.warn('[biomechanics]', (await r.json()).error);
+  } catch(e) {
+    console.warn('[biomechanics] Sin conexión:', e.message);
+  }
+
+  const msg = saved
+    ? '✅ Medidas guardadas en la nube correctamente.'
+    : '⚠️ Medidas guardadas localmente (sin conexión al servidor).';
+  alert(msg);
+}
+
+function applyMeasures(saved) {
+  if (!saved) return;
+  document.getElementById('m-weight').value     = saved.weight     || '';
+  document.getElementById('m-height').value     = saved.height     || '';
+  document.getElementById('m-inseam').value     = saved.inseam     || '';
+  document.getElementById('m-torso').value      = saved.torso      || '';
+  document.getElementById('m-arm').value        = saved.arm        || '';
+  document.getElementById('m-femur').value      = saved.femur      || '';
+  document.getElementById('m-tibia').value      = saved.tibia      || '';
+  document.getElementById('m-crank').value      = saved.crank      || '';
+  document.getElementById('m-saddle-h').value   = saved.saddleH    || '';
+  document.getElementById('m-saddle-sb').value  = saved.saddleSB   || '';
+  document.getElementById('m-reach').value      = saved.reach      || '';
+  document.getElementById('m-drop').value       = saved.drop       || '';
+  document.getElementById('m-stem').value       = saved.stem       || '';
+  document.getElementById('m-stem-angle').value = saved.stemAngle  || '';
+  document.getElementById('m-discipline').value = saved.discipline || 'carretera';
+  if (saved.inseam) calcManual();
+}
+
+async function loadMeasurements() {
+  // 1. Intentar cargar desde Supabase (fuente autoritativa)
+  try {
+    const r = await fetch(`${window.API_URL}/plans/biomechanics`, {
+      headers: Auth.getHeaders()
+    });
+    if (r.ok) {
+      const data = await r.json();
+      if (data?.measurements) {
+        applyMeasures(data.measurements);
+        localStorage.setItem(BIO_MEASURES_KEY, JSON.stringify(data.measurements));
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // 2. Fallback a localStorage
+  try {
+    const saved = JSON.parse(localStorage.getItem(BIO_MEASURES_KEY));
+    if (saved) { applyMeasures(saved); return; }
+  } catch(e) {}
+
+  // 3. Último recurso: datos del perfil del atleta
+  if (window.AppState && AppState.athlete) {
+    document.getElementById('m-height').value = AppState.athlete.height || '';
+    document.getElementById('m-weight').value = AppState.athlete.weight || '';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════
+Auth.init().then(user => {
+  if (!user) return;
+  document.getElementById('athlete-name').textContent = user.name  || 'Usuario';
+  document.getElementById('athlete-avatar').textContent = (user.name || 'U')[0].toUpperCase();
+  document.getElementById('athlete-ftp').textContent  = 'FTP: ' + (user.ftp || '--') + ' W';
+
+  if (window.AppState) AppState.init().then(() => loadMeasurements());
+  else loadMeasurements();
+});
+</script>
+</body>
+</html>

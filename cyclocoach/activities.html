@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actividades — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <style>
+    .activity-detail-panel { position: fixed; right: -500px; top: 0; height: 100vh; width: 480px; background: var(--bg-card); border-left: 1px solid var(--border); z-index: 200; transition: right 0.3s ease; overflow-y: auto; padding: 24px; }
+    .activity-detail-panel.open { right: 0; }
+    .panel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 199; }
+    .panel-overlay.show { display: block; }
+    .upload-progress { background: var(--bg-input); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
+    .file-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .drag-active .upload-zone { border-color: var(--primary); background: rgba(255,107,53,0.08); }
+  </style>
+  <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "/api";</script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo2.png" alt="VeloMind" style="width:100%; max-width:140px; height:auto; display:block; margin:0 auto">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="analytics.html" class="nav-item">
+      <i class="fas fa-chart-bar"></i> Métricas
+    </a>
+    <a href="activities.html" class="nav-item active">
+      <i class="fas fa-history"></i> Actividades
+    </a>
+
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item">
+      <i class="fas fa-calendar-check"></i> Mi Plan
+    </a>
+    <a href="nutrition.html" class="nav-item">
+      <i class="fas fa-apple-alt"></i> Nutrición
+    </a>
+    <a href="body-weight.html" class="nav-item">
+      <i class="fas fa-weight"></i> Peso y W/Kg
+    </a>
+
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="mecanica-general.html" class="nav-item"><i class="fas fa-wrench"></i> Mecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
+
+    <div class="nav-section-title">Equipación</div>
+    <a href="kit-designer.html" class="nav-item"><i class="fas fa-tshirt"></i> Diseñador Ropa</a>
+
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item">
+      <i class="fas fa-plug"></i> Integraciones
+    </a>
+    <a href="index.html" class="nav-item">
+      <i class="fas fa-user-cog"></i> Mi Perfil
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-name">Cargando...</div>
+        <div class="ftp" id="athlete-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1><i class="fas fa-upload" style="color:var(--primary)"></i> Actividades</h1>
+      <p>Solo aparecen aqui las actividades reales que hayas importado (GPX/TCX/CSV) o sincronizado desde Strava. Las sesiones del plan de entrenamiento NO aparecen aqui.</p>
+    </div>
+    <div class="header-actions" style="display:flex;gap:10px;flex-wrap:wrap">
+      <div id="act-sync-btn"></div>
+      <span class="badge badge-blue" id="total-count">0 actividades</span>
+    </div>
+  </header>
+
+  <div class="page-body">
+    <div class="alert alert-info" style="margin-bottom:20px">
+      <i class="fas fa-info-circle"></i>
+      <div>
+        <strong>No ves tus actividades?</strong> Importa tus archivos GPX/TCX desde Garmin Connect, Wahoo o Polar, o <a href="integrations.html" style="color:inherit;font-weight:700">conecta Strava</a> para sincronizar automaticamente. Si aparecen datos de prueba que no son tuyos, usa el boton <strong>Limpiar todo</strong>.
+      </div>
+    </div>
+
+    <div class="card mb-6" id="upload-card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-cloud-upload-alt" style="color:var(--accent)"></i> Importar actividades</div>
+      </div>
+      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" style="padding: 32px 16px; min-height: auto; flex-direction: column; gap: 12px; justify-content: center; align-items: center; text-align: center;">
+        <input type="file" id="file-input" multiple accept=".tcx,.gpx,.csv" style="display:none">
+        <div class="upload-icon" style="font-size: 32px; margin: 0; width: auto; height: auto; color: var(--primary);"><i class="fas fa-cloud-upload-alt"></i></div>
+        <div>
+          <h3 style="font-size: 16px; margin: 0">Haz clic o arrastra archivos para importar</h3>
+          <p style="font-size: 12px; margin: 4px 0 0; color: var(--text-muted)">Compatible con Garmin, Wahoo, Strava y más</p>
+        </div>
+        <div class="supported-formats" style="margin: 4px 0 0; display: flex; gap: 8px; justify-content: center;">
+          <span class="format-badge" style="font-size: 9px; padding: 2px 6px">GPX</span>
+          <span class="format-badge" style="font-size: 9px; padding: 2px 6px">TCX</span>
+          <span class="format-badge" style="font-size: 9px; padding: 2px 6px">CSV</span>
+        </div>
+      </div>
+      <div class="alert alert-info" style="margin: 16px 20px; justify-content: center; text-align: center; align-items: center;">
+        <i class="fas fa-info-circle"></i>
+        <div>Para compatibilidad completa, usa <strong>GPX/TCX/CSV</strong>. En Garmin Connect, el formato recomendado es <strong>TCX</strong> (incluye potencia, FC y cadencia).</div>
+      </div>
+      <div id="upload-progress-list" style="margin-top:16px"></div>
+      <div style="margin: 16px 0; text-align: center;">
+        <button class="btn btn-ghost btn-sm" onclick="toggleManualEntry()">
+          <i class="fas fa-keyboard"></i> O introduce una actividad manualmente
+        </button>
+      </div>
+      <div id="manual-form" class="hidden manual-entry-form">
+        <div class="manual-entry-title"><i class="fas fa-keyboard"></i> Entrada manual</div>
+        <div class="manual-entry-grid">
+          <div class="form-group"><label class="form-label form-label--xs">Nombre</label><input type="text" id="m-name" class="form-input form-input--sm" placeholder="Rodaje Z2"></div>
+          <div class="form-group"><label class="form-label form-label--xs">Fecha</label><input type="date" id="m-date" class="form-input form-input--sm"></div>
+          <div class="form-group"><label class="form-label form-label--xs">Duración (min)</label><input type="number" id="m-duration" class="form-input form-input--sm" placeholder="90"></div>
+          <div class="form-group"><label class="form-label form-label--xs">Pot. Media (W)</label><input type="number" id="m-power" class="form-input form-input--sm" placeholder="175"></div>
+          <div class="form-group"><label class="form-label form-label--xs">FC Media (bpm)</label><input type="number" id="m-hr" class="form-input form-input--sm" placeholder="138"></div>
+          <div class="form-group"><label class="form-label form-label--xs">Distancia (km)</label><input type="number" id="m-dist" class="form-input form-input--sm" placeholder="50"></div>
+        </div>
+        <div class="manual-entry-actions">
+          <button class="btn btn-primary btn-sm" onclick="saveManualActivity()"><i class="fas fa-save"></i> Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="filter-bar">
+        <div class="filter-bar__search">
+          <i class="fas fa-search filter-bar__search-icon"></i>
+          <input type="text" id="search-input" class="form-input" placeholder="Buscar actividades..." oninput="filterActivities()">
+        </div>
+        <select id="filter-month" class="form-select filter-bar__select" onchange="filterActivities()">
+          <option value="">Todos los meses</option>
+        </select>
+        <select id="sort-select" class="form-select filter-bar__select" onchange="filterActivities()">
+          <option value="date-desc">Mas reciente</option>
+          <option value="date-asc">Mas antiguo</option>
+          <option value="tss-desc">Mayor TSS</option>
+          <option value="power-desc">Mayor potencia</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="clearAll()" id="clear-btn" style="display:none"><i class="fas fa-trash"></i> Limpiar todo</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-list" style="color:var(--text-secondary)"></i> Mis Actividades</div>
+        <div id="activity-count" style="font-size:13px;color:var(--text-muted)">0 actividades</div>
+      </div>
+      <div id="activities-list">
+        <div class="empty-state">
+          <i class="fas fa-folder-open"></i>
+          <p>No hay actividades importadas</p>
+          <small>Sube tu primer archivo GPX, TCX o CSV para comenzar</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="panel-overlay" id="panel-overlay" onclick="closePanel()"></div>
+<div class="activity-detail-panel" id="detail-panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700">Detalle Actividad</h2>
+    <button onclick="closePanel()" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
+  </div>
+  <div id="panel-content"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/app.js"></script>
+<script src="js/backend-sync.js"></script>
+<script>
+let allActivities = [];
+let zoneChartInst = null;
+
+async function initActivities() {
+  await AppState.init();
+  renderAthleteSidebar();
+  await loadActivities();
+  renderMonthFilter();
+}
+
+function renderAthleteSidebar() {
+  const a = AppState.athlete;
+  if (!a) return;
+  const name = a.name || 'Atleta';
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+  document.getElementById('athlete-avatar').textContent = initials;
+  document.getElementById('athlete-name').textContent = name;
+  document.getElementById('athlete-ftp').textContent = 'FTP: ' + (a.ftp || '--') + ' W';
+}
+
+async function loadActivities() {
+  if (typeof BackendSync !== 'undefined') {
+    await BackendSync.loadActivities();
+  }
+  AppState.activities = AppState.activities.filter(a => {
+    const id = String(a.id || '');
+    const isDemo = /^(strava|garmin)_\d{4}-\d{2}-\d{2}_/i.test(id);
+    if(isDemo) console.info('[Activities] Eliminando actividad demo:', id);
+    return !isDemo;
+  });
+  allActivities = [...AppState.activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+  renderActivities(allActivities);
+  document.getElementById('total-count').textContent = allActivities.length + ' actividades';
+  if (allActivities.length > 0) {
+    document.getElementById('clear-btn').style.display = 'flex';
+  }
+}
+
+function renderMonthFilter() {
+  const months = [...new Set(allActivities.map(a => a.date?.substring(0, 7)))].sort().reverse();
+  const sel = document.getElementById('filter-month');
+  months.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    const d = new Date(m + '-01');
+    opt.textContent = d.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
+    sel.appendChild(opt);
+  });
+}
+
+function filterActivities() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const month = document.getElementById('filter-month').value;
+  const sort = document.getElementById('sort-select').value;
+  let filtered = allActivities.filter(a => {
+    const matchQ = !q || (a.name || '').toLowerCase().includes(q) || (a.date || '').includes(q);
+    const matchMonth = !month || (a.date || '').startsWith(month);
+    return matchQ && matchMonth;
+  });
+  filtered.sort((a, b) => {
+    if (sort === 'date-asc') return new Date(a.date) - new Date(b.date);
+    if (sort === 'tss-desc') return (b.tss || 0) - (a.tss || 0);
+    if (sort === 'power-desc') return (b.avg_power || 0) - (a.avg_power || 0);
+    return new Date(b.date) - new Date(a.date);
+  });
+  renderActivities(filtered);
+}
+
+function renderActivities(activities) {
+  const container = document.getElementById('activities-list');
+  document.getElementById('activity-count').textContent = activities.length + ' actividades';
+  if (!activities.length) {
+    container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No se encontraron actividades</p></div>';
+    return;
+  }
+  const ftp = AppState.athlete?.ftp || 200;
+  container.innerHTML = '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Actividad</th><th>Fecha</th><th>Duracion</th><th>Distancia</th><th>Pot. Media</th><th>NP</th><th>IF</th><th>FC Media</th><th>Cad.</th><th>Desnivel</th><th>TSS</th><th>kcal</th><th></th></tr></thead><tbody>' + activities.map(a => {
+    const zone = Utils.getPowerZone(a.avg_power, ftp);
+    const tssColor = (a.tss > 100) ? 'var(--accent-red)' : (a.tss > 60) ? 'var(--primary)' : 'var(--accent-yellow)';
+    const sid = a.strava_id || (a.id?.startsWith('strava_') ? a.id.replace('strava_', '') : null);
+    const rowClick = sid ? 'onclick="window.open(\'https://www.strava.com/activities/' + sid + '\',\'_blank\')" style="cursor:pointer"' : 'onclick="showActivityDetail(\'' + a.id + '\')" style="cursor:pointer"';
+    return '<tr ' + rowClick + '><td><div style="display:flex;align-items:center;gap:6px"><div class="value-bold" style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (a.name || 'Entrenamiento') + '">' + (a.name || 'Entrenamiento') + '</div>' + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.7"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '') + '</div><div style="display:flex;gap:4px;margin-top:2px"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + ';font-size:9px">' + (zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue" style="font-size:9px">' + (a.source || 'CSV') + '</span></div></td><td style="white-space:nowrap">' + Utils.formatDate(a.date) + '</td><td class="value-bold">' + Utils.formatDuration(a.duration) + '</td><td>' + Utils.formatDistance(a.distance) + '</td><td>' + (a.avg_power ? '<span style="color:var(--primary);font-weight:600">' + a.avg_power + 'W</span>' : '--') + '</td><td>' + (a.np ? '<span style="color:var(--primary-light);font-weight:600">' + a.np + 'W</span>' : '--') + '</td><td style="color:var(--text-secondary)">' + (a.if_value ? a.if_value.toFixed(2) : '--') + '</td><td>' + (a.avg_hr ? a.avg_hr + ' bpm' : '--') + '</td><td>' + (a.avg_cadence ? a.avg_cadence + ' rpm' : '--') + '</td><td>' + (a.elevation ? '↑' + a.elevation + 'm' : '--') + '</td><td><span style="font-weight:700;color:' + tssColor + '">' + (a.tss || '--') + '</span></td><td style="color:var(--text-muted)">' + (a.calories ? Math.round(a.calories) + 'kcal' : '--') + '</td><td style="white-space:nowrap"><button onclick="event.stopPropagation();showActivityDetail(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="padding:4px 8px" title="Detalle"><i class="fas fa-info-circle"></i></button><button onclick="event.stopPropagation();deleteActivity(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="color:var(--accent-red);padding:4px 8px" title="Eliminar"><i class="fas fa-trash"></i></button></td></tr>';
+  }).join('') + '</tbody></table></div>';
+}
+
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+fileInput.setAttribute('accept', '.tcx,.gpx,.csv');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); processFiles(Array.from(e.dataTransfer.files)); });
+fileInput.addEventListener('change', e => { processFiles(Array.from(e.target.files)); fileInput.value = ''; });
+
+async function processFiles(files) {
+  const validFiles = files.filter(f => /\.(tcx|gpx|csv)$/i.test(f.name));
+  if (!validFiles.length) { showToast('Formato no soportado. Usa GPX, TCX o CSV.', 'warning'); return; }
+  for (const file of validFiles) {
+    const progressId = 'prog-' + Date.now();
+    addProgressItem(progressId, file.name, 'Analizando...');
+    try {
+      const activity = await FileParser.parse(file);
+      if (!activity) { updateProgressItem(progressId, 'No se pudo leer el archivo', 'error'); continue; }
+      const saved = saveActivity(activity);
+      if (saved) {
+        updateProgressItem(progressId, saved.name + ' - TSS: ' + (saved.tss || '?') + ', Potencia: ' + (saved.avg_power || '?') + 'W', 'success');
+        allActivities = [...AppState.activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+        renderActivities(allActivities);
+        document.getElementById('total-count').textContent = allActivities.length + ' actividades';
+        document.getElementById('clear-btn').style.display = 'flex';
+      } else { updateProgressItem(progressId, 'Error al guardar', 'error'); }
+    } catch(err) { updateProgressItem(progressId, 'Error: ' + err.message, 'error'); }
+  }
+}
+
+function saveActivity(activity) {
+  const ftp = AppState.athlete?.ftp || 200;
+  if ((!activity.tss || activity.tss === 0) && activity.np && activity.duration) {
+    const IF = activity.np / ftp;
+    activity.tss = Math.round((activity.duration * activity.np * IF) / (ftp * 3600) * 100);
+    activity.if_value = Math.round(IF * 100) / 100;
+  }
+  if (!activity.id) activity.id = 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  AppState.saveActivity(activity);
+  AppState.pmcData = window.PMC.compute(AppState.activities, 120);
+  if (typeof BackendSync !== 'undefined') { BackendSync.saveActivity(activity).catch(() => {}); }
+  return activity;
+}
+
+function addProgressItem(id, name, status) {
+  const ext = name.split('.').pop().toUpperCase();
+  const colors = { TCX: '#00D4FF', GPX: '#00E676', CSV: '#FFD600' };
+  const list = document.getElementById('upload-progress-list');
+  const item = document.createElement('div');
+  item.className = 'upload-progress';
+  item.id = id;
+  item.innerHTML = '<div class="file-icon" style="background:' + (colors[ext] || '#FF6B35') + '22;color:' + (colors[ext] || '#FF6B35') + '"><i class="fas fa-file"></i></div><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:2px">' + name + '</div><div class="status-text" style="font-size:12px;color:var(--text-muted)">' + status + '</div></div><div class="spinner"><i class="fas fa-spinner spinning" style="color:var(--primary)"></i></div>';
+  list.appendChild(item);
+}
+
+function updateProgressItem(id, status, type) {
+  const item = document.getElementById(id);
+  if (!item) return;
+  const colors = { success: 'var(--accent-green)', error: 'var(--accent-red)', warning: 'var(--accent-yellow)' };
+  item.querySelector('.status-text').textContent = status;
+  item.querySelector('.status-text').style.color = colors[type] || 'var(--text-muted)';
+  item.querySelector('.spinner').innerHTML = '';
+}
+
+function toggleManualEntry() {
+  const form = document.getElementById('manual-form');
+  form.classList.toggle('hidden');
+  if (!form.classList.contains('hidden')) { document.getElementById('m-date').value = new Date().toISOString().substring(0, 10); }
+}
+
+async function saveManualActivity() {
+  const ftp = AppState.athlete?.ftp || 200;
+  const durationSec = (parseFloat(document.getElementById('m-duration').value) || 0) * 60;
+  const avgPower = parseFloat(document.getElementById('m-power').value) || 0;
+  const np = avgPower;
+  const ifValue = ftp > 0 ? Math.round((np / ftp) * 100) / 100 : 0;
+  const tss = ftp > 0 && durationSec > 0 ? Math.round((durationSec / 3600) * Math.pow(ifValue, 2) * 100) : 0;
+  const activity = {
+    date: document.getElementById('m-date').value,
+    name: document.getElementById('m-name').value || 'Entrenamiento Manual',
+    type: 'cycling',
+    duration: durationSec,
+    distance: (parseFloat(document.getElementById('m-dist').value) || 0) * 1000,
+    tss, avg_power: avgPower, np, if_value: ifValue,
+    avg_hr: parseFloat(document.getElementById('m-hr').value) || 0,
+    avg_cadence: 0, elevation: 0, calories: 0,
+    source: 'Manual',
+  };
+  const saved = saveActivity(activity);
+  if (saved) {
+    allActivities = [...AppState.activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+    renderActivities(allActivities);
+    document.getElementById('manual-form').classList.add('hidden');
+    showToast('Actividad "' + saved.name + '" guardada - TSS: ' + saved.tss, 'success');
+    document.getElementById('total-count').textContent = allActivities.length + ' actividades';
+  }
+}
+
+function showActivityDetail(actId) {
+  const act = allActivities.find(a => a.id === actId);
+  if (!act) return;
+  const ftp = AppState.athlete?.ftp || 200;
+  const weight = AppState.athlete?.weight || 70;
+  const zone = Utils.getPowerZone(act.avg_power, ftp);
+  document.getElementById('panel-content').innerHTML = '<div style="margin-bottom:20px"><h3 style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:4px">' + act.name + '</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="badge badge-blue">' + act.source + '</span><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + '">' + (zone?.name || 'Z?') + '</span><span style="font-size:12px;color:var(--text-muted)">' + Utils.formatDate(act.date) + '</span></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px"><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">Duracion</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--text-primary)">' + Utils.formatDuration(act.duration) + '</div></div><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">Distancia</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--text-primary)">' + Utils.formatDistance(act.distance) + '</div></div><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">Desnivel</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--accent-yellow)">' + (act.elevation ? '↑' + act.elevation + 'm' : '--') + '</div></div><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">Pot. Media</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--primary)">' + Utils.formatPower(act.avg_power) + '</div></div><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">NP</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--primary-light)">' + Utils.formatPower(act.np) + '</div></div><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">TSS</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--accent-yellow)">' + (act.tss || '--') + '</div></div></div><div style="display:flex;gap:8px;margin-top:4px">' + (act.strava_id ? '<a href="https://www.strava.com/activities/' + act.strava_id + '" target="_blank" class="btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(252,76,2,0.1);color:#FC4C02;border:1px solid rgba(252,76,2,0.3);text-decoration:none">Ver en Strava</a>' : '') + '<button onclick="deleteActivity(\'' + act.id + '\')" class="btn" style="flex:1;background:rgba(255,61,0,0.1);color:var(--accent-red);border:1px solid rgba(255,61,0,0.2)"><i class="fas fa-trash"></i> Eliminar</button></div>';
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('panel-overlay').classList.add('show');
+}
+
+function closePanel() { document.getElementById('detail-panel').classList.remove('open'); document.getElementById('panel-overlay').classList.remove('show'); }
+
+function deleteActivity(id) {
+  if (!confirm('Eliminar esta actividad?')) return;
+  AppState.removeActivity(id);
+  if (typeof BackendSync !== 'undefined') BackendSync.deleteActivity(id).catch(() => {});
+  allActivities = allActivities.filter(a => a.id !== id);
+  renderActivities(allActivities);
+  closePanel();
+  document.getElementById('total-count').textContent = allActivities.length + ' actividades';
+}
+
+async function clearAll() {
+  if (!confirm('Eliminar TODAS las actividades? Esta accion no se puede deshacer.')) return;
+  try {
+    const res = await fetch(window.API_URL + '/activities/all', {
+      method: 'DELETE',
+      headers: Auth.getHeaders()
+    });
+    if (!res.ok) throw new Error('Error al borrar');
+  } catch(e) { console.error(e); }
+  localStorage.removeItem('velomind_activities');
+  AppState.activities = [];
+  AppState.pmcData = [];
+  allActivities = [];
+  renderActivities([]);
+  document.getElementById('total-count').textContent = '0 actividades';
+  document.getElementById('clear-btn').style.display = 'none';
+  showToast('Todas las actividades eliminadas', 'success');
+}
+
+function showToast(msg, type = 'info') {
+  const colors = { success: 'var(--accent-green)', warning: 'var(--accent-yellow)', error: 'var(--accent-red)', info: 'var(--accent)' };
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--bg-card);border:1px solid ' + colors[type] + ';color:' + colors[type] + ';padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.4);max-width:400px';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+initActivities();
+
+(function() {
+  const wrap = document.getElementById('act-sync-btn');
+  if (!wrap) return;
+  const strava = localStorage.getItem('velomind_strava_connected') === '1';
+  const garmin = localStorage.getItem('velomind_garmin_connected') === '1';
+  if (strava) {
+    wrap.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="syncFromProvider(\'strava\')" style="display:flex;align-items:center;gap:6px"><i class="fas fa-sync-alt" style="color:#FC4C02"></i> Importar desde Strava</button>';
+  } else if (garmin) {
+    wrap.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="syncFromProvider(\'garmin\')" style="display:flex;align-items:center;gap:6px"><i class="fas fa-sync-alt" style="color:#007AC7"></i> Importar desde Garmin</button>';
+  }
+})();
+
+async function syncFromProvider(provider) {
+  const btn = document.querySelector('#act-sync-btn button');
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...'; btn.disabled = true; }
+  try {
+    const result = await BackendSync.syncStrava((msg) => { if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + msg; });
+    allActivities = [...AppState.activities].sort((a,b) => new Date(b.date)-new Date(a.date));
+    renderActivities(allActivities);
+    document.getElementById('total-count').textContent = allActivities.length + ' actividades';
+    if (btn) { btn.innerHTML = '<i class="fas fa-check" style="color:#00c882"></i> ' + (result.synced||'?') + ' importadas'; }
+  } catch(e) { if (btn) btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error: ' + e.message; }
+  setTimeout(() => { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt" style="color:#FC4C02"></i> Importar desde Strava'; } }, 3000);
+}
+</script>
+</body>
+</html>

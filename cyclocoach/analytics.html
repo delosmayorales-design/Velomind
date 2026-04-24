@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Métricas — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.css">
+  <script>window.API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : '/api';</script>
+  <style>
+    .delta-wrap { display:flex; align-items:center; gap:6px; margin-top:5px; flex-wrap:wrap; }
+    .delta-pill {
+      display:inline-flex; align-items:center; gap:4px;
+      padding:2px 8px; border-radius:20px;
+      font-size:12px; font-weight:700; white-space:nowrap;
+    }
+    .delta-pill.up   { background:rgba(16,185,129,.15); color:#10B981; border:1px solid rgba(16,185,129,.3); }
+    .delta-pill.down { background:rgba(239,68,68,.15);  color:#EF4444; border:1px solid rgba(239,68,68,.3); }
+    .delta-pill.neu  { background:rgba(156,163,175,.1); color:#9CA3AF; border:1px solid rgba(156,163,175,.2); }
+    .delta-period { font-size:10px; color:var(--text-muted); white-space:nowrap; }
+    
+    /* Asegurar que los mensajes de 'Sin datos' no cubran toda la pantalla */
+    .chart-wrap-lg, .chart-wrap-md { position: relative !important; width: 100% !important; }
+    .card { position: relative !important; }
+  </style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo2.png" alt="VeloMind" style="width:120px;margin:0 auto;display:block">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="analytics.html" class="nav-item active"><i class="fas fa-chart-bar"></i> Métricas</a>
+    <a href="activities.html" class="nav-item"><i class="fas fa-upload"></i> Actividades</a>
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item"><i class="fas fa-calendar-check"></i> Mi Plan</a>
+    <a href="nutrition.html" class="nav-item"><i class="fas fa-apple-alt"></i> Nutrición</a>
+    <a href="body-weight.html" class="nav-item"><i class="fas fa-weight"></i> Peso y W/Kg</a>
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="mecanica-general.html" class="nav-item"><i class="fas fa-wrench"></i> Mecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
+    <div class="nav-section-title">Equipación</div>
+    <a href="kit-designer.html" class="nav-item"><i class="fas fa-tshirt"></i> Diseñador Ropa</a>
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="name">Cargando...</div>
+        <div class="ftp" id="ftp">FTP: --</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1><i class="fas fa-chart-bar" style="color:var(--accent)"></i> Métricas</h1>
+      <p id="data-status" style="font-size:12px;color:var(--text-muted);margin:0">Cargando...</p>
+    </div>
+    <div class="header-actions">
+      <button onclick="toggleHelp()" class="btn btn-secondary btn-sm" title="¿Qué significa cada métrica?"><i class="fas fa-question-circle"></i> Ayuda</button>
+      <button id="btn-recalc" onclick="recalculate()" class="btn btn-secondary btn-sm">⟳ Actualizar</button>
+      <select id="period" onchange="render()" class="header-select">
+        <option value="30">30 días</option>
+        <option value="60">60 días</option>
+        <option value="90" selected>90 días</option>
+        <option value="180">6 meses</option>
+        <option value="365">1 año</option>
+        <option value="9999">Todo</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="page-body">
+
+    <!-- ESTADO VACÍO: Cuando no hay datos -->
+    <div id="metrics-empty-state" class="card" style="display:none; padding: 80px 20px; text-align: center; border: 1px dashed var(--border); margin-bottom: 24px;">
+      <i class="fas fa-chart-line" style="font-size: 52px; color: var(--text-muted); margin-bottom: 20px; opacity: 0.4;"></i>
+      <h2 style="font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 800; color: var(--text-primary); margin-bottom: 12px;">Sin datos de rendimiento</h2>
+      <p style="color: var(--text-muted); max-width: 480px; margin: 0 auto 32px; font-size: 15px; line-height: 1.6;">VeloMind necesita analizar tus actividades reales para calcular tu estado de forma (CTL/ATL), zonas de potencia y récords personales.</p>
+      <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+        <a href="integrations.html" class="btn btn-primary" style="padding: 12px 24px"><i class="fab fa-strava"></i> Conectar con Strava</a>
+        <a href="activities.html" class="btn btn-secondary" style="padding: 12px 24px"><i class="fas fa-upload"></i> Subir GPX/TCX</a>
+      </div>
+    </div>
+    
+    <div id="metrics-content">
+      <!-- PANEL AYUDA -->
+      <div id="help-panel" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <strong style="font-size:15px"><i class="fas fa-info-circle" style="color:var(--accent)"></i> Guía rápida de métricas</strong>
+        <button onclick="toggleHelp()" class="btn btn-secondary btn-sm">Cerrar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;font-size:13px">
+        <div style="padding:12px;background:var(--bg-input);border-radius:8px">
+          <strong style="color:#3B82F6"><i class="fas fa-brain"></i> CTL — Fitness (Carga Crónica)</strong>
+          <p style="margin:6px 0 0;color:var(--text-muted)">Media ponderada del TSS de los últimos <strong>42 días</strong>. Indica tu nivel de forma aeróbica acumulada. Sube despacio (semanas) y baja despacio. Un CTL alto = muchas semanas de trabajo consistente.</p>
+        </div>
+        <div style="padding:12px;background:var(--bg-input);border-radius:8px">
+          <strong style="color:#EF4444"><i class="fas fa-fire"></i> ATL — Fatiga (Carga Aguda)</strong>
+          <p style="margin:6px 0 0;color:var(--text-muted)">Media ponderada del TSS de los últimos <strong>7 días</strong>. Refleja cuánto has entrenado esta semana. Sube y baja rápido. Si está muy alto respecto al CTL, necesitas descanso.</p>
+        </div>
+        <div style="padding:12px;background:var(--bg-input);border-radius:8px">
+          <strong style="color:#10B981"><i class="fas fa-balance-scale"></i> TSB — Forma (Balance)</strong>
+          <p style="margin:6px 0 0;color:var(--text-muted)">TSB = CTL − ATL. Si es <strong>positivo</strong> (>5) estás fresco y listo para rendir. Si es <strong>negativo</strong> acumulas carga. El rango óptimo para competir es entre +5 y +25.</p>
+        </div>
+        <div style="padding:12px;background:var(--bg-input);border-radius:8px">
+          <strong style="color:#F59E0B"><i class="fas fa-bolt"></i> FTP — Umbral de Potencia Funcional</strong>
+          <p style="margin:6px 0 0;color:var(--text-muted)">Potencia máxima que puedes mantener durante <strong>~60 minutos</strong>. Es la referencia para calcular todas las zonas de entrenamiento. Los W/kg te indican tu rendimiento relativo al peso corporal.</p>
+        </div>
+        <div style="padding:12px;background:var(--bg-input);border-radius:8px">
+          <strong><i class="fas fa-chart-area"></i> TSS — Training Stress Score</strong>
+          <p style="margin:6px 0 0;color:var(--text-muted)">Puntuación de carga de cada sesión. <strong>100 TSS</strong> = 1 hora al FTP exacto. Una salida Z2 de 2h ≈ 80-100 TSS. Un intervalo de 1h dura ≈ 80-110 TSS. Guía: &lt;60 fácil · 60-150 medio · &gt;150 duro.</p>
+        </div>
+        <div style="padding:12px;background:var(--bg-input);border-radius:8px">
+          <strong><i class="fas fa-layer-group"></i> Distribución de Zonas</strong>
+          <p style="margin:6px 0 0;color:var(--text-muted)">Tiempo total en cada zona de potencia (Z1-Z7). Una distribución saludable tiene la mayor parte en Z2 (resistencia aeróbica). Las zonas se calculan como % de tu FTP.</p>
+        </div>
+        <div style="padding:12px;background:var(--bg-input);border-radius:8px">
+          <strong><i class="fas fa-trophy"></i> Mejores Esfuerzos (NP)</strong>
+          <p style="margin:6px 0 0;color:var(--text-muted)"><strong>NP (Normalized Power)</strong> es la potencia "efectiva" de una sesión, teniendo en cuenta las variaciones de intensidad. Es mejor indicador que la media. Aquí se muestra el mejor NP alcanzado según la duración del esfuerzo.</p>
+        </div>
+        <div style="padding:12px;background:var(--bg-input);border-radius:8px">
+          <strong><i class="fas fa-chart-pie"></i> Volumen e Intensidad</strong>
+          <p style="margin:6px 0 0;color:var(--text-muted)">Resumen del periodo seleccionado: horas totales, kilómetros, desnivel, TSS acumulado, potencia normalizada media (NP) e IF medio. El <strong>IF (Intensity Factor)</strong> = NP÷FTP, indica cuán exigentes fueron las sesiones (1.0 = al FTP).</p>
+        </div>
+      </div>
+  </div>
+
+      <!-- ROW 1: PMC Cards -->
+      <div class="metrics-grid mb-6" style="grid-template-columns:repeat(4,1fr)">
+        <div class="metric-card ctl-card">
+          <div class="metric-label"><i class="fas fa-brain"></i> Fitness (CTL)</div>
+          <div class="metric-value ctl" id="ctl">--</div>
+          <div class="metric-change" id="ctl-trend">Carga crónica 42d</div>
+        </div>
+        <div class="metric-card atl-card">
+          <div class="metric-label"><i class="fas fa-fire"></i> Fatiga (ATL)</div>
+          <div class="metric-value atl" id="atl">--</div>
+          <div class="metric-change" id="atl-trend">Carga aguda 7d</div>
+        </div>
+        <div class="metric-card tsb-card">
+          <div class="metric-label"><i class="fas fa-balance-scale"></i> Forma (TSB)</div>
+          <div class="metric-value tsb" id="tsb">--</div>
+          <div class="metric-change" id="tsb-trend">CTL − ATL</div>
+          <div class="badge mt-4" id="form-badge">--</div>
+        </div>
+        <div class="metric-card ftp-card">
+          <div class="metric-label"><i class="fas fa-bolt"></i> FTP</div>
+          <div class="metric-value ftp" id="ftp-val">--</div>
+          <div class="metric-change" id="wkg">-- W/kg</div>
+        </div>
+      </div>
+
+      <!-- ROW 1b: Resumen semana actual -->
+      <div class="week-card mb-6" id="weekCard">
+        <div class="week-card-header">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <i class="fas fa-calendar-week" style="color:var(--accent)"></i>
+              <span class="wc-title">Esta Semana</span>
+            </div>
+            <span id="ws-date-range" class="wc-range"></span>
+          </div>
+          <div id="ws-day-dots" class="wc-days"></div>
+        </div>
+
+        <div class="wc-grid">
+          <div class="wc-item wc-featured">
+            <div class="wc-val" id="ws-tss">--</div>
+            <div class="wc-lbl">TSS</div>
+            <div class="wc-delta" id="ws-tss-delta"></div>
+          </div>
+          <div class="wc-item">
+            <div class="wc-val" id="ws-hours">--</div>
+            <div class="wc-lbl">Horas</div>
+          </div>
+          <div class="wc-item">
+            <div class="wc-val" id="ws-km">--</div>
+            <div class="wc-lbl">km</div>
+          </div>
+          <div class="wc-item">
+            <div class="wc-val" id="ws-elev">--</div>
+            <div class="wc-lbl">Desnivel m↑</div>
+          </div>
+          <div class="wc-item">
+            <div class="wc-val" id="ws-sessions">--</div>
+            <div class="wc-lbl">Salidas</div>
+          </div>
+          <div class="wc-item">
+            <div class="wc-val wc-blue" id="ws-np">--</div>
+            <div class="wc-lbl">NP medio</div>
+          </div>
+          <div class="wc-item">
+            <div class="wc-val wc-orange" id="ws-if">--</div>
+            <div class="wc-lbl">IF</div>
+          </div>
+          <div class="wc-item">
+            <div class="wc-val wc-red" id="ws-hr">--</div>
+            <div class="wc-lbl">FC media</div>
+          </div>
+          <div class="wc-item">
+            <div class="wc-val" id="ws-kj">--</div>
+            <div class="wc-lbl">Energía kJ</div>
+          </div>
+        </div>
+
+        <div id="ws-tss-bar-wrap" style="padding:0 16px 14px;display:none">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+            <span style="font-size:10px;color:var(--text-muted);font-weight:600">Progreso TSS vs objetivo semanal</span>
+            <span id="ws-tss-pct" style="font-size:10px;color:var(--text-muted)"></span>
+          </div>
+          <div style="height:5px;background:var(--bg);border-radius:4px;overflow:hidden">
+            <div id="ws-tss-bar" style="height:100%;border-radius:4px;width:0%;transition:width .7s ease"></div>
+          </div>
+        </div>
+      </div>
+      <style>
+        .week-card { background:linear-gradient(135deg,#0e1628 0%,#0d1117 100%); border:1px solid var(--border); border-radius:14px; overflow:hidden; position:relative; }
+        .week-card::before { content:''; position:absolute; top:0;left:0;right:0;height:2px; background:linear-gradient(90deg,var(--accent),#3b82f6,#8b5cf6); }
+        .week-card-header { display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;flex-wrap:wrap;gap:8px; }
+        .wc-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted); }
+        .wc-range { font-size:11px;color:var(--text-muted);opacity:.7; }
+        .wc-days { display:flex;gap:5px;align-items:center; }
+        .wc-day { display:flex;flex-direction:column;align-items:center;gap:3px; }
+        .wc-day-lbl { font-size:9px;color:#334155;text-transform:uppercase;font-weight:700; }
+        .wc-day-dot { width:9px;height:9px;border-radius:50%;background:#1e293b; transition:all .2s; }
+        .wc-day-dot.has-act { background:var(--accent);box-shadow:0 0 6px var(--accent)44; }
+        .wc-day-dot.is-today { border:2px solid #3b82f6;background:transparent; }
+        .wc-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:1px;background:var(--border);border-top:1px solid var(--border); }
+        .wc-item { background:var(--bg-card);padding:13px 10px;text-align:center; }
+        .wc-item.wc-featured { background:linear-gradient(135deg,rgba(158,214,43,.07),rgba(158,214,43,.02)); }
+        .wc-val { font-size:20px;font-weight:800;color:var(--text);line-height:1;margin-bottom:4px;font-variant-numeric:tabular-nums; }
+        .wc-val.wc-blue { color:#3b82f6; }
+        .wc-val.wc-orange { color:#f59e0b; }
+        .wc-val.wc-red { color:#ef4444; }
+        .wc-lbl { font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted); }
+        .wc-delta { font-size:9px;margin-top:3px;font-weight:700; }
+        .wc-delta.up { color:#34d399; }
+        .wc-delta.dn { color:#f87171; }
+      </style>
+
+    <!-- ROW 2: PMC Chart -->
+    <div class="card mb-6">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-chart-area"></i> Performance Management Chart</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="badge" style="background:rgba(59,130,246,0.12);color:#3B82F6;border:1px solid rgba(59,130,246,0.3)">● CTL Fitness</span>
+          <span class="badge" style="background:rgba(239,68,68,0.12);color:#EF4444;border:1px solid rgba(239,68,68,0.3)">● ATL Fatiga</span>
+          <span class="badge" style="background:rgba(16,185,129,0.12);color:#10B981;border:1px solid rgba(16,185,129,0.3)">-- TSB Forma</span>
+        </div>
+      </div>
+      <div class="chart-wrap-lg"><canvas id="pmc-canvas"></canvas></div>
+    </div>
+
+    <!-- ROW 3: Weekly TSS + Zones -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-calendar-week"></i> Carga Semanal (TSS)</div>
+          <span class="badge" id="avg-weekly-tss">-- TSS/sem</span>
+        </div>
+        <div class="chart-wrap-md"><canvas id="tss-canvas"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-layer-group"></i> Distribución Zonas</div>
+          <span class="badge" id="zone-ftp-badge">FTP: --</span>
+        </div>
+        <div style="padding:0 16px 4px;font-size:10px" id="zone-quality-label"></div>
+        <div class="chart-wrap-md"><canvas id="zones-canvas"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ROW 4: Best Efforts + Volume -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-trophy"></i> Mejores Esfuerzos</div>
+          <span class="badge">NP por duración</span>
+        </div>
+        <div id="best-efforts"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-chart-pie"></i> Volumen e Intensidad</div>
+          <span id="period-label" class="badge"></span>
+        </div>
+        <div id="volume-stats"></div>
+      </div>
+    </div>
+
+    <!-- ROW 5: Power Timeline -->
+    <div class="card mb-6">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-bolt"></i> Potencia por Sesión</div>
+        <span id="power-chart-ftp-badge" class="badge" style="background:rgba(239,68,68,0.15);color:#EF4444"></span>
+      </div>
+      <div class="chart-wrap-md"><canvas id="power-canvas"></canvas></div>
+    </div>
+
+    <!-- ROW 5b: Curva de Potencia -->
+    <div id="power-curve-section" class="card mb-6 hidden">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-chart-line" style="color:#C4EF44"></i> Curva de Potencia</div>
+        <span id="power-ftp-label" class="badge" style="background:rgba(196,239,68,0.1);color:#C4EF44;border:1px solid rgba(196,239,68,0.25)"></span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div style="height:200px;position:relative;align-self:start"><canvas id="power-curve-chart"></canvas></div>
+        <div style="overflow-x:auto">
+          <table id="power-table" style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr>
+                <th style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Dur.</th>
+                <th style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Potencia</th>
+                <th style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">W/kg</th>
+                <th style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">% FTP</th>
+                <th style="font-size:10px;padding:6px 10px;border-bottom:1px solid var(--border);min-width:60px"></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 6: Kilojulios -->
+    <div class="card mb-6">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-fire" style="color:#F59E0B"></i> Trabajo — Kilojulios por semana</div>
+        <div class="d-flex gap-8">
+          <span class="badge badge-blue" id="kj-total-label"></span>
+        </div>
+      </div>
+      <div class="chart-wrap-md"><canvas id="kj-canvas"></canvas></div>
+    </div>
+
+    <!-- ROW 7: Mis Zonas -->
+    <div class="card mb-6">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-sliders-h"></i> Mis Zonas de Entrenamiento</div>
+        <button onclick="autoEstimateZones()" class="btn btn-secondary btn-sm" id="btn-auto-zones"><i class="fas fa-magic"></i> Auto-calcular desde Strava</button>
+      </div>
+      <div id="zones-info-bar" style="display:none;padding:10px 16px;background:rgba(59,130,246,0.08);border-radius:8px;font-size:12px;color:var(--text-muted);margin-bottom:16px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="zones-tables">
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)"><i class="fas fa-bolt" style="color:#F59E0B"></i> Zonas de Potencia (Coggan)</div>
+          <div id="power-zones-table"></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Basado en tu FTP. Usa <em>Auto-calcular desde Strava</em> para actualizar.</div>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)"><i class="fas fa-heartbeat" style="color:#EF4444"></i> Zonas de Frecuencia Cardíaca (Friel)</div>
+          <div id="hr-zones-table"></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Basado en LTHR (Umbral Láctico FC). Usa <em>Auto-calcular desde Strava</em> para actualizar.</div>
+        </div>
+    </div></div>
+    </div>
+
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/backend-sync.js"></script>
+<script>
+
+// ─── STATE ────────────────────────────────────────────────────
+let state = { activities: [], pmc: [], athlete: null, isDemo: false };
+let charts = {};
+
+// ─── UTILITIES ────────────────────────────────────────────────
+function setStatus(msg) {
+  const el = document.getElementById('data-status');
+  if (el) el.textContent = msg;
+}
+
+function getFormStatus(tsb) {
+  if (tsb > 25)  return { text: 'Pico de Forma',   color: '#10B981' };
+  if (tsb > 10)  return { text: 'Fresco',          color: '#3B82F6' };
+  if (tsb > -10) return { text: 'Mantenimiento',   color: '#F59E0B' };
+  if (tsb > -20) return { text: 'Cargado',         color: '#EF4444' };
+  return           { text: 'Sobreentrenado',       color: '#DC2626' };
+}
+
+function powerZoneIdx(power, ftp) {
+  if (!power || !ftp || power <= 0) return -1;
+  const r = power / ftp;
+  if (r < 0.55) return 0;
+  if (r < 0.75) return 1;
+  if (r < 0.90) return 2;
+  if (r < 1.05) return 3;
+  if (r < 1.20) return 4;
+  if (r < 1.50) return 5;
+  return 6;
+}
+
+// ─── DATA LOADING ─────────────────────────────────────────────
+async function init() {
+  setStatus('Cargando...');
+  try {
+    state.athlete = JSON.parse(localStorage.getItem('velomind_athlete') || 'null');
+  } catch(e) {}
+
+  if (typeof BackendSync !== 'undefined') {
+    try {
+      await BackendSync.loadActivities();
+      setStatus('');
+    } catch(e) {
+      setStatus('Sin conexión — usando datos locales');
+    }
+  }
+
+  try {
+    state.activities = JSON.parse(localStorage.getItem('velomind_activities') || '[]');
+  } catch(e) {
+    state.activities = [];
+  }
+
+  if (!state.activities.length) {
+    state.isDemo = false;
+    setStatus('Sin actividades — Conecta Strava para empezar');
+  }
+  
+  // Si hay actividades pero ninguna reciente, cambiar el filtro a "Todo"
+  if (state.activities.length > 0) {
+    const hasRecent = state.activities.some(a => new Date(a.date) >= new Date(Date.now() - 90 * 86400000));
+    if (!hasRecent && document.getElementById('period').value === '90') {
+      document.getElementById('period').value = '9999';
+    }
+  }
+
+  state.pmc = calculatePMC(state.activities);
+  render();
+  renderZones();
+  loadPowerCurve();
+}
+
+async function recalculate() {
+  const btn = document.getElementById('btn-recalc');
+  const period = document.getElementById('period');
+  let currentPeriod = period ? period.value : '90';
+  if (btn) { btn.disabled = true; btn.textContent = 'Cargando...'; }
+  try {
+    state.isDemo = false;
+    if (typeof BackendSync !== 'undefined') {
+      await BackendSync.loadActivities();
+      setStatus('');
+    }
+    try {
+      state.activities = JSON.parse(localStorage.getItem('velomind_activities') || '[]');
+    } catch(e) { state.activities = []; }
+    if (!state.activities.length) {
+      state.isDemo = false;
+      setStatus('Sin actividades registradas');
+    }
+    
+    if (state.activities.length > 0) {
+      const hasRecent = state.activities.some(a => new Date(a.date) >= new Date(Date.now() - 90 * 86400000));
+      if (!hasRecent && currentPeriod === '90') {
+        currentPeriod = '9999';
+      }
+    }
+
+    state.pmc = calculatePMC(state.activities);
+    if (period) period.value = currentPeriod;
+    render();
+    renderZones();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⟳ Actualizar'; }
+  }
+}
+
+// ─── DEMO DATA ────────────────────────────────────────────────
+function generateDemo() {
+  // PRNG determinista basada en semilla para que los datos no cambien en cada refresh
+  function sr(seed) { const x = Math.sin(seed + 1) * 10000; return x - Math.floor(x); }
+  const acts = [];
+  const pattern = [1,2,2,3,3,4,5,2,2,2,1,1,2,2,3,3,3,4,4,5];
+  const zRatios = [0.50, 0.65, 0.83, 0.98, 1.14, 1.30, 1.65];
+  for (let i = 0; i < 90; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    if (i % 7 === 3 || i % 7 === 6) continue; // rest days
+    const ftp = 250;
+    const zone = pattern[i % pattern.length];
+    const ratio = zRatios[zone - 1] + (sr(i * 7) * 0.06 - 0.03);
+    const avgPower = Math.round(ftp * ratio * (0.90 + sr(i * 7 + 1) * 0.08));
+    const np = Math.round(avgPower * (1.02 + sr(i * 7 + 2) * 0.08));
+    const dur = Math.round((40 + sr(i * 7 + 3) * 80) * 60); // seconds
+    const ifVal = Math.round(np / ftp * 100) / 100;
+    const tss = Math.round((dur / 3600) * ifVal * ifVal * 100);
+    acts.push({
+      date: d.toISOString().split('T')[0],
+      duration: dur,
+      distance: Math.round((20 + sr(i * 7 + 4) * 50) * 1000),
+      elevation: Math.round(150 + sr(i * 7 + 5) * 900),
+      avg_power: avgPower,
+      np: np,
+      tss: tss,
+      if_value: ifVal,
+      avg_hr: 110 + Math.round(ratio * 60),
+      power_zone: zone
+    });
+  }
+  return acts.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ─── PMC CALCULATION ──────────────────────────────────────────
+function calculatePMC(activities) {
+  // Delega a PMC.compute de app.js para tener un único algoritmo en toda la app.
+  // Pasamos Infinity como ventana para obtener todo el histórico en analytics.
+  return PMC.compute(activities, 99999);
+}
+
+function getFiltered() {
+  const days = parseInt(document.getElementById('period').value);
+  const cutoff = new Date(Date.now() - days * 86400000);
+  return (state.activities || []).filter(a => {
+    const d = new Date(a.date);
+    return !isNaN(d.getTime()) && d >= cutoff;
+  });
+}
+
+// ─── CHART EMPTY STATE HELPERS ────────────────────────────────
+function showChartEmptyState(canvasId, msg) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  var wrap = canvas.parentNode;
+  var existing = wrap.querySelector('.chart-empty-msg');
+  if (!existing) {
+    var div = document.createElement('div');
+    div.className = 'chart-empty-msg';
+    div.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--text-muted);font-size:13px;text-align:center;padding:20px;background:var(--bg-card);z-index:2;border-radius:inherit;';
+    div.innerHTML = '<i class="fas fa-chart-line" style="font-size:24px;margin-bottom:8px;opacity:0.3"></i><span>' + msg + '</span>';
+    wrap.appendChild(div);
+  } else {
+    existing.querySelector('span').textContent = msg;
+    existing.style.display = 'flex';
+  }
+}
+
+function hideChartEmptyState(canvasId) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  var wrap = canvas.parentNode;
+  var existing = wrap.querySelector('.chart-empty-msg');
+  if (existing) existing.style.display = 'none';
+}
+
+// ─── WEEK CARD ────────────────────────────────────────────────
+function renderWeekStrip(allActs) {
+  var now = new Date();
+  var todayIdx = (now.getDay() || 7) - 1; // 0=Lun … 6=Dom
+
+  var monday = new Date(now);
+  monday.setDate(now.getDate() - todayIdx);
+  monday.setHours(0,0,0,0);
+
+  var prevMonday = new Date(monday);
+  prevMonday.setDate(monday.getDate() - 7);
+
+  var week     = allActs.filter(function(a) { var d = new Date(a.date); return d >= monday; });
+  var prevWeek = allActs.filter(function(a) { var d = new Date(a.date); return d >= prevMonday && d < monday; });
+
+  // ── Métricas semana actual ──
+  var sessions = week.length;
+  var hours    = week.reduce(function(s,a){ return s+(a.duration||0); }, 0) / 3600;
+  var km       = week.reduce(function(s,a){ return s+(a.distance||0); }, 0) / 1000;
+  var elev     = week.reduce(function(s,a){ return s+(a.elevation||0); }, 0);
+  var tss      = week.reduce(function(s,a){ return s+(parseFloat(a.tss)||0); }, 0);
+  var kj       = week.reduce(function(s,a){ return s+((a.avg_power||0)*(a.duration||0)/1000); }, 0);
+  var npActs   = week.filter(function(a){ return (a.np||a.avg_power) > 0; });
+  var avgNP    = npActs.length ? Math.round(npActs.reduce(function(s,a){ return s+(a.np||a.avg_power||0); },0) / npActs.length) : null;
+  var hrActs   = week.filter(function(a){ return (a.avg_hr||0) > 0; });
+  var avgHR    = hrActs.length ? Math.round(hrActs.reduce(function(s,a){ return s+(a.avg_hr||0); },0) / hrActs.length) : null;
+
+  // ── IF (Intensity Factor = NP / FTP) ──
+  var ftp    = state.athlete && state.athlete.ftp ? state.athlete.ftp : null;
+  var ifVal  = (avgNP && ftp) ? (avgNP / ftp).toFixed(2) : null;
+
+  // ── TSS delta vs semana anterior ──
+  var prevTSS  = prevWeek.reduce(function(s,a){ return s+(parseFloat(a.tss)||0); }, 0);
+  var tssDelta = Math.round(tss - prevTSS);
+
+  // ── Mini calendario de días (L M X J V S D) ──
+  var dayNames  = ['L','M','X','J','V','S','D'];
+  var actDaySet = new Set(week.map(function(a) {
+    var d = new Date(a.date); return (d.getDay() || 7) - 1;
+  }));
+  var dotsHtml = dayNames.map(function(name, i) {
+    var dotCls = actDaySet.has(i) ? 'has-act' : (i === todayIdx ? 'is-today' : '');
+    return '<div class="wc-day"><span class="wc-day-lbl">' + name +
+           '</span><div class="wc-day-dot ' + dotCls + '"></div></div>';
+  }).join('');
+  document.getElementById('ws-day-dots').innerHTML = dotsHtml;
+
+  // ── Rango de fecha ──
+  var sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  var fmt = { day:'numeric', month:'short' };
+  document.getElementById('ws-date-range').textContent =
+    monday.toLocaleDateString('es-ES', fmt) + ' – ' + sunday.toLocaleDateString('es-ES', fmt);
+
+  // ── Rellenar métricas ──
+  document.getElementById('ws-sessions').textContent = sessions || '0';
+  document.getElementById('ws-hours').textContent    = hours >= 1 ? hours.toFixed(1) : (Math.round(hours*60)||'0')+'m';
+  document.getElementById('ws-km').textContent       = Math.round(km).toLocaleString('es');
+  document.getElementById('ws-elev').textContent     = elev >= 1000 ? (elev/1000).toFixed(1)+'k' : (Math.round(elev)||'0');
+  document.getElementById('ws-tss').textContent      = Math.round(tss) || '0';
+  document.getElementById('ws-kj').textContent       = kj >= 1000 ? (Math.round(kj/100)/10)+'k' : (Math.round(kj)||'0');
+  document.getElementById('ws-np').textContent       = avgNP ? avgNP+'W' : '--';
+  document.getElementById('ws-hr').textContent       = avgHR ? avgHR+' bpm' : '--';
+  document.getElementById('ws-if').textContent       = ifVal || '--';
+
+  // ── Delta TSS vs semana anterior ──
+  var deltaEl = document.getElementById('ws-tss-delta');
+  if (deltaEl && prevTSS > 0) {
+    var sign = tssDelta >= 0 ? '+' : '';
+    deltaEl.textContent  = sign + tssDelta + ' vs ant.';
+    deltaEl.className    = 'wc-delta ' + (tssDelta >= 0 ? 'up' : 'dn');
+  }
+
+  // ── Barra de progreso TSS (objetivo = media últimas 4 semanas) ──
+  var last4w = []; var d4 = new Date(monday); d4.setDate(d4.getDate()-28);
+  allActs.forEach(function(a){ var d = new Date(a.date); if(d >= d4 && d < monday) last4w.push(parseFloat(a.tss)||0); });
+  if (last4w.length) {
+    var wkTarget = Math.round(last4w.reduce(function(s,v){ return s+v; },0) / 4);
+    var pct = Math.min(120, Math.round(tss / wkTarget * 100));
+    var barEl  = document.getElementById('ws-tss-bar');
+    var pctEl  = document.getElementById('ws-tss-pct');
+    var wrapEl = document.getElementById('ws-tss-bar-wrap');
+    if (barEl)  barEl.style.width      = Math.min(pct,100) + '%';
+    if (barEl)  barEl.style.background = pct < 60 ? '#f59e0b' : pct <= 100 ? '#9ed62b' : '#ef4444';
+    if (pctEl)  pctEl.textContent      = Math.round(tss) + ' / ' + wkTarget + ' TSS (' + pct + '%)';
+    if (wrapEl) wrapEl.style.display   = '';
+  }
+}
+
+// ─── RENDER ───────────────────────────────────────────────────
+function render() {
+  const acts = getFiltered();
+  const profileFtp = Number(
+    (state.athlete && state.athlete.ftp) ||
+    (window.AppState && AppState.athlete && AppState.athlete.ftp) ||
+    0
+  );
+  const ftp = profileFtp > 0 ? profileFtp : 250;
+  const days = document.getElementById('period').value;
+
+  // Toggle Empty State vs Content
+  const hasData = state.activities.length > 0;
+  document.getElementById('metrics-empty-state').style.display = hasData ? 'none' : 'block';
+  document.getElementById('metrics-content').style.display = 'block'; // Siempre mostrar la estructura del dashboard
+
+  // Sidebar
+  const nm = (state.athlete && state.athlete.name) ? state.athlete.name : 'Atleta';
+  document.getElementById('avatar').textContent = nm.split(' ').map(function(n){ return n[0]; }).join('').slice(0,2).toUpperCase();
+  document.getElementById('name').textContent = nm;
+  document.getElementById('ftp').textContent = 'FTP: ' + (profileFtp > 0 ? profileFtp : '--') + 'W';
+
+  // PMC metric cards — los valores son siempre HOY (acumulado),
+  // el delta refleja el cambio en el período seleccionado
+  if (state.pmc.length) {
+    var daysNum = parseInt(days) || 90;
+    var last = state.pmc[state.pmc.length - 1];
+    var prevIdx = state.pmc.length > daysNum ? state.pmc.length - 1 - daysNum : 0;
+    var prevPeriod = state.pmc[prevIdx];
+    var form = getFormStatus(last.tsb);
+    document.getElementById('ctl').textContent = Math.round(last.ctl);
+    document.getElementById('atl').textContent = Math.round(last.atl);
+    document.getElementById('tsb').textContent = (last.tsb >= 0 ? '+' : '') + last.tsb;
+    var ctlD = Math.round(last.ctl - prevPeriod.ctl);
+    var atlD = Math.round(last.atl - prevPeriod.atl);
+    var tsbD = Math.round(last.tsb - prevPeriod.tsb);
+    var ago = 'vs hace ' + daysNum + 'd';
+
+    function deltaPill(d, positiveIsGood) {
+      var cls = d === 0 ? 'neu' : (d > 0 === positiveIsGood ? 'up' : 'down');
+      var icon = d > 0 ? 'fa-arrow-up' : d < 0 ? 'fa-arrow-down' : 'fa-minus';
+      var sign = d > 0 ? '+' : '';
+      return '<div class="delta-wrap">' +
+        '<span class="delta-pill ' + cls + '"><i class="fas ' + icon + '"></i> ' + sign + d + '</span>' +
+        '<span class="delta-period">' + ago + '</span>' +
+        '</div>';
+    }
+
+    // CTL subir = bueno | ATL subir = malo (más fatiga) | TSB subir = bueno
+    document.getElementById('ctl-trend').innerHTML = deltaPill(ctlD, true);
+    document.getElementById('atl-trend').innerHTML = deltaPill(atlD, false);
+    document.getElementById('tsb-trend').innerHTML = deltaPill(tsbD, true);
+    var fb = document.getElementById('form-badge');
+    fb.textContent = form.text;
+    fb.style.color = form.color;
+    fb.style.background = form.color + '22';
+    fb.style.border = '1px solid ' + form.color + '55';
+  }
+  document.getElementById('ftp-val').textContent = profileFtp > 0 ? profileFtp : '--';
+  const profileWeight = Number(
+    (state.athlete && state.athlete.weight) ||
+    (window.AppState && AppState.athlete && AppState.athlete.weight) ||
+    0
+  );
+  if (profileFtp > 0 && profileWeight > 0) {
+    document.getElementById('wkg').textContent = (profileFtp / profileWeight).toFixed(2) + ' W/kg';
+  } else {
+    document.getElementById('wkg').textContent = '-- W/kg';
+  }
+
+  try { renderWeekStrip(state.activities); } catch(e) { console.error('Error renderWeekStrip', e); }
+  try { renderPMCChart(days); } catch(e) { console.error('Error renderPMCChart', e); }
+  try { renderTSSChart(acts); } catch(e) { console.error('Error renderTSSChart', e); }
+  try { renderZonesChart(acts, ftp); } catch(e) { console.error('Error renderZonesChart', e); }
+  try { renderPowerChart(acts); } catch(e) { console.error('Error renderPowerChart', e); }
+  try { renderKJChart(acts); } catch(e) { console.error('Error renderKJChart', e); }
+  try { renderVolumeStats(acts, days); } catch(e) { console.error('Error renderVolumeStats', e); }
+  try { renderBestEfforts(acts, ftp); } catch(e) { console.error('Error renderBestEfforts', e); }
+  try { loadPowerCurve(days); } catch(e) { console.error('Error loadPowerCurve', e); }
+}
+
+// ─── PMC CHART ────────────────────────────────────────────────
+function renderPMCChart(days) {
+  var cutoff = new Date(Date.now() - days * 86400000);
+  var filtered = state.pmc.filter(function(p) { return new Date(p.date) >= cutoff; });
+  if (charts.pmc) charts.pmc.destroy();
+  if (!filtered.length) {
+    showChartEmptyState('pmc-canvas', 'No hay suficientes datos de carga en este período');
+    return;
+  }
+  hideChartEmptyState('pmc-canvas');
+  charts.pmc = new Chart(document.getElementById('pmc-canvas'), {
+    type: 'line',
+    data: {
+      labels: filtered.map(function(p) { return p.date.slice(5); }),
+      datasets: [
+        {
+          label: 'CTL (Fitness)',
+          data: filtered.map(function(p) { return p.ctl; }),
+          borderColor: '#3B82F6',
+          backgroundColor: 'rgba(59,130,246,0.07)',
+          fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 4
+        },
+        {
+          label: 'ATL (Fatiga)',
+          data: filtered.map(function(p) { return p.atl; }),
+          borderColor: '#EF4444',
+          backgroundColor: 'rgba(239,68,68,0.07)',
+          fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 4
+        },
+        {
+          label: 'TSB (Forma)',
+          data: filtered.map(function(p) { return p.tsb; }),
+          borderColor: '#10B981',
+          backgroundColor: 'transparent',
+          borderDash: [4, 3],
+          fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { maxTicksLimit: 8, color: '#9CA3AF', font: { size: 10 } }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#9CA3AF', font: { size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+// ─── TSS CHART ────────────────────────────────────────────────
+function renderTSSChart(acts) {
+  var weekly = {};
+  acts.forEach(function(a) {
+    var d = new Date(a.date);
+    if (isNaN(d.getTime())) return;
+    var day = d.getDay() || 7;
+    d.setDate(d.getDate() - day + 1);
+    var k = d.toISOString().split('T')[0];
+    weekly[k] = (weekly[k] || 0) + (parseFloat(a.tss) || 0);
+  });
+  var entries = Object.entries(weekly).sort().slice(-14);
+  var values  = entries.map(function(e) { return Math.round(e[1]); });
+  var avg     = entries.length ? Math.round(values.reduce(function(s,v){ return s+v; },0) / entries.length) : 0;
+  var max     = Math.max.apply(null, values);
+
+  document.getElementById('avg-weekly-tss').textContent = avg + ' TSS/sem';
+  if (charts.tss) charts.tss.destroy();
+  if (!entries.length) {
+    showChartEmptyState('tss-canvas', 'No hay datos de TSS en este período');
+    return;
+  }
+  hideChartEmptyState('tss-canvas');
+
+  function tssColor(v) {
+    if (v >= max * 0.85) return '#EF4444';
+    if (v >= avg * 1.15) return '#F59E0B';
+    if (v >= avg * 0.75) return '#3B82F6';
+    return '#4B5563';
+  }
+
+  var canvas = document.getElementById('tss-canvas');
+  charts.tss = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: entries.map(function(e) {
+        var p = e[0].split('-'); return p[2] + '/' + p[1];
+      }),
+      datasets: [
+        {
+          label: 'TSS',
+          data: values,
+          backgroundColor: values.map(tssColor),
+          borderRadius: 6,
+          borderSkipped: false,
+          barPercentage: 0.65,
+        },
+        {
+          label: 'Media ' + avg,
+          data: values.map(function() { return avg; }),
+          type: 'line',
+          borderColor: 'rgba(255,255,255,0.25)',
+          borderDash: [5, 4],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.datasetIndex === 1) return ' Media: ' + avg + ' TSS';
+              var v = ctx.parsed.y;
+              var tag = v >= max * 0.85 ? ' 🔴 Muy alta'
+                      : v >= avg * 1.15 ? ' 🟡 Alta'
+                      : v >= avg * 0.75 ? ' 🔵 Normal'
+                      : ' ⚪ Baja';
+              return ' TSS: ' + v + tag;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#9CA3AF', font: { size: 10 } }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#9CA3AF', font: { size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+// ─── ZONES CHART ──────────────────────────────────────────────
+function renderZonesChart(acts, ftp) {
+  document.getElementById('zone-ftp-badge').textContent = 'FTP: ' + ftp + 'W';
+
+  var ZONES = [
+    { label: 'Z1 · Recuperación', color: '#6B7280' },
+    { label: 'Z2 · Resistencia',  color: '#3B82F6' },
+    { label: 'Z3 · Tempo',        color: '#10B981' },
+    { label: 'Z4 · Umbral',       color: '#F59E0B' },
+    { label: 'Z5 · VO2max',       color: '#EF4444' },
+    { label: 'Z6 · Anaeróbico',   color: '#8B5CF6' },
+    { label: 'Z7 · Neuromuscular',color: '#EC4899' },
+  ];
+
+  var mins = [0,0,0,0,0,0,0];
+  var realCount = 0, estimCount = 0;
+
+  acts.forEach(function(a) {
+    if (a.zone_times) {
+      // Datos reales segundo a segundo desde Strava streams
+      var zt = {};
+      try {
+        zt = typeof a.zone_times === 'string' ? JSON.parse(a.zone_times) : a.zone_times;
+      } catch(e) {
+        console.warn('Omitiendo zone_times inválido', e);
+      }
+      for (var i = 1; i <= 7; i++) mins[i - 1] += (zt['z' + i] || 0) / 60;
+      realCount++;
+    } else if (a.avg_power > 0 && ftp > 0) {
+      // Fallback: usar avg_power real (no NP inflado) para clasificar la zona
+      var zi = powerZoneIdx(a.avg_power, ftp);
+      if (zi >= 0 && zi <= 6) mins[zi] += (a.duration || 0) / 60;
+      estimCount++;
+    }
+  });
+
+  mins = mins.map(Math.round);
+
+  // Etiqueta de calidad de datos
+  var ql = document.getElementById('zone-quality-label');
+  if (ql) {
+    if (realCount > 0 && estimCount === 0) {
+      ql.innerHTML = '<span style="color:#10B981">&#10003; Datos reales de potenciómetro (' + realCount + ' actividades)</span>';
+    } else if (realCount > 0) {
+      ql.innerHTML = '<span style="color:#F59E0B">&#9679; ' + realCount + ' reales · ' + estimCount + ' estimadas por potencia media</span>';
+    } else if (estimCount > 0) {
+      ql.innerHTML = '<div style="padding:8px 12px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:6px; color:#F59E0B; margin-bottom:8px; line-height: 1.4;"><i class="fas fa-exclamation-triangle"></i> <strong>Faltan datos segundo a segundo:</strong> Se está usando la potencia media de la sesión para estimar el tiempo. Añade la columna <code>zone_times</code> en Supabase y resincroniza Strava para ver tus picos en Z4-Z7.</div>';
+    } else {
+      ql.innerHTML = '';
+    }
+  }
+
+  var total = mins.reduce(function(s,v){ return s+v; }, 0);
+
+  if (charts.zones) charts.zones.destroy();
+  if (!total) {
+    showChartEmptyState('zones-canvas', 'Sin datos de potencia para calcular zonas');
+    return;
+  }
+  hideChartEmptyState('zones-canvas');
+
+  charts.zones = new Chart(document.getElementById('zones-canvas'), {
+    type: 'bar',
+    data: {
+      labels: ZONES.map(function(z){ return z.label; }),
+      datasets: [{
+        data: mins,
+        backgroundColor: ZONES.map(function(z, i) {
+          var pct = total ? mins[i] / total : 0;
+          var alpha = 0.35 + pct * 0.65;
+          return z.color + Math.round(alpha * 255).toString(16).padStart(2,'0');
+        }),
+        borderColor: ZONES.map(function(z){ return z.color; }),
+        borderWidth: 1.5,
+        borderRadius: 5,
+        borderSkipped: false,
+        barPercentage: 0.72,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var v = ctx.parsed.x;
+              var pct = total ? Math.round(v / total * 100) : 0;
+              var h = Math.floor(v / 60);
+              var m = v % 60;
+              var dur = h > 0 ? h + 'h ' + m + 'min' : m + ' min';
+              return '  ' + dur + '  (' + pct + '%)';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: {
+            color: '#9CA3AF', font: { size: 10 },
+            callback: function(v) {
+              return v >= 60 ? Math.floor(v/60) + 'h' : v + 'm';
+            }
+          }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: '#D1D5DB', font: { size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+// ─── POWER CHART ──────────────────────────────────────────────
+function renderPowerChart(acts) {
+  var ftp = parseInt(document.getElementById('ftp-val').textContent) || 0;
+  var pw = acts.filter(function(a) { return (a.np || a.avg_power) > 0 && a.date && typeof a.date === 'string'; })
+               .sort(function(a,b) { return String(a.date).localeCompare(String(b.date)); });
+  if (charts.power) charts.power.destroy();
+
+  var badge = document.getElementById('power-chart-ftp-badge');
+  if (badge) badge.textContent = ftp ? 'FTP referencia: ' + ftp + ' W' : '';
+
+  if (!pw.length) {
+    showChartEmptyState('power-canvas', 'Sin datos de potencia (NP / Media) en este período');
+    return;
+  }
+  hideChartEmptyState('power-canvas');
+
+  function fmtDate(d) {
+    var parts = d.split('-');
+    return parts[2] + '/' + parts[1];
+  }
+
+  var datasets = [
+    {
+      label: 'NP (Potencia Normalizada)',
+      data: pw.map(function(p) { return p.np || p.avg_power; }),
+      type: 'line',
+      borderColor: '#3B82F6',
+      backgroundColor: 'rgba(59,130,246,0.10)',
+      fill: true, tension: 0.35, pointRadius: 3, pointHoverRadius: 6,
+      borderWidth: 2, order: 1
+    },
+    {
+      label: 'Avg Power',
+      data: pw.map(function(p) { return p.avg_power || null; }),
+      type: 'bar',
+      backgroundColor: 'rgba(107,114,128,0.4)',
+      borderColor: 'rgba(107,114,128,0.7)',
+      borderWidth: 1, borderRadius: 3, order: 2
+    }
+  ];
+
+  if (ftp > 0) {
+    datasets.push({
+      label: 'FTP ' + ftp + 'W',
+      data: pw.map(function() { return ftp; }),
+      type: 'line',
+      borderColor: 'rgba(239,68,68,0.7)',
+      borderDash: [6, 4],
+      borderWidth: 1.5,
+      pointRadius: 0,
+      fill: false,
+      tension: 0,
+      order: 0
+    });
+  }
+
+  charts.power = new Chart(document.getElementById('power-canvas'), {
+    type: 'bar',
+    data: {
+      labels: pw.map(function(p) { return fmtDate(p.date); }),
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: '#9CA3AF', font: { size: 11 }, boxWidth: 14, padding: 16 }
+        },
+        tooltip: {
+          callbacks: {
+            title: function(items) {
+              var idx = items[0].dataIndex;
+              return pw[idx].name || pw[idx].date;
+            },
+            label: function(ctx) {
+              var idx = ctx.dataIndex;
+              var a = pw[idx];
+              if (ctx.dataset.label.startsWith('FTP')) return null;
+              if (ctx.dataset.label.startsWith('NP')) {
+                var np = a.np || a.avg_power;
+                var ifv = ftp ? (np / ftp).toFixed(2) : '-';
+                return ' NP: ' + np + ' W  (IF ' + ifv + ')';
+              }
+              return ' Avg: ' + (a.avg_power || '-') + ' W';
+            },
+            afterBody: function(items) {
+              var idx = items[0].dataIndex;
+              var a = pw[idx];
+              var lines = [];
+              if (a.tss)      lines.push(' TSS: ' + Math.round(a.tss));
+              if (a.duration) lines.push(' Duración: ' + Math.round(a.duration/60) + ' min');
+              return lines;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 14, color: '#9CA3AF', font: { size: 10 } } },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#9CA3AF', font: { size: 10 }, callback: function(v) { return v + 'W'; } }
+        }
+      }
+    }
+  });
+}
+
+// ─── KJ CHART ─────────────────────────────────────────────────
+function renderKJChart(acts) {
+  var withPower = acts.filter(function(a) { return (a.avg_power > 0) && (a.duration > 0); });
+  if (charts.kj) charts.kj.destroy();
+
+  // Agrupar por semana ISO (lunes)
+  var weekMap = {};
+  withPower.forEach(function(a) {
+    var d = new Date(a.date);
+    if (isNaN(d.getTime())) return;
+    var day = d.getDay() || 7; // 1=lun … 7=dom
+    d.setDate(d.getDate() - day + 1);
+    var week = d.toISOString().slice(0, 10);
+    var kj = Math.round(a.avg_power * a.duration / 1000);
+    weekMap[week] = (weekMap[week] || 0) + kj;
+  });
+
+  var weeks = Object.keys(weekMap).sort();
+  var values = weeks.map(function(w) { return weekMap[w]; });
+  var totalKJ = values.reduce(function(s, v) { return s + v; }, 0);
+
+  var label = document.getElementById('kj-total-label');
+  if (label) label.textContent = 'Total período: ' + Math.round(totalKJ).toLocaleString('es') + ' kJ';
+
+  if (!weeks.length) return;
+
+  var avgKJ = Math.round(totalKJ / (weeks.length || 1));
+  if (label) label.textContent = 'Total: ' + Math.round(totalKJ).toLocaleString('es') + ' kJ  ·  Media semanal: ' + avgKJ.toLocaleString('es') + ' kJ';
+
+  var canvas = document.getElementById('kj-canvas');
+  charts.kj = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: weeks.map(function(w) {
+        var p = w.split('-'); return p[2] + '/' + p[1];
+      }),
+      datasets: [{
+        label: 'kJ semana',
+        data: values,
+        borderColor: '#F59E0B',
+        borderWidth: 2.5,
+        tension: 0.4,
+        pointRadius: 5,
+        pointHoverRadius: 8,
+        pointBackgroundColor: '#F59E0B',
+        pointBorderColor: '#1F2937',
+        pointBorderWidth: 2,
+        fill: true,
+        backgroundColor: function(ctx) {
+          var c = ctx.chart.ctx;
+          var g = c.createLinearGradient(0, 0, 0, ctx.chart.height);
+          g.addColorStop(0,   'rgba(245,158,11,0.35)');
+          g.addColorStop(0.6, 'rgba(245,158,11,0.08)');
+          g.addColorStop(1,   'rgba(245,158,11,0)');
+          return g;
+        }
+      },
+      {
+        label: 'Media',
+        data: weeks.map(function() { return avgKJ; }),
+        borderColor: 'rgba(245,158,11,0.35)',
+        borderDash: [5, 4],
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: '#9CA3AF', font: { size: 11 }, boxWidth: 14, padding: 16 }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.datasetIndex === 1) return ' Media: ' + avgKJ.toLocaleString('es') + ' kJ';
+              return ' ' + ctx.parsed.y.toLocaleString('es') + ' kJ';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 10 } } },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: {
+            color: '#9CA3AF', font: { size: 10 },
+            callback: function(v) { return v >= 1000 ? (v/1000).toFixed(1) + ' MJ' : v + ' kJ'; }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ─── VOLUME STATS ─────────────────────────────────────────────
+function renderVolumeStats(acts, days) {
+  document.getElementById('period-label').textContent = 'Últimos ' + days + ' días';
+  if (!acts.length) {
+    document.getElementById('volume-stats').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">Sin actividades en el período</div>';
+    return;
+  }
+  var hrs  = acts.reduce(function(s,a){ return s + (a.duration||0); }, 0) / 3600;
+  var km   = acts.reduce(function(s,a){ return s + (a.distance||0); }, 0) / 1000;
+  var el   = acts.reduce(function(s,a){ return s + (a.elevation||0); }, 0);
+  var tss  = acts.reduce(function(s,a){ return s + (parseFloat(a.tss)||0); }, 0);
+  var wp   = acts.filter(function(a){ return a.avg_power > 0; });
+  var avgNP = wp.length ? Math.round(wp.reduce(function(s,a){ return s+(a.np||a.avg_power); },0) / wp.length) : null;
+  var avgIF = wp.length ? (wp.reduce(function(s,a){ return s+(parseFloat(a.if_value)||parseFloat(a['if'])||0); },0) / wp.length).toFixed(2) : null;
+
+  function cell(val, unit, label, color) {
+    return '<div style="padding:10px;background:var(--bg-input);border-radius:6px;text-align:center">' +
+      '<div style="font-size:19px;font-weight:700;color:' + color + '">' + val + '<span style="font-size:11px">' + unit + '</span></div>' +
+      '<div style="font-size:9px;color:var(--text-muted);margin-top:2px">' + label + '</div></div>';
+  }
+  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px">' +
+    cell(hrs.toFixed(1), 'h', 'Horas', 'var(--accent)') +
+    cell(km.toFixed(0), 'km', 'Kilómetros', '#10B981') +
+    cell(Math.round(el).toLocaleString(), 'm', 'Desnivel', '#8B5CF6') +
+    cell(Math.round(tss), '', 'TSS total', '#F59E0B');
+  if (avgNP) {
+    html += cell(avgNP, 'W', 'NP medio', '#3B82F6') + cell(avgIF, '', 'IF medio', '#EF4444');
+  }
+  html += '</div>';
+  document.getElementById('volume-stats').innerHTML = html;
+}
+
+// ─── BEST EFFORTS ─────────────────────────────────────────────
+function renderBestEfforts(acts, ftp) {
+  var wp = acts.filter(function(a){ return (a.np||a.avg_power) > 0; });
+  if (!wp.length) {
+    document.getElementById('best-efforts').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">Sin datos de potencia</div>';
+    return;
+  }
+  var buckets = [
+    { label: 'Sprint (< 30min)',   min: 0,    max: 1800     },
+    { label: 'Media (30–60min)',   min: 1800, max: 3600     },
+    { label: 'Largo (60–120min)',  min: 3600, max: 7200     },
+    { label: 'Fondo (> 120min)',   min: 7200, max: Infinity }
+  ];
+  var rows = buckets.map(function(b) {
+    var inB = wp.filter(function(a){ return (a.duration||0) >= b.min && (a.duration||0) < b.max; });
+    if (!inB.length) return null;
+    var best = inB.reduce(function(x,a){ return (a.np||a.avg_power) > (x.np||x.avg_power) ? a : x; });
+    var np = best.np || best.avg_power;
+    return { label: b.label, np: np, pct: ftp ? Math.round(np/ftp*100) : null, date: best.date };
+  }).filter(Boolean);
+
+  var bestTSS = wp.reduce(function(x,a){ return parseFloat(a.tss) > parseFloat(x.tss) ? a : x; });
+  var bestNP  = wp.reduce(function(x,a){ return (a.np||a.avg_power) > (x.np||x.avg_power) ? a : x; });
+
+  var rowHtml = rows.map(function(r) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">' +
+      '<div><div style="font-size:12px;font-weight:600">' + r.label + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted)">' + r.date + '</div></div>' +
+      '<div style="text-align:right">' +
+      '<div style="font-size:17px;font-weight:700;color:var(--accent)">' + r.np + 'W</div>' +
+      '<div style="font-size:10px;color:var(--text-muted)">' + (r.pct ? r.pct + '% FTP' : '') + '</div>' +
+      '</div></div>';
+  }).join('');
+
+  document.getElementById('best-efforts').innerHTML =
+    '<div style="padding:0 4px">' + rowHtml +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">' +
+    '<div style="padding:8px;background:var(--bg-input);border-radius:6px">' +
+    '<div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;margin-bottom:2px">Mejor TSS</div>' +
+    '<div style="font-size:20px;font-weight:700;color:#F59E0B">' + Math.round(bestTSS.tss||0) + '</div>' +
+    '<div style="font-size:9px;color:var(--text-muted)">' + bestTSS.date + '</div></div>' +
+    '<div style="padding:8px;background:var(--bg-input);border-radius:6px">' +
+    '<div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;margin-bottom:2px">Mejor NP</div>' +
+    '<div style="font-size:20px;font-weight:700;color:#3B82F6">' + (bestNP.np||bestNP.avg_power) + 'W</div>' +
+    '<div style="font-size:9px;color:var(--text-muted)">' + bestNP.date + '</div></div>' +
+    '</div></div>';
+}
+
+// ─── BOOT ─────────────────────────────────────────────────────
+init().catch(function(e) {
+  console.error('[Métricas] Error:', e);
+  setStatus('Error cargando datos');
+});
+
+// ─── AYUDA ───────────────────────────────────────────────────
+function toggleHelp() {
+  const p = document.getElementById('help-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+// ─── MIS ZONAS ───────────────────────────────────────────────
+const HR_ZONES_FRIEL = [
+  { id:1, name:'Z1 — Recuperación',      minPct:0,    maxPct:0.81, color:'#6B7280', desc:'Pedaleo muy suave. Recuperación activa.' },
+  { id:2, name:'Z2 — Aeróbico',           minPct:0.81, maxPct:0.89, color:'#3B82F6', desc:'Base aeróbica. El grueso del entrenamiento.' },
+  { id:3, name:'Z3 — Tempo',              minPct:0.90, maxPct:0.93, color:'#10B981', desc:'Ritmo controlado pero exigente.' },
+  { id:4, name:'Z4 — Umbral Sub-Láctico', minPct:0.94, maxPct:0.99, color:'#F59E0B', desc:'Justo por debajo del umbral.' },
+  { id:5, name:'Z5a — Umbral',            minPct:1.00, maxPct:1.02, color:'#F97316', desc:'En el umbral láctico.' },
+  { id:6, name:'Z5b — Sobre Umbral',      minPct:1.03, maxPct:1.06, color:'#EF4444', desc:'Por encima del umbral. Intervalos cortos.' },
+  { id:7, name:'Z5c — VO₂ Max',           minPct:1.06, maxPct:2.00, color:'#8B5CF6', desc:'Máxima intensidad aeróbica.' },
+];
+
+function renderZoneRow(zone, val1, val2, unit) {
+  return `<div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;margin-bottom:4px;background:var(--bg-input)">
+    <div style="width:10px;height:10px;border-radius:50%;background:${zone.color};flex-shrink:0"></div>
+    <div>
+      <div style="font-size:12px;font-weight:600;color:var(--text)">${zone.name}</div>
+      <div style="font-size:10px;color:var(--text-muted)">${zone.desc || zone.description || ''}</div>
+    </div>
+    <div style="text-align:right;font-size:12px;font-weight:600;color:${zone.color};white-space:nowrap">${val1}${unit}${val2 ? ' – ' + val2 + unit : '+'}</div>
+  </div>`;
+}
+
+function renderZones() {
+  const athlete = state.athlete || AppState?.athlete || {};
+  const ftp = parseInt(athlete.ftp) || 0;
+  const weight = parseFloat(athlete.weight) || 0;
+  const age = parseInt(athlete.age) || 0;
+  const maxHR = parseInt(athlete.max_hr) || (age ? Math.round(207 - 0.7 * age) : 0);
+  const lthr = parseInt(athlete.lthr) || (maxHR ? Math.round(maxHR * 0.88) : 0);
+
+  // Power zones
+  const pwEl = document.getElementById('power-zones-table');
+  if (pwEl) {
+    if (!ftp) {
+      pwEl.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:13px">Configura tu FTP en <a href="index.html" style="color:var(--primary)">Mi Perfil</a> para ver las zonas de potencia.</div>';
+    } else {
+      let html = '';
+      ZONES_COGGAN.forEach(z => {
+        const wMin = Math.round(ftp * z.min);
+        const wMax = z.max >= 99 ? null : Math.round(ftp * z.max);
+        html += renderZoneRow(z, wMin, wMax, 'W');
+      });
+      if (weight) html += `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">FTP: <strong>${ftp}W</strong> · W/kg: <strong>${(ftp/weight).toFixed(2)}</strong></div>`;
+      pwEl.innerHTML = html;
+    }
+  }
+
+  // HR zones
+  const hrEl = document.getElementById('hr-zones-table');
+  if (hrEl) {
+    if (!lthr && !maxHR) {
+      hrEl.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:13px">Configura tu edad o FC Máx en <a href="index.html" style="color:var(--primary)">Mi Perfil</a> para ver las zonas de pulso.</div>';
+    } else {
+      const usedLTHR = lthr || Math.round(maxHR * 0.88);
+      let html = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">LTHR estimado: <strong>${usedLTHR} bpm</strong>${!athlete.lthr ? ' (auto, 88% FC máx)' : ''}</div>`;
+      HR_ZONES_FRIEL.forEach(z => {
+        const bMin = Math.round(usedLTHR * z.minPct);
+        const bMax = z.maxPct >= 2 ? null : Math.round(usedLTHR * z.maxPct);
+        html += renderZoneRow(z, bMin, bMax, ' bpm');
+      });
+      hrEl.innerHTML = html;
+    }
+  }
+}
+
+async function autoEstimateZones() {
+  const btn = document.getElementById('btn-auto-zones');
+  const infoBar = document.getElementById('zones-info-bar');
+  if (btn) { btn.disabled = true; btn.textContent = 'Calculando...'; }
+
+  try {
+    const acts = state.activities.filter(a => a.avg_power > 0 && a.duration > 0);
+    const athlete = state.athlete || AppState?.athlete || {};
+    const age = parseInt(athlete.age) || 0;
+    const weight = parseFloat(athlete.weight) || 0;
+    const messages = [];
+
+    // Estimar FTP desde los mejores esfuerzos con potencia real
+    // Cap fisiológico: 6.5 W/kg es nivel Tour de France; por encima es spike de potenciómetro
+    const ftpCap = weight > 0 ? Math.round(weight * 6.5) : 550;
+    // Ventanas: 20-40min ×0.95, 40-60min ×0.97, 60-90min ×1.00, >90min ×1.03
+    const FTP_WINDOWS = [
+      { min: 1200, max: 2400, factor: 0.95, label: '20-40 min' },
+      { min: 2400, max: 3600, factor: 0.97, label: '40-60 min' },
+      { min: 3600, max: 5400, factor: 1.00, label: '60-90 min' },
+      { min: 5400, max: 99999, factor: 1.03, label: '>90 min'   },
+    ];
+    let bestEstimatedFTP = 0, bestWindowLabel = '';
+    for (const w of FTP_WINDOWS) {
+      const bucket = acts.filter(a => a.duration >= w.min && a.duration < w.max && a.avg_power > 0);
+      if (!bucket.length) continue;
+      // Usar top-3 promediados para resistir actividades con spike puntual
+      const vals = bucket.map(a => a.np > 0 ? a.np : a.avg_power).sort((a, b) => b - a).slice(0, 3);
+      const best = Math.round(vals.reduce((s, v) => s + v, 0) / vals.length);
+      const est  = Math.min(Math.round(best * w.factor), ftpCap); // nunca superar cap fisiológico
+      if (est > bestEstimatedFTP) { bestEstimatedFTP = est; bestWindowLabel = w.label; }
+    }
+
+    // ── FTP ──
+    let estimatedFTP = bestEstimatedFTP;
+    if (estimatedFTP > 0) {
+      messages.push(`FTP estimado desde Strava: <strong>${estimatedFTP}W</strong> (mejor esfuerzo ${bestWindowLabel}, actual: ${athlete.ftp || '—'}W)`);
+    } else {
+      messages.push('No se encontraron actividades con datos de potencia. Sincroniza Strava y vuelve a intentarlo.');
+    }
+
+    // ── FC Máx: filtrar picos de sensor ──
+    const ageForHR = parseInt(athlete.age) || 35;
+    const HR_CEILING = Math.min(220, Math.round(220 - ageForHR * 0.5 + 20));
+    const validMaxHRs = state.activities
+      .map(a => parseInt(a.max_hr) || 0)
+      .filter(hr => hr >= 100 && hr <= HR_CEILING);
+    let stravaMaxHR = 0;
+    if (validMaxHRs.length >= 3) {
+      const sorted = [...validMaxHRs].sort((a, b) => b - a);
+      stravaMaxHR = sorted[Math.floor(sorted.length * 0.05)] || sorted[0];
+    } else if (validMaxHRs.length > 0) {
+      stravaMaxHR = Math.max(...validMaxHRs);
+    }
+
+    let estimatedMaxHR = stravaMaxHR > 0 ? stravaMaxHR
+      : (parseInt(athlete.max_hr) || (age ? Math.round(207 - 0.7 * age) : 0));
+    const hrSource = stravaMaxHR > 0 ? 'Strava (filtrado)' : age ? `fórmula edad (${age}a)` : 'perfil';
+    const lthrPct  = stravaMaxHR > 0 ? 0.92 : 0.88;
+    let estimatedLTHR = parseInt(athlete.lthr) || (estimatedMaxHR ? Math.round(estimatedMaxHR * lthrPct) : 0);
+
+    if (estimatedMaxHR > 0) {
+      messages.push(`FC Máx: <strong>${estimatedMaxHR} bpm</strong> (${hrSource}) · LTHR: <strong>${estimatedLTHR} bpm</strong>`);
+    }
+
+    // Mostrar resultados + mini-form para confirmar y guardar
+    infoBar.innerHTML = `
+      <div style="margin-bottom:12px">${messages.join('<br>')}</div>
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)">
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">FTP (W)</label>
+          <input id="az-ftp" type="number" value="${estimatedFTP || athlete.ftp || ''}" min="50" max="600"
+            style="width:90px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;font-weight:600">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">FC Máx (bpm)</label>
+          <input id="az-maxhr" type="number" value="${estimatedMaxHR || ''}" min="120" max="220"
+            style="width:90px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;font-weight:600">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">LTHR (bpm)</label>
+          <input id="az-lthr" type="number" value="${estimatedLTHR || ''}" min="100" max="210"
+            style="width:90px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;font-weight:600">
+        </div>
+        <button id="az-save-btn" onclick="applyAutoZoneValues()" class="btn btn-primary btn-sm" style="padding:8px 18px;height:36px">
+          <i class="fas fa-save"></i> Guardar en perfil
+        </button>
+        <span id="az-save-status" style="font-size:12px;color:var(--success);display:none">✅ Guardado</span>
+      </div>`;
+    infoBar.style.display = 'block';
+    renderZones();
+  } catch(e) {
+    infoBar.innerHTML = 'Error al calcular: ' + e.message;
+    infoBar.style.display = 'block';
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic"></i> Auto-calcular desde Strava'; }
+  }
+}
+
+// ─── POWER CURVE ──────────────────────────────────────────────
+var powerCurveChart = null;
+
+async function loadPowerCurve(days) {
+  try {
+    var url = window.API_URL + '/coach/power-curve';
+    if (days) url += '?days=' + days;
+    var res = await fetch(url, { headers: Auth.getHeaders() });
+    if (!res.ok) { console.warn('[PowerCurve] HTTP', res.status); return; }
+    var pc = await res.json();
+    if (!pc.curve || !pc.curve.length) { console.warn('[PowerCurve] Sin datos de curva'); return; }
+    renderPowerCurve(pc);
+  } catch(e) { console.warn('[PowerCurve]', e.message); }
+}
+
+async function applyAutoZoneValues() {
+  const ftp   = parseInt(document.getElementById('az-ftp')?.value)   || 0;
+  const maxHR = parseInt(document.getElementById('az-maxhr')?.value) || 0;
+  const lthr  = parseInt(document.getElementById('az-lthr')?.value)  || 0;
+  const btn   = document.getElementById('az-save-btn');
+  const status = document.getElementById('az-save-status');
+  if (!ftp && !maxHR) return;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando…'; }
+  try {
+    const update = {};
+    if (ftp   > 0) update.ftp    = ftp;
+    if (maxHR > 0) update.max_hr = maxHR;
+    if (lthr  > 0) update.lthr   = lthr;
+    await fetch(`${window.API_URL}/auth/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
+      body: JSON.stringify(update),
+    });
+    if (AppState?.athlete) Object.assign(AppState.athlete, update);
+    if (state?.athlete)    Object.assign(state.athlete,    update);
+    localStorage.setItem('velomind_athlete', JSON.stringify(AppState?.athlete || {}));
+    if (status) { status.style.display = 'inline'; setTimeout(() => status.style.display = 'none', 3000); }
+    renderZones();
+  } catch(e) {
+    alert('Error al guardar: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Guardar en perfil'; }
+  }
+}
+
+function renderPowerCurve(pc) {
+  document.getElementById('power-ftp-label').innerHTML =
+    'FTP: <strong style="color:#FF6B35">' + (pc.ftp || '--') + 'W</strong> (' + (pc.wkg_ftp || '--') + ' W/kg)';
+
+  var ctx = document.getElementById('power-curve-chart');
+  if (ctx) {
+    if (powerCurveChart) powerCurveChart.destroy();
+    powerCurveChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: pc.curve.map(function(p){ return p.label; }),
+        datasets: [{
+          label: 'Potencia (W)',
+          data: pc.curve.map(function(p){ return p.power; }),
+          borderColor: '#C4EF44',
+          backgroundColor: 'rgba(196,239,68,0.07)',
+          fill: true, tension: 0.4,
+          pointBackgroundColor: '#C4EF44', pointRadius: 4,
+        }, {
+          label: 'FTP',
+          data: pc.curve.map(function(){ return pc.ftp; }),
+          borderColor: 'rgba(255,255,255,0.2)',
+          borderDash: [6,3], pointRadius: 0, fill: false,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#9ca3af', font: { size: 11 }, boxWidth: 12, padding: 10 } }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#6b7280', font: { size: 10 } },
+            grid: { color: 'rgba(255,255,255,0.04)' }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#6b7280', font: { size: 10 }, callback: function(v){ return v + 'W'; } },
+            grid: { color: 'rgba(255,255,255,0.04)' }
+          }
+        }
+      }
+    });
+  }
+
+  var tbody = document.querySelector('#power-table tbody');
+  if (tbody) {
+    var maxP = Math.max.apply(null, pc.curve.map(function(p){ return p.power; }));
+    tbody.innerHTML = pc.curve.map(function(p) {
+      var pct = Math.round(p.power / maxP * 100);
+      var barOpacity = 0.35 + (pct / 100) * 0.65; // más largo = más brillante
+      var barColor = 'rgba(196,239,68,' + barOpacity.toFixed(2) + ')';
+      return '<tr>' +
+        '<td style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;font-weight:700;white-space:nowrap">' + p.label + '</td>' +
+        '<td style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:#C4EF44;font-weight:700">' + p.power + 'W</td>' +
+        '<td style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:var(--text-muted)">' + (p.wkg || '--') + '</td>' +
+        '<td style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:var(--text-muted)">' + (p.pctFTP ? p.pctFTP + '%' : '--') + '</td>' +
+        '<td style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.04)">' +
+          '<div style="height:4px;border-radius:2px;background:' + barColor + ';width:' + pct + '%"></div>' +
+        '</td></tr>';
+    }).join('');
+  }
+
+  document.getElementById('power-curve-section').classList.remove('hidden');
+}
+</script>
+</body>
+</html>

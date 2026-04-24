@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "cyclocoach/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "backend/server.js" },
+    { "src": "/app/(.*)", "dest": "/cyclocoach/$1" },
+    { "src": "/(.*)", "dest": "/cyclocoach/login.html" }
+  ]
+}

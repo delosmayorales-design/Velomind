@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mecánica Avanzada — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "/api";</script>
+  <script src="js/auth.js"></script>
+  <style>
+    .mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+    
+    .tab-nav { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg-input); padding: 4px; border-radius: var(--radius-md); width: fit-content; }
+    .tab-btn { padding: 8px 16px; background: transparent; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: var(--transition); }
+    .tab-btn:hover { color: var(--text-secondary); }
+    .tab-btn.active { background: var(--primary); color: #111; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .mec-tips { margin-top: 12px; padding: 10px; background: rgba(16,185,129,0.1); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; font-size: 12px; color: var(--text-secondary); }
+    
+    .diag-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 11px; }
+    .diag-table th { text-align: left; padding: 6px 8px; background: var(--bg-input); color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; font-size: 10px; }
+    .diag-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+    .diag-table tr:last-child td { border-bottom: none; }
+    
+    .calc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+    .calc-row select, .calc-row input { width: 100%; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; }
+    .calc-row select:focus, .calc-row input:focus { outline: none; border-color: var(--primary); }
+    
+    .torque-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 10px; }
+    .torque-item { display: flex; justify-content: space-between; padding: 8px 10px; background: var(--bg-input); border-radius: var(--radius-sm); font-size: 12px; }
+    .torque-item span { color: var(--text-muted); }
+    .torque-item strong { color: var(--primary); font-weight: 600; font-family: 'Space Grotesk', sans-serif; }
+    
+    .wear-indicator { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+    .wear-bar { flex: 1; height: 10px; background: var(--bg-input); border-radius: 5px; overflow: hidden; }
+    .wear-fill { height: 100%; transition: width 0.3s; }
+    .wear-fill.green { background: var(--success); }
+    .wear-fill.yellow { background: var(--warning); }
+    .wear-fill.red { background: var(--danger); }
+    .wear-pct { font-weight: 700; min-width: 40px; text-align: right; font-family: 'Space Grotesk', sans-serif; }
+    
+    .troubleshoot { margin-top: 10px; }
+    .trouble-item { display: flex; gap: 10px; padding: 8px 10px; background: var(--bg-input); border-radius: var(--radius-sm); margin-bottom: 6px; border-left: 3px solid var(--primary); }
+    .trouble-sym { font-weight: 600; color: var(--text); font-size: 12px; min-width: 100px; }
+    .trouble-sol { font-size: 12px; color: var(--text-secondary); }
+    
+    .warning-box { padding: 12px; background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); border-radius: var(--radius-md); margin-top: 12px; }
+    .warning-box .title { color: var(--danger); font-weight: 700; font-size: 12px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .warning-box .text { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+    .checklist { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .check-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px; background: var(--bg-input); }
+    .check-item input { width: 16px; height: 16px; accent-color: var(--primary); }
+    .check-item.unsafe { background: rgba(248,113,113,0.12); border-left: 3px solid var(--danger); }
+    .check-item.safe { background: rgba(52,211,153,0.1); border-left: 3px solid var(--success); }
+    
+    .mod-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }
+    .mod-card h3 { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; margin-bottom: 14px; color: var(--text); font-family: 'Space Grotesk', sans-serif; }
+    .mod-card h3 i { color: var(--primary); width: 24px; }
+    .mod-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5; }
+    .mod-card[style*="grid-column:span2"] { grid-column: span 2; }
+    @media (max-width: 768px) { .mod-card[style*="grid-column:span2"] { grid-column: span 1; } }
+    
+    .calc-btn { width: 100%; padding: 12px; background: var(--primary); color: #111; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 8px; transition: var(--transition); font-family: 'Space Grotesk', sans-serif; }
+    .calc-btn:hover { background: var(--primary-dark); box-shadow: 0 4px 16px rgba(158,214,43,0.3); }
+    
+    .calc-result { margin-top: 14px; padding: 16px; background: linear-gradient(135deg, var(--bg-input) 0%, rgba(158,214,43,0.1) 100%); border-radius: var(--radius-md); text-align: center; border: 1px solid var(--border); }
+    .calc-result .psi { font-size: 28px; font-weight: 700; color: var(--primary); font-family: 'Space Grotesk', sans-serif; }
+    .calc-result .note { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    
+    .mechanic-textarea { width: 100%; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; margin-top: 8px; }
+    .mechanic-textarea:focus { outline: none; border-color: var(--primary); }
+  </style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo2.png" alt="VeloMind" style="width:100%; max-width:140px; height:auto; display:block; margin:0 auto">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="analytics.html" class="nav-item">
+      <i class="fas fa-chart-bar"></i> Métricas
+    </a>
+    <a href="activities.html" class="nav-item">
+      <i class="fas fa-history"></i> Actividades
+    </a>
+
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item">
+      <i class="fas fa-calendar-check"></i> Mi Plan
+    </a>
+    <a href="nutrition.html" class="nav-item">
+      <i class="fas fa-apple-alt"></i> Nutrición
+    </a>
+    <a href="body-weight.html" class="nav-item">
+      <i class="fas fa-weight"></i> Peso y W/Kg
+    </a>
+
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="mecanica-general.html" class="nav-item active"><i class="fas fa-wrench"></i> Mecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
+
+    <div class="nav-section-title">Equipación</div>
+    <a href="kit-designer.html" class="nav-item"><i class="fas fa-tshirt"></i> Diseñador Ropa</a>
+
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-name">Cargando...</div>
+        <div class="ftp" id="athlete-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1>Mecánica Avanzada</h1>
+      <p class="subtitle">Guía técnica World Tour — Diagnóstico, Ajuste y Seguridad</p>
+    </div>
+  </header>
+
+  <div class="page-body">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="showTab('transmision')"><i class="fas fa-cogs"></i> Transmisión</button>
+      <button class="tab-btn" onclick="showTab('presiones')"><i class="fas fa-compress-arrows-alt"></i> Presiones</button>
+      <button class="tab-btn" onclick="showTab('suspension')"><i class="fas fa-water"></i> Suspensión</button>
+      <button class="tab-btn" onclick="showTab('frenos')"><i class="fas fa-stop-circle"></i> Frenos</button>
+    </div>
+
+    <!-- MÓDULO 1: TRANSMISIÓN -->
+    <div id="transmision" class="tab-content active">
+        <div class="mod-grid">
+            <div class="mod-card">
+                <h3><i class="fas fa-tachometer-alt"></i> Calculadora de Desarrollos</h3>
+                <p>Calcula a qué velocidad irás según tu combinación de marchas y cadencia.</p>
+                <div class="calc-row">
+                    <input type="number" id="gearChainring" placeholder="Dientes Plato (ej. 50)">
+                    <input type="number" id="gearCog" placeholder="Dientes Piñón (ej. 15)">
+                </div>
+                <div class="calc-row">
+                    <input type="number" id="gearCadence" placeholder="Cadencia RPM (ej. 90)">
+                    <select id="gearTire">
+                        <option value="2105">700x25c (Ruta)</option>
+                        <option value="2136">700x28c (Ruta)</option>
+                        <option value="2146">700x32c (Ruta/Gravel)</option>
+                        <option value="2180">700x40c (Gravel)</option>
+                        <option value="2326">29x2.20 (MTB)</option>
+                    </select>
+                </div>
+                <button class="calc-btn" onclick="calcGear()">CALCULAR VELOCIDAD</button>
+                <div class="calc-result" id="resultGear">
+                    <div class="psi">--</div>
+                    <div class="note">Velocidad estimada en km/h</div>
+                </div>
+            </div>
+
+            <div class="mod-card">
+                <h3><i class="fas fa-cogs"></i> Indexación del Cambio</h3>
+                <p>Ajusta la posición del cambio trasero para cada velocidad del cassette.</p>
+                <table class="diag-table">
+                    <tr><th>Parámetro</th><th>Función</th></tr>
+                    <tr><td>Tornillo H (límite alto)</td><td>Impide que la cadena suba al piñón más pequeño</td></tr>
+                    <tr><td>Tornillo L (límite bajo)</td><td>Impide que baje al más grande (rueda)</td></tr>
+                    <tr><td>Tornillo B (B-gap)</td><td>Alinea la polea con el piñón pequeño (1-2mm)</td></tr>
+                </table>
+                <div class="warning-box">
+                    <div class="title">⚠️ B-GAP CRÍTICO (Cassetes 10-50t / 10-52t)</div>
+                    <div class="text">El tornillo B regula la distancia polea-piñón. En cassettes de amplio rango, un ajuste preciso (1.0-1.5mm) evita saltos y mejora la indexación un 40%.</div>
+                </div>
+            </div>
+            
+            <div class="mod-card">
+                <h3><i class="fas fa-exclamation-triangle"></i> Troubleshooting: Sube bien, baja mal</h3>
+                <div class="troubleshoot">
+                    <div class="trouble-item">
+                        <div class="trouble-sym">Diagnóstico</div>
+                        <div class="trouble-sol">Cable tensor insuficiente O muelle de retorno débil</div>
+                    </div>
+                    <div class="trouble-item">
+                        <div class="trouble-sym">Solución 1</div>
+                        <div class="trouble-sol">Girar tensor 1/4 vuelta en sentido antihorario</div>
+                    </div>
+                    <div class="trouble-item">
+                        <div class="trouble-sym">Solución 2</div>
+                        <div class="trouble-sol">Reemplazar cable (oxidación interna) o muelle</div>
+                    </div>
+                </div>
+                <table class="diag-table" style="margin-top:12px">
+                    <tr><th>Síntoma</th><th>Diagnóstico</th></tr>
+                    <tr><td>Crujido al subir</td><td>Cable tenso / pastilla rozando rotor</td></tr>
+                    <tr><td>Salto en carga</td><td>Elongación cadena >0.75% o piñones gastados</td></tr>
+                </table>
+            </div>
+
+            <div class="mod-card" style="grid-column: span 2;">
+                <h3><i class="fas fa-wrench"></i> Pares de Apriete — Transmisión</h3>
+                <div class="torque-grid">
+                    <div class="torque-item"><span>Eje pedals</span><strong>30-35 Nm</strong></div>
+                    <div class="torque-item"><span>Plate (SRAM)</span><strong>12 Nm</strong></div>
+                    <div class="torque-item"><span>Plate (Shimano)</span><strong>12-16 Nm</strong></div>
+                    <div class="torque-item"><span>Cambio trasero</span><strong>8-10 Nm</strong></div>
+                    <div class="torque-item"><span>Tornillo B</span><strong>2-3 Nm</strong></div>
+                    <div class="torque-item"><span>Abrazadera sillín</span><strong>6-8 Nm</strong></div>
+                    <div class="torque-item"><span>Tija sillín</span><strong>5-7 Nm</strong></div>
+                    <div class="torque-item"><span>Potencia</span><strong>5-6 Nm</strong></div>
+                </div>
+            </div>
+
+            <div class="mod-card" style="grid-column: span 2;">
+                <h3><i class="fas fa-robot" style="color:var(--primary)"></i> Diagnóstico IA de Transmisión</h3>
+                <p>¿Qué le ocurre a tu transmisión? Descríbelo y nuestro mecánico IA te dará la solución paso a paso.</p>
+                <div>
+                    <textarea id="mechanic-prompt" class="mechanic-textarea" placeholder="Ej: La cadena salta cuando hago fuerza en los piñones centrales..."></textarea>
+                    <button class="calc-btn" id="btn-mechanic-ai" onclick="diagnoseMechanicProblem()" style="background: linear-gradient(135deg, rgba(255,107,53,0.2), rgba(249,115,22,0.2)); border: 1px solid rgba(255,107,53,0.4); color: #FF6B35; margin-top: 10px;">
+                      <i class="fas fa-magic"></i> Consultar al Mecánico IA
+                    </button>
+                </div>
+                <div id="mechanic-result" style="display:none; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
+                    <!-- El resultado de la IA se inyectará aquí -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- MÓDULO 2: PRESIONES -->
+    <div id="presiones" class="tab-content">
+        <div class="mod-grid">
+            <div class="mod-card">
+                <h3><i class="fas fa-calculator"></i> Calculadora de Presión</h3>
+                <div class="calc-row">
+                    <select id="tireWidth">
+                        <option value="">Ancho neumático (mm)</option>
+                        <option value="21">21mm (tubular)</option>
+                        <option value="23">23mm</option>
+                        <option value="25">25mm</option>
+                        <option value="28">28mm</option>
+                        <option value="30">30mm</option>
+                        <option value="32">32mm</option>
+                        <option value="35">35mm</option>
+                        <option value="40">40mm (Gravel)</option>
+                        <option value="45">45mm</option>
+                        <option value="50">50mm (Mud)</option>
+                    </select>
+                    <select id="rimWidth">
+                        <option value="">LLanta interna (mm)</option>
+                        <option value="19">19mm (profesional)</option>
+                        <option value="21">21mm</option>
+                        <option value="23">23mm (moderna)</option>
+                        <option value="25">25mm (allround)</option>
+                    </select>
+                </div>
+                <div class="calc-row">
+                    <input type="number" id="riderWeight" placeholder="Peso rider (kg)">
+                    <select id="terrain">
+                        <option value="">Terreno</option>
+                        <option value="dry">Seco / Asphalt</option>
+                        <option value="wet">Húmedo</option>
+                        <option value="mud">Barro / Offroad</option>
+                    </select>
+                </div>
+                <div class="calc-row">
+                    <select id="tireType">
+                        <option value="camara">Con Cámara</option>
+                        <option value="tubeless" selected>Tubeless</option>
+                        <option value="tubular">Tubular</option>
+                    </select>
+                    <div style="font-size:10px; color:var(--text-muted); display:flex; align-items:center">
+                        <i class="fas fa-info-circle"></i> &nbsp; Tubeless permite ~15% menos presión.
+                    </div>
+                </div>
+                <button class="calc-btn" onclick="calcPressure()">CALCULAR PRESIÓN</button>
+                <div class="calc-result" id="resultPressure">
+                    <div class="psi">--</div>
+                    <div class="note">Introduce valores y calcula</div>
+                </div>
+            </div>
+            
+            <div class="mod-card">
+                <h3><i class="fas fa-sliders-h"></i> Variables del Algoritmo</h3>
+                <table class="diag-table">
+                    <tr><th>Variable</th><th>Impacto</th></tr>
+                    <tr><td>Ancho llanta interno ↓</td><td>Presión ↑ (+0.5 bar por cada 2mm)</td></tr>
+                    <tr><td>TPI carcasa ↑</td><td>Permite menor presión (más rodar)</td></tr>
+                    <tr><td>Peso sistema ↑</td><td>Presión ↑ proporcional (+0.2 bar/10kg)</td></tr>
+                    <tr><td>Wet / Mud</td><td>Bajar 0.3-0.5 bar para tracción</td></tr>
+                    <tr><td>Temperatura +10°C</td><td>Presión +0.1 bar (gas ideal)</td></tr>
+                </table>
+                <div class="warning-box">
+                    <div class="title">📐 FÓRMULA DE REFERENCIA</div>
+                    <div class="text">psi = ( peso_kg / ancho_mm × 0.1 ) + base_terreno + corrección</div>
+                    <div class="text" style="margin-top:4px">Base seco: 6.5 | Húmedo: 5.8 | Barro: 5.0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 3: SUSPENSIÓN -->
+    <div id="suspension" class="tab-content">
+        <div class="mod-grid">
+            <div class="mod-card">
+                <h3><i class="fas fa-compress-alt"></i> Calculadora de SAG (Hundimiento)</h3>
+                <p>El SAG es el porcentaje que se hunde la suspensión solo con tu peso. Es el ajuste más crítico.</p>
+                <div class="calc-row">
+                    <select id="sagType">
+                        <option value="fork">Horquilla (Delantera)</option>
+                        <option value="shock">Amortiguador (Trasero)</option>
+                    </select>
+                    <input type="number" id="sagTravel" placeholder="Recorrido total (ej. 120mm)">
+                </div>
+                <div class="calc-row">
+                    <select id="sagStyle" style="grid-column: span 2">
+                        <option value="15">XC / Rally (15-20% - Firme y reactivo)</option>
+                        <option value="25" selected>Trail / All Mountain (25% - Equilibrado)</option>
+                        <option value="30">Enduro / Descenso (30% - Suave y absorbente)</option>
+                    </select>
+                </div>
+                <button class="calc-btn" onclick="calcSag()">CALCULAR SAG ÓPTIMO</button>
+                <div class="calc-result" id="resultSag">
+                    <div class="psi">--</div>
+                    <div class="note">Mueve la goma de la barra a esta distancia</div>
+                </div>
+            </div>
+            
+            <div class="mod-card">
+                <h3><i class="fas fa-sliders-h"></i> Ajuste del Rebote</h3>
+                <table class="diag-table">
+                    <tr><th>Síntoma en ruta</th><th>Problema</th><th>Solución (Diales)</th></tr>
+                    <tr><td>Te escupe hacia arriba en los saltos</td><td>Rebote muy rápido</td><td>Girar dial hacia LENTO (Tortuga / +)</td></tr>
+                    <tr><td>Se hunde cada vez más en baches seguidos</td><td>Rebote muy lento</td><td>Girar dial hacia RÁPIDO (Liebre / -)</td></tr>
+                    <tr><td>Hace topes (bottom out) fácilmente</td><td>Falta progresividad</td><td>Añadir tokens (espaciadores) de volumen</td></tr>
+                </table>
+                <div class="mec-tips"><strong>Tip Pro:</strong> Empieza con el rebote a la mitad. Si vas a un circuito con muchos baches rápidos seguidos (rock garden), ábrelo un poco (rápido).</div>
+            </div>
+            
+            <div class="mod-card">
+                <h3><i class="fas fa-clipboard-check"></i> Checklist Salida</h3>
+                <div class="checklist">
+                    <label class="check-item safe"><input type="checkbox"> Cubierta exterior sin cortes</label>
+                    <label class="check-item safe"><input type="checkbox"> Presión verificada (psi/bar)</label>
+                    <label class="check-item safe"><input type="checkbox"> Cierre rápido pedals</label>
+                    <label class="check-item safe"><input type="checkbox"> Tensión cadena (10-15mm)</label>
+                    <label class="check-item safe"><input type="checkbox"> Pastillas freno >1mm</label>
+                    <label class="check-item safe"><input type="checkbox"> Abrazaderas cockpit</label>
+                    <label class="check-item safe"><input type="checkbox"> Bearing juego lateral</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 4: FRENOS -->
+    <div id="frenos" class="tab-content">
+        <div class="mod-grid">
+            <div class="mod-card">
+                <h3><i class="fas fa-fire-alt"></i> Proceso de Asentamiento (Bed-in)</h3>
+                <p>Obligatorio al cambiar pastillas o discos para evitar cristalización y chirridos.</p>
+                <div class="checklist">
+                    <label class="check-item"><input type="checkbox"> 1. Acelera a 20 km/h en llano</label>
+                    <label class="check-item"><input type="checkbox"> 2. Frena firme sin detenerte del todo (sin derrapar)</label>
+                    <label class="check-item"><input type="checkbox"> 3. <strong>Repite 15-20 veces</strong> seguidas</label>
+                    <label class="check-item"><input type="checkbox"> 4. Acelera a 30 km/h</label>
+                    <label class="check-item"><input type="checkbox"> 5. Frena fuerte hasta casi detenerte</label>
+                    <label class="check-item"><input type="checkbox"> 6. <strong>Repite 10 veces</strong></label>
+                    <label class="check-item safe"><input type="checkbox"> 7. Deja enfriar 5 minutos sin frenar</label>
+                </div>
+            </div>
+
+            <div class="mod-card">
+                <h3><i class="fas fa-hand-paper"></i> Diagnóstico — Frenos de Disco</h3>
+                <div class="troubleshoot">
+                    <div class="trouble-item">
+                        <div class="trouble-sym">Cristalización</div>
+                        <div class="trouble-sol">Pastilla expuesta a calor extremo. Sonido agudo alonar.</div>
+                    </div>
+                    <div class="trouble-item">
+                        <div class="trouble-sym">Contaminación</div>
+                        <div class="trouble-sol">Aceite/manchas en rotor. Freno "esponjoso".</div>
+                    </div>
+                    <div class="trouble-item">
+                        <div class="trouble-sym">Tacto blando</div>
+                        <div class="trouble-sol">Burbuja de aire en el circuito. Necesita purgado.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mod-card">
+                <h3><i class="fas fa-ruler"></i> Puntos de Control</h3>
+                <table class="diag-table">
+                    <tr><th>Componente</th><th>Mínimo</th><th>Reemplazo</th></tr>
+                    <tr><td>Shimano rotors</td><td>1.5mm</td><td>Si metal visible</td></tr>
+                    <tr><td>SRAM rotors</td><td>1.0mm</td><td>Base visible</td></tr>
+                    <tr><td>Pastillas orgánicas</td><td>1.0mm</td><td>3mm original</td></tr>
+                    <tr><td>Pastillas semimet</td><td>2.0mm</td><td>4mm original</td></tr>
+                </table>
+                <div class="warning-box">
+                    <div class="title">🛑 RECORRIDO MANETA</div>
+                    <div class="text">Si el recorrido >50% del levier antes de hacer bloqueo, purgar. Ideal: 20-30% del recorrido.</div>
+                </div>
+            </div>
+            
+            <div class="mod-card" style="grid-column: span 2;">
+                <h3><i class="fas fa-tools"></i> Kit de Mecánico — World Tour</h3>
+                <div class="torque-grid">
+                    <div class="torque-item"><span>Pinzas (flat)</span><strong>6 Nm</strong></div>
+                    <div class="torque-item"><span>Pinzas (IS)</span><strong>6-8 Nm</strong></div>
+                    <div class="torque-item"><span>Disco 6 tornillos</span><strong>4 Nm</strong></div>
+                    <div class="torque-item"><span>Disco CenterLock</span><strong>40 Nm</strong></div>
+                    <div class="torque-item"><span>Eje Rueda boost</span><strong>10-12 Nm</strong></div>
+                    <div class="torque-item"><span>Maneta cambio</span><strong>5 Nm</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+function showTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tab).classList.add('active');
+  document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
+}
+
+function calcPressure() {
+  const w = parseInt(document.getElementById('tireWidth').value) || 25;
+  const r = parseInt(document.getElementById('rimWidth').value) || 21;
+  const peso = parseInt(document.getElementById('riderWeight').value) || (window.AppState && AppState.athlete ? AppState.athlete.weight : 70);
+  const terrain = document.getElementById('terrain').value;
+  const type = document.getElementById('tireType').value;
+  
+  if (!terrain) { alert('Selecciona el terreno'); return; }
+  
+  // Algoritmo basado en BAR
+  const baseBar = terrain === 'dry' ? 6.5 : terrain === 'wet' ? 5.8 : 5.0;
+  
+  // Ajuste por ancho neumático (referencia 25mm)
+  const widthCorrection = (25 / w) ** 1.5;
+  const rimCorrection = (21 - r) * 0.1;
+  const weightCorrection = (peso - 70) * 0.02; // +0.2 bar cada 10kg
+  
+  let barBase = baseBar * widthCorrection - rimCorrection + weightCorrection;
+
+  // Diferenciación: Tubeless (-15%) vs Cámara (Base) vs Tubular (+5%)
+  if (type === 'tubeless') barBase *= 0.85;
+  if (type === 'tubular')  barBase *= 1.05;
+
+  // Distribución de peso estándar 45% delante / 55% detrás
+  let barF = barBase * 0.94;
+  let barR = barBase * 1.06;
+
+  barF = Math.round(barF * 10) / 10;
+  barR = Math.round(barR * 10) / 10;
+  
+  const psiF = Math.round(barF * 14.5038);
+  const psiR = Math.round(barR * 14.5038);
+  
+  document.getElementById('resultPressure').innerHTML = 
+    '<div style="display:grid; grid-template-columns:1fr 1px 1fr; gap:15px; align-items:center; margin-bottom:10px">' +
+      '<div><div style="font-size:9px; color:var(--text-muted); text-transform:uppercase; font-weight:700">Delantera</div><div class="psi" style="font-size:22px; margin:2px 0">' + psiF + ' <small style="font-size:11px; font-weight:400">psi</small></div><div style="font-size:12px; color:var(--text-secondary)">' + barF + ' bar</div></div>' +
+      '<div style="height:40px; background:var(--border)"></div>' +
+      '<div><div style="font-size:9px; color:var(--text-muted); text-transform:uppercase; font-weight:700">Trasera</div><div class="psi" style="font-size:22px; margin:2px 0">' + psiR + ' <small style="font-size:11px; font-weight:400">psi</small></div><div style="font-size:12px; color:var(--text-secondary)">' + barR + ' bar</div></div>' +
+    '</div>' +
+    '<div class="note">Para ' + w + 'mm (' + type + ') a ' + r + 'mm en ' + terrain + '</div>';
+}
+
+function calcGear() {
+  const ring = parseInt(document.getElementById('gearChainring').value);
+  const cog = parseInt(document.getElementById('gearCog').value);
+  const rpm = parseInt(document.getElementById('gearCadence').value);
+  const circ = parseInt(document.getElementById('gearTire').value) / 1000; // metros
+  if(!ring || !cog || !rpm) return;
+  const speed = (ring / cog) * circ * rpm * 60 / 1000;
+  document.getElementById('resultGear').innerHTML = 
+    '<div class="psi">' + speed.toFixed(1) + ' <small style="font-size:12px;font-weight:400">km/h</small></div>' +
+    '<div class="note">Ratio: ' + (ring/cog).toFixed(2) + ' vueltas de rueda por cada pedalada completa.</div>';
+}
+
+function calcSag() {
+  const travel = parseInt(document.getElementById('sagTravel').value);
+  const pct = parseInt(document.getElementById('sagStyle').value);
+  if(!travel) return;
+  const sag = travel * (pct / 100);
+  document.getElementById('resultSag').innerHTML = 
+    '<div class="psi">' + sag.toFixed(1) + ' <small style="font-size:12px;font-weight:400">mm</small></div>' +
+    '<div class="note">Mueve la junta tórica a ' + sag.toFixed(1) + 'mm de la base y súbete con cuidado a la bici. Añade o quita aire hasta que baje exactamente eso.</div>';
+}
+
+Auth.init().then(u => {
+  if (!u) return;
+  document.getElementById('athlete-name').textContent = u.name || 'Usuario';
+  document.getElementById('athlete-avatar').textContent = (u.name || 'U')[0].toUpperCase();
+  document.getElementById('athlete-ftp').textContent = 'FTP: ' + (u.ftp || '--') + ' W';
+});
+
+async function diagnoseMechanicProblem() {
+  const prompt = document.getElementById('mechanic-prompt').value.trim();
+  if (!prompt) return;
+
+  const btn = document.getElementById('btn-mechanic-ai');
+  const resultDiv = document.getElementById('mechanic-result');
+  const originalHtml = btn.innerHTML;
+
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Diagnosticando...';
+  btn.disabled = true;
+  resultDiv.style.display = 'none';
+
+  try {
+    const res = await Auth.apiFetch(`${window.API_URL}/coach/mechanic-ai`, {
+      method: 'POST',
+      body: JSON.stringify({ prompt, component: 'transmisión' })
+    });
+    
+    const data = await res.json();
+
+    if (res.ok && data.ok) {
+      let diffColor = data.difficulty === 'alta' ? '#F87171' : data.difficulty === 'media' ? '#FBBF24' : '#34D399';
+      
+      resultDiv.innerHTML = `
+        <h4 style="color:var(--text-primary); margin-bottom: 8px; font-family: 'Space Grotesk', sans-serif; font-size: 15px;">Diagnóstico:</h4>
+        <p style="color:var(--text-secondary); font-size:13px; margin-bottom: 16px; line-height: 1.5;">${data.diagnosis}</p>
+        
+        <div style="display:flex; gap:10px; margin-bottom: 16px;">
+          <span style="background:rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; font-size: 12px;">
+            <strong>Dificultad:</strong> <span style="color:${diffColor}; text-transform:capitalize;">${data.difficulty}</span>
+          </span>
+        </div>
+
+        <h4 style="color:var(--text-primary); margin-bottom: 8px; font-family: 'Space Grotesk', sans-serif; font-size: 14px;">Herramientas necesarias:</h4>
+        <ul style="color:var(--text-secondary); font-size:13px; margin-bottom: 16px; padding-left: 20px; line-height: 1.5;">
+          ${data.tools_needed.map(t => `<li>${t}</li>`).join('')}
+        </ul>
+
+        <h4 style="color:var(--text-primary); margin-bottom: 8px; font-family: 'Space Grotesk', sans-serif; font-size: 14px;">Pasos a seguir:</h4>
+        <ol style="color:var(--text-secondary); font-size:13px; margin-bottom: 16px; padding-left: 20px; line-height: 1.5;">
+          ${data.solution_steps.map(s => `<li>${s}</li>`).join('')}
+        </ol>
+
+        <div class="mec-tips" style="border-color: #00C882; background: rgba(0,200,130,0.1);">
+          <strong style="color:#00C882;">Pro Tip:</strong> ${data.pro_tip}
+        </div>
+      `;
+      resultDiv.style.display = 'block';
+    } else {
+      alert('Error: ' + (data.error || 'No se pudo generar el diagnóstico.'));
+    }
+  } catch (err) {
+    if (err.code !== 'PREMIUM_REQUIRED') alert('Error de conexión: ' + err.message);
+  } finally {
+    btn.innerHTML = originalHtml;
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
