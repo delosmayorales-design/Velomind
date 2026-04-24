@@ -1434,3 +1434,113 @@ window.WORKOUT_TYPES  = WORKOUT_TYPES;
 window.GoalUtils      = GoalUtils;
 window.TrainingPlanGenerator = TrainingPlanGenerator;
 window.NutritionPlanner = NutritionPlanner;
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE MOBILE ADAPTER (Injected Globally)
+══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Inyectar CSS global para móviles
+  const mobileStyle = document.createElement('style');
+  mobileStyle.innerHTML = `
+    @media (max-width: 768px) {
+      /* Menú Lateral (Sidebar) Off-Canvas */
+      .sidebar {
+        position: fixed !important;
+        top: 0; left: 0; bottom: 0;
+        width: 280px !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        z-index: 9999 !important;
+        background: var(--bg, #0a0b0f) !important;
+        border-right: 1px solid var(--border) !important;
+        box-shadow: 4px 0 24px rgba(0,0,0,0.5) !important;
+        display: flex !important; 
+      }
+      body.sidebar-open .sidebar { 
+        transform: translateX(0) !important; 
+      }
+      
+      /* Overlay (Fondo oscuro al abrir el menú) */
+      .sidebar-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(2px); z-index: 9998;
+        opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+      }
+      body.sidebar-open .sidebar-overlay { 
+        opacity: 1; pointer-events: auto; 
+      }
+      
+      /* Contenido principal */
+      .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 16px !important;
+      }
+      .page-header { flex-direction: column; align-items: flex-start !important; gap: 16px; margin-bottom: 24px; }
+      .header-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
+      
+      /* Desenrollar Grids rígidos de PC a 1 columna (Móvil) */
+      div[style*="grid-template-columns: 1fr 1fr"],
+      div[style*="grid-template-columns: 2fr 1fr"],
+      div[style*="grid-template-columns: 1fr 1fr 1fr"],
+      div[style*="grid-template-columns:repeat(4,1fr)"],
+      div[style*="grid-template-columns:repeat(5,1fr)"] {
+        display: flex !important; flex-direction: column !important; gap: 16px !important;
+      }
+      
+      /* Clases comunes de layout en la app */
+      .metrics-grid, .grid-2, #stats-row, .summary-grid, .color-grid, .mod-grid, .calc-row { 
+        display: flex !important; flex-direction: column !important; 
+      }
+      .mod-card { grid-column: span 1 !important; }
+      
+      /* Tipografía y ajustes de componentes */
+      .page-title h1 { font-size: 22px !important; }
+      .wc-val { font-size: 24px !important; }
+      .fs-pmc-grid { display: flex !important; flex-direction: column !important; gap: 12px; }
+      .fs-vdiv { height: 1px; width: 100%; background: var(--border); }
+      .adapt-input-row { flex-direction: column; align-items: stretch; }
+      .adapt-submit { width: 100%; justify-content: center; }
+      
+      .mobile-menu-btn { display: inline-flex !important; }
+    }
+    
+    /* Diseño del Botón Hamburguesa */
+    .mobile-menu-btn {
+      display: none; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+      color: var(--text, #fff); border-radius: 8px; cursor: pointer; margin-right: 12px;
+      font-size: 18px; width: 40px; height: 40px; align-items: center; justify-content: center;
+      transition: background 0.2s; flex-shrink: 0;
+    }
+    .mobile-menu-btn:hover { background: rgba(255,255,255,0.1); }
+  `;
+  document.head.appendChild(mobileStyle);
+
+  // 2. Inyectar Botón de Menú y Overlay automáticamente si existe el Sidebar
+  const headerTitle = document.querySelector('.page-header .page-title');
+  if (headerTitle && document.querySelector('.sidebar')) {
+    const h1 = headerTitle.querySelector('h1');
+    const p = headerTitle.querySelector('p');
+    
+    const btn = document.createElement('button');
+    btn.className = 'mobile-menu-btn';
+    btn.innerHTML = '<i class="fas fa-bars"></i>';
+    btn.onclick = () => document.body.classList.toggle('sidebar-open');
+    
+    const textWrapper = document.createElement('div');
+    if (h1) textWrapper.appendChild(h1);
+    if (p) textWrapper.appendChild(p);
+    
+    headerTitle.innerHTML = '';
+    headerTitle.style.display = 'flex';
+    headerTitle.style.alignItems = 'center';
+    
+    headerTitle.appendChild(btn);
+    headerTitle.appendChild(textWrapper);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    overlay.onclick = () => document.body.classList.remove('sidebar-open');
+    document.body.appendChild(overlay);
+  }
+});
