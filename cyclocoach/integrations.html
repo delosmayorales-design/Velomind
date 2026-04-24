@@ -543,7 +543,7 @@ const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
 const REDIRECT_URI = 'https://tudominio.com/oauth-callback.html';
 
 // Intercambio de código por tokens
-app.get('/api/auth/strava/callback', async (req, res) => {
+app.get(window.API_URL + '/auth/strava/callback', async (req, res) => {
   const { code } = req.query;
   const response = await axios.post('https://www.strava.com/oauth/token', {
     client_id: STRAVA_CLIENT_ID,

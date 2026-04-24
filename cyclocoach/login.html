@@ -483,7 +483,12 @@
   </div>
 </div>
 
-<script>window.CYCLOCOACH_PUBLIC = true;</script>
+<script>
+  window.CYCLOCOACH_PUBLIC = true;
+  window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "http://localhost:3000/api"
+    : "https://velomind-backend.onrender.com/api";
+</script>
 <script src="js/auth.js"></script>
 <script>
   function showAlert(msg, type = 'error') {
@@ -591,7 +596,7 @@
   function connectGarmin(mode) {
     // Garmin uses OAuth 1.0a — requires backend proxy
     // In production: redirect to your backend /auth/garmin/start
-    const BACKEND_URL = '/api/auth/garmin/start';
+    const BACKEND_URL = window.API_URL + '/auth/garmin/start';
 
     localStorage.setItem('oauth_mode', mode);
     localStorage.setItem('oauth_provider', 'garmin');
