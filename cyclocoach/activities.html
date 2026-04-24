@@ -1,7 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <script>if(localStorage.getItem('velomind_theme')==='light')document.documentElement.classList.add('light-theme');</script>
+  <script>
+    (function() {
+      var isLight = localStorage.getItem('velomind_theme') === 'light';
+      if (isLight) document.documentElement.classList.add('light-theme');
+      var style = document.createElement('style');
+      style.textContent = 'html.light-theme, html.light-theme body { background-color: #f8fafc !important; color: #1e293b !important; } html, body { background-color: #0a0b0f !important; color: #f0f2f5 !important; }';
+      document.head.appendChild(style);
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Actividades — VeloMind</title>

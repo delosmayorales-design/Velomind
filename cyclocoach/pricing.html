@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <script>
+    (function() {
+      var isLight = localStorage.getItem('velomind_theme') === 'light';
+      if (isLight) document.documentElement.classList.add('light-theme');
+      var style = document.createElement('style');
+      style.textContent = 'html.light-theme, html.light-theme body { background-color: #f8fafc !important; color: #1e293b !important; } html, body { background-color: #0a0b0f !important; color: #f0f2f5 !important; }';
+      document.head.appendChild(style);
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VeloMind — Planes y Precios</title>
@@ -22,6 +31,15 @@
       --text-secondary: #9ca3af;
       --radius: 16px;
       --green: #22c55e;
+    }
+    html.light-theme {
+      --bg: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-card2: #f1f5f9;
+      --border: rgba(0,0,0,0.1);
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --text-secondary: #475569;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
