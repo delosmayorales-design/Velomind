@@ -1443,6 +1443,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const mobileStyle = document.createElement('style');
   mobileStyle.innerHTML = `
     @media (max-width: 768px) {
+      /* Prevenir desbordamiento de pantalla (scroll horizontal accidental) */
+      html, body { overflow-x: hidden !important; width: 100vw !important; }
+      * { box-sizing: border-box !important; }
+
       /* Menú Lateral (Sidebar) Off-Canvas */
       .sidebar {
         position: fixed !important;
@@ -1474,10 +1478,47 @@ document.addEventListener('DOMContentLoaded', () => {
       .main-content {
         margin-left: 0 !important;
         width: 100% !important;
-        padding: 16px !important;
+        max-width: 100vw !important;
+        padding: 14px 12px !important;
+        overflow-x: hidden !important;
       }
-      .page-header { flex-direction: column; align-items: flex-start !important; gap: 16px; margin-bottom: 24px; }
-      .header-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
+      .page-header { flex-direction: column; align-items: flex-start !important; gap: 12px; margin-bottom: 20px; width: 100%; }
+      
+      /* Arreglo de Botones en Cabecera (Para que no se salgan de la pantalla) */
+      .header-actions { 
+        width: 100% !important; 
+        display: grid !important; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 8px !important; 
+      }
+      .header-actions .btn, .header-actions button, .header-actions select { 
+        width: 100% !important; 
+        margin: 0 !important;
+        padding: 10px 8px !important; 
+        font-size: 11px !important; 
+        white-space: normal !important; 
+        height: auto !important;
+        text-align: center;
+        justify-content: center;
+      }
+
+      /* Asegurar que las Tarjetas no rompan la pantalla */
+      .card, .mb-6 {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+      .card-header, .card-body { padding: 12px !important; }
+
+      /* Arreglo de Tablas para que hagan scroll interno y no rompan la app */
+      table, .data-table, div[style*="overflow-x:auto"], div[style*="overflow-x: auto"] {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
       
       /* Desenrollar Grids rígidos de PC a 1 columna (Móvil) */
       div[style*="grid-template-columns: 1fr 1fr"],
@@ -1485,22 +1526,31 @@ document.addEventListener('DOMContentLoaded', () => {
       div[style*="grid-template-columns: 1fr 1fr 1fr"],
       div[style*="grid-template-columns:repeat(4,1fr)"],
       div[style*="grid-template-columns:repeat(5,1fr)"] {
-        display: flex !important; flex-direction: column !important; gap: 16px !important;
+        display: flex !important; flex-direction: column !important; gap: 12px !important;
+        width: 100% !important; max-width: 100% !important;
       }
       
       /* Clases comunes de layout en la app */
       .metrics-grid, .grid-2, #stats-row, .summary-grid, .color-grid, .mod-grid, .calc-row { 
-        display: flex !important; flex-direction: column !important; 
+        display: flex !important; flex-direction: column !important; gap: 12px !important;
+        width: 100% !important; max-width: 100% !important;
       }
       .mod-card { grid-column: span 1 !important; }
       
       /* Tipografía y ajustes de componentes */
-      .page-title h1 { font-size: 22px !important; }
-      .wc-val { font-size: 24px !important; }
+      .page-title h1 { font-size: 20px !important; line-height: 1.2; }
+      .page-title p { font-size: 12px !important; }
+      .wc-val { font-size: 22px !important; }
       .fs-pmc-grid { display: flex !important; flex-direction: column !important; gap: 12px; }
       .fs-vdiv { height: 1px; width: 100%; background: var(--border); }
-      .adapt-input-row { flex-direction: column; align-items: stretch; }
-      .adapt-submit { width: 100%; justify-content: center; }
+      .adapt-input-row { flex-direction: column; align-items: stretch; gap: 8px; }
+      .adapt-submit, .btn-full { width: 100%; justify-content: center; white-space: normal !important; height: auto !important; }
+
+      /* Arreglo de Gráficos (Chart.js) */
+      .chart-wrap-md, .chart-wrap-lg, .chart-container, canvas {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
       
       .mobile-menu-btn { display: inline-flex !important; }
     }
