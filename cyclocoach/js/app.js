@@ -1630,7 +1630,11 @@ document.addEventListener('DOMContentLoaded', () => {
    THEME ADAPTER (Light / Dark Mode)
 ══════════════════════════════════════════════════════════════ */
 if (localStorage.getItem('velomind_theme') === 'light') {
-  document.body.classList.add('light-theme');
+  if (document.body) {
+    document.body.classList.add('light-theme');
+  } else {
+    document.addEventListener('DOMContentLoaded', () => document.body.classList.add('light-theme'));
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1647,6 +1651,8 @@ document.addEventListener('DOMContentLoaded', () => {
       --text-secondary: #374151 !important;
       --text-muted: #4b5563 !important;
       --bg-card-hover: #f3f4f6 !important;
+      --primary-light: #4d7a00 !important;
+      --success: #059669 !important;
     }
     body.light-theme .sidebar { background: #ffffff !important; }
     body.light-theme .card, body.light-theme .mod-card, body.light-theme .session-card-item { 
@@ -1671,6 +1677,12 @@ document.addEventListener('DOMContentLoaded', () => {
     body.light-theme [style*="color: var(--text-muted)"], body.light-theme [style*="color:var(--text-muted)"],
     body.light-theme [style*="color: var(--text-secondary)"], body.light-theme [style*="color:var(--text-secondary)"] {
       color: #4b5563 !important;
+    }
+    body.light-theme [style*="color: #C4EF44"], body.light-theme [style*="color:#C4EF44"],
+    body.light-theme [style*="color: #9ED62B"], body.light-theme [style*="color:#9ED62B"],
+    body.light-theme [style*="color: #34D399"], body.light-theme [style*="color:#34D399"],
+    body.light-theme [style*="color: #10B981"], body.light-theme [style*="color:#10B981"] {
+      color: #166534 !important;
     }
     body.light-theme [style*="background: var(--bg-input)"], body.light-theme [style*="background:var(--bg-input)"] {
       background: #f9fafb !important;
