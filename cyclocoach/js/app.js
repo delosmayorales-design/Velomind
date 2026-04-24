@@ -1481,6 +1481,7 @@ document.addEventListener('DOMContentLoaded', () => {
         max-width: 100vw !important;
         padding: 14px 12px !important;
         overflow-x: hidden !important;
+        padding-bottom: 85px !important; /* Espacio extra para que la Bottom Bar no tape contenido */
       }
       .page-header { flex-direction: column; align-items: flex-start !important; gap: 12px; margin-bottom: 20px; width: 100%; }
       
@@ -1573,7 +1574,33 @@ document.addEventListener('DOMContentLoaded', () => {
         max-width: 100% !important;
       }
       
-      .mobile-menu-btn { display: inline-flex !important; }
+      /* Ajustar notificaciones flotantes (Toasts) para no chocar con el menú */
+      .toast-wrap { bottom: 80px !important; right: 16px !important; }
+
+      /* Ocultar botón hamburguesa superior, ahora usamos la barra inferior */
+      .mobile-menu-btn { display: none !important; }
+
+      /* Barra de Navegación Inferior (Estilo Strava) */
+      .bottom-nav {
+        position: fixed !important;
+        bottom: 0; left: 0; right: 0;
+        height: 65px;
+        background: var(--bg-card, #1a1d26);
+        border-top: 1px solid var(--border, rgba(255,255,255,0.08));
+        display: flex !important;
+        justify-content: space-around;
+        align-items: center;
+        z-index: 9997;
+        padding-bottom: env(safe-area-inset-bottom); /* Ajuste seguro para iPhone Notch */
+      }
+      body.light-theme .bottom-nav { background: #ffffff !important; }
+      .bottom-nav-item {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: var(--text-muted, #6b7280); text-decoration: none; font-size: 10px; font-weight: 600;
+        gap: 4px; flex: 1; height: 100%; transition: color 0.2s;
+      }
+      .bottom-nav-item.active { color: var(--primary, #9ED62B); }
+      .bottom-nav-item i { font-size: 20px; margin-bottom: 2px; }
     }
     
     /* Diseño del Botón Hamburguesa */
@@ -1618,6 +1645,37 @@ document.addEventListener('DOMContentLoaded', () => {
     overlay.className = 'sidebar-overlay';
     overlay.onclick = () => document.body.classList.remove('sidebar-open');
     document.body.appendChild(overlay);
+
+    // 3. Inyectar Bottom Navigation Bar (Experiencia App Nativa)
+    const bottomNav = document.createElement('nav');
+    bottomNav.className = 'bottom-nav';
+    bottomNav.style.display = 'none'; // Oculto en PC, visible solo por CSS en móvil
+    
+    const currentPath = window.location.pathname;
+    const navItems = [
+      { name: 'Métricas', icon: 'fa-chart-bar', href: 'analytics.html' },
+      { name: 'Mi Plan', icon: 'fa-calendar-check', href: 'training-plan.html' },
+      { name: 'Actividades', icon: 'fa-history', href: 'activities.html' },
+      { name: 'Garaje', icon: 'fa-warehouse', href: 'garaje.html' },
+      { name: 'Menú', icon: 'fa-bars', href: '#', isMenu: true }
+    ];
+    
+    bottomNav.innerHTML = navItems.map(item => {
+      const isActive = currentPath.includes(item.href) && !item.isMenu ? 'active' : '';
+      return `
+        <a href="${item.href}" class="bottom-nav-item ${isActive}" ${item.isMenu ? 'id="bottom-nav-menu-btn"' : ''}>
+          <i class="fas ${item.icon}"></i>
+          <span>${item.name}</span>
+        </a>
+      `;
+    }).join('');
+    
+    document.body.appendChild(bottomNav);
+    
+    document.getElementById('bottom-nav-menu-btn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.body.classList.add('sidebar-open'); // Sigue abriendo el resto de opciones
+    });
   }
 });
 
@@ -1646,7 +1704,13 @@ document.addEventListener('DOMContentLoaded', () => {
       --text-secondary: #374151 !important;
       --text-muted: #4b5563 !important;
       --bg-card-hover: #f3f4f6 !important;
+      --primary: #4d7a00 !important;
+      --primary-dark: #2f4f00 !important;
+      --primary-glow: rgba(77, 122, 0, 0.1) !important;
       --primary-light: #4d7a00 !important;
+      --accent: #1d4ed8 !important;
+      --warning: #b45309 !important;
+      --danger: #b91c1c !important;
       --success: #059669 !important;
     }
     body.light-theme .sidebar { background: #ffffff !important; }
@@ -1667,6 +1731,28 @@ document.addEventListener('DOMContentLoaded', () => {
     body.light-theme .wc-val.wc-red { color: #b91c1c !important; }
     body.light-theme .auth-right { background: #ffffff !important; }
 
+    /* Fix para clases específicas de botones y etiquetas (Actividades, Planes, Nutrición) */
+    body.light-theme .btn-ai, 
+    body.light-theme .adapt-submit, 
+    body.light-theme .ai-badge, 
+    body.light-theme .step-num, 
+    body.light-theme .params-apply-btn, 
+    body.light-theme .btn-save-personal,
+    body.light-theme .adapt-trigger {
+      color: #166534 !important;
+    }
+    body.light-theme .btn-ai {
+      background: rgba(139,92,246,0.1) !important;
+      border-color: rgba(139,92,246,0.3) !important;
+    }
+    body.light-theme .badge-blue, body.light-theme .phase-base, body.light-theme .alert-info, body.light-theme .plan-label { color: #1d4ed8 !important; border-color: rgba(29,78,216,0.3) !important; background: rgba(29,78,216,0.05) !important; }
+    body.light-theme .badge-green, body.light-theme .phase-recovery, body.light-theme .alert-success { color: #166534 !important; border-color: rgba(22,101,52,0.3) !important; background: rgba(22,101,52,0.05) !important; }
+    body.light-theme .badge-yellow, body.light-theme .phase-build, body.light-theme .phase-peak, body.light-theme .alert-warning { color: #b45309 !important; border-color: rgba(180,83,9,0.3) !important; background: rgba(180,83,9,0.05) !important; }
+    body.light-theme .alert-danger, body.light-theme .phase-race { color: #b91c1c !important; border-color: rgba(185,28,28,0.3) !important; background: rgba(185,28,28,0.05) !important; }
+    body.light-theme .delta-pill.up { color: #166534 !important; border-color: rgba(22,101,52,0.3) !important; background: rgba(22,101,52,0.05) !important; }
+    body.light-theme .delta-pill.down { color: #b91c1c !important; border-color: rgba(185,28,28,0.3) !important; background: rgba(185,28,28,0.05) !important; }
+    body.light-theme .delta-pill.neu { color: #4b5563 !important; border-color: rgba(75,85,99,0.3) !important; background: rgba(75,85,99,0.05) !important; }
+
     /* Ajustes estrictos de legibilidad para elementos con estilos forzados (inline) */
     body.light-theme [style*="color: #fff"], body.light-theme [style*="color:#fff"],
     body.light-theme [style*="color: var(--text)"], body.light-theme [style*="color:var(--text)"] {
@@ -1683,6 +1769,10 @@ document.addEventListener('DOMContentLoaded', () => {
     body.light-theme [style*="color: #10B981"], body.light-theme [style*="color:#10B981"],
     body.light-theme [style*="color: var(--primary)"], body.light-theme [style*="color:var(--primary)"],
     body.light-theme [style*="color: var(--success)"], body.light-theme [style*="color:var(--success)"] {
+      color: #166534 !important;
+    }
+    body.light-theme [style*="color: rgba(196"], body.light-theme [style*="color:rgba(196"],
+    body.light-theme [style*="color: rgba(52"], body.light-theme [style*="color:rgba(52"] {
       color: #166534 !important;
     }
     /* Azules intensos */
@@ -1764,5 +1854,34 @@ document.addEventListener('DOMContentLoaded', () => {
     
     sidebarNav.appendChild(sectionTitle);
     sidebarNav.appendChild(toggleBtn);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     PWA (Progressive Web App) - Instalación y Service Worker
+  ══════════════════════════════════════════════════════════════ */
+  
+  // 1. Inyectar el manifest.json dinámicamente
+  if (!document.querySelector('link[rel="manifest"]')) {
+    const manifest = document.createElement('link');
+    manifest.rel = 'manifest';
+    manifest.href = 'manifest.json';
+    document.head.appendChild(manifest);
+  }
+
+  // 2. Inyectar theme-color para la barra de estado del móvil
+  if (!document.querySelector('meta[name="theme-color"]')) {
+    const themeColor = document.createElement('meta');
+    themeColor.name = 'theme-color';
+    themeColor.content = document.body.classList.contains('light-theme') ? '#ffffff' : '#0a0b0f';
+    document.head.appendChild(themeColor);
+  }
+
+  // 3. Registrar Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('[PWA] Service Worker registrado', reg.scope))
+        .catch(err => console.warn('[PWA] Fallo en Service Worker:', err));
+    });
   }
 });
