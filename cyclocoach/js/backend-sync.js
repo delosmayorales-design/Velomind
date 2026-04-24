@@ -68,6 +68,12 @@ const BackendSync = (() => {
       if (data.user) {
         AppState.athlete = { ...AppState.athlete, ...data.user };
         localStorage.setItem('velomind_athlete', JSON.stringify(AppState.athlete));
+        
+        // Sincronizar también la sesión de Auth
+        const currentUser = JSON.parse(localStorage.getItem('velomind_user') || '{}');
+        const updatedUser = { ...currentUser, ...data.user };
+        localStorage.setItem('velomind_user', JSON.stringify(updatedUser));
+        if (window.Auth && Auth.updateUI) Auth.updateUI(updatedUser);
       }
       return data.user;
     } catch (e) {
@@ -86,6 +92,12 @@ const BackendSync = (() => {
       if (data.user) {
         AppState.athlete = { ...AppState.athlete, ...data.user };
         localStorage.setItem('velomind_athlete', JSON.stringify(AppState.athlete));
+        
+        // Sincronizar también la sesión de Auth
+        const currentUser = JSON.parse(localStorage.getItem('velomind_user') || '{}');
+        const updatedUser = { ...currentUser, ...data.user };
+        localStorage.setItem('velomind_user', JSON.stringify(updatedUser));
+        if (window.Auth && Auth.updateUI) Auth.updateUI(updatedUser);
       }
       return data;
     } catch (e) {

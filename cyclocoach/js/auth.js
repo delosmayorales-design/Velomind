@@ -219,9 +219,9 @@ const Auth = (() => {
   // ─── Inyectar UI de usuario en sidebar ───────────────────────
   function injectUserUI(user) {
     if (user) {
-      const nameEls = document.querySelectorAll('#athlete-sidebar-name, #athlete-name');
-      const avatarEls = document.querySelectorAll('#athlete-avatar');
-      const ftpEls = document.querySelectorAll('#athlete-sidebar-ftp, #athlete-ftp');
+      const nameEls = document.querySelectorAll('#athlete-sidebar-name, #athlete-name, #name');
+      const avatarEls = document.querySelectorAll('#athlete-avatar, #avatar');
+      const ftpEls = document.querySelectorAll('#athlete-sidebar-ftp, #athlete-ftp, #ftp');
 
       const displayName = user.name || user.email?.split('@')[0] || 'Atleta';
       const initials = displayName.split(' ').map(w=>w[0]).join('').toUpperCase().substring(0,2);
@@ -379,6 +379,7 @@ const Auth = (() => {
     isPremium,
     apiFetch,
     showPremiumPrompt,
+    updateUI: injectUserUI,
     login,
     register,
     demoLogin,

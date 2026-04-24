@@ -350,7 +350,7 @@ function renderStats() {
   const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
 
   const ftp = AppState.athlete?.ftp || null;
-  const height = parseFloat(localStorage.getItem(HEIGHT_KEY)) || null;
+  const height = parseFloat(localStorage.getItem(HEIGHT_KEY)) || AppState.athlete?.height || null;
 
   const delta = current && prev ? (current.weight - prev.weight) : null;
   const total = current && initial ? (current.weight - initial.weight) : null;

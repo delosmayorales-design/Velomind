@@ -502,7 +502,11 @@ async function saveAndGo() {
 
   try {
     const session = JSON.parse(localStorage.getItem('velomind_user')||'{}');
-    if (data.name) { session.name=data.name; localStorage.setItem('velomind_user', JSON.stringify(session)); }
+    if (data.name) session.name = data.name;
+    if (data.ftp) session.ftp = data.ftp;
+    if (data.weight) session.weight = data.weight;
+    localStorage.setItem('velomind_user', JSON.stringify(session));
+    if (window.Auth && Auth.updateUI) Auth.updateUI(session);
   } catch(e){}
 
   // Guardar peso inicial

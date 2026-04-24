@@ -556,12 +556,13 @@ async function syncStrava() {
 // ── Load coach data from backend ─────────────────────────────
 async function loadCoachData() {
   try {
-    const recRes = await fetch(`${API}/coach/recommendations`, { headers: Auth.getHeaders() });
+    const metrics = AppState.getCurrentMetrics() || { ctl: 0, atl: 0, tsb: 0 };
+    const recRes = await fetch(`${API}/coach/recommendations?ctl=${metrics.ctl}&atl=${metrics.atl}&tsb=${metrics.tsb}`, { headers: Auth.getHeaders() });
     if (!recRes.ok) throw new Error('Sin conexión al backend');
     const rec = await recRes.json();
-    const summaryToRender = (rec.summary && rec.summary.pmc && (rec.summary.pmc.ctl > 0 || rec.summary.pmc.atl > 0))
-      ? rec.summary
-      : { ...rec.summary, pmc: AppState.pmcData[AppState.pmcData.length - 1] || { ctl: 0, atl: 0, tsb: 0 } };
+    
+    // Forzar siempre el uso del PMC local (preciso) para consistencia visual absoluta
+    const summaryToRender = { ...rec.summary, pmc: metrics };
 
     renderFormState(summaryToRender, rec.training);
     renderCoachAlerts(rec.training.alerts);
@@ -952,6 +953,7 @@ async function adaptSession(idx, dayOffset) {
           description: sess.description, tss: tssVal,
         },
         es_manana: dayOffset > 0,
+        metrics: AppState.getCurrentMetrics()
       }),
     });
     const data = await res.json();
