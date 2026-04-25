@@ -256,13 +256,19 @@ rowsToInsert.push({
     console.log('[Strava Sync] DEBUG: Guardando', rowsToInsert.length, 'actividades con user_id:', uid);
 
     // Guardar en base de datos en bloques de 100 para no bloquear la API
+    let fallos = 0;
     for (let i = 0; i < rowsToInsert.length; i += 100) {
       const chunk = rowsToInsert.slice(i, i + 100);
       const { error } = await supabase.from('activities').upsert(chunk, { onConflict: 'id' });
       if (error) {
-        console.error('[Strava Sync] Fila problemática:', JSON.stringify(chunk[0]).substring(0, 150));
-        console.error('[Strava Sync] Error guardando chunk:', error.message);
-        throw new Error(`Error de Supabase al guardar: ${error.message}`);
+        console.warn(`[Strava Sync] Chunk falló (${error.message}). Reintentando fila a fila para salvar los datos...`);
+        for (const row of chunk) {
+          const { error: rowErr } = await supabase.from('activities').upsert(row, { onConflict: 'id' });
+          if (rowErr) {
+            console.error(`[Strava Sync] Fila rechazada por BD (${row.id}):`, rowErr.message);
+            fallos++;
+          }
+        }
       }
     }
 
@@ -270,10 +276,11 @@ rowsToInsert.push({
 
     console.log(`[Strava Sync] DEBUG: Total recibidas de Strava: ${acts.length}, rowsToInsert: ${rowsToInsert.length}`);
     console.log(`[Strava Sync] DEBUG - Primera rowToInsert:`, rowsToInsert[0] ? JSON.stringify(rowsToInsert[0]).substring(0, 200) : 'N/A');
-    console.log(`✅ SYNC COMPLETADO. Se guardaron ${rowsToInsert.length} filas en Supabase.`);
-    res.json({ message: 'Sync OK', synced: rowsToInsert.length, total: acts.length });
+    console.log(`✅ SYNC COMPLETADO. Se guardaron ${rowsToInsert.length - fallos} filas en Supabase.`);
+    res.json({ message: 'Sync OK', synced: rowsToInsert.length - fallos, total: acts.length });
 
   } catch (e) {
+    console.error('\n❌ [Strava Sync] ERROR FATAL:', e);
     res.status(500).json({ error: e.message });
   }
 });
