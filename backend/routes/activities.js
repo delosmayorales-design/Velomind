@@ -16,6 +16,14 @@ publicRouter.get('/find-user', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── PÚBLICO: Ver todas las actividades (debug) ─────────────────────────────────────
+publicRouter.get('/all-activities', async (req, res) => {
+  try {
+    const { data: acts } = await supabase.from('activities').select('id, user_id, name, date').limit(20);
+    res.json({ activities: acts });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Rutas protegidas
 router.use(requireAuth);
 

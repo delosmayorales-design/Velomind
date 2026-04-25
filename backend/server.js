@@ -4,6 +4,7 @@ const cors    = require('cors');
 const path    = require('path');
 
 const app  = express();
+const supabase = require('./db');
 const PORT = process.env.PORT || 3000;
 
 // ─────────────────────────────────────────
@@ -15,62 +16,33 @@ app.use(cors({
 }));
 
 // ─────────────────────────────────────────
-// Stripe webhook (ANTES de express.json)
+// ✅ RUTAS PÚBLICAS (SIN AUTH)
 // ─────────────────────────────────────────
-const payments = require('./routes/payments');
-app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), payments.handleWebhook);
+const publicActivities = express.Router();
 
-// ─────────────────────────────────────────
-// Body parsers
-// ─────────────────────────────────────────
-app.use(express.json({ limit: '20mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// ─────────────────────────────────────────
-// Servir frontend estático (opcional)
-// ─────────────────────────────────────────
-app.use('/app', express.static(path.join(__dirname, '../cyclocoach')));
-
-// ─────────────────────────────────────────
-// Health check
-// ─────────────────────────────────────────
-app.get('/api/health', async (req, res) => {
+publicActivities.get('/find-user', async (req, res) => {
   try {
-    const supabase = require('./db');
+    const email = req.query.email;
+    if (!email) return res.status(400).json({ error: 'email requerido' });
+    
+    const { data: user } = await supabase.from('users').select('id, email, name, ftp').ilike('email', '%' + email + '%').limit(5);
+    res.json({ users: user });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
-    const { count: uCount } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: aCount } = await supabase
-      .from('activities')
-      .select('*', { count: 'exact', head: true });
-
-    res.json({
-      status: 'ok',
-      version: '2.0.0',
-      env: process.env.NODE_ENV || 'development',
-      users: uCount || 0,
-      activities: aCount || 0,
-      ts: new Date().toISOString(),
-    });
-
-  } catch (err) {
-    res.status(500).json({ status: 'error', error: err.message });
-  }
+publicActivities.get('/all-activities', async (req, res) => {
+  try {
+    const { data: acts } = await supabase.from('activities').select('id, user_id, name, date').limit(20);
+    res.json({ activities: acts });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ─────────────────────────────────────────
 // ✅ RUTAS (BIEN)
 // ─────────────────────────────────────────
 app.use('/api/auth',       require('./routes/auth'));
-
-// Rutas públicas de activities (sin auth)
-const activitiesRoutes = require('./routes/activities');
-app.use('/api/activities/public', activitiesRoutes.publicRouter);
-
-// Rutas protegidas de activities
-app.use('/api/activities', activitiesRoutes.router);
+app.use('/api/public/activities', publicActivities);
+app.use('/api/activities', require('./routes/activities').router);
 app.use('/api/analytics',  require('./routes/analytics'));
 app.use('/api/providers',  require('./routes/providers'));
 app.use('/api/body',       require('./routes/body'));
