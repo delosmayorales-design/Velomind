@@ -272,7 +272,14 @@ rowsToInsert.push({
       }
     }
 
-    setImmediate(() => recalculatePMC(uid));
+    // Blindaje contra cuelgues del servidor en procesos asíncronos
+    setImmediate(async () => {
+      try {
+        await recalculatePMC(uid);
+      } catch (err) {
+        console.error('⚠️ [Strava Sync] Error recalculando PMC en background:', err.message);
+      }
+    });
 
     console.log(`[Strava Sync] DEBUG: Total recibidas de Strava: ${acts.length}, rowsToInsert: ${rowsToInsert.length}`);
     console.log(`[Strava Sync] DEBUG - Primera rowToInsert:`, rowsToInsert[0] ? JSON.stringify(rowsToInsert[0]).substring(0, 200) : 'N/A');

@@ -192,7 +192,14 @@ router.post('/', async (req, res) => {
     if (error) throw error;
 
     if (a.gear_id) await updateGarageStats(uid, a.gear_id, distanceMeters, a.duration || 0, true);
-    setImmediate(() => recalculatePMC(uid));
+    
+    setImmediate(async () => {
+      try {
+        await recalculatePMC(uid);
+      } catch(err) {
+        console.error('⚠️ [Activities] Error recalculando PMC en background:', err.message);
+      }
+    });
     res.status(201).json({ message: 'Guardada', id, tss, if_value: ifValue });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -233,7 +240,13 @@ router.post('/batch', async (req, res) => {
       if (error) throw error;
     }
 
-    setImmediate(() => recalculatePMC(uid));
+    setImmediate(async () => {
+      try {
+        await recalculatePMC(uid);
+      } catch(err) {
+        console.error('⚠️ [Activities Batch] Error recalculando PMC en background:', err.message);
+      }
+    });
     res.json({ message: `${rows.length} actividades guardadas`, saved: rows.length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -241,7 +254,13 @@ router.post('/batch', async (req, res) => {
 // Eliminar una
 router.delete('/:id', async (req, res) => {
   await supabase.from('activities').delete().eq('id', req.params.id).eq('user_id', req.user.id);
-  setImmediate(() => recalculatePMC(req.user.id));
+  setImmediate(async () => {
+    try {
+      await recalculatePMC(req.user.id);
+    } catch(err) {
+      console.error('⚠️ [Activities Delete] Error recalculando PMC en background:', err.message);
+    }
+  });
   res.json({ message: 'Eliminada' });
 });
 
