@@ -198,7 +198,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
 
     setImmediate(() => recalculatePMC(uid));
 
-    res.json({ message: 'Sync OK', total: acts.length });
+    res.json({ message: 'Sync OK', synced: acts.length, total: acts.length });
 
   } catch (e) {
     res.status(500).json({ error: e.message });
