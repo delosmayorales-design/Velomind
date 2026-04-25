@@ -202,7 +202,6 @@ async function initActivities() {
   await AppState.init();
   renderAthleteSidebar();
   await loadActivities();
-  renderMonthFilter();
 }
 
 function renderAthleteSidebar() {
@@ -219,22 +218,51 @@ async function loadActivities() {
   if (typeof BackendSync !== 'undefined') {
     await BackendSync.loadActivities();
   }
-    allActivities = [...AppState.activities].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+  const activities = Array.isArray(AppState.activities) ? AppState.activities : [];
+
+  allActivities = [...activities].sort((a, b) => {
+    const da = new Date(a.date);
+    const db = new Date(b.date);
+    return db - da;
+  });
+
+  console.log('[UI] Actividades en frontend:', allActivities.length);
+  console.log('[UI] Datos:', allActivities.slice(0, 5)); // 👈 DEBUG CLAVE
+
   renderActivities(allActivities);
+
   document.getElementById('total-count').textContent = allActivities.length + ' actividades';
+
   if (allActivities.length > 0) {
     document.getElementById('clear-btn').style.display = 'flex';
   }
+
+renderMonthFilter()
 }
 
 function renderMonthFilter() {
-  const months = [...new Set(allActivities.map(a => a.date?.substring(0, 7)))].sort().reverse();
   const sel = document.getElementById('filter-month');
+
+  // 🔥 limpiar siempre
+  sel.innerHTML = '<option value="">Todos los meses</option>';
+
+  const months = [...new Set(
+    allActivities
+      .filter(a => a.date)
+      .map(a => a.date.substring(0, 7))
+  )].sort().reverse();
+
   months.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m;
+
     const d = new Date(m + '-01');
-    opt.textContent = d.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
+    opt.textContent = d.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long'
+    });
+
     sel.appendChild(opt);
   });
 }
