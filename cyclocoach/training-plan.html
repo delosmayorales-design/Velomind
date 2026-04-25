@@ -580,17 +580,17 @@ async function syncStrava() {
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
   try {
-    const res = await fetch(`${API}/providers/strava/sync`, {
-      method: 'POST', headers: Auth.getHeaders(),
+    const result = await BackendSync.syncStrava((msg) => {
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + msg;
     });
-    const d = await res.json();
-    if (!res.ok) {
-      if (d.error?.includes('no conectado')) { window.location.href = 'integrations.html'; return; }
-      throw new Error(d.error);
-    }
-    btn.innerHTML = `<i class="fas fa-check"></i> ${d.synced} actividades`;
-    setTimeout(() => { loadCoachData(); btn.disabled = false; }, 1000);
+    btn.innerHTML = `<i class="fas fa-check"></i> ${result.synced || 0} actividades`;
+    
+    await loadCoachData();
+    generatePlan(); // Regenerar plan con la nueva fatiga real
+    
+    setTimeout(() => { btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar Strava'; btn.disabled = false; }, 3000);
   } catch(e) {
+    if (e.message.includes('no conectado')) { window.location.href = 'integrations.html'; return; }
     btn.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${e.message}`;
     setTimeout(() => {
       btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar Strava';

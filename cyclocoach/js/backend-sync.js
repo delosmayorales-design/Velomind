@@ -34,6 +34,14 @@ const BackendSync = (() => {
     };
   }
 
+  // Detectar navegación por historial (BFCache) para no tener que pulsar F5
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted || (window.performance && window.performance.navigation.type === 2)) {
+      // Si el navegador restauró la página desde la memoria caché, forzamos recarga silenciosa
+      window.location.reload();
+    }
+  });
+
   // ── Helpers ──────────────────────────────────────────────────
   function headers() {
     return Auth.getHeaders();
@@ -42,6 +50,7 @@ const BackendSync = (() => {
   async function apiFetch(path, options = {}) {
     const res = await fetch(`${API}${path}`, {
       headers: headers(),
+      cache: 'no-store', // Evitar caché HTTP agresiva del navegador
       ...options,
     });
     const data = await res.json().catch(() => ({}));
