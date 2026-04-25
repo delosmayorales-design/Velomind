@@ -146,16 +146,31 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
   }
 
   try {
-    const r = await fetch(
-      `https://www.strava.com/api/v3/athlete/activities?per_page=50&_t=${Date.now()}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    // Descargar el historial del último año completo (hasta 1000 rutas)
+    const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60);
+    let page = 1;
+    let acts = [];
+    
+    while (true) {
+      const r = await fetch(
+        `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=200&page=${page}&_t=${Date.now()}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    if (!r.ok) {
-      return res.status(400).json({ error: 'Error al obtener actividades' });
+      if (!r.ok) {
+        if (page === 1) return res.status(400).json({ error: 'Error al obtener actividades de Strava' });
+        break;
+      }
+
+      const pageActs = await r.json();
+      if (!Array.isArray(pageActs) || pageActs.length === 0) break;
+      
+      acts = acts.concat(pageActs);
+      if (pageActs.length < 200) break;
+      page++;
+      if (page > 5) break; // Límite de seguridad: max 1000 actividades
     }
 
-    const acts = await r.json();
     const ftp = Math.max(1, user.ftp || 200);
 
     // OBTENER DETALLE: Forzamos la descarga del archivo completo de las 5 últimas rutas 
@@ -173,6 +188,8 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         console.error('[Strava Sync] Error obteniendo detalle:', e.message);
       }
     }
+
+    const rowsToInsert = [];
 
     for (const a of acts) {
       // Calcular TSS e Intensity Factor (IF) basándonos en la potencia normalizada
@@ -217,16 +234,21 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         strava_id: String(a.id),
         gear_id: a.gear_id || null,
         source: 'Strava'
-      }, { onConflict: 'id' });
+      });
+    }
 
+    // Guardar en base de datos en bloques de 100 para no bloquear la API
+    for (let i = 0; i < rowsToInsert.length; i += 100) {
+      const chunk = rowsToInsert.slice(i, i + 100);
+      const { error } = await supabase.from('activities').upsert(chunk, { onConflict: 'id' });
       if (error) {
-        console.error('[Strava Sync] Error en upsert de actividad', a.id, error.message);
+        console.error('[Strava Sync] Error guardando chunk:', error.message);
       }
     }
 
     setImmediate(() => recalculatePMC(uid));
 
-    res.json({ message: 'Sync OK', synced: acts.length, total: acts.length });
+    res.json({ message: 'Sync OK', synced: rowsToInsert.length, total: acts.length });
 
   } catch (e) {
     res.status(500).json({ error: e.message });
