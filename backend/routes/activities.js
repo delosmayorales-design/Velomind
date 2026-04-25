@@ -5,6 +5,24 @@ const { recalculatePMC } = require('../services/pmc');
 const router = express.Router();
 router.use(requireAuth);
 
+// ─── DEBUG: Ver actividades sin filtro ─────────────────────────────────────
+router.get('/debug', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    console.log('[DEBUG /activities/debug] UID:', uid);
+    
+    // Ver todas las actividades sin filtro de usuario
+    const { data: all } = await supabase.from('activities').select('id, user_id, name, date').limit(10);
+    console.log('[DEBUG] Total en BDD (muestra 10):', all);
+    
+    // Ver las del usuario actual
+    const { data: userActs } = await supabase.from('activities').select('id, name, date').eq('user_id', uid).limit(5);
+    console.log('[DEBUG] Para UID (muestra 5):', userActs);
+    
+    res.json({ debug: true, uid, totalEnBDD: all?.length || 0, paraUsuario: userActs?.length || 0 });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Listar
 router.get('/', async (req, res) => {
   try {

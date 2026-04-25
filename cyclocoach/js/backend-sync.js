@@ -49,9 +49,11 @@ function isLegacyDemoActivity(a) {
   }
 
   async function apiFetch(path, options = {}) {
+    const headersObj = headers();
+    console.log('[BackendSync] apiFetch headers:', JSON.stringify(headersObj));
     const res = await fetch(`${API}${path}`, {
-      headers: headers(),
-      cache: 'no-store', // Evitar caché HTTP agresiva del navegador
+      headers: headersObj,
+      cache: 'no-store',
       ...options,
     });
     const data = await res.json().catch(() => ({}));

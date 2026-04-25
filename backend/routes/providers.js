@@ -229,7 +229,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         finalAvgPower = finalNp;
       }
 
-      rowsToInsert.push({
+rowsToInsert.push({
         id: `strava_${a.id}`,
         user_id: uid,
         name: a.name,
@@ -238,7 +238,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         duration: duration,
         distance: a.distance || 0,
         elevation: a.total_elevation_gain || 0,
-        avg_speed: a.average_speed ? (a.average_speed * 3.6) : 0, // Strava usa m/s, convertimos a km/h
+        avg_speed: a.average_speed ? (a.average_speed * 3.6) : 0,
         avg_power: finalAvgPower,
         max_power: a.max_watts || 0,
         np: finalNp,
@@ -253,6 +253,8 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         source: 'Strava'
       });
     }
+    
+    console.log('[Strava Sync] DEBUG: Guardando', rowsToInsert.length, 'actividades con user_id:', uid);
 
     // Guardar en base de datos en bloques de 100 para no bloquear la API
     for (let i = 0; i < rowsToInsert.length; i += 100) {
