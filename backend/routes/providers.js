@@ -233,7 +233,7 @@ rowsToInsert.push({
         user_id: uid,
         name: a.name,
         type: type,
-        date: (a.start_date_local || a.start_date).substring(0, 10),
+        date: (a.start_date_local || a.start_date || new Date().toISOString()).substring(0, 10),
         duration: duration,
         distance: a.distance || 0,
         elevation: a.total_elevation_gain || 0,
@@ -261,6 +261,7 @@ rowsToInsert.push({
       const { error } = await supabase.from('activities').upsert(chunk, { onConflict: 'id' });
       if (error) {
         console.error('[Strava Sync] Error guardando chunk:', error.message);
+        throw new Error(`Error de Supabase al guardar: ${error.message}`);
       }
     }
 
