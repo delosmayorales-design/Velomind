@@ -167,6 +167,16 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       if (np && duration && ftp > 0) {
         ifValue = Math.round((np / ftp) * 100) / 100;
         tss = Math.round((duration * np * ifValue) / (ftp * 3600) * 100);
+      } else if (a.average_heartrate > 0 && duration > 0) {
+        // Fallback hrTSS si no hay potenciómetro pero sí pulso
+        const lthr = user.lthr || (user.max_hr ? Math.round(user.max_hr * 0.88) : 160);
+        const hrIF = a.average_heartrate / lthr;
+        ifValue = Math.round(hrIF * 100) / 100;
+        tss = Math.round((duration * a.average_heartrate * hrIF) / (lthr * 3600) * 100);
+      } else if (duration > 0) {
+        // Fallback básico: asume rodaje aeróbico si no hay pulso ni potencia
+        ifValue = 0.65;
+        tss = Math.round((duration * 0.65 * 0.65) / 3600 * 100);
       }
 
       const { error } = await supabase.from('activities').upsert({

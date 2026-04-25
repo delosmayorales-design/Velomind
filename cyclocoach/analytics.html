@@ -593,22 +593,22 @@ function renderWeekStrip(allActs) {
 
   // ── Métricas semana actual ──
   var sessions = week.length;
-  var hours    = week.reduce(function(s,a){ return s+(a.duration||0); }, 0) / 3600;
-  var km       = week.reduce(function(s,a){ return s+(a.distance||0); }, 0) / 1000;
-  var elev     = week.reduce(function(s,a){ return s+(a.elevation||0); }, 0);
-  var tss      = week.reduce(function(s,a){ return s+(parseFloat(a.tss)||0); }, 0);
-  var kj       = week.reduce(function(s,a){ return s+((a.avg_power||0)*(a.duration||0)/1000); }, 0);
-  var npActs   = week.filter(function(a){ return (a.np||a.avg_power) > 0; });
-  var avgNP    = npActs.length ? Math.round(npActs.reduce(function(s,a){ return s+(a.np||a.avg_power||0); },0) / npActs.length) : null;
-  var hrActs   = week.filter(function(a){ return (a.avg_hr||0) > 0; });
-  var avgHR    = hrActs.length ? Math.round(hrActs.reduce(function(s,a){ return s+(a.avg_hr||0); },0) / hrActs.length) : null;
+  var hours    = week.reduce(function(s,a){ return s+(Number(a.duration)||0); }, 0) / 3600;
+  var km       = week.reduce(function(s,a){ return s+(Number(a.distance)||0); }, 0) / 1000;
+  var elev     = week.reduce(function(s,a){ return s+(Number(a.elevation)||0); }, 0);
+  var tss      = week.reduce(function(s,a){ return s+(Number(a.tss)||0); }, 0);
+  var kj       = week.reduce(function(s,a){ return s+((Number(a.avg_power)||0)*(Number(a.duration)||0)/1000); }, 0);
+  var npActs   = week.filter(function(a){ return (Number(a.np)||Number(a.avg_power)) > 0; });
+  var avgNP    = npActs.length ? Math.round(npActs.reduce(function(s,a){ return s+(Number(a.np)||Number(a.avg_power)||0); },0) / npActs.length) : null;
+  var hrActs   = week.filter(function(a){ return (Number(a.avg_hr)||0) > 0; });
+  var avgHR    = hrActs.length ? Math.round(hrActs.reduce(function(s,a){ return s+(Number(a.avg_hr)||0); },0) / hrActs.length) : null;
 
   // ── IF (Intensity Factor = NP / FTP) ──
   var ftp    = state.athlete && state.athlete.ftp ? state.athlete.ftp : null;
   var ifVal  = (avgNP && ftp) ? (avgNP / ftp).toFixed(2) : null;
 
   // ── TSS delta vs semana anterior ──
-  var prevTSS  = prevWeek.reduce(function(s,a){ return s+(parseFloat(a.tss)||0); }, 0);
+  var prevTSS  = prevWeek.reduce(function(s,a){ return s+(Number(a.tss)||0); }, 0);
   var tssDelta = Math.round(tss - prevTSS);
 
   // ── Mini calendario de días (L M X J V S D) ──
@@ -1236,10 +1236,10 @@ function renderVolumeStats(acts, days) {
     document.getElementById('volume-stats').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">Sin actividades en el período</div>';
     return;
   }
-  var hrs  = acts.reduce(function(s,a){ return s + (a.duration||0); }, 0) / 3600;
-  var km   = acts.reduce(function(s,a){ return s + (a.distance||0); }, 0) / 1000;
-  var el   = acts.reduce(function(s,a){ return s + (a.elevation||0); }, 0);
-  var tss  = acts.reduce(function(s,a){ return s + (parseFloat(a.tss)||0); }, 0);
+  var hrs  = acts.reduce(function(s,a){ return s + (Number(a.duration)||0); }, 0) / 3600;
+  var km   = acts.reduce(function(s,a){ return s + (Number(a.distance)||0); }, 0) / 1000;
+  var el   = acts.reduce(function(s,a){ return s + (Number(a.elevation)||0); }, 0);
+  var tss  = acts.reduce(function(s,a){ return s + (Number(a.tss)||0); }, 0);
   var wp   = acts.filter(function(a){ return a.avg_power > 0; });
   var avgNP = wp.length ? Math.round(wp.reduce(function(s,a){ return s+(a.np||a.avg_power); },0) / wp.length) : null;
   var avgIF = wp.length ? (wp.reduce(function(s,a){ return s+(parseFloat(a.if_value)||parseFloat(a['if'])||0); },0) / wp.length).toFixed(2) : null;
