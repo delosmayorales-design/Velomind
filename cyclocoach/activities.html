@@ -219,12 +219,6 @@ async function loadActivities() {
   if (typeof BackendSync !== 'undefined') {
     await BackendSync.loadActivities();
   }
-  AppState.activities = AppState.activities.filter(a => {
-    const id = String(a.id || '');
-    const isDemo = /^(strava|garmin)_\d{4}-\d{2}-\d{2}_/i.test(id);
-    if(isDemo) console.info('[Activities] Eliminando actividad demo:', id);
-    return !isDemo;
-  });
     allActivities = [...AppState.activities].sort((a, b) => String(b.date).localeCompare(String(a.date)));
   renderActivities(allActivities);
   document.getElementById('total-count').textContent = allActivities.length + ' actividades';

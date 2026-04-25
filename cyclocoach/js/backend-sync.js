@@ -118,7 +118,7 @@ const BackendSync = (() => {
 
       // Recortar estrictamente al último año (365 días) para no sobrecargar la app
       const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      activities = activities.filter(a => a.date >= cutoff);
+      activities = activities.filter(a => a.date && String(a.date) >= cutoff);
 
       if (removed > 0) {
         console.warn(`[BackendSync] Eliminadas ${removed} actividades legacy/demo del estado local`);
