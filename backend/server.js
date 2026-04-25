@@ -16,12 +16,30 @@ app.use(cors({
 }));
 
 // ─────────────────────────────────────────
-// ✅ RUTAS PÚBLICAS (SIN AUTH) - direct in server.js
+// DEBUG: Ver actividades sin filtro (público)
 // ─────────────────────────────────────────
 app.get('/api/debug/all-activities', async (req, res) => {
   try {
     const { data: acts } = await supabase.from('activities').select('id, user_id, name, date').limit(20);
-    res.json({ activities: acts });
+    // También ver estructura de la primera actividad
+    const first = acts?.[0];
+    res.json({ activities: acts, sample_user_id: first?.user_id, tipo: typeof first?.user_id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DEBUG: Ver schema de tablas
+app.get('/api/debug/schema', async (req, res) => {
+  try {
+    // Columns de activities
+    const { data: acts } = await supabase.from('activities').select('*').limit(1);
+    // Columns de users
+    const { data: users } = await supabase.from('users').select('*').limit(1);
+    res.json({ 
+      activity_columns: acts?.[0] ? Object.keys(acts[0]) : [],
+      user_columns: users?.[0] ? Object.keys(users[0]) : [],
+      sample_activity: acts?.[0],
+      sample_user: users?.[0]
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
