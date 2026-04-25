@@ -15,6 +15,9 @@ app.use(cors({
   credentials: true,
 }));
 
+// Body parser (necesario para POST con JSON)
+app.use(express.json());
+
 // ─────────────────────────────────────────
 // DEBUG: Ver actividades sin filtro (público)
 // ─────────────────────────────────────────
@@ -30,11 +33,15 @@ app.get('/api/debug/all-activities', async (req, res) => {
 // DEBUG: Migrar actividades a usuario
 app.post('/api/debug/migrate-activities', async (req, res) => {
   try {
-    const fromUserId = req.body.from_user_id;
-    const toUserId = req.body.to_user_id;
+    console.log('[migrate] req.body:', req.body);
+    const body = req.body || {};
+    const fromUserId = body.from_user_id || req.query.from;
+    const toUserId = body.to_user_id || req.query.to;
+    
+    console.log('[migrate] from:', fromUserId, 'to:', toUserId);
     
     if (!fromUserId || !toUserId) {
-      return res.status(400).json({ error: 'from_user_id y to_user_id requeridos' });
+      return res.status(400).json({ error: 'from_user_id y to_user_id requeridos', body: req.body });
     }
     
     // Migrar actividades
