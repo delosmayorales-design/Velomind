@@ -158,10 +158,26 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
     const acts = await r.json();
     const ftp = Math.max(1, user.ftp || 200);
 
+    // OBTENER DETALLE: Forzamos la descarga del archivo completo de las 5 últimas rutas 
+    // para evitar que Strava omita la potencia, cadencia o calorías en el resumen.
+    for (let i = 0; i < Math.min(acts.length, 5); i++) {
+      try {
+        const detRes = await fetch(`https://www.strava.com/api/v3/activities/${acts[i].id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (detRes.ok) {
+          const detail = await detRes.json();
+          Object.assign(acts[i], detail); // Fusiona los datos completos sobre el resumen
+        }
+      } catch (e) {
+        console.error('[Strava Sync] Error obteniendo detalle:', e.message);
+      }
+    }
+
     for (const a of acts) {
       // Calcular TSS e Intensity Factor (IF) basándonos en la potencia normalizada
       const np = a.weighted_average_watts || a.average_watts || 0;
-      const duration = a.moving_time || 0;
+      const duration = a.moving_time || a.elapsed_time || 0;
       let tss = 0, ifValue = 0;
       
       if (np && duration && ftp > 0) {
@@ -195,7 +211,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         avg_hr: a.average_heartrate || 0,
         max_hr: a.max_heartrate || 0,
         avg_cadence: a.average_cadence || 0,
-        calories: a.kilojoules || a.calories || 0,
+        calories: a.calories || a.kilojoules || 0,
         tss: tss,
         if_value: ifValue,
         strava_id: String(a.id),
