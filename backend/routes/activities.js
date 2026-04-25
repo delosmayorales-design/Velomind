@@ -10,7 +10,9 @@ router.get('/', async (req, res) => {
   try {
     const uid = req.user.id;
     const { limit = 5000, from, to, source } = req.query;
-    console.log('[Activities] Usuario:', uid);
+
+    console.log('\n[GET /activities] 🔍 CONSULTANDO DATOS');
+    console.log('👉 UID del usuario que pide:', uid);
 
     let query = supabase
       .from('activities')
@@ -30,7 +32,8 @@ router.get('/', async (req, res) => {
       console.error('[Activities] ERROR:', error);
       throw error;
     }
-    console.log('[Activities] DEVUELTAS:', data?.length || 0);
+    console.log('👉 FILAS DEVUELTAS POR SUPABASE:', data?.length || 0);
+    if (data?.length === 0) console.log('⚠️ ADVERTENCIA: Supabase devolvió 0 filas. Revisa que el user_id coincida y que las políticas RLS permitan leer.');
 
     res.json({ activities: data || [], total: count || 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }

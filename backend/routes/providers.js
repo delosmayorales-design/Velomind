@@ -102,6 +102,9 @@ router.post('/strava/callback', requireAuth, handleStravaExchange);
 
 router.post('/strava/sync', requireAuth, async (req, res) => {
   const uid = req.user.id;
+  
+  console.log('\n[POST /strava/sync] 🔄 INICIANDO SYNC');
+  console.log('👉 UID del usuario que sincroniza:', uid);
 
   const { data: user } = await supabase
     .from('users')
@@ -261,6 +264,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
 
     setImmediate(() => recalculatePMC(uid));
 
+    console.log(`✅ SYNC COMPLETADO. Se guardaron ${rowsToInsert.length} filas en Supabase.`);
     res.json({ message: 'Sync OK', synced: rowsToInsert.length, total: acts.length });
 
   } catch (e) {
