@@ -27,7 +27,28 @@ app.get('/api/debug/all-activities', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// DEBUG: Ver schema de tablas
+// DEBUG: Migrar actividades a usuario
+app.post('/api/debug/migrate-activities', async (req, res) => {
+  try {
+    const fromUserId = req.body.from_user_id;
+    const toUserId = req.body.to_user_id;
+    
+    if (!fromUserId || !toUserId) {
+      return res.status(400).json({ error: 'from_user_id y to_user_id requeridos' });
+    }
+    
+    // Migrar actividades
+    const { data: acts, error: fetchError } = await supabase
+      .from('activities')
+      .update({ user_id: toUserId })
+      .eq('user_id', fromUserId)
+      .select();
+    
+    if (fetchError) throw fetchError;
+    
+    res.json({ migrated: acts?.length || 0, from: fromUserId, to: toUserId });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/debug/schema', async (req, res) => {
   try {
     // Columns de activities
