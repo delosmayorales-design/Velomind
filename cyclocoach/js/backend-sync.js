@@ -120,7 +120,7 @@ const BackendSync = (() => {
 
       // Reemplazar el estado local con los datos del backend
       localStorage.setItem('velomind_activities', JSON.stringify(activities));
-      AppState.activities = activities.sort((a, b) => a.date < b.date ? -1 : 1);
+      AppState.activities = activities.sort((a, b) => a.date > b.date ? -1 : 1);
       AppState.pmcData = PMC.compute(AppState.activities, 120);
 
       return activities;

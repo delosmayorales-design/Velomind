@@ -625,7 +625,7 @@ app.get('/api/strava/activities', async (req, res) => {
 
     const syncDate = localStorage.getItem('velomind_' + provider + '_last_sync');
     actions.innerHTML = `
-      <button type="button" class="btn-connect btn-sync" onclick="doSync('${provider}')">
+      <button type="button" class="btn-connect btn-sync" id="btn-sync-${provider}" onclick="doSync('${provider}')">
         <i class="fas fa-sync-alt"></i> Sincronizar ahora
       </button>
       ${provider === 'strava' ? `<button type="button" class="btn btn-ghost btn-sm" onclick="debugStrava()" style="margin-top:6px"><i class="fas fa-bug"></i> Ver últimas actividades Strava</button>` : ''}
@@ -713,6 +713,15 @@ app.get('/api/strava/activities', async (req, res) => {
 
     addLog(`Iniciando sincronización con ${provider === 'strava' ? 'Strava' : 'Garmin Connect'}...`, 'info');
 
+    const btn = document.getElementById('btn-sync-' + provider);
+    if (btn) {
+      btn.disabled = true;
+      btn.style.background = '#FC4C02';
+      btn.style.color = '#fff';
+      btn.style.borderColor = '#FC4C02';
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+    }
+
     try {
       if (typeof BackendSync === 'undefined') throw new Error('BackendSync no disponible');
       const result = await (provider === 'strava'
@@ -748,8 +757,27 @@ app.get('/api/strava/activities', async (req, res) => {
         lastSync.classList.remove('hidden');
         lastSync.querySelector('span').textContent = 'Ãšltima sync: ' + new Date(now).toLocaleString('es-ES');
       }
+
+      if (btn) {
+        btn.style.background = '#10B981';
+        btn.style.borderColor = '#10B981';
+        btn.innerHTML = `<i class="fas fa-check"></i> ${count} guardadas`;
+      }
     } catch(err) {
       addLog('âŒ Error: ' + err.message, 'err');
+      if (btn) {
+        btn.style.background = '#EF4444';
+        btn.style.borderColor = '#EF4444';
+        btn.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Error`;
+      }
+    } finally {
+      if (btn) {
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.style.cssText = '';
+          btn.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar ahora';
+        }, 3000);
+      }
     }
   }
 
