@@ -230,7 +230,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
 
 rowsToInsert.push({
         id: `strava_${a.id}`,
-        user_id: String(uid),
+        user_id: uid,
         name: String(a.name || 'Actividad Strava').substring(0, 250),
         type: String(type),
         date: String(a.start_date_local || a.start_date || new Date().toISOString()).substring(0, 10),
