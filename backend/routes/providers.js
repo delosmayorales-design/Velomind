@@ -194,6 +194,8 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         np: np,
         avg_hr: a.average_heartrate || 0,
         max_hr: a.max_heartrate || 0,
+        avg_cadence: a.average_cadence || 0,
+        calories: a.kilojoules || a.calories || 0,
         tss: tss,
         if_value: ifValue,
         strava_id: String(a.id),
