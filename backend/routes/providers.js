@@ -192,10 +192,19 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
     const rowsToInsert = [];
 
     for (const a of acts) {
+      // 1. Filtrar primero: solo nos interesan salidas en bici (Ride, VirtualRide, Gravel, MTB) o carrera
+      const isRide = (a.sport_type || a.type || '').includes('Ride');
+      const isRun = (a.sport_type || a.type || '').includes('Run');
+      if (!isRide && !isRun) continue;
+      
+      const type = isRun ? 'running' : 'cycling';
+
       // Calcular TSS e Intensity Factor (IF) basándonos en la potencia normalizada
       const np = a.weighted_average_watts || a.average_watts || 0;
       const duration = a.moving_time || a.elapsed_time || 0;
       let tss = 0, ifValue = 0;
+      let finalNp = np;
+      let finalAvgPower = a.average_watts || 0;
       
       if (np && duration && ftp > 0) {
         ifValue = Math.round((np / ftp) * 100) / 100;
@@ -206,25 +215,29 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         const hrIF = a.average_heartrate / lthr;
         ifValue = Math.round(hrIF * 100) / 100;
         tss = Math.round((duration * a.average_heartrate * hrIF) / (lthr * 3600) * 100);
+        finalNp = Math.round(ifValue * ftp);
+        finalAvgPower = finalNp;
       } else if (duration > 0) {
         // Fallback básico: asume rodaje aeróbico si no hay pulso ni potencia
         ifValue = 0.65;
         tss = Math.round((duration * 0.65 * 0.65) / 3600 * 100);
+        finalNp = Math.round(ifValue * ftp);
+        finalAvgPower = finalNp;
       }
 
-      const { error } = await supabase.from('activities').upsert({
+      rowsToInsert.push({
         id: `strava_${a.id}`,
         user_id: uid,
         name: a.name,
-        type: (a.sport_type || a.type || '').includes('Run') ? 'running' : 'cycling',
+        type: type,
         date: (a.start_date_local || a.start_date).substring(0, 10),
         duration: duration,
         distance: a.distance || 0,
         elevation: a.total_elevation_gain || 0,
         avg_speed: a.average_speed ? (a.average_speed * 3.6) : 0, // Strava usa m/s, convertimos a km/h
-        avg_power: a.average_watts || 0,
+        avg_power: finalAvgPower,
         max_power: a.max_watts || 0,
-        np: np,
+        np: finalNp,
         avg_hr: a.average_heartrate || 0,
         max_hr: a.max_heartrate || 0,
         avg_cadence: a.average_cadence || 0,
