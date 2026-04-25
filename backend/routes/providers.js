@@ -116,7 +116,8 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
   let token = user.strava_token;
 
   // Refrescar token si ha expirado (Strava requiere renovar cada 6 horas)
-  if (user.strava_refresh && user.strava_expires_at && Date.now() / 1000 > user.strava_expires_at - 300) {
+  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
+  if (user.strava_refresh && isExpired) {
     try {
       const re = await fetch('https://www.strava.com/oauth/token', {
         method: 'POST',
@@ -136,6 +137,8 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
           strava_refresh: d.refresh_token,
           strava_expires_at: d.expires_at
         }).eq('id', uid);
+      } else {
+        return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
       }
     } catch(e) {
       console.error('[Strava Sync] Error refrescando token:', e.message);
@@ -144,7 +147,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
 
   try {
     const r = await fetch(
-      'https://www.strava.com/api/v3/athlete/activities?per_page=50',
+      `https://www.strava.com/api/v3/athlete/activities?per_page=50&_t=${Date.now()}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
@@ -166,11 +169,12 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         tss = Math.round((duration * np * ifValue) / (ftp * 3600) * 100);
       }
 
-      await supabase.from('activities').upsert({
+      const { error } = await supabase.from('activities').upsert({
         id: `strava_${a.id}`,
         user_id: uid,
         name: a.name,
-        date: a.start_date.substring(0, 10),
+        type: (a.sport_type || a.type || '').includes('Run') ? 'running' : 'cycling',
+        date: (a.start_date_local || a.start_date).substring(0, 10),
         duration: duration,
         distance: a.distance || 0,
         elevation: a.total_elevation_gain || 0,
@@ -186,6 +190,10 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         gear_id: a.gear_id || null,
         source: 'Strava'
       });
+
+      if (error) {
+        console.error('[Strava Sync] Error en upsert de actividad', a.id, error.message);
+      }
     }
 
     setImmediate(() => recalculatePMC(uid));

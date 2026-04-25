@@ -1262,33 +1262,39 @@ function renderVolumeStats(acts, days) {
 }
 
 // ─── BEST EFFORTS ─────────────────────────────────────────────
-function renderBestEfforts(acts, ftp) {
+async function renderBestEfforts(acts, ftp) {
   var wp = acts.filter(function(a){ return (a.np||a.avg_power) > 0; });
   if (!wp.length) {
     document.getElementById('best-efforts').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">Sin datos de potencia</div>';
     return;
   }
-  var buckets = [
-    { label: 'Salida corta (< 30m)',   min: 0,    max: 1800     },
-    { label: 'Salida media (30–60m)',  min: 1800, max: 3600     },
-    { label: 'Salida larga (1–2h)',    min: 3600, max: 7200     },
-    { label: 'Gran Fondo (> 2h)',      min: 7200, max: Infinity }
-  ];
-  var rows = buckets.map(function(b) {
-    var inB = wp.filter(function(a){ return (a.duration||0) >= b.min && (a.duration||0) < b.max; });
-    if (!inB.length) return null;
-    var best = inB.reduce(function(x,a){ return (a.np||a.avg_power) > (x.np||x.avg_power) ? a : x; });
-    var np = best.np || best.avg_power;
-    return { label: b.label, np: np, pct: ftp ? Math.round(np/ftp*100) : null, date: best.date };
-  }).filter(Boolean);
+
+  document.getElementById('best-efforts').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Cargando mejores esfuerzos...</div>';
+
+  try {
+    const days = document.getElementById('period').value;
+    const data = await BackendSync.loadPowerCurve(days === '9999' ? 0 : days);
+    
+    if (!data || !data.curve) throw new Error('No data');
+    
+    const curve = data.curve;
+    
+    const p5m = curve.find(c => c.dur === 300);
+    const p20m = curve.find(c => c.dur === 1200);
+    const p1h = curve.find(c => c.dur === 3600);
+    
+    var rows = [
+      { label: 'Esfuerzo corto (5 min)', np: p5m ? p5m.power : '--', pct: p5m ? p5m.pctFTP : null },
+      { label: 'Esfuerzo medio (20 min)', np: p20m ? p20m.power : '--', pct: p20m ? p20m.pctFTP : null },
+      { label: 'Esfuerzo largo (1 hora)', np: p1h ? p1h.power : '--', pct: p1h ? p1h.pctFTP : null }
+    ];
 
   var bestTSS = wp.reduce(function(x,a){ return parseFloat(a.tss) > parseFloat(x.tss) ? a : x; });
   var bestNP  = wp.reduce(function(x,a){ return (a.np||a.avg_power) > (x.np||x.avg_power) ? a : x; });
 
   var rowHtml = rows.map(function(r) {
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">' +
-      '<div><div style="font-size:12px;font-weight:600">' + r.label + '</div>' +
-      '<div style="font-size:10px;color:var(--text-muted)">' + r.date + '</div></div>' +
+      '<div><div style="font-size:12px;font-weight:600">' + r.label + '</div></div>' +
       '<div style="text-align:right">' +
       '<div style="font-size:17px;font-weight:700;color:var(--accent)">' + r.np + 'W</div>' +
       '<div style="font-size:10px;color:var(--text-muted)">' + (r.pct ? r.pct + '% FTP' : '') + '</div>' +
@@ -1303,10 +1309,14 @@ function renderBestEfforts(acts, ftp) {
     '<div style="font-size:20px;font-weight:700;color:#F59E0B">' + Math.round(bestTSS.tss||0) + '</div>' +
     '<div style="font-size:9px;color:var(--text-muted)">' + bestTSS.date + '</div></div>' +
     '<div style="padding:8px;background:var(--bg-input);border-radius:6px">' +
-    '<div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;margin-bottom:2px">Mejor NP</div>' +
+    '<div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;margin-bottom:2px">Mejor NP Ruta</div>' +
     '<div style="font-size:20px;font-weight:700;color:#3B82F6">' + (bestNP.np||bestNP.avg_power) + 'W</div>' +
     '<div style="font-size:9px;color:var(--text-muted)">' + bestNP.date + '</div></div>' +
     '</div></div>';
+
+  } catch(e) {
+    document.getElementById('best-efforts').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">Error cargando mejores esfuerzos</div>';
+  }
 }
 
 // ─── BOOT ─────────────────────────────────────────────────────
