@@ -112,8 +112,14 @@ const BackendSync = (() => {
   /** Descarga todas las actividades del backend y las carga en AppState */
   async function loadActivities() {
     try {
-      const data = await apiFetch(`/activities?limit=1000&_t=${Date.now()}`);
-      const { cleaned: activities, removed } = sanitizeActivities(data.activities || []);
+      // Límite alto para asegurar que el servidor manda las más nuevas si está ordenando al revés
+      const data = await apiFetch(`/activities?limit=5000&_t=${Date.now()}`);
+      let { cleaned: activities, removed } = sanitizeActivities(data.activities || []);
+
+      // Recortar estrictamente al último año (365 días) para no sobrecargar la app
+      const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      activities = activities.filter(a => a.date >= cutoff);
+
       if (removed > 0) {
         console.warn(`[BackendSync] Eliminadas ${removed} actividades legacy/demo del estado local`);
       }

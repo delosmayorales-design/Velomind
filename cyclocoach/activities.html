@@ -225,7 +225,7 @@ async function loadActivities() {
     if(isDemo) console.info('[Activities] Eliminando actividad demo:', id);
     return !isDemo;
   });
-  allActivities = [...AppState.activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+    allActivities = [...AppState.activities].sort((a, b) => String(b.date).localeCompare(String(a.date)));
   renderActivities(allActivities);
   document.getElementById('total-count').textContent = allActivities.length + ' actividades';
   if (allActivities.length > 0) {
