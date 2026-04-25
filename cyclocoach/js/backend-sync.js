@@ -128,8 +128,8 @@ function isLegacyDemoActivity(a) {
     // Guardar en localStorage
     localStorage.setItem('velomind_activities', JSON.stringify(activities));
 
-    // Ordenar correctamente por fecha (más recientes primero)
-    AppState.activities = activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Ordenar cronológicamente de forma segura a prueba de fechas nulas
+    AppState.activities = activities.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
 
     // Recalcular PMC
     AppState.pmcData = PMC.compute(AppState.activities, 120);

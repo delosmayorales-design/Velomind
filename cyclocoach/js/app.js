@@ -216,7 +216,7 @@ const AppState = {
   saveActivity(activity) {
     if (!this.activities.find(a => a.id === activity.id)) {
       this.activities.push(activity);
-      this.activities.sort((a, b) => a.date < b.date ? -1 : 1);
+      this.activities.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
       localStorage.setItem('velomind_activities', JSON.stringify(this.activities));
       this.pmcData = PMC.compute(this.activities, 120);
     }

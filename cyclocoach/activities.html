@@ -192,8 +192,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="js/app.js?v=99"></script>
-<script src="js/backend-sync.js?v=99"></script>
+<script src="js/app.js?v=100"></script>
+<script src="js/backend-sync.js?v=100"></script>
 <script>
 let allActivities = [];
 let zoneChartInst = null;
@@ -221,11 +221,7 @@ async function loadActivities() {
 
   const activities = Array.isArray(AppState.activities) ? AppState.activities : [];
 
-  allActivities = [...activities].sort((a, b) => {
-    const da = new Date(a.date);
-    const db = new Date(b.date);
-    return db - da;
-  });
+  allActivities = [...activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
 
   console.log('[UI] Actividades en frontend:', allActivities.length);
   console.log('[UI] Datos:', allActivities.slice(0, 5)); // 👈 DEBUG CLAVE
@@ -277,10 +273,10 @@ function filterActivities() {
     return matchQ && matchMonth;
   });
   filtered.sort((a, b) => {
-    if (sort === 'date-asc') return new Date(a.date) - new Date(b.date);
+    if (sort === 'date-asc') return String(a.date || '').localeCompare(String(b.date || ''));
     if (sort === 'tss-desc') return (b.tss || 0) - (a.tss || 0);
     if (sort === 'power-desc') return (b.avg_power || 0) - (a.avg_power || 0);
-    return new Date(b.date) - new Date(a.date);
+    return String(b.date || '').localeCompare(String(a.date || ''));
   });
   renderActivities(filtered);
 }
@@ -322,7 +318,7 @@ async function processFiles(files) {
       const saved = saveActivity(activity);
       if (saved) {
         updateProgressItem(progressId, saved.name + ' - TSS: ' + (saved.tss || '?') + ', Potencia: ' + (saved.avg_power || '?') + 'W', 'success');
-        allActivities = [...AppState.activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+        allActivities = [...AppState.activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
         renderActivities(allActivities);
         document.getElementById('total-count').textContent = allActivities.length + ' actividades';
         document.getElementById('clear-btn').style.display = 'flex';
@@ -391,7 +387,7 @@ async function saveManualActivity() {
   };
   const saved = saveActivity(activity);
   if (saved) {
-    allActivities = [...AppState.activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+    allActivities = [...AppState.activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     renderActivities(allActivities);
     document.getElementById('manual-form').classList.add('hidden');
     showToast('Actividad "' + saved.name + '" guardada - TSS: ' + saved.tss, 'success');
@@ -469,7 +465,7 @@ async function syncFromProvider(provider) {
   if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...'; btn.disabled = true; }
   try {
     const result = await BackendSync.syncStrava((msg) => { if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + msg; });
-    allActivities = [...AppState.activities].sort((a,b) => new Date(b.date)-new Date(a.date));
+    allActivities = [...AppState.activities].sort((a,b) => String(b.date || '').localeCompare(String(a.date || '')));
     renderActivities(allActivities);
     document.getElementById('total-count').textContent = allActivities.length + ' actividades';
     if (btn) { btn.innerHTML = '<i class="fas fa-check" style="color:#00c882"></i> ' + (result.synced||'?') + ' importadas'; }

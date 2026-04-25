@@ -1,4 +1,4 @@
-const CACHE_NAME = 'velomind-v2';
+const CACHE_NAME = 'velomind-v3';
 const ASSETS = [
   './',
   './css/style.css',
