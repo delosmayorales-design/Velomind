@@ -149,14 +149,13 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
   }
 
   try {
-    // Descargar el historial del último año completo (hasta 1000 rutas)
-    const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60);
+    // Descargar el historial completo (hasta 2000 rutas para asegurar que trae todo)
     let page = 1;
     let acts = [];
     
     while (true) {
       const r = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=200&page=${page}&_t=${Date.now()}`,
+        `https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}&_t=${Date.now()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -172,7 +171,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       acts = acts.concat(pageActs);
       if (pageActs.length < 200) break;
       page++;
-      if (page > 5) break; // Límite de seguridad: max 1000 actividades
+      if (page > 10) break; // Límite de seguridad: max 2000 actividades
     }
 
     const ftp = Math.max(1, user.ftp || 200);
