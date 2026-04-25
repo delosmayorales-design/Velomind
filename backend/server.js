@@ -16,21 +16,9 @@ app.use(cors({
 }));
 
 // ─────────────────────────────────────────
-// ✅ RUTAS PÚBLICAS (SIN AUTH)
+// ✅ RUTAS PÚBLICAS (SIN AUTH) - direct in server.js
 // ─────────────────────────────────────────
-const publicActivities = express.Router();
-
-publicActivities.get('/find-user', async (req, res) => {
-  try {
-    const email = req.query.email;
-    if (!email) return res.status(400).json({ error: 'email requerido' });
-    
-    const { data: user } = await supabase.from('users').select('id, email, name, ftp').ilike('email', '%' + email + '%').limit(5);
-    res.json({ users: user });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-publicActivities.get('/all-activities', async (req, res) => {
+app.get('/api/debug/all-activities', async (req, res) => {
   try {
     const { data: acts } = await supabase.from('activities').select('id, user_id, name, date').limit(20);
     res.json({ activities: acts });
@@ -41,7 +29,6 @@ publicActivities.get('/all-activities', async (req, res) => {
 // ✅ RUTAS (BIEN)
 // ─────────────────────────────────────────
 app.use('/api/auth',       require('./routes/auth'));
-app.use('/api/public/activities', publicActivities);
 app.use('/api/activities', require('./routes/activities').router);
 app.use('/api/analytics',  require('./routes/analytics'));
 app.use('/api/providers',  require('./routes/providers'));
@@ -49,7 +36,7 @@ app.use('/api/body',       require('./routes/body'));
 app.use('/api/coach',      require('./routes/coach'));
 app.use('/api/garage',     require('./routes/garage'));
 app.use('/api/plans',      require('./routes/plans'));
-app.use('/api/payments',   payments);
+app.use('/api/payments',   require('./routes/payments'));
 
 // ─────────────────────────────────────────
 // 404
