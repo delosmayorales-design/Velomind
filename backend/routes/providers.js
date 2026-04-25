@@ -205,4 +205,23 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
   }
 });
 
+// ─── STATUS ─────────────────────────────────────────────
+
+router.get('/status', requireAuth, async (req, res) => {
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('strava_token')
+      .eq('id', req.user.id)
+      .single();
+
+    res.json({
+      strava: { connected: !!user?.strava_token, configured: !!STRAVA_ID },
+      garmin: { connected: false, configured: false }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

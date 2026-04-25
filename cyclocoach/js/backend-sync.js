@@ -253,8 +253,8 @@ const BackendSync = (() => {
       return await apiFetch('/providers/status');
     } catch (e) {
       return {
-        strava: { connected: Auth.isStravaConnected(), configured: false },
-        garmin: { connected: Auth.isGarminConnected(), configured: false },
+        strava: { connected: false, configured: false },
+        garmin: { connected: false, configured: false },
       };
     }
   }
