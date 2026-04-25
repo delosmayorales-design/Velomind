@@ -5,21 +5,39 @@ const { recalculatePMC } = require('../services/pmc');
 const router = express.Router();
 router.use(requireAuth);
 
-// ─── DEBUG: Ver actividades sin filtro ─────────────────────────────────────
+// ─── DEBUG: Verificar sesión ─────────────────────────────────────
 router.get('/debug', async (req, res) => {
   try {
     const uid = req.user.id;
-    console.log('[DEBUG /activities/debug] UID:', uid);
+    const email = req.user.email;
+    
+    // Buscar el usuario en la tabla users
+    const { data: userData } = await supabase.from('users').select('id, email, name').eq('id', uid).single();
+    
+    // Contar actividades
+    const { count } = await supabase.from('activities').select('*', { count: 'exact', head: true }).eq('user_id', uid);
+    
+    res.json({ 
+      debug: true, 
+      token_user_id: uid, 
+      token_email: email,
+      supabase_user: userData,
+      actividades_count: count
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── DEBUG: Ver actividades sin filtro ─────────────────────────────────────
+router.get('/debug-all', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    console.log('[DEBUG /activities/debug-all] UID:', uid);
     
     // Ver todas las actividades sin filtro de usuario
     const { data: all } = await supabase.from('activities').select('id, user_id, name, date').limit(10);
     console.log('[DEBUG] Total en BDD (muestra 10):', all);
     
-    // Ver las del usuario actual
-    const { data: userActs } = await supabase.from('activities').select('id, name, date').eq('user_id', uid).limit(5);
-    console.log('[DEBUG] Para UID (muestra 5):', userActs);
-    
-    res.json({ debug: true, uid, totalEnBDD: all?.length || 0, paraUsuario: userActs?.length || 0 });
+    res.json({ debug: true, totalEnBDD: all?.length || 0, muestras: all });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
