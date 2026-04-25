@@ -64,7 +64,13 @@ app.get('/api/health', async (req, res) => {
 // ✅ RUTAS (BIEN)
 // ─────────────────────────────────────────
 app.use('/api/auth',       require('./routes/auth'));
-app.use('/api/activities', require('./routes/activities'));
+
+// Rutas públicas de activities (sin auth)
+const activitiesRoutes = require('./routes/activities');
+app.use('/api/activities/public', activitiesRoutes.publicRouter);
+
+// Rutas protegidas de activities
+app.use('/api/activities', activitiesRoutes.router);
 app.use('/api/analytics',  require('./routes/analytics'));
 app.use('/api/providers',  require('./routes/providers'));
 app.use('/api/body',       require('./routes/body'));

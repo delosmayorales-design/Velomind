@@ -1,9 +1,25 @@
 const express = require('express');
-const supabase = require('../db'); // Ahora db es el cliente de Supabase
+const supabase = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { recalculatePMC } = require('../services/pmc');
 const router = express.Router();
+const publicRouter = express.Router(); // Router público sin auth
+
+// ─── PÚBLICO: Buscar usuario por email ─────────────────────────────────────
+publicRouter.get('/find-user', async (req, res) => {
+  try {
+    const email = req.query.email;
+    if (!email) return res.status(400).json({ error: 'email requerido' });
+    
+    const { data: user } = await supabase.from('users').select('id, email, name, ftp').ilike('email', '%' + email + '%').limit(5);
+    res.json({ users: user });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Rutas protegidas
 router.use(requireAuth);
+
+module.exports = { router, publicRouter };
 
 // ─── DEBUG: Verificar sesión ─────────────────────────────────────
 router.get('/debug', async (req, res) => {
@@ -38,6 +54,39 @@ router.get('/debug-all', async (req, res) => {
     console.log('[DEBUG] Total en BDD (muestra 10):', all);
     
     res.json({ debug: true, totalEnBDD: all?.length || 0, muestras: all });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── DEBUG: Buscar usuario por email ─────────────────────────────────────
+router.get('/find-user', async (req, res) => {
+  try {
+    const email = req.query.email;
+    if (!email) return res.status(400).json({ error: 'email requerido' });
+    
+    const { data: user } = await supabase.from('users').select('id, email, name, ftp').ilike('email', '%' + email + '%').limit(5);
+    res.json({ users: user });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── DEBUG: Buscar usuario por email (público) ─────────────────────────────────────
+router.get('/public-find-user', async (req, res) => {
+  try {
+    const email = req.query.email;
+    if (!email) return res.status(400).json({ error: 'email requerido' });
+    
+    const { data: user } = await supabase.from('users').select('id, email, name, ftp').ilike('email', '%' + email + '%').limit(5);
+    res.json({ users: user });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── DEBUG: Buscar usuario por email (sin auth) ─────────────────────────────────────
+router.get('/public-find-user', async (req, res) => {
+  try {
+    const email = req.query.email;
+    if (!email) return res.status(400).json({ error: 'email requerido' });
+    
+    const { data: user } = await supabase.from('users').select('id, email, name, ftp').ilike('email', '%' + email + '%').limit(5);
+    res.json({ users: user });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -222,4 +271,6 @@ async function updateGarageStats(userId, gearId, distance, durationSeconds, isMe
   }
 }
 
-module.exports = router;
+module.exports = { router, publicRouter };
+module.exports.router = router;
+module.exports.publicRouter = publicRouter;
