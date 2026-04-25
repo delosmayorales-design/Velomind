@@ -886,7 +886,8 @@ const G = (() => {
     const done = new Set(st.processed_ids || []);
     let n = 0;
     acts.forEach(a => {
-      if (!a.gear_id || !a.strava_id || done.has(a.strava_id)) return;
+      const sid = a.strava_id || (a.id?.startsWith('strava_') ? a.id.replace('strava_', '') : null);
+      if (!a.gear_id || !sid || done.has(sid)) return;
       const bike = st.bikes.find(b => b.strava_gear_id === a.gear_id);
       if (!bike) return;
       const km = a.distance || 0;
@@ -896,7 +897,7 @@ const G = (() => {
         else if (!c.threshold_days) c.current_km = (c.current_km || 0) + km;
         c.status = calcStatus(c);
       });
-      done.add(a.strava_id); n++;
+      done.add(sid); n++;
     });
     st.processed_ids = [...done];
     save();

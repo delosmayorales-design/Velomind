@@ -20,10 +20,11 @@ const BackendSync = (() => {
       ? 'http://localhost:3000/api' 
       : 'https://velomind-backend.onrender.com/api');
 
-  function isLegacyDemoActivity(a) {
-    // Desactivado: Evita eliminar actividades reales de Supabase por error en el frontend
-    return false;
-  }
+function isLegacyDemoActivity(a) {
+  // SOLO eliminar actividades demo reales (si existen)
+  const id = String(a?.id || '');
+  return id.startsWith('demo_');
+}
 
   function sanitizeActivities(list) {
     const arr = Array.isArray(list) ? list : [];
@@ -111,37 +112,60 @@ const BackendSync = (() => {
 
   /** Descarga todas las actividades del backend y las carga en AppState */
   async function loadActivities() {
-    try {
-      // Límite alto para asegurar que el servidor manda las más nuevas si está ordenando al revés
-      const data = await apiFetch(`/activities?limit=5000&_t=${Date.now()}`);
-      let { cleaned: activities, removed } = sanitizeActivities(data.activities || []);
+  try {
+    const data = await apiFetch(`/activities?limit=5000&_t=${Date.now()}`);
 
-      // Recortar estrictamente al último año (365 días) para no sobrecargar la app
-      const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      activities = activities.filter(a => a.date && String(a.date) >= cutoff);
+    console.log('[BackendSync] Actividades recibidas:', data.activities?.length || 0);
 
-      if (removed > 0) {
-        console.warn(`[BackendSync] Eliminadas ${removed} actividades legacy/demo del estado local`);
+    let { cleaned: activities, removed } = sanitizeActivities(data.activities || []);
+
+    // Fecha de corte (último año)
+    const cutoffDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+
+    // Filtro robusto de fechas
+    activities = activities.filter(a => {
+      if (!a.date) return false;
+
+      const d = new Date(a.date);
+      if (isNaN(d)) {
+        console.warn('[BackendSync] Fecha inválida:', a.date, a);
+        return false;
       }
 
-      // Reemplazar el estado local con los datos del backend
-      localStorage.setItem('velomind_activities', JSON.stringify(activities));
-      AppState.activities = activities.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
-      AppState.pmcData = PMC.compute(AppState.activities, 120);
+      return d >= cutoffDate;
+    });
 
-      return activities;
-    } catch (e) {
-      console.warn('[BackendSync] loadActivities offline, usando localStorage:', e.message);
-      // Fallback a datos locales si el backend no responde
-      const { cleaned, removed } = sanitizeActivities(AppState.activities);
-      if (removed > 0) {
-        AppState.activities = cleaned;
-        localStorage.setItem('velomind_activities', JSON.stringify(cleaned));
-        AppState.pmcData = PMC.compute(cleaned, 120);
-      }
-      return AppState.activities;
+    console.log('[BackendSync] Actividades tras filtro:', activities.length);
+
+    if (removed > 0) {
+      console.warn(`[BackendSync] Eliminadas ${removed} actividades legacy/demo`);
     }
+
+    // Guardar en localStorage
+    localStorage.setItem('velomind_activities', JSON.stringify(activities));
+
+    // Ordenar correctamente por fecha (más recientes primero)
+    AppState.activities = activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Recalcular PMC
+    AppState.pmcData = PMC.compute(AppState.activities, 120);
+
+    return activities;
+
+  } catch (e) {
+    console.warn('[BackendSync] loadActivities offline:', e.message);
+
+    const { cleaned, removed } = sanitizeActivities(AppState.activities);
+
+    if (removed > 0) {
+      AppState.activities = cleaned;
+      localStorage.setItem('velomind_activities', JSON.stringify(cleaned));
+      AppState.pmcData = PMC.compute(cleaned, 120);
+    }
+
+    return AppState.activities;
   }
+}
 
   /** Sube una actividad al backend */
   async function saveActivity(activity) {

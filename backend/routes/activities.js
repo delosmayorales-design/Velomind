@@ -8,22 +8,31 @@ router.use(requireAuth);
 // Listar
 router.get('/', async (req, res) => {
   try {
-    console.log('[Activities] Leyendo para usuario:', req.user.id);
-    const { limit = 500, from, to, source } = req.query;
-    let query = supabase.from('activities').select('*').eq('user_id', req.user.id);
+    const uid = req.user.id;
+    const { limit = 5000, from, to, source } = req.query;
+    console.log('[Activities] Usuario:', uid);
+
+    let query = supabase
+      .from('activities')
+      .select('*', { count: 'exact' })
+      .eq('user_id', uid);
+
     if (from)   query = query.gte('date', from);
     if (to)     query = query.lte('date', to);
     if (source) query = query.eq('source', source);
-    query = query.order('date', { ascending: false }).limit(parseInt(limit) || 500);
-    const { data: activities, error } = await query;
+
+    const max = Math.min(parseInt(limit) || 5000, 5000);
+    const { data, error, count } = await query
+      .order('date', { ascending: false })
+      .range(0, max - 1);
+
     if (error) {
-      console.log('[Activities] Error:', error);
+      console.error('[Activities] ERROR:', error);
       throw error;
     }
-    console.log('[Activities] Encontradas:', activities?.length || 0);
+    console.log('[Activities] DEVUELTAS:', data?.length || 0);
 
-    const { count } = await supabase.from('activities').select('*', { count: 'exact', head: true }).eq('user_id', req.user.id);
-    res.json({ activities: activities || [], total: count || 0 });
+    res.json({ activities: data || [], total: count || 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -73,7 +82,7 @@ router.post('/', async (req, res) => {
       np: a.np || 0, tss, if_value: ifValue, vi,
       avg_hr: a.avg_hr || 0, max_hr: a.max_hr || 0, avg_cadence: a.avg_cadence || 0,
       calories: a.calories || 0, notes: a.notes || '',
-      strava_id: a.strava_id || null, garmin_id: a.garmin_id || null, gear_id: a.gear_id || null,
+      strava_id: a.strava_id || (id.startsWith('strava_') ? id.replace('strava_', '') : null), garmin_id: a.garmin_id || null, gear_id: a.gear_id || null,
     }, { onConflict: 'id' });
     if (error) throw error;
 
@@ -109,6 +118,7 @@ router.post('/batch', async (req, res) => {
         avg_speed: a.avg_speed || 0, avg_power: a.avg_power || 0, np: a.np || 0,
         tss, if_value: ifValue, avg_hr: a.avg_hr || 0, max_hr: a.max_hr || 0,
         avg_cadence: a.avg_cadence || 0, calories: a.calories || 0, gear_id: a.gear_id || null,
+        strava_id: a.strava_id || (id.startsWith('strava_') ? id.replace('strava_', '') : null)
       });
       if (a.gear_id) await updateGarageStats(uid, a.gear_id, distMeters, a.duration || 0, true);
     }
