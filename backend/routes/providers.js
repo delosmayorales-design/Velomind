@@ -113,10 +113,39 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Strava no conectado' });
   }
 
+  let token = user.strava_token;
+
+  // Refrescar token si ha expirado (Strava requiere renovar cada 6 horas)
+  if (user.strava_refresh && user.strava_expires_at && Date.now() / 1000 > user.strava_expires_at - 300) {
+    try {
+      const re = await fetch('https://www.strava.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: STRAVA_ID,
+          client_secret: STRAVA_SECRET,
+          grant_type: 'refresh_token',
+          refresh_token: user.strava_refresh
+        }),
+      });
+      const d = await re.json();
+      if (re.ok && d.access_token) {
+        token = d.access_token;
+        await supabase.from('users').update({
+          strava_token: d.access_token,
+          strava_refresh: d.refresh_token,
+          strava_expires_at: d.expires_at
+        }).eq('id', uid);
+      }
+    } catch(e) {
+      console.error('[Strava Sync] Error refrescando token:', e.message);
+    }
+  }
+
   try {
     const r = await fetch(
       'https://www.strava.com/api/v3/athlete/activities?per_page=50',
-      { headers: { Authorization: `Bearer ${user.strava_token}` } }
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
     if (!r.ok) {
@@ -124,15 +153,37 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
     }
 
     const acts = await r.json();
+    const ftp = Math.max(1, user.ftp || 200);
 
     for (const a of acts) {
+      // Calcular TSS e Intensity Factor (IF) basándonos en la potencia normalizada
+      const np = a.weighted_average_watts || a.average_watts || 0;
+      const duration = a.moving_time || 0;
+      let tss = 0, ifValue = 0;
+      
+      if (np && duration && ftp > 0) {
+        ifValue = Math.round((np / ftp) * 100) / 100;
+        tss = Math.round((duration * np * ifValue) / (ftp * 3600) * 100);
+      }
+
       await supabase.from('activities').upsert({
         id: `strava_${a.id}`,
         user_id: uid,
         name: a.name,
         date: a.start_date.substring(0, 10),
-        duration: a.moving_time,
-        distance: a.distance,
+        duration: duration,
+        distance: a.distance || 0,
+        elevation: a.total_elevation_gain || 0,
+        avg_speed: a.average_speed ? (a.average_speed * 3.6) : 0, // Strava usa m/s, convertimos a km/h
+        avg_power: a.average_watts || 0,
+        max_power: a.max_watts || 0,
+        np: np,
+        avg_hr: a.average_heartrate || 0,
+        max_hr: a.max_heartrate || 0,
+        tss: tss,
+        if_value: ifValue,
+        strava_id: String(a.id),
+        gear_id: a.gear_id || null,
         source: 'Strava'
       });
     }

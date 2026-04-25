@@ -217,6 +217,16 @@ const BackendSync = (() => {
     }
   }
 
+  /** Carga la curva de potencia real estimada (Mejores Esfuerzos) */
+  async function loadPowerCurve(days = 0) {
+    try {
+      return await apiFetch(`/coach/power-curve?days=${days}`);
+    } catch (e) {
+      console.warn('[BackendSync] loadPowerCurve offline:', e.message);
+      return null;
+    }
+  }
+
   // ── Sincronización con providers (Strava / Garmin) ───────────
 
   /** Sincroniza actividades de Strava vía backend */
@@ -397,6 +407,7 @@ const BackendSync = (() => {
     loadPMC,
     loadSummary,
     loadRecords,
+    loadPowerCurve,
     syncStrava,
     syncGarmin,
     getProviderStatus,
