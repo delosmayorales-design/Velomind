@@ -119,22 +119,6 @@ function isLegacyDemoActivity(a) {
 
     let { cleaned: activities, removed } = sanitizeActivities(data.activities || []);
 
-    // Fecha de corte (último año)
-    const cutoffDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
-
-    // Filtro robusto de fechas
-    activities = activities.filter(a => {
-      if (!a.date) return false;
-
-      const d = new Date(a.date);
-      if (isNaN(d)) {
-        console.warn('[BackendSync] Fecha inválida:', a.date, a);
-        return false;
-      }
-
-      return d >= cutoffDate;
-    });
-
     console.log('[BackendSync] Actividades tras filtro:', activities.length);
 
     if (removed > 0) {
@@ -153,6 +137,7 @@ function isLegacyDemoActivity(a) {
     return activities;
 
   } catch (e) {
+    alert('🚨 ERROR DE CONEXIÓN CON SUPABASE: ' + e.message);
     console.warn('[BackendSync] loadActivities offline:', e.message);
 
     const { cleaned, removed } = sanitizeActivities(AppState.activities);
