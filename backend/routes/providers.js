@@ -189,7 +189,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         strava_id: String(a.id),
         gear_id: a.gear_id || null,
         source: 'Strava'
-      });
+      }, { onConflict: 'id' });
 
       if (error) {
         console.error('[Strava Sync] Error en upsert de actividad', a.id, error.message);

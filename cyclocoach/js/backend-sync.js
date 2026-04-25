@@ -21,18 +21,8 @@ const BackendSync = (() => {
       : 'https://velomind-backend.onrender.com/api');
 
   function isLegacyDemoActivity(a) {
-    if (!a) return false;
-    const source = String(a.source || '').toLowerCase();
-    const id = String(a.id || '');
-    const stravaId = a.strava_id == null ? '' : String(a.strava_id);
-    const garminId = a.garmin_id == null ? '' : String(a.garmin_id);
-
-    // Datos simulados antiguos: IDs con fecha y sin ids reales de provider.
-    const oldPattern = /^(strava|garmin)_\d{4}-\d{2}-\d{2}_/i.test(id);
-    const missingProviderId = (source === 'strava' && !stravaId) || (source === 'garmin' && !garminId);
-    const invalidStravaId = source === 'strava' && stravaId && !/^\d+$/.test(stravaId);
-    const invalidGarminId = source === 'garmin' && garminId && !/^[A-Za-z0-9._-]+$/.test(garminId);
-    return oldPattern || (missingProviderId && /^(strava|garmin)_/i.test(id)) || invalidStravaId || invalidGarminId;
+    // Desactivado: Evita eliminar actividades reales de Supabase por error en el frontend
+    return false;
   }
 
   function sanitizeActivities(list) {
@@ -113,7 +103,7 @@ const BackendSync = (() => {
   /** Descarga todas las actividades del backend y las carga en AppState */
   async function loadActivities() {
     try {
-      const data = await apiFetch('/activities?limit=1000');
+      const data = await apiFetch(`/activities?limit=1000&_t=${Date.now()}`);
       const { cleaned: activities, removed } = sanitizeActivities(data.activities || []);
       if (removed > 0) {
         console.warn(`[BackendSync] Eliminadas ${removed} actividades legacy/demo del estado local`);
@@ -189,7 +179,7 @@ const BackendSync = (() => {
   /** Carga el PMC calculado por el backend (más preciso que el frontend) */
   async function loadPMC(days = 90) {
     try {
-      const data = await apiFetch(`/analytics/pmc?days=${days}`);
+      const data = await apiFetch(`/analytics/pmc?days=${days}&_t=${Date.now()}`);
       if (data.pmc?.length) AppState.pmcData = data.pmc;
       return data;
     } catch (e) {
@@ -201,7 +191,7 @@ const BackendSync = (() => {
   /** Carga el resumen de estadísticas */
   async function loadSummary() {
     try {
-      return await apiFetch('/analytics/summary');
+      return await apiFetch(`/analytics/summary?_t=${Date.now()}`);
     } catch (e) {
       console.warn('[BackendSync] loadSummary offline:', e.message);
       return null;
@@ -211,7 +201,7 @@ const BackendSync = (() => {
   /** Carga los récords personales */
   async function loadRecords() {
     try {
-      return await apiFetch('/analytics/records');
+      return await apiFetch(`/analytics/records?_t=${Date.now()}`);
     } catch (e) {
       return null;
     }
@@ -220,7 +210,7 @@ const BackendSync = (() => {
   /** Carga la curva de potencia real estimada (Mejores Esfuerzos) */
   async function loadPowerCurve(days = 0) {
     try {
-      return await apiFetch(`/coach/power-curve?days=${days}`);
+      return await apiFetch(`/coach/power-curve?days=${days}&_t=${Date.now()}`);
     } catch (e) {
       console.warn('[BackendSync] loadPowerCurve offline:', e.message);
       return null;

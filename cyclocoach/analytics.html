@@ -545,7 +545,7 @@ function getFiltered() {
   const days = parseInt(document.getElementById('period').value);
   const cutoff = new Date(Date.now() - days * 86400000);
   return (state.activities || []).filter(a => {
-    const d = new Date(a.date);
+    const d = new Date(a.date + 'T00:00:00');
     return !isNaN(d.getTime()) && d >= cutoff;
   });
 }
@@ -588,8 +588,8 @@ function renderWeekStrip(allActs) {
   var prevMonday = new Date(monday);
   prevMonday.setDate(monday.getDate() - 7);
 
-  var week     = allActs.filter(function(a) { var d = new Date(a.date); return d >= monday; });
-  var prevWeek = allActs.filter(function(a) { var d = new Date(a.date); return d >= prevMonday && d < monday; });
+  var week     = allActs.filter(function(a) { var d = new Date(a.date + 'T00:00:00'); return d >= monday; });
+  var prevWeek = allActs.filter(function(a) { var d = new Date(a.date + 'T00:00:00'); return d >= prevMonday && d < monday; });
 
   // ── Métricas semana actual ──
   var sessions = week.length;
@@ -614,7 +614,7 @@ function renderWeekStrip(allActs) {
   // ── Mini calendario de días (L M X J V S D) ──
   var dayNames  = ['L','M','X','J','V','S','D'];
   var actDaySet = new Set(week.map(function(a) {
-    var d = new Date(a.date); return (d.getDay() || 7) - 1;
+    var d = new Date(a.date + 'T00:00:00'); return (d.getDay() || 7) - 1;
   }));
   var dotsHtml = dayNames.map(function(name, i) {
     var dotCls = actDaySet.has(i) ? 'has-act' : (i === todayIdx ? 'is-today' : '');
@@ -650,7 +650,7 @@ function renderWeekStrip(allActs) {
 
   // ── Barra de progreso TSS (objetivo = media últimas 4 semanas) ──
   var last4w = []; var d4 = new Date(monday); d4.setDate(d4.getDate()-28);
-  allActs.forEach(function(a){ var d = new Date(a.date); if(d >= d4 && d < monday) last4w.push(parseFloat(a.tss)||0); });
+  allActs.forEach(function(a){ var d = new Date(a.date + 'T00:00:00'); if(d >= d4 && d < monday) last4w.push(parseFloat(a.tss)||0); });
   if (last4w.length) {
     var wkTarget = Math.round(last4w.reduce(function(s,v){ return s+v; },0) / 4);
     var pct = Math.min(120, Math.round(tss / wkTarget * 100));
@@ -807,7 +807,7 @@ function renderPMCChart(days) {
 function renderTSSChart(acts) {
   var weekly = {};
   acts.forEach(function(a) {
-    var d = new Date(a.date);
+    var d = new Date(a.date + 'T00:00:00');
     if (isNaN(d.getTime())) return;
     var day = d.getDay() || 7;
     d.setDate(d.getDate() - day + 1);
@@ -1136,7 +1136,7 @@ function renderKJChart(acts) {
   // Agrupar por semana ISO (lunes)
   var weekMap = {};
   withPower.forEach(function(a) {
-    var d = new Date(a.date);
+    var d = new Date(a.date + 'T00:00:00');
     if (isNaN(d.getTime())) return;
     var day = d.getDay() || 7; // 1=lun … 7=dom
     d.setDate(d.getDate() - day + 1);
