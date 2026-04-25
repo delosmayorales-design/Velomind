@@ -247,7 +247,7 @@ rowsToInsert.push({
         calories: a.calories || a.kilojoules || 0,
         tss: tss,
         if_value: ifValue,
-        strava_id: String(a.id),
+        strava_id: null, // Forzado a null para evitar bloqueos por límite numérico en Supabase
         gear_id: a.gear_id || null,
         source: 'Strava'
       });
@@ -260,6 +260,7 @@ rowsToInsert.push({
       const chunk = rowsToInsert.slice(i, i + 100);
       const { error } = await supabase.from('activities').upsert(chunk, { onConflict: 'id' });
       if (error) {
+        console.error('[Strava Sync] Fila problemática:', JSON.stringify(chunk[0]).substring(0, 150));
         console.error('[Strava Sync] Error guardando chunk:', error.message);
         throw new Error(`Error de Supabase al guardar: ${error.message}`);
       }
