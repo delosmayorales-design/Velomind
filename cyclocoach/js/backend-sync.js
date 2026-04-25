@@ -115,6 +115,7 @@ function isLegacyDemoActivity(a) {
   try {
     const data = await apiFetch(`/activities?limit=5000&_t=${Date.now()}`);
 
+    console.log('[BackendSync] /activities response:', JSON.stringify(data).substring(0, 300));
     console.log('[BackendSync] Actividades recibidas:', data.activities?.length || 0);
 
     let { cleaned: activities, removed } = sanitizeActivities(data.activities || []);
@@ -128,12 +129,13 @@ function isLegacyDemoActivity(a) {
     // Guardar en localStorage
     localStorage.setItem('velomind_activities', JSON.stringify(activities));
 
-    // Ordenar cronológicamente de forma segura a prueba de fechas nulas
+    // Ordenar cronológicamente a prueba de fechas nulas
     AppState.activities = activities.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
 
     // Recalcular PMC
     AppState.pmcData = PMC.compute(AppState.activities, 120);
 
+    console.log('[BackendSync] AppState.activities después de cargar:', AppState.activities.length);
     return activities;
 
   } catch (e) {

@@ -168,6 +168,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       const pageActs = await r.json();
       if (!Array.isArray(pageActs) || pageActs.length === 0) break;
       
+      console.log('[Strava Sync] Página', page, ':', pageActs.length, 'actividades');
       acts = acts.concat(pageActs);
       if (pageActs.length < 200) break;
       page++;
@@ -264,6 +265,8 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
 
     setImmediate(() => recalculatePMC(uid));
 
+    console.log(`[Strava Sync] DEBUG: Total recibidas de Strava: ${acts.length}, rowsToInsert: ${rowsToInsert.length}`);
+    console.log(`[Strava Sync] DEBUG - Primera rowToInsert:`, rowsToInsert[0] ? JSON.stringify(rowsToInsert[0]).substring(0, 200) : 'N/A');
     console.log(`✅ SYNC COMPLETADO. Se guardaron ${rowsToInsert.length} filas en Supabase.`);
     res.json({ message: 'Sync OK', synced: rowsToInsert.length, total: acts.length });
 

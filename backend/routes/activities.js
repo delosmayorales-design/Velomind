@@ -33,7 +33,16 @@ router.get('/', async (req, res) => {
       throw error;
     }
     console.log('👉 FILAS DEVUELTAS POR SUPABASE:', data?.length || 0);
+    console.log('👉 Primera actividad (si existe):', data?.[0] ? JSON.stringify(data[0]).substring(0, 200) : 'NO HAY');
     if (data?.length === 0) console.log('⚠️ ADVERTENCIA: Supabase devolvió 0 filas. Revisa que el user_id coincida y que las políticas RLS permitan leer.');
+    if (data?.length > 0) console.log('👉 Primer user_id en actividades:', data[0].user_id);
+    
+    // DEBUG: también verificar qué actividades hay en la base de datos para este usuario
+    if (data?.length === 0) {
+      const { data: allForUser } = await supabase.from('activities').select('id, name, date, user_id').eq('user_id', uid);
+      console.log('👉 DEBUG - Total actividades para este uid en BDD:', allForUser?.length || 0);
+      console.log('👉 DEBUG - Muestra:', allForUser?.slice(0, 3));
+    }
 
     res.json({ activities: data || [], total: count || 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }
