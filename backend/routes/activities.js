@@ -110,7 +110,7 @@ router.get('/', async (req, res) => {
     let query = supabase
       .from('activities')
       .select('*', { count: 'exact' })
-      .eq('user_id', uid);
+      .eq('user_id', String(uid)); // 👈 Blindaje estricto de identidad
 
     if (from)   query = query.gte('date', from);
     if (to)     query = query.lte('date', to);

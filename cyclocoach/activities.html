@@ -221,7 +221,12 @@ async function loadActivities() {
 
   const activities = Array.isArray(AppState.activities) ? AppState.activities : [];
 
-  allActivities = [...activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  // Ordenar para la UI: las más nuevas primero
+  allActivities = [...activities].sort((a, b) => {
+    const dA = a.date || '1970-01-01';
+    const dB = b.date || '1970-01-01';
+    return dA > dB ? -1 : (dA < dB ? 1 : 0);
+  });
 
   console.log('[UI] Actividades en frontend:', allActivities.length);
   console.log('[UI] Datos:', allActivities.slice(0, 5)); // 👈 DEBUG CLAVE
