@@ -255,7 +255,7 @@ function isLegacyDemoActivity(a) {
   async function syncStrava(onProgress) {
     if (onProgress) onProgress('Conectando con Strava...', 20);
     const data = await apiFetch('/providers/strava/sync', { method: 'POST' });
-    if (onProgress) onProgress(`${data.synced || 0} actividades sincronizadas`, 100);
+    if (onProgress) onProgress(`${data.synced || data.saved || 0} actividades sincronizadas`, 100);
     await loadActivities();
     return data;
   }
@@ -264,7 +264,7 @@ function isLegacyDemoActivity(a) {
   async function syncGarmin(onProgress) {
     if (onProgress) onProgress('Conectando con Garmin Connect...', 20);
     const data = await apiFetch('/providers/garmin/sync', { method: 'POST' });
-    if (onProgress) onProgress(`${data.synced || 0} actividades sincronizadas`, 100);
+    if (onProgress) onProgress(`${data.synced || data.saved || 0} actividades sincronizadas`, 100);
     await loadActivities();
     return data;
   }
@@ -338,9 +338,11 @@ function isLegacyDemoActivity(a) {
 
   /** Carga el garaje completo (bicis y componentes) del backend */
   async function loadGarage() {
+    // Limpiar SIEMPRE antes de cargar para evitar mostrar datos de otra cuenta
+    localStorage.removeItem('velomind_garage');
+    localStorage.removeItem('velomind_garage_history');
     try {
       const data = await apiFetch('/garage');
-      // Sincronizar siempre con el estado del backend si la respuesta es válida (evita fugas de datos entre usuarios)
       if (data.garage && Array.isArray(data.garage.bikes)) {
         localStorage.setItem('velomind_garage', JSON.stringify(data.garage));
         localStorage.setItem('velomind_garage_history', JSON.stringify(data.history || []));

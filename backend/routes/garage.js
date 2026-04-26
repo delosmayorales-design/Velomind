@@ -128,6 +128,26 @@ router.get('/', async (req, res) => {
   });
 });
 
+// GET /api/garage/alerts — DEBE ir ANTES de /:bikeId para no quedar enmascarado
+router.get('/alerts', async (req, res) => {
+  const { data: bikes } = await supabase.from('bikes').select('*').eq('user_id', req.user.id).eq('is_active', true);
+  const alerts = [];
+  for (const bike of bikes || []) {
+    const { data: components } = await supabase.from('bike_components').select('*').eq('bike_id', bike.id).eq('is_active', true);
+    for (const c of components || []) {
+      const threshold = await getThreshold(bike.type, c.component_type);
+      if (!threshold) continue;
+      const lifespan = threshold.lifespan_km || threshold.lifespan_hours;
+      const used = lifespan - (c.km_remaining || c.hours_remaining || lifespan);
+      const pct = lifespan ? Math.round((used / lifespan) * 100) : 0;
+      if (pct >= threshold.alert_yellow_pct) {
+        alerts.push({ bike: bike.name, bike_id: bike.id, component: COMPONENT_LABELS[c.component_type] || c.component_type, component_id: c.id, pct, status: pct >= threshold.alert_red_pct ? 'red' : 'yellow', action: pct >= threshold.alert_red_pct ? 'CAMBIAR YA' : 'Revisar pronto' });
+      }
+    }
+  }
+  res.json(alerts.sort((a, b) => b.pct - a.pct));
+});
+
 // GET /api/garage/:bikeId
 router.get('/:bikeId', async (req, res) => {
   const { data: bike } = await supabase.from('bikes').select('*').eq('id', req.params.bikeId).eq('user_id', req.user.id).single();
@@ -382,26 +402,6 @@ router.post('/sync-strava', async (req, res) => {
     await supabase.from('bike_components').update({ km_remaining: (c.km_remaining || 0) - (activity_km || 0) }).eq('id', c.id);
   }
   res.json({ message: 'Kilómetros actualizados', bike_id: bike.id, km_added: activity_km });
-});
-
-// GET /api/garage/alerts
-router.get('/alerts', async (req, res) => {
-  const { data: bikes } = await supabase.from('bikes').select('*').eq('user_id', req.user.id).eq('is_active', true);
-  const alerts = [];
-  for (const bike of bikes || []) {
-    const { data: components } = await supabase.from('bike_components').select('*').eq('bike_id', bike.id).eq('is_active', true);
-    for (const c of components || []) {
-      const threshold = await getThreshold(bike.type, c.component_type);
-      if (!threshold) continue;
-      const lifespan = threshold.lifespan_km || threshold.lifespan_hours;
-      const used = lifespan - (c.km_remaining || c.hours_remaining || lifespan);
-      const pct = lifespan ? Math.round((used / lifespan) * 100) : 0;
-      if (pct >= threshold.alert_yellow_pct) {
-        alerts.push({ bike: bike.name, bike_id: bike.id, component: COMPONENT_LABELS[c.component_type] || c.component_type, component_id: c.id, pct, status: pct >= threshold.alert_red_pct ? 'red' : 'yellow', action: pct >= threshold.alert_red_pct ? 'CAMBIAR YA' : 'Revisar pronto' });
-      }
-    }
-  }
-  res.json(alerts.sort((a, b) => b.pct - a.pct));
 });
 
 // --- Helpers ---

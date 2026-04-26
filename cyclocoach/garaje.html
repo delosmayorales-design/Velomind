@@ -1317,7 +1317,7 @@ const G = (() => {
       // Recargar el garaje desde Supabase para reflejar la nueva bici con sus componentes
       await BackendSync.loadGarage();
       try { st = JSON.parse(localStorage.getItem('velomind_garage') || 'null'); } catch(e) {}
-      if (!st || !st.bikes?.length) st = mkDefault();
+      if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
 
       // Ajustar km iniciales si se introdujeron
       const initKm = parseFloat(document.getElementById('ab-km').value) || 0;

@@ -473,7 +473,7 @@ async function syncFromProvider(provider) {
     allActivities = [...AppState.activities].sort((a,b) => String(b.date || '').localeCompare(String(a.date || '')));
     renderActivities(allActivities);
     document.getElementById('total-count').textContent = allActivities.length + ' actividades';
-    if (btn) { btn.innerHTML = '<i class="fas fa-check" style="color:#00c882"></i> ' + (result.synced||'?') + ' importadas'; }
+    if (btn) { btn.innerHTML = '<i class="fas fa-check" style="color:#00c882"></i> ' + (result.synced || result.saved || '?') + ' importadas'; }
   } catch(e) { if (btn) btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error: ' + e.message; }
   setTimeout(() => { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt" style="color:#FC4C02"></i> Importar desde Strava'; } }, 3000);
 }

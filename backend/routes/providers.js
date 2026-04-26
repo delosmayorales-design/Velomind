@@ -151,33 +151,63 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
   try {
     let page = 1;
     let acts = [];
-    
-    // Descargar últimas 600 actividades (sin límite de año estricto por si los datos son antiguos)
-    while (page <= 3) {
+    let hasMore = true;
+    const MAX_PAGES = 50; // Guardia de seguridad: máx 50 páginas × 200 = 10 000 actividades
+
+    console.log(`[Strava Sync] Obteniendo TODAS las actividades históricas del atleta`);
+
+    // Paginación completa hasta que no haya más resultados
+    while (hasMore && page <= MAX_PAGES) {
       const r = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}&_t=${Date.now()}`,
+        `https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      if (r.status === 401) {
+        return res.status(401).json({ error: 'Token de Strava expirado o inválido. Ve a Integraciones y vuelve a conectarlo.' });
+      }
+      if (r.status === 429) {
+        console.warn('[Strava Sync] ⚠️ Rate limit de Strava alcanzado (HTTP 429).');
+        if (page === 1) return res.status(429).json({ error: 'Límite de peticiones a Strava alcanzado. Intenta de nuevo en 15 minutos.' });
+        break; // Si ya descargamos páginas anteriores, paramos y guardamos lo que tenemos
+      }
       if (!r.ok) {
+        console.error(`[Strava Sync] Error HTTP ${r.status}:`, await r.text().catch(() => ''));
         if (page === 1) return res.status(400).json({ error: 'Error al obtener actividades de Strava' });
         break;
       }
 
       const pageActs = await r.json();
-      if (!Array.isArray(pageActs) || pageActs.length === 0) break;
-      
-      console.log('[Strava Sync] Página', page, ':', pageActs.length, 'actividades');
+
+      if (!Array.isArray(pageActs) || pageActs.length === 0) {
+        hasMore = false;
+        break;
+      }
+
       acts = acts.concat(pageActs);
-      if (pageActs.length < 200) break;
-      page++;
+      console.log(`[Strava Sync] Página ${page} completada: ${pageActs.length} actividades. Total acumulado: ${acts.length}`);
+
+      if (pageActs.length < 200) {
+        hasMore = false; // No hay más actividades
+      } else {
+        page++;
+        // Pequeña pausa entre páginas para no saturar el rate limit de Strava (100 req/15 min)
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    if (page > MAX_PAGES) {
+      console.warn(`[Strava Sync] ⚠️ Se alcanzó el límite de ${MAX_PAGES} páginas. Procesando las ${acts.length} actividades descargadas.`);
     }
 
     const ftp = Math.max(1, user.ftp || 200);
 
-    // OBTENER DETALLE: Forzamos la descarga del archivo completo de las 5 últimas rutas 
-    // para evitar que Strava omita la potencia, cadencia o calorías en el resumen.
-    for (let i = 0; i < Math.min(acts.length, 5); i++) {
+    // OBTENER DETALLE de las 5 actividades más recientes para asegurar potencia, cadencia y
+    // calorías completos (Strava a veces los omite en el resumen de lista).
+    // Strava devuelve las actividades más recientes primero, así que acts[0..4] = las 5 últimas.
+    const detailLimit = Math.min(acts.length, 5);
+    for (let i = 0; i < detailLimit; i++) {
+      if (!acts[i]?.id) continue;
       try {
         const detRes = await fetch(`https://www.strava.com/api/v3/activities/${acts[i].id}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -208,7 +238,16 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
     for (const a of acts) {
       // 1. Filtrar primero: SOLO salidas ciclistas (Ride, VirtualRide, EBikeRide, GravelRide, MountainBikeRide)
       const typeStr = a.sport_type || a.type || '';
-      const isRide = typeStr.includes('Ride') || typeStr.includes('MountainBike') || typeStr.includes('Gravel');
+      const nameLower = (a.name || '').toLowerCase();
+      
+      const validCyclingTypes = ['Ride', 'VirtualRide', 'EBikeRide', 'MountainBikeRide', 'GravelRide'];
+      let isRide = validCyclingTypes.includes(typeStr);
+      
+      // Detección opcional por nombre si Strava lo catalogó diferente (ej: Workout con "mtb" en el título)
+      if (!isRide && (nameLower.includes('mtb') || nameLower.includes('gravel') || nameLower.includes('ciclismo'))) {
+        isRide = true;
+      }
+      
       if (!isRide) continue;
       
       const type = 'cycling';
@@ -258,7 +297,8 @@ rowsToInsert.push({
         avg_hr: Number(a.average_heartrate) || 0,
         max_hr: Number(a.max_heartrate) || 0,
         avg_cadence: Number(a.average_cadence) || 0,
-        calories: Number(a.calories || a.kilojoules) || 0,
+        // Strava: `calories` está en kcal; `kilojoules` en kJ (1 kcal ≈ 4.18 kJ). Usar solo `calories`.
+        calories: Number(a.calories) || 0,
         tss: Number(tss) || 0,
         if_value: Number(ifValue) || 0,
         strava_id: a.id ? String(a.id) : null,
@@ -267,7 +307,7 @@ rowsToInsert.push({
       });
     }
     
-    console.log('[Strava Sync] DEBUG: Guardando', rowsToInsert.length, 'actividades con user_id:', uid);
+    console.log(`[Strava Sync] Total descargadas de Strava: ${acts.length} | Actividades ciclistas: ${rowsToInsert.length} | user_id: ${uid}`);
 
     // Guardar en base de datos en bloques de 100 para no bloquear la API
     let fallos = 0;
@@ -295,10 +335,16 @@ rowsToInsert.push({
       }
     });
 
-    console.log(`[Strava Sync] DEBUG: Total recibidas de Strava: ${acts.length}, rowsToInsert: ${rowsToInsert.length}`);
-    console.log(`[Strava Sync] DEBUG - Primera rowToInsert:`, rowsToInsert[0] ? JSON.stringify(rowsToInsert[0]).substring(0, 200) : 'N/A');
-    console.log(`✅ SYNC COMPLETADO. Se guardaron ${rowsToInsert.length - fallos} filas en Supabase.`);
-    res.json({ message: 'Sync OK', synced: rowsToInsert.length - fallos, total: acts.length });
+    const savedCount = rowsToInsert.length - fallos;
+    console.log(`✅ SYNC COMPLETADO. Descargadas de Strava: ${acts.length} | Ciclistas filtradas: ${rowsToInsert.length} | Guardadas/actualizadas en BD: ${savedCount} | Fallos: ${fallos}`);
+    res.json({
+      message: 'Sync OK',
+      downloaded: acts.length,
+      cycling_filtered: rowsToInsert.length,
+      synced: savedCount,
+      saved: savedCount,
+      failed: fallos
+    });
 
   } catch (e) {
     console.error('\n❌ [Strava Sync] ERROR FATAL:', e);
