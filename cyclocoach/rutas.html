@@ -487,7 +487,7 @@
 const API_BASE = window.API_URL;
 
 // ── Estado ───────────────────────────────────────────────────────
-let map, elevChart, cycleOverlayLayer, cycleOverlayOn = false;
+let map, baseOSM, elevChart, cycleOverlayLayer, cycleOverlayOn = false;
 let waypoints = [], waypointMarkers = [];
 let routeLayer = null, routeGeoJSON = null;
 let allRoutes = [], activeFilter = 'all';
@@ -497,15 +497,16 @@ let drawingActive = false, currentRouteType = 'road';
 document.addEventListener('DOMContentLoaded', () => {
   map = L.map('map', { zoomControl: true }).setView([40.4168, -3.7038], 12);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  baseOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19,
   }).addTo(map);
 
-  cycleOverlayLayer = L.tileLayer('https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png', {
-    opacity: 0.5, maxZoom: 19,
-    attribution: '© Waymarked Trails'
-  });
+  // CyclOSM: mapa ciclista completo (carriles bici, rutas, caminos)
+  cycleOverlayLayer = L.tileLayer(
+    'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png',
+    { maxZoom: 20, attribution: '© <a href="https://github.com/cyclosm/cyclosm-cartocss">CyclOSM</a> · © OpenStreetMap' }
+  );
 
   map.on('click', onMapClick);
 
@@ -521,7 +522,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function toggleCycleOverlay() {
   cycleOverlayOn = !cycleOverlayOn;
-  cycleOverlayOn ? cycleOverlayLayer.addTo(map) : map.removeLayer(cycleOverlayLayer);
+  if (cycleOverlayOn) {
+    map.removeLayer(baseOSM);
+    cycleOverlayLayer.addTo(map);
+  } else {
+    map.removeLayer(cycleOverlayLayer);
+    baseOSM.addTo(map);
+  }
   const btn = document.getElementById('btn-overlay');
   btn.classList.toggle('btn-primary', cycleOverlayOn);
   btn.classList.toggle('btn-ghost',   !cycleOverlayOn);
