@@ -838,6 +838,10 @@ function renderRouteList() {
           onclick="event.stopPropagation();exportGPX('${r.id}')">
           <i class="fas fa-file-export"></i> GPX
         </button>
+        <button class="ri-btn" title="Compartir por WhatsApp" style="color:#25D366"
+          onclick="event.stopPropagation();shareWhatsApp('${r.id}')">
+          <i class="fab fa-whatsapp"></i> Compartir
+        </button>
         <button class="ri-btn del" title="Eliminar"
           onclick="event.stopPropagation();deleteRoute('${r.id}')">
           <i class="fas fa-trash"></i>
@@ -878,6 +882,33 @@ async function deleteRoute(id) {
   await Auth.apiFetch(`${API_BASE}/routes/${id}`, { method: 'DELETE' });
   if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
   await loadRoutes();
+}
+
+function shareWhatsApp(id) {
+  const r = allRoutes.find(r => r.id === id);
+  if (!r) return;
+
+  const typeLabel = { road: '🚴 Road', gravel: '🪨 Gravel', mtb: '🏔️ MTB' }[r.type] || r.type;
+  const dist  = r.distance_km    ? `📏 ${r.distance_km} km`              : '';
+  const elev  = r.elevation_gain_m ? `⛰️ ${Math.round(r.elevation_gain_m)} m D+` : '';
+  const time  = r.estimated_minutes ? `⏱️ ~${formatTime(r.estimated_minutes)}`   : '';
+  const stats = [dist, elev, time].filter(Boolean).join('   ');
+
+  // Enlace al punto de inicio en Google Maps (primer punto del GeoJSON)
+  let mapLink = '';
+  const coords = r.geojson?.coordinates;
+  if (coords?.length) {
+    const [startLon, startLat] = coords[0];
+    mapLink = `\n🗺️ Ver inicio: https://maps.google.com/?q=${startLat},${startLon}`;
+  }
+
+  const msg =
+    `🚵 *${r.name}* · ${typeLabel}\n` +
+    `${stats}\n` +
+    `${mapLink}\n\n` +
+    `_Ruta creada con VeloMind_ 💪`;
+
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 function exportGPX(id) {
