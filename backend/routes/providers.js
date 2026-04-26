@@ -193,6 +193,15 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       }
     }
 
+    // Mapear los gear_id de Strava (texto) a los id locales (UUID) para evitar errores en BD
+    const { data: userBikes } = await supabase.from('bikes').select('id, strava_gear_id').eq('user_id', uid);
+    const bikeMap = {};
+    if (userBikes) {
+      userBikes.forEach(b => {
+        if (b.strava_gear_id) bikeMap[b.strava_gear_id] = b.id;
+      });
+    }
+
     // Ordenar todas las actividades de más antigua a más reciente (orden cronológico)
     acts.sort((a, b) => new Date(a.start_date_local || a.start_date) - new Date(b.start_date_local || b.start_date));
 
@@ -232,6 +241,9 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         finalAvgPower = finalNp;
       }
 
+      // Traducir el código de bici de Strava a nuestro UUID
+      const localGearId = (a.gear_id && bikeMap[a.gear_id]) ? bikeMap[a.gear_id] : null;
+
 rowsToInsert.push({
         id: `strava_${a.id}`,
         user_id: uid,
@@ -252,7 +264,7 @@ rowsToInsert.push({
         tss: Number(tss) || 0,
         if_value: Number(ifValue) || 0,
         strava_id: null, // Forzado a null para evitar bloqueos por límite numérico en Supabase
-        gear_id: a.gear_id ? String(a.gear_id) : null,
+        gear_id: localGearId,
         source: 'Strava'
       });
     }

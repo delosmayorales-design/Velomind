@@ -49,17 +49,15 @@ router.post('/login', async (req, res) => {
 // Demo
 router.post('/demo', async (req, res) => {
   try {
-    const email = 'demo@cyclocoach.local';
-    let { data: user } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
-    if (!user) {
-      const hash = await bcrypt.hash('demo123', 10);
-      const { data: newUser } = await supabase.from('users').insert({
-        email, password: hash, name: 'Demo Ciclista',
-        ftp: 235, weight: 72, age: 32, height: 175,
-        experience: 'intermedio', goal: 'resistencia', weekly_hours: 8
-      }).select().single();
-      user = newUser;
-    }
+    // Crear un usuario demo ÚNICO por sesión para que no se mezclen datos (como bicis) entre probadores
+    const email = `demo_${Date.now()}@cyclocoach.local`;
+    const hash = await bcrypt.hash('demo123', 10);
+    const { data: user } = await supabase.from('users').insert({
+      email, password: hash, name: 'Demo Ciclista',
+      ftp: 235, weight: 72, age: 32, height: 175,
+      experience: 'intermedio', goal: 'resistencia', weekly_hours: 8
+    }).select().single();
+
     res.json({ message: '✅ Demo iniciado', token: signToken(user), user: safeUser(user) });
   } catch (e) {
     console.error('[auth/demo]', e.message);
