@@ -306,11 +306,11 @@ rowsToInsert.push({
         distance:    Math.round(Number(a.distance) || 0),
         elevation:   Math.round(Number(a.total_elevation_gain) || 0),
         avg_speed:   Math.round(Number(a.average_speed ? (a.average_speed * 3.6) : 0) * 10) / 10,
-        avg_power:   Math.round(Number(finalAvgPower) || 0),
-        max_power:   Math.round(Number(a.max_watts) || 0),
-        np:          Math.round(Number(finalNp) || 0),
-        avg_hr:      Math.round(Number(a.average_heartrate) || 0),
-        max_hr:      Math.round(Number(a.max_heartrate) || 0),
+        avg_power:   Math.min(Math.round(Number(finalAvgPower) || 0), 2500),
+        max_power:   Math.min(Math.round(Number(a.max_watts) || 0), 3500),
+        np:          Math.min(Math.round(Number(finalNp) || 0), 2500),
+        avg_hr:      Math.min(Math.round(Number(a.average_heartrate) || 0), 250),
+        max_hr:      Math.min(Math.round(Number(a.max_heartrate) || 0), 250),
         avg_cadence: Math.round(Number(a.average_cadence) || 0),
         calories:    Math.round(Number(a.calories) || 0),
         tss:         Math.round(Number(tss) || 0),
@@ -356,6 +356,43 @@ rowsToInsert.push({
       .eq('source', 'Strava')
       .lt('date', oneYearAgoDate);
     if (delErr) console.warn('[Strava Sync] Error al limpiar actividades antiguas:', delErr.message);
+
+    // Actualizar odómetro de cada bici con actividades sincronizadas
+    // Se recalcula desde TODAS las actividades (idempotente: seguro en re-sync)
+    const bikeIdsToUpdate = [...new Set(rowsToInsert.filter(r => r.gear_id).map(r => r.gear_id))];
+    for (const bikeId of bikeIdsToUpdate) {
+      try {
+        const { data: bikeActs } = await supabase
+          .from('activities')
+          .select('distance, duration')
+          .eq('user_id', uid)
+          .eq('gear_id', bikeId);
+
+        const totalDistM = (bikeActs || []).reduce((s, a) => s + (Number(a.distance) || 0), 0);
+        const totalDurS  = (bikeActs || []).reduce((s, a) => s + (Number(a.duration) || 0), 0);
+        const newKm  = Math.round(totalDistM / 1000 * 10) / 10;
+        const newHrs = Math.round(totalDurS / 3600 * 10) / 10;
+
+        const { data: bikeRow } = await supabase.from('bikes').select('total_km').eq('id', bikeId).single();
+        const oldKm  = bikeRow?.total_km || 0;
+        const deltaKm = Math.max(0, newKm - oldKm);
+
+        await supabase.from('bikes').update({ total_km: newKm, total_hours: newHrs }).eq('id', bikeId);
+        console.log(`[Strava Sync] 🚴 Odómetro bici ${bikeId}: ${oldKm}km → ${newKm}km (Δ${deltaKm.toFixed(1)}km)`);
+
+        if (deltaKm > 0.01) {
+          const { data: comps } = await supabase.from('bike_components')
+            .select('id, km_remaining').eq('bike_id', bikeId).eq('is_active', true);
+          for (const c of comps || []) {
+            await supabase.from('bike_components').update({
+              km_remaining: Math.max(0, (c.km_remaining || 0) - deltaKm),
+            }).eq('id', c.id);
+          }
+        }
+      } catch (err) {
+        console.warn(`[Strava Sync] Error actualizando odómetro bici ${bikeId}:`, err.message);
+      }
+    }
 
     // Blindaje contra cuelgues del servidor en procesos asíncronos
     setImmediate(async () => {
