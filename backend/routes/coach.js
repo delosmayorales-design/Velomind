@@ -7,7 +7,7 @@ const { callAI } = require('../services/ai');
 const router = express.Router();
 const fs = require('fs');
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/', limits: { fileSize: 50 * 1024 * 1024 } }); // Límite de 50MB para videos
+const upload = multer({ dest: '/tmp/', limits: { fileSize: 100 * 1024 * 1024 } }); // /tmp siempre existe; 100MB
 
 router.use(requireAuth);
 
@@ -349,25 +349,32 @@ router.post('/biomechanics-video', upload.single('video'), async (req, res) => {
       return res.status(500).json({ error: 'Error subiendo video a Google: ' + (uploadJson.error?.message || 'Desconocido') });
     }
 
-    const fileUri = uploadJson.file.uri;
-    const fileName = uploadJson.file.name;
+    if (!uploadJson.file) {
+      console.error('[BioVideo] Respuesta inesperada de Google Files API:', JSON.stringify(uploadJson).substring(0, 300));
+      return res.status(500).json({ error: 'Google Files API no devolvió un archivo válido: ' + (uploadJson.error?.message || JSON.stringify(uploadJson)) });
+    }
+
+    const fileUri  = uploadJson.file.uri;
+    const fileName = uploadJson.file.name; // "files/abc123..." — recurso completo
     const mimeType = uploadJson.file.mimeType;
 
-    console.log('[BioVideo] Video subido. Esperando procesamiento de la IA...');
+    console.log('[BioVideo] Video subido. URI:', fileUri, '| Estado inicial:', uploadJson.file.state);
 
     // 2. Poll: Esperar a que Gemini termine de indexar el video (ACTIVE)
-    let fileState = 'PROCESSING';
+    // NOTA: La URL correcta es /v1beta/{name} donde name ya incluye "files/"
+    let fileState = uploadJson.file.state || 'PROCESSING';
     let attempts = 0;
-    while (fileState === 'PROCESSING' && attempts < 15) {
-      await new Promise(r => setTimeout(r, 2000)); // Esperar 2 segundos
-      const checkRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/files/${fileName}?key=${googleKey}`);
+    while (fileState === 'PROCESSING' && attempts < 20) {
+      await new Promise(r => setTimeout(r, 3000));
+      const checkRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${googleKey}`);
       const checkData = await checkRes.json();
-      fileState = checkData.state;
+      fileState = checkData.state || checkData.file?.state || 'ERROR';
+      console.log(`[BioVideo] Poll #${attempts + 1}: estado=${fileState}`);
       attempts++;
     }
 
     if (fileState !== 'ACTIVE') {
-      return res.status(500).json({ error: 'El video no pudo ser procesado por la IA a tiempo. Intenta con un video más corto.' });
+      return res.status(500).json({ error: `El video no pudo ser procesado por la IA (estado: ${fileState}). Intenta con un video más corto (menos de 30 segundos).` });
     }
 
     console.log('[BioVideo] Video listo. Ejecutando análisis dinámico...');
