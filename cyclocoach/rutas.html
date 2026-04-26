@@ -489,12 +489,13 @@ async function routeValhalla(type) {
     }),
   });
   if (!res.ok) throw new Error('Valhalla HTTP ' + res.status);
-  const data    = await res.json();
-  const latLngs = decodePolyline6(data.trip.legs[0].shape);
+  const data = await res.json();
+  // Concatenar todos los legs (un leg por cada par de waypoints)
+  const latLngs = data.trip.legs.flatMap(leg => decodePolyline6(leg.shape));
   return {
     latLngs,
-    distKm:  data.trip.summary.length,
-    durMin:  Math.round(data.trip.summary.time / 60),
+    distKm: data.trip.summary.length,
+    durMin: Math.round(data.trip.summary.time / 60),
   };
 }
 
