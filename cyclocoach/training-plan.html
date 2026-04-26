@@ -326,6 +326,58 @@
       transition: background .15s;
     }
     .params-apply-btn:hover { background: rgba(196,239,68,.22); }
+
+    /* ── Audio Coach Overlay ─────────────────────────────────── */
+    #audio-coach-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.88);
+      backdrop-filter: blur(10px); z-index: 600;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .ac-panel {
+      background: var(--bg-card); border: 1px solid rgba(196,239,68,.3);
+      border-radius: 20px; max-width: 460px; width: 100%; padding: 24px;
+      display: flex; flex-direction: column; gap: 18px;
+      box-shadow: 0 0 60px rgba(196,239,68,.08);
+    }
+    .ac-header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .ac-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(196,239,68,.12); border: 1px solid rgba(196,239,68,.3);
+      color: #C4EF44; font-size: 11px; font-weight: 700;
+      padding: 4px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: .5px;
+      white-space: nowrap;
+    }
+    .ac-session-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px; font-weight: 700; color: var(--text-primary); text-align: right;
+    }
+    .ac-block-card {
+      background: var(--bg-input); border: 1px solid rgba(196,239,68,.15);
+      border-radius: 14px; padding: 20px; text-align: center;
+    }
+    .ac-block-num { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.7px; color:var(--text-muted); margin-bottom:4px; }
+    .ac-block-name { font-family:'Space Grotesk',sans-serif; font-size:20px; font-weight:800; color:#C4EF44; margin-bottom:10px; }
+    .ac-block-stats { display:flex; justify-content:center; gap:20px; margin-bottom:14px; flex-wrap:wrap; }
+    .ac-stat { display:flex; flex-direction:column; align-items:center; gap:2px; }
+    .ac-stat-val { font-size:19px; font-weight:700; color:var(--text-primary); font-family:'Space Grotesk',sans-serif; }
+    .ac-stat-lbl { font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; }
+    .ac-countdown { font-family:'Space Grotesk',sans-serif; font-size:54px; font-weight:800; color:#C4EF44; line-height:1; }
+    .ac-progress-bar { height:5px; background:rgba(255,255,255,.07); border-radius:3px; overflow:hidden; margin-top:14px; }
+    .ac-progress-fill { height:100%; background:#C4EF44; border-radius:3px; transition:width 1s linear; }
+    .ac-block-progress { display:flex; gap:4px; flex-wrap:wrap; }
+    .ac-block-dot { flex:1; height:4px; border-radius:2px; min-width:6px; background:rgba(255,255,255,.1); }
+    .ac-block-dot.done   { background:rgba(196,239,68,.4); }
+    .ac-block-dot.active { background:#C4EF44; }
+    .ac-next-preview { font-size:12px; color:var(--text-muted); text-align:center; }
+    .ac-next-preview strong { color:var(--text-secondary); }
+    .ac-controls { display:flex; gap:10px; }
+    .ac-btn { padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; display:flex; align-items:center; gap:8px; transition:background .15s; }
+    .ac-btn-main { background:rgba(196,239,68,.15); border:1px solid rgba(196,239,68,.4); color:#C4EF44; flex:1; justify-content:center; }
+    .ac-btn-main:hover { background:rgba(196,239,68,.25); }
+    .ac-btn-stop { background:rgba(255,71,87,.12); border:1px solid rgba(255,71,87,.3); color:#ff4757; }
+    .ac-btn-stop:hover { background:rgba(255,71,87,.22); }
+    .ac-btn-skip { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); color:var(--text-muted); }
+    .ac-btn-skip:hover { background:rgba(255,255,255,.1); }
   </style>
 </head>
 <body>
@@ -557,6 +609,38 @@
       <button onclick="closeModal()" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
     </div>
     <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- ── Audio Coach Overlay ─────────────────────────────────── -->
+<div id="audio-coach-overlay" style="display:none">
+  <div class="ac-panel">
+    <div class="ac-header">
+      <span class="ac-badge"><i class="fas fa-headphones"></i> Coach de Audio</span>
+      <span class="ac-session-name" id="ac-session-name"></span>
+    </div>
+    <div class="ac-block-card">
+      <div class="ac-block-num"   id="ac-block-num"></div>
+      <div class="ac-block-name"  id="ac-block-name"></div>
+      <div class="ac-block-stats" id="ac-block-stats"></div>
+      <div class="ac-countdown"   id="ac-countdown">--:--</div>
+      <div class="ac-progress-bar">
+        <div class="ac-progress-fill" id="ac-progress-fill" style="width:100%"></div>
+      </div>
+    </div>
+    <div class="ac-block-progress" id="ac-block-progress"></div>
+    <div class="ac-next-preview"   id="ac-next-preview"></div>
+    <div class="ac-controls">
+      <button class="ac-btn ac-btn-stop" onclick="stopAudioCoach()">
+        <i class="fas fa-stop"></i> Detener
+      </button>
+      <button class="ac-btn ac-btn-skip" onclick="acSkipBlock()" title="Saltar al siguiente bloque">
+        <i class="fas fa-forward-step"></i>
+      </button>
+      <button class="ac-btn ac-btn-main" id="ac-pause-btn" onclick="togglePauseAudioCoach()">
+        <i class="fas fa-pause"></i> Pausar
+      </button>
+    </div>
   </div>
 </div>
 
@@ -948,6 +1032,10 @@ function renderPlan(plan, athlete) {
             <button onclick="event.stopPropagation();exportSessionToGarmin(${i})" title="Exportar a Garmin"
               style="background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.35);color:var(--success);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit">
               <i class="fas fa-watch"></i> .fit
+            </button>
+            <button onclick="event.stopPropagation();startAudioCoach(${i})" title="Coach de audio — narración del entrenamiento"
+              style="background:rgba(196,239,68,.12);border:1px solid rgba(196,239,68,.3);color:#C4EF44;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit">
+              <i class="fas fa-headphones"></i>
             </button>
           </div>
           <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
@@ -1604,6 +1692,245 @@ function runAICoach() {
     document.getElementById(`adapt-input-${todayIdx}`)?.focus();
     body.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
+}
+
+// ── Audio Coach ───────────────────────────────────────────────
+const AC = {
+  sessIdx: -1, blocks: [], blockIdx: 0,
+  blockRemaining: 0, blockTotal: 0, totalRemaining: 0,
+  paused: false, timer: null, warned30: false,
+  motivos: [
+    '¡Vamos! ¡Tú puedes!',
+    '¡Empuja fuerte! ¡Aguanta!',
+    '¡Eso es! ¡Sigue así!',
+    '¡Fuerza! ¡No te rindas!',
+    '¡Perfecto! ¡Mantén el ritmo!',
+    '¡Queda poco! ¡Dale duro!',
+    '¡Increíble esfuerzo! ¡Sigue!',
+    '¡Eres una máquina! ¡Aguanta!',
+  ],
+};
+
+function acParseDur(dur) {
+  const s = String(dur || '').replace(',', '.').replace(' c/u', '');
+  const m = s.match(/(\d+(?:\.\d+)?)\s*(min|m\b|s\b|seg)/i);
+  if (!m) return 60;
+  const val = parseFloat(m[1]);
+  return /^s/i.test(m[2]) ? Math.round(val) : Math.round(val * 60);
+}
+
+function acParseWattsText(watts) {
+  if (!watts) return null;
+  const nums = (String(watts).match(/\d+/g) || []).map(Number);
+  if (nums.length >= 2) return `entre ${nums[0]} y ${nums[1]} vatios`;
+  if (nums.length === 1) return `${nums[0]} vatios`;
+  return null;
+}
+
+function acParseRpmText(rpm) {
+  if (!rpm) return null;
+  const nums = (String(rpm).match(/\d+/g) || []).map(Number);
+  if (nums.length >= 2) return `cadencia entre ${nums[0]} y ${nums[1]}`;
+  if (nums.length === 1) return `cadencia ${nums[0]}`;
+  return null;
+}
+
+function acGetReps(label) {
+  const m = String(label || '').match(/\(×\s*(\d+(?:-\d+)?)/i);
+  if (!m) return 1;
+  const parts = m[1].split('-').map(Number);
+  return parts.length === 2 ? Math.round((parts[0] + parts[1]) / 2) : (parseInt(m[1], 10) || 1);
+}
+
+function acExpandBlocks(intervals) {
+  const blocks = [];
+  const isRec = (lbl) => /recuperaci|descanso/i.test(lbl || '');
+  let i = 0;
+  while (i < intervals.length) {
+    const iv = intervals[i];
+    const reps = acGetReps(iv.label);
+    const next = intervals[i + 1];
+    const nextReps = next ? acGetReps(next.label) : 0;
+    const clean = iv.label.split(' (')[0].trim();
+
+    if (reps > 1 && next && nextReps === reps && isRec(next.label)) {
+      const recClean = next.label.split(' (')[0].trim();
+      for (let r = 0; r < reps; r++) {
+        blocks.push({ ...iv, _label: `${clean} ${r+1}/${reps}`, _dur: acParseDur(iv.dur) });
+        blocks.push({ ...next, _label: `${recClean} (${r+1}/${reps})`, _dur: acParseDur(next.dur) });
+      }
+      i += 2;
+    } else if (reps > 1) {
+      for (let r = 0; r < reps; r++) {
+        blocks.push({ ...iv, _label: `${clean} ${r+1}/${reps}`, _dur: acParseDur(iv.dur) });
+      }
+      i++;
+    } else {
+      blocks.push({ ...iv, _label: clean, _dur: acParseDur(iv.dur) });
+      i++;
+    }
+  }
+  return blocks;
+}
+
+function acSpeak(text) {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'es-ES'; utt.rate = 1.0; utt.pitch = 1.05; utt.volume = 1.0;
+  speechSynthesis.speak(utt);
+}
+
+function acBlockNarration(block, idx, total) {
+  const parts = [`Bloque ${idx + 1} de ${total}: ${block._label}.`];
+  const w = acParseWattsText(block.watts);
+  const r = acParseRpmText(block.rpm);
+  if (w) parts.push(`Potencia: ${w}.`);
+  if (r) parts.push(`${r}.`);
+  const nums = (String(block.watts || '').match(/\d+/g) || []).map(Number);
+  const ftp = AppState.athlete?.ftp || 200;
+  const avgW = nums.length >= 2 ? (nums[0] + nums[1]) / 2 : (nums[0] || 0);
+  if (avgW > ftp * 0.85) {
+    parts.push(AC.motivos[Math.floor(Math.random() * AC.motivos.length)]);
+  }
+  return parts.join(' ');
+}
+
+function acFmtTime(sec) {
+  const s = Math.max(0, sec);
+  return `${String(Math.floor(s / 60)).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
+}
+
+function acUpdateUI() {
+  const block = AC.blocks[AC.blockIdx];
+  if (!block) return;
+
+  document.getElementById('ac-block-num').textContent  = `Bloque ${AC.blockIdx + 1} / ${AC.blocks.length}`;
+  document.getElementById('ac-block-name').textContent = block._label;
+  document.getElementById('ac-countdown').textContent  = acFmtTime(AC.blockRemaining);
+
+  const nums = (String(block.watts || '').match(/\d+/g) || []).map(Number);
+  const rpms = (String(block.rpm   || '').match(/\d+/g) || []).map(Number);
+  const stats = [];
+  if (nums.length >= 2) stats.push(`<div class="ac-stat"><div class="ac-stat-val" style="color:#C4EF44">${nums[0]}–${nums[1]}W</div><div class="ac-stat-lbl">Potencia</div></div>`);
+  else if (nums.length === 1) stats.push(`<div class="ac-stat"><div class="ac-stat-val" style="color:#C4EF44">${nums[0]}W</div><div class="ac-stat-lbl">Potencia</div></div>`);
+  if (rpms.length >= 2) stats.push(`<div class="ac-stat"><div class="ac-stat-val" style="color:#00D4FF">${rpms[0]}–${rpms[1]}</div><div class="ac-stat-lbl">rpm</div></div>`);
+  else if (rpms.length === 1) stats.push(`<div class="ac-stat"><div class="ac-stat-val" style="color:#00D4FF">${rpms[0]}</div><div class="ac-stat-lbl">rpm</div></div>`);
+  stats.push(`<div class="ac-stat"><div class="ac-stat-val">${acFmtTime(block._dur)}</div><div class="ac-stat-lbl">Duración</div></div>`);
+  document.getElementById('ac-block-stats').innerHTML = stats.join('');
+
+  const pct = AC.blockTotal > 0 ? Math.round((AC.blockRemaining / AC.blockTotal) * 100) : 0;
+  document.getElementById('ac-progress-fill').style.width = pct + '%';
+
+  document.getElementById('ac-block-progress').innerHTML = AC.blocks.map((_, i) =>
+    `<div class="ac-block-dot${i < AC.blockIdx ? ' done' : i === AC.blockIdx ? ' active' : ''}"></div>`
+  ).join('');
+
+  const next = AC.blocks[AC.blockIdx + 1];
+  document.getElementById('ac-next-preview').innerHTML = next
+    ? `Siguiente: <strong>${next._label}</strong> — ${next.dur || acFmtTime(next._dur)}`
+    : '<strong>Último bloque</strong>';
+}
+
+function startAudioCoach(sessIdx) {
+  if (!currentPlan) return;
+  const sess = currentPlan.sessions[sessIdx];
+  if (!sess || sess.isRest) return;
+  const intervals = sess.intervals || [];
+  if (!intervals.length) { showToast('Esta sesión no tiene bloques de intervalos.', '#FFC800'); return; }
+
+  if (AC.timer) { clearInterval(AC.timer); AC.timer = null; }
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+
+  AC.sessIdx = sessIdx;
+  AC.blocks = acExpandBlocks(intervals);
+  AC.blockIdx = 0;
+  AC.paused = false;
+  AC.warned30 = false;
+
+  const first = AC.blocks[0];
+  AC.blockTotal = first._dur;
+  AC.blockRemaining = first._dur;
+  AC.totalRemaining = AC.blocks.reduce((s, b) => s + b._dur, 0);
+
+  document.getElementById('ac-session-name').textContent = sess.name || sess.type || 'Sesión';
+  document.getElementById('audio-coach-overlay').style.display = 'flex';
+  document.getElementById('ac-pause-btn').innerHTML = '<i class="fas fa-pause"></i> Pausar';
+
+  acUpdateUI();
+
+  const totalMin = Math.round(AC.totalRemaining / 60);
+  acSpeak(`Iniciando sesión: ${sess.name || 'entrenamiento'}. Duración total aproximada: ${totalMin} minutos. ${acBlockNarration(first, 0, AC.blocks.length)}`);
+
+  AC.timer = setInterval(acTick, 1000);
+}
+
+function acTick() {
+  if (AC.paused) return;
+  AC.blockRemaining--;
+  AC.totalRemaining = Math.max(0, AC.totalRemaining - 1);
+
+  if (AC.blockRemaining === 30 && !AC.warned30) {
+    AC.warned30 = true;
+    acSpeak('30 segundos.');
+  }
+
+  if (AC.blockRemaining <= 0) {
+    const nextIdx = AC.blockIdx + 1;
+    if (nextIdx >= AC.blocks.length) {
+      acSpeak('¡Sesión completada! ¡Enhorabuena, lo has dado todo! Ahora descansa y recupérate bien.');
+      clearInterval(AC.timer); AC.timer = null;
+      document.getElementById('ac-countdown').textContent = '00:00';
+      document.getElementById('ac-progress-fill').style.width = '0%';
+      setTimeout(() => stopAudioCoach(), 6000);
+      return;
+    }
+    acAdvanceBlock(nextIdx);
+    return;
+  }
+
+  acUpdateUI();
+}
+
+function acAdvanceBlock(nextIdx) {
+  AC.blockIdx = nextIdx;
+  const next = AC.blocks[nextIdx];
+  AC.blockTotal = next._dur;
+  AC.blockRemaining = next._dur;
+  AC.warned30 = false;
+
+  const isRecovery = /recuperaci|descanso/i.test(next._label || '');
+  const msg = isRecovery
+    ? `¡Bloque completado! Recuperación. ${acBlockNarration(next, nextIdx, AC.blocks.length)}`
+    : `¡Bien hecho! Siguiente bloque. ${acBlockNarration(next, nextIdx, AC.blocks.length)}`;
+  acSpeak(msg);
+  acUpdateUI();
+}
+
+function acSkipBlock() {
+  const nextIdx = AC.blockIdx + 1;
+  if (nextIdx >= AC.blocks.length) { stopAudioCoach(); return; }
+  acAdvanceBlock(nextIdx);
+}
+
+function togglePauseAudioCoach() {
+  AC.paused = !AC.paused;
+  const btn = document.getElementById('ac-pause-btn');
+  if (AC.paused) {
+    if ('speechSynthesis' in window) speechSynthesis.pause();
+    btn.innerHTML = '<i class="fas fa-play"></i> Reanudar';
+    acSpeak('Pausado.');
+  } else {
+    if ('speechSynthesis' in window) speechSynthesis.resume();
+    btn.innerHTML = '<i class="fas fa-pause"></i> Pausar';
+    acSpeak('Reanudando.');
+  }
+}
+
+function stopAudioCoach() {
+  clearInterval(AC.timer); AC.timer = null;
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  document.getElementById('audio-coach-overlay').style.display = 'none';
 }
 
 initTrainingPlan();

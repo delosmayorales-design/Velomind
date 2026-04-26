@@ -188,15 +188,18 @@ router.get('/:bikeId', async (req, res) => {
 
 // POST /api/garage
 router.post('/', async (req, res) => {
-  const { name, type, brand, model, year, frame_number, photo_url, strava_gear_id, notes } = req.body;
+  const { name, type, brand, model, year, frame_number, photo_url, strava_gear_id, notes, total_km, total_hours } = req.body;
   if (!name || !type) return res.status(400).json({ error: 'Nombre y tipo son obligatorios' });
 
+  const kmInit    = Math.max(0, parseFloat(total_km)    || 0);
+  const hoursInit = Math.max(0, parseFloat(total_hours) || 0);
+
   const { data: newBike, error } = await supabase.from('bikes')
-    .insert({ user_id: req.user.id, name, type, brand, model, year, frame_number, photo_url, strava_gear_id, notes })
+    .insert({ user_id: req.user.id, name, type, brand, model, year, frame_number, photo_url, strava_gear_id, notes, total_km: kmInit, total_hours: hoursInit })
     .select().single();
   if (error) return res.status(500).json({ error: error.message });
 
-  await createDefaultComponents(newBike.id, type, 0);
+  await createDefaultComponents(newBike.id, type, kmInit, hoursInit);
   res.json({ id: newBike.id, message: 'Bici creada correctamente' });
 });
 

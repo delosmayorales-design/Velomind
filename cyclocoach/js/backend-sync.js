@@ -338,18 +338,19 @@ function isLegacyDemoActivity(a) {
 
   /** Carga el garaje completo (bicis y componentes) del backend */
   async function loadGarage() {
-    // Limpiar SIEMPRE antes de cargar para evitar mostrar datos de otra cuenta
-    localStorage.removeItem('velomind_garage');
-    localStorage.removeItem('velomind_garage_history');
     try {
       const data = await apiFetch('/garage');
       if (data.garage && Array.isArray(data.garage.bikes)) {
+        // Solo reemplazar localStorage si el backend devolvió datos válidos
+        localStorage.removeItem('velomind_garage');
+        localStorage.removeItem('velomind_garage_history');
         localStorage.setItem('velomind_garage', JSON.stringify(data.garage));
         localStorage.setItem('velomind_garage_history', JSON.stringify(data.history || []));
         return data;
       }
     } catch (e) {
-      console.warn('[BackendSync] loadGarage offline:', e.message);
+      // Si el backend no responde, conservar localStorage para no perder datos
+      console.warn('[BackendSync] loadGarage offline, conservando datos locales:', e.message);
     }
     return null;
   }

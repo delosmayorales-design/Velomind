@@ -1299,15 +1299,17 @@ const G = (() => {
     const btn = document.getElementById('btn-ab-save');
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
 
+    const initKmEarly = parseFloat(document.getElementById('ab-km').value) || 0;
     try {
       const r = await fetch(`${window.API_URL}/garage`, {
         method: 'POST',
         headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name, type,
-          brand: document.getElementById('ab-brand').value.trim() || null,
-          model: document.getElementById('ab-model').value.trim() || null,
-          year:  parseInt(document.getElementById('ab-year').value) || new Date().getFullYear(),
+          brand:    document.getElementById('ab-brand').value.trim() || null,
+          model:    document.getElementById('ab-model').value.trim() || null,
+          year:     parseInt(document.getElementById('ab-year').value) || new Date().getFullYear(),
+          total_km: initKmEarly || 0,
         }),
       });
       const data = await r.json();
@@ -1318,13 +1320,17 @@ const G = (() => {
       try { st = JSON.parse(localStorage.getItem('velomind_garage') || 'null'); } catch(e) {}
       if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
 
-      // Ajustar km iniciales si se introdujeron
-      const initKm = parseFloat(document.getElementById('ab-km').value) || 0;
+      // Ajustar km iniciales si se introdujeron (ya enviados al backend — solo sync local)
+      const initKm = initKmEarly;
       if (initKm > 0 && data.id) {
         const newBike = st.bikes.find(b => b.id === data.id);
         if (newBike) {
           newBike.total_km = initKm;
           save();
+          // Persistir también en Supabase para que no desaparezcan al recargar
+          if (typeof BackendSync !== 'undefined') {
+            BackendSync.updateBikeOdometer(data.id, initKm, 0).catch(() => {});
+          }
         }
       }
 
