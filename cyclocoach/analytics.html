@@ -389,8 +389,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/app.js?v=102"></script>
-<script src="js/backend-sync.js?v=102"></script>
+<script src="js/app.js?v=103"></script>
+<script src="js/backend-sync.js?v=103"></script>
 <script>
 
 // ─── STATE ────────────────────────────────────────────────────
@@ -421,6 +421,48 @@ function powerZoneIdx(power, ftp) {
   if (r < 1.20) return 4;
   if (r < 1.50) return 5;
   return 6;
+}
+
+// Estima minutos en cada zona cuando no hay datos segundo a segundo.
+// Modela la distribución de potencia como una gaussiana centrada en avgP
+// con sigma proporcional al índice de variabilidad (NP/avg).
+// Esto refleja que aunque la media sea Z2, las aceleraciones/subidas
+// generan tiempo real en Z3-Z5.
+function estimateZoneMinutes(avgP, np, durationSec, ftp) {
+  var totalMin = durationSec / 60;
+  var vi = (np > 0 && np >= avgP) ? (np / avgP) : 1.0;
+  var result = [0,0,0,0,0,0,0];
+
+  if (vi <= 1.01) {
+    var zi = powerZoneIdx(avgP, ftp);
+    if (zi >= 0) result[zi] = totalMin;
+    return result;
+  }
+
+  // sigma crece con la variabilidad: VI=1.05 → ~sigma 10% avgP; VI=1.12 → ~25%
+  var sigma = avgP * (vi - 1) * 3.0;
+
+  // CDF de la normal estándar (Abramowitz & Stegun 26.2.17)
+  function normCDF(x) {
+    var z = (x - avgP) / sigma;
+    var absZ = Math.abs(z);
+    var t = 1 / (1 + 0.2316419 * absZ);
+    var d = Math.exp(-0.5 * z * z) * 0.3989423;
+    var p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.7814779 + t * (-1.8212560 + t * 1.3302744))));
+    return z >= 0 ? 1 - p : p;
+  }
+
+  var limits = [0, 0.55, 0.75, 0.90, 1.05, 1.20, 1.50, 99].map(function(r){ return r * ftp; });
+  var sum = 0;
+  for (var i = 0; i < 7; i++) {
+    var pLo = limits[i] <= 0 ? 0 : normCDF(limits[i]);
+    var pHi = limits[i+1] >= 98 * ftp ? 1 : normCDF(limits[i+1]);
+    result[i] = Math.max(0, pHi - pLo) * totalMin;
+    sum += result[i];
+  }
+  // Normalizar (masa de probabilidad por debajo de 0W)
+  if (sum > 0) { var scale = totalMin / sum; for (var j = 0; j < 7; j++) result[j] *= scale; }
+  return result;
 }
 
 // ─── DATA LOADING ─────────────────────────────────────────────
@@ -927,9 +969,10 @@ function renderZonesChart(acts, ftp) {
       for (var i = 1; i <= 7; i++) mins[i - 1] += (zt['z' + i] || 0) / 60;
       realCount++;
     } else if (a.avg_power > 0 && ftp > 0) {
-      // Fallback: usar avg_power real (no NP inflado) para clasificar la zona
-      var zi = powerZoneIdx(a.avg_power, ftp);
-      if (zi >= 0 && zi <= 6) mins[zi] += (a.duration || 0) / 60;
+      // Fallback: distribuir el tiempo en zonas usando gaussiana centrada en
+      // avg_power con anchura proporcional a la variabilidad (NP/avg).
+      var zMins = estimateZoneMinutes(a.avg_power, a.np || 0, a.duration || 0, ftp);
+      for (var zi = 0; zi < 7; zi++) mins[zi] += zMins[zi];
       estimCount++;
     }
   });
@@ -944,7 +987,7 @@ function renderZonesChart(acts, ftp) {
     } else if (realCount > 0) {
       ql.innerHTML = '<span style="color:#F59E0B">&#9679; ' + realCount + ' reales · ' + estimCount + ' estimadas por potencia media</span>';
     } else if (estimCount > 0) {
-      ql.innerHTML = '<div style="padding:8px 12px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:6px; color:#F59E0B; margin-bottom:8px; line-height: 1.4;"><i class="fas fa-exclamation-triangle"></i> <strong>Faltan datos segundo a segundo:</strong> Se está usando la potencia media de la sesión para estimar el tiempo. Añade la columna <code>zone_times</code> en Supabase y resincroniza Strava para ver tus picos en Z4-Z7.</div>';
+      ql.innerHTML = '<span style="color:var(--text-muted);font-size:11px"><i class="fas fa-info-circle"></i> Estimado desde potencia media + variabilidad NP (' + estimCount + ' actividades). Las zonas altas pueden estar ligeramente subestimadas.</span>';
     } else {
       ql.innerHTML = '';
     }
