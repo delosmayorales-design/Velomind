@@ -149,14 +149,13 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
   }
 
   try {
-    // Descargar el historial de actividades de exactamente 1 año atrás
     let page = 1;
     let acts = [];
-    const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60);
     
-    while (true) {
+    // Descargar últimas 600 actividades (sin límite de año estricto por si los datos son antiguos)
+    while (page <= 3) {
       const r = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=200&page=${page}&_t=${Date.now()}`,
+        `https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}&_t=${Date.now()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -172,7 +171,6 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       acts = acts.concat(pageActs);
       if (pageActs.length < 200) break;
       page++;
-      if (page > 10) break; // Límite de seguridad: max 2000 actividades
     }
 
     const ftp = Math.max(1, user.ftp || 200);
@@ -263,7 +261,7 @@ rowsToInsert.push({
         calories: Number(a.calories || a.kilojoules) || 0,
         tss: Number(tss) || 0,
         if_value: Number(ifValue) || 0,
-        strava_id: null, // Forzado a null para evitar bloqueos por límite numérico en Supabase
+        strava_id: a.id ? String(a.id) : null,
         gear_id: localGearId,
         source: 'Strava'
       });
