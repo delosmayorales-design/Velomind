@@ -770,12 +770,94 @@ const TrainingPlanGenerator = {
 ══════════════════════════════════════════════════════════════ */
 const FileParser = {
   async parse(file) {
-    const text = await file.text();
     const ext = file.name.split('.').pop().toLowerCase();
+    if (ext === 'fit') {
+      const buffer = await file.arrayBuffer();
+      return this.parseFIT(buffer, file.name);
+    }
+    const text = await file.text();
     if (ext === 'gpx') return this.parseGPX(text, file.name);
     if (ext === 'tcx') return this.parseTCX(text, file.name);
     if (ext === 'csv') return this.parseCSV(text, file.name);
-    throw new Error('Formato no soportado. Usa GPX, TCX o CSV.');
+    throw new Error('Formato no soportado. Usa FIT, GPX, TCX o CSV.');
+  },
+
+  parseFIT(buffer, name) {
+    return new Promise((resolve, reject) => {
+      if (typeof EasyFit === 'undefined') {
+        reject(new Error('Librería FIT no disponible. Recarga la página.'));
+        return;
+      }
+      const easyfit = new EasyFit({ force: true, speedUnit: 'm/s', lengthUnit: 'm', mode: 'list' });
+      easyfit.parse(buffer, (err, data) => {
+        if (err) { reject(new Error('No se pudo leer el archivo FIT: ' + err)); return; }
+
+        const session = data.activity?.sessions?.[0];
+        if (!session) { reject(new Error('El archivo FIT no contiene datos de sesión.')); return; }
+
+        const records = session.records || [];
+
+        const startTime = session.start_time || records[0]?.timestamp;
+        const date = startTime
+          ? new Date(startTime).toISOString().substring(0, 10)
+          : new Date().toISOString().substring(0, 10);
+
+        const duration = session.total_elapsed_time
+          ? Math.round(session.total_elapsed_time)
+          : records.length > 1
+            ? Math.round((new Date(records[records.length - 1].timestamp) - new Date(records[0].timestamp)) / 1000)
+            : 0;
+
+        const distance = Math.round(session.total_distance || 0);
+
+        const powers = records.filter(r => r.power > 0 && r.power < 3000).map(r => r.power);
+        const avgPower = powers.length
+          ? Math.round(powers.reduce((s, p) => s + p, 0) / powers.length)
+          : (session.avg_power || 0);
+
+        const hrs = records.filter(r => r.heart_rate > 0 && r.heart_rate < 250).map(r => r.heart_rate);
+        const avgHR = hrs.length
+          ? Math.round(hrs.reduce((s, h) => s + h, 0) / hrs.length)
+          : (session.avg_heart_rate || 0);
+
+        const cads = records.filter(r => r.cadence > 0 && r.cadence < 250).map(r => r.cadence);
+        const avgCad = cads.length
+          ? Math.round(cads.reduce((s, c) => s + c, 0) / cads.length)
+          : (session.avg_cadence || 0);
+
+        const elevation = session.total_ascent
+          ? Math.round(session.total_ascent)
+          : (() => {
+              const alts = records.map(r => r.altitude ?? r.enhanced_altitude).filter(a => a != null && a > -500);
+              return Math.round(alts.reduce((sum, a, i) => {
+                if (i === 0) return 0;
+                const d = a - alts[i - 1];
+                return sum + (d > 0 ? d : 0);
+              }, 0));
+            })();
+
+        const avgSpeed = session.avg_speed
+          ? Math.round(session.avg_speed * 3.6 * 10) / 10
+          : (duration > 0 && distance > 0 ? Math.round((distance / duration) * 3.6 * 10) / 10 : 0);
+
+        resolve({
+          id:          'fit_' + Date.now(),
+          name:        name.replace(/\.fit$/i, '').replace(/[_-]+/g, ' ').trim() || 'Actividad FIT',
+          date,
+          source:      'FIT',
+          duration,
+          distance,
+          avg_power:   avgPower  || null,
+          np:          avgPower  ? Math.round(avgPower * 1.05) : null,
+          avg_hr:      avgHR     || null,
+          avg_cadence: avgCad    || null,
+          avg_speed:   avgSpeed  || null,
+          elevation:   elevation || null,
+          tss:         0,
+          if_value:    0,
+        });
+      });
+    });
   },
 
   parseGPX(text, name) {

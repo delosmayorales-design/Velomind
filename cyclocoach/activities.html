@@ -19,6 +19,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/easy-fit@1.4.3/dist/easy-fit.min.js"></script>
   <style>
     .activity-detail-panel { position: fixed; right: -500px; top: 0; height: 100vh; width: 480px; background: var(--bg-card); border-left: 1px solid var(--border); z-index: 200; transition: right 0.3s ease; overflow-y: auto; padding: 24px; }
     .activity-detail-panel.open { right: 0; }
@@ -110,13 +111,14 @@
         <div class="card-title"><i class="fas fa-cloud-upload-alt" style="color:var(--accent)"></i> Importar actividades</div>
       </div>
       <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" style="padding: 32px 16px; min-height: auto; flex-direction: column; gap: 12px; justify-content: center; align-items: center; text-align: center;">
-        <input type="file" id="file-input" multiple accept=".tcx,.gpx,.csv" style="display:none">
+        <input type="file" id="file-input" multiple accept=".tcx,.gpx,.csv,.fit" style="display:none">
         <div class="upload-icon" style="font-size: 32px; margin: 0; width: auto; height: auto; color: var(--primary);"><i class="fas fa-cloud-upload-alt"></i></div>
         <div>
           <h3 style="font-size: 16px; margin: 0">Haz clic o arrastra archivos para importar</h3>
-          <p style="font-size: 12px; margin: 4px 0 0; color: var(--text-muted)">Compatible con Garmin, Wahoo, Strava y más</p>
+          <p style="font-size: 12px; margin: 4px 0 0; color: var(--text-muted)">Compatible con Garmin, Wahoo, Polar, Strava y más</p>
         </div>
         <div class="supported-formats" style="margin: 4px 0 0; display: flex; gap: 8px; justify-content: center;">
+          <span class="format-badge" style="font-size: 9px; padding: 2px 6px">FIT</span>
           <span class="format-badge" style="font-size: 9px; padding: 2px 6px">GPX</span>
           <span class="format-badge" style="font-size: 9px; padding: 2px 6px">TCX</span>
           <span class="format-badge" style="font-size: 9px; padding: 2px 6px">CSV</span>
@@ -124,7 +126,7 @@
       </div>
       <div class="alert alert-info" style="margin: 16px 20px; justify-content: center; text-align: center; align-items: center;">
         <i class="fas fa-info-circle"></i>
-        <div>Para compatibilidad completa, usa <strong>GPX/TCX/CSV</strong>. En Garmin Connect, el formato recomendado es <strong>TCX</strong> (incluye potencia, FC y cadencia).</div>
+        <div>Los archivos <strong>.fit</strong> de Garmin se importan directamente. Para otros dispositivos usa <strong>GPX/TCX</strong>.</div>
       </div>
       <div id="upload-progress-list" style="margin-top:16px"></div>
       <div style="margin: 16px 0; text-align: center;">
@@ -306,15 +308,15 @@ function renderActivities(activities) {
 
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
-fileInput.setAttribute('accept', '.tcx,.gpx,.csv');
+fileInput.setAttribute('accept', '.tcx,.gpx,.csv,.fit');
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); processFiles(Array.from(e.dataTransfer.files)); });
 fileInput.addEventListener('change', e => { processFiles(Array.from(e.target.files)); fileInput.value = ''; });
 
 async function processFiles(files) {
-  const validFiles = files.filter(f => /\.(tcx|gpx|csv)$/i.test(f.name));
-  if (!validFiles.length) { showToast('Formato no soportado. Usa GPX, TCX o CSV.', 'warning'); return; }
+  const validFiles = files.filter(f => /\.(tcx|gpx|csv|fit)$/i.test(f.name));
+  if (!validFiles.length) { showToast('Formato no soportado. Usa FIT, GPX, TCX o CSV.', 'warning'); return; }
   for (const file of validFiles) {
     const progressId = 'prog-' + Date.now();
     addProgressItem(progressId, file.name, 'Analizando...');
@@ -349,7 +351,7 @@ function saveActivity(activity) {
 
 function addProgressItem(id, name, status) {
   const ext = name.split('.').pop().toUpperCase();
-  const colors = { TCX: '#00D4FF', GPX: '#00E676', CSV: '#FFD600' };
+  const colors = { FIT: '#007AC7', TCX: '#00D4FF', GPX: '#00E676', CSV: '#FFD600' };
   const list = document.getElementById('upload-progress-list');
   const item = document.createElement('div');
   item.className = 'upload-progress';
