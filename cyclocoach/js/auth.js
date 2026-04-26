@@ -216,6 +216,37 @@ const Auth = (() => {
     return await res.json();
   }
 
+  // ─── Subir foto de perfil ────────────────────────────────────
+  async function uploadAvatar(file) {
+    // Comprimir a 400×400 JPEG antes de subir
+    const bitmap = await createImageBitmap(file);
+    const size = 400;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const scale = Math.max(size / bitmap.width, size / bitmap.height);
+    const w = bitmap.width * scale, h = bitmap.height * scale;
+    ctx.drawImage(bitmap, (size - w) / 2, (size - h) / 2, w, h);
+
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.82));
+    const form = new FormData();
+    form.append('avatar', blob, 'avatar.jpg');
+
+    const res = await fetch(`${API_URL}/auth/avatar`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: form,
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || 'Error al subir foto');
+    }
+    const data = await res.json();
+    setUser(data.user);
+    injectUserUI(data.user);
+    return data.user;
+  }
+
   // ─── Inyectar UI de usuario en sidebar ───────────────────────
   function injectUserUI(user) {
     if (user) {
@@ -227,7 +258,66 @@ const Auth = (() => {
       const initials = displayName.split(' ').map(w=>w[0]).join('').toUpperCase().substring(0,2);
 
       nameEls.forEach(el => el.textContent = displayName);
-      avatarEls.forEach(el => el.textContent = initials);
+      avatarEls.forEach(el => {
+        // Render photo or initials
+        if (user.avatar_url) {
+          el.textContent = '';
+          el.style.backgroundImage = `url('${user.avatar_url}')`;
+          el.style.backgroundSize = 'cover';
+          el.style.backgroundPosition = 'center';
+          el.style.fontSize = '0';
+        } else {
+          el.textContent = initials;
+          el.style.backgroundImage = '';
+        }
+
+        // Make avatar clickable to upload photo (attach once)
+        if (!el.dataset.avatarUploadBound) {
+          el.dataset.avatarUploadBound = '1';
+          el.style.cursor = 'pointer';
+          el.title = 'Cambiar foto de perfil';
+
+          // Camera overlay on hover
+          el.addEventListener('mouseenter', () => {
+            el.style.filter = 'brightness(0.6)';
+            let cam = el.querySelector('.avatar-cam');
+            if (!cam) {
+              cam = document.createElement('span');
+              cam.className = 'avatar-cam';
+              cam.innerHTML = '📷';
+              cam.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:16px;pointer-events:none;';
+              el.style.position = 'relative';
+              el.appendChild(cam);
+            }
+            cam.style.display = 'block';
+          });
+          el.addEventListener('mouseleave', () => {
+            el.style.filter = '';
+            const cam = el.querySelector('.avatar-cam');
+            if (cam) cam.style.display = 'none';
+          });
+
+          el.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/jpeg,image/png,image/webp';
+            input.onchange = async () => {
+              const f = input.files[0];
+              if (!f) return;
+              const orig = el.style.filter;
+              el.style.filter = 'brightness(0.4)';
+              try {
+                await uploadAvatar(f);
+              } catch (err) {
+                alert('Error al subir foto: ' + err.message);
+              } finally {
+                el.style.filter = orig;
+              }
+            };
+            input.click();
+          });
+        }
+      });
       ftpEls.forEach(el => el.textContent = `FTP: ${user.ftp || '--'} W`);
     }
 
@@ -388,6 +478,7 @@ const Auth = (() => {
     verifyToken,
     requireAuth,
     saveStravaToken,
+    uploadAvatar,
   };
 })();
 

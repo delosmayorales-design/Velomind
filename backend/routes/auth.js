@@ -1,8 +1,11 @@
 const express = require('express');
 const bcrypt  = require('bcryptjs');
+const multer  = require('multer');
 const supabase = require('../db'); // Ahora db es el cliente de Supabase
 const { requireAuth, signToken } = require('../middleware/auth');
 const router  = express.Router();
+
+const avatarUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 // Registro
 router.post('/register', async (req, res) => {
@@ -75,6 +78,32 @@ router.get('/verify', requireAuth, async (req, res) => {
 router.get('/profile', requireAuth, async (req, res) => {
   const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
   res.json(safeUser(user));
+});
+
+// Avatar upload
+router.post('/avatar', requireAuth, avatarUpload.single('avatar'), async (req, res) => {
+  const uid = req.user.id;
+  if (!req.file) return res.status(400).json({ error: 'Falta el archivo de imagen' });
+
+  const ext  = req.file.mimetype === 'image/png' ? 'png' : 'jpg';
+  const path = `${uid}/profile.${ext}`;
+
+  // Crear bucket si no existe (silencia error si ya existe)
+  await supabase.storage.createBucket('avatars', { public: true }).catch(() => {});
+
+  const { error: upErr } = await supabase.storage
+    .from('avatars')
+    .upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+
+  if (upErr) return res.status(500).json({ error: 'Error subiendo imagen: ' + upErr.message });
+
+  const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+  const avatarUrl = urlData.publicUrl + '?t=' + Date.now(); // cache-bust
+
+  await supabase.from('users').update({ avatar_url: avatarUrl }).eq('id', uid);
+
+  const { data: user } = await supabase.from('users').select('*').eq('id', uid).single();
+  res.json({ avatar_url: avatarUrl, user: safeUser(user) });
 });
 
 // Perfil PUT

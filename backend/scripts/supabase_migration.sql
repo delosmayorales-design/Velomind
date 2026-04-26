@@ -130,3 +130,6 @@ CREATE TABLE IF NOT EXISTS maintenance_thresholds (
   alert_red_pct    INTEGER DEFAULT 90,
   UNIQUE(bike_type, component_type)
 );
+
+-- Foto de perfil del atleta
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
