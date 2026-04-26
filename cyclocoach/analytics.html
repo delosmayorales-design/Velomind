@@ -1410,25 +1410,45 @@ async function autoEstimateZones() {
     const weight = parseFloat(athlete.weight) || 0;
     const messages = [];
 
-    // Estimar FTP desde los mejores esfuerzos con potencia real
-    // Cap fisiológico: 6.5 W/kg es nivel Tour de France; por encima es spike de potenciómetro
+    // Cap fisiológico: 6.5 W/kg es nivel Tour de France
     const ftpCap = weight > 0 ? Math.round(weight * 6.5) : 550;
-    // Ventanas: 20-40min ×0.95, 40-60min ×0.97, 60-90min ×1.00, >90min ×1.03
-    const FTP_WINDOWS = [
-      { min: 1200, max: 2400, factor: 0.95, label: '20-40 min' },
-      { min: 2400, max: 3600, factor: 0.97, label: '40-60 min' },
-      { min: 3600, max: 5400, factor: 1.00, label: '60-90 min' },
-      { min: 5400, max: 99999, factor: 1.03, label: '>90 min'   },
-    ];
+
+    // ── Método 1: curva de potencia (mejor segmento dentro de cualquier salida) ──
+    // Es el método más preciso: 20 min × 0.95, 60 min × 1.00
     let bestEstimatedFTP = 0, bestWindowLabel = '';
-    for (const w of FTP_WINDOWS) {
-      const bucket = acts.filter(a => a.duration >= w.min && a.duration < w.max && a.avg_power > 0);
-      if (!bucket.length) continue;
-      // Usar top-3 promediados para resistir actividades con spike puntual
-      const vals = bucket.map(a => a.np > 0 ? a.np : a.avg_power).sort((a, b) => b - a).slice(0, 3);
-      const best = Math.round(vals.reduce((s, v) => s + v, 0) / vals.length);
-      const est  = Math.min(Math.round(best * w.factor), ftpCap); // nunca superar cap fisiológico
-      if (est > bestEstimatedFTP) { bestEstimatedFTP = est; bestWindowLabel = w.label; }
+    try {
+      const curveData = await BackendSync.loadPowerCurve(0); // historial completo
+      if (curveData?.curve) {
+        const p20m = curveData.curve.find(c => c.dur === 1200);
+        const p1h  = curveData.curve.find(c => c.dur === 3600);
+        if (p20m?.power > 0) {
+          const est = Math.min(Math.round(p20m.power * 0.95), ftpCap);
+          if (est > bestEstimatedFTP) { bestEstimatedFTP = est; bestWindowLabel = 'mejor segmento 20 min'; }
+        }
+        if (p1h?.power > 0) {
+          const est = Math.min(p1h.power, ftpCap);
+          if (est > bestEstimatedFTP) { bestEstimatedFTP = est; bestWindowLabel = 'mejor hora'; }
+        }
+      }
+    } catch(e) {}
+
+    // ── Método 2: fallback con potencia media de salidas completas ──
+    // Solo se usa si la curva no devuelve datos
+    if (bestEstimatedFTP === 0) {
+      const FTP_WINDOWS = [
+        { min: 1200, max: 2400, factor: 0.95, label: '20-40 min' },
+        { min: 2400, max: 3600, factor: 0.97, label: '40-60 min' },
+        { min: 3600, max: 5400, factor: 1.00, label: '60-90 min' },
+        { min: 5400, max: 99999, factor: 1.03, label: '>90 min'   },
+      ];
+      for (const w of FTP_WINDOWS) {
+        const bucket = acts.filter(a => a.duration >= w.min && a.duration < w.max && a.avg_power > 0);
+        if (!bucket.length) continue;
+        const vals = bucket.map(a => a.np > 0 ? a.np : a.avg_power).sort((a, b) => b - a).slice(0, 3);
+        const best = Math.round(vals.reduce((s, v) => s + v, 0) / vals.length);
+        const est  = Math.min(Math.round(best * w.factor), ftpCap);
+        if (est > bestEstimatedFTP) { bestEstimatedFTP = est; bestWindowLabel = w.label; }
+      }
     }
 
     // ── FTP ──

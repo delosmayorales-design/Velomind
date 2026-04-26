@@ -125,36 +125,50 @@ router.get('/records', async (req, res) => {
 });
 
 // FTP estimate
+// Usa el mejor NP/avg_power de salidas >= 20 min y aplica el factor estándar:
+//   20-40 min × 0.95  |  40-60 min × 0.97  |  60-90 min × 1.00  |  >90 min × 1.03
 router.get('/ftp-estimate', async (req, res) => {
   const uid = req.user.id;
-  const { data: userRow } = await supabase.from('users').select('ftp').eq('id', uid).single();
+  const { data: userRow } = await supabase.from('users').select('ftp, weight').eq('id', uid).single();
   const currentFTP = userRow?.ftp || null;
+  const weight = parseFloat(userRow?.weight) || 0;
+  const ftpCap = weight > 0 ? Math.round(weight * 6.5) : 550;
 
-  const [{ data: short }, { data: anyLong }] = await Promise.all([
-    supabase.from('activities')
-      .select('avg_power, np, duration, date, name, strava_id')
-      .eq('user_id', uid).gt('avg_power', 0)
-      .gte('duration', 1080).lte('duration', 1500)
-      .order('avg_power', { ascending: false }).limit(3),
-    supabase.from('activities')
-      .select('avg_power, np, duration, date, name, strava_id')
-      .eq('user_id', uid).gt('np', 0).gte('duration', 1200)
-      .order('np', { ascending: false }).limit(3)
-  ]);
+  const { data: acts } = await supabase.from('activities')
+    .select('avg_power, np, duration, date, name, strava_id')
+    .eq('user_id', uid).gt('avg_power', 0).gte('duration', 1200)
+    .lte('avg_power', 2500) // ignorar spikes de sensor
+    .order('duration', { ascending: true });
 
-  let estimatedFTP = null, best20min = null, method = null, source = null;
-  if (short && short.length && short[0].avg_power > 0) {
-    source = short[0]; best20min = source.avg_power;
-    estimatedFTP = Math.round(source.avg_power * 0.95); method = 'best_20min';
-  } else if (anyLong && anyLong.length && anyLong[0].np > 0) {
-    source = anyLong[0]; estimatedFTP = Math.round(source.np * 0.95); method = 'np_best';
+  const WINDOWS = [
+    { min: 1200, max: 2400, factor: 0.95, label: '20-40 min' },
+    { min: 2400, max: 3600, factor: 0.97, label: '40-60 min' },
+    { min: 3600, max: 5400, factor: 1.00, label: '60-90 min' },
+    { min: 5400, max: 99999, factor: 1.03, label: '>90 min'   },
+  ];
+
+  let estimatedFTP = null, best20min = null, method = null, bestLabel = null, source = null;
+  for (const w of WINDOWS) {
+    const bucket = (acts || []).filter(a => a.duration >= w.min && a.duration < w.max);
+    if (!bucket.length) continue;
+    bucket.sort((a, b) => (b.np || b.avg_power) - (a.np || a.avg_power));
+    const top = bucket[0];
+    const power = top.np || top.avg_power;
+    const est = Math.min(Math.round(power * w.factor), ftpCap);
+    if (!estimatedFTP || est > estimatedFTP) {
+      estimatedFTP = est;
+      best20min = power;
+      method = `best_${w.label}`;
+      bestLabel = w.label;
+      source = top;
+    }
   }
 
-  res.json({ current_ftp: currentFTP, estimated_ftp: estimatedFTP, best_20min_power: best20min, method,
+  res.json({ current_ftp: currentFTP, estimated_ftp: estimatedFTP, best_20min_power: best20min,
+    method, window_label: bestLabel,
     source_name: source?.name || null, source_date: source?.date || null,
     source_duration_min: source ? Math.round(source.duration / 60) : null,
-    source_strava_id: source?.strava_id || null,
-    candidates: { short: short?.length || 0, any: anyLong?.length || 0 } });
+    source_strava_id: source?.strava_id || null });
 });
 
 // Weekly (últimas 12 semanas)
