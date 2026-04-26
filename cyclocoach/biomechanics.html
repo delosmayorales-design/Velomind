@@ -567,11 +567,41 @@
               <div class="canvas-label-tag" style="color:#60a5fa">Análisis en Rodillo</div>
 
               <!-- Estado: Upload -->
-              <div id="videoUploadArea" class="video-panel-state">
-                <div class="video-drop-zone" id="videoDropZone" onclick="document.getElementById('videoFileInput').click()">
-                  <div style="font-size:36px;margin-bottom:12px">🎬</div>
-                  <div style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:6px">Sube un video en rodillo</div>
-                  <div style="font-size:11px;color:#64748b;margin-bottom:16px">MP4 · MOV · hasta 50 MB</div>
+              <div id="videoUploadArea" class="video-panel-state" style="flex-direction:column;gap:0;padding:12px 12px 16px;overflow-y:auto">
+
+                <!-- Guía de grabación -->
+                <div style="width:100%;margin-bottom:12px;background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.2);border-radius:10px;padding:12px 14px">
+                  <div style="font-size:11px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
+                    <i class="fas fa-video"></i> Cómo grabar para el mejor análisis
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                    <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
+                      <div style="font-size:10px;font-weight:700;color:#34d399;margin-bottom:4px">⏱ Duración</div>
+                      <div style="font-size:11px;color:#94a3b8;line-height:1.5">20–30 segundos pedalando a cadencia normal. Evita clips de más de 60s.</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
+                      <div style="font-size:10px;font-weight:700;color:#34d399;margin-bottom:4px">📐 Ángulo lateral</div>
+                      <div style="font-size:11px;color:#94a3b8;line-height:1.5">Cámara al lado, perpendicular a la bici. Captura todo el cuerpo de pies a cabeza.</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
+                      <div style="font-size:10px;font-weight:700;color:#f59e0b;margin-bottom:4px">💡 Iluminación</div>
+                      <div style="font-size:11px;color:#94a3b8;line-height:1.5">Luz lateral o frontal, sin contraluz. Ropa ajustada para ver las articulaciones.</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
+                      <div style="font-size:10px;font-weight:700;color:#f59e0b;margin-bottom:4px">🚴 Rodillo/Cinta</div>
+                      <div style="font-size:11px;color:#94a3b8;line-height:1.5">El análisis es sobre rodillo estático. Cámara fija, sin zoom ni movimiento.</div>
+                    </div>
+                  </div>
+                  <div style="margin-top:8px;padding:6px 8px;background:rgba(239,68,68,.06);border-radius:6px;border-left:2px solid #ef4444">
+                    <span style="font-size:10px;color:#fca5a5"><i class="fas fa-exclamation-triangle"></i> <strong>Ángulo trasero o frontal no sirven</strong> — la IA necesita ver el perfil completo para medir ángulos de rodilla, cadera y tobillo.</span>
+                  </div>
+                </div>
+
+                <!-- Drop zone -->
+                <div class="video-drop-zone" id="videoDropZone" onclick="document.getElementById('videoFileInput').click()" style="width:100%;box-sizing:border-box">
+                  <div style="font-size:28px;margin-bottom:8px">🎬</div>
+                  <div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:4px">Sube tu video en rodillo</div>
+                  <div style="font-size:11px;color:#64748b;margin-bottom:12px">MP4 · MOV · hasta 100 MB</div>
                   <button class="tool-btn" onclick="event.stopPropagation();document.getElementById('videoFileInput').click()">
                     <i class="fas fa-upload"></i> Seleccionar video
                   </button>
