@@ -218,21 +218,24 @@ router.get('/power-curve', async (req, res) => {
   const durations = [5, 10, 30, 60, 120, 300, 600, 1200, 1800, 3600];
   const labels    = ['5s','10s','30s','1min','2min','5min','10min','20min','30min','60min'];
 
-  // Función estimadora para actividades antiguas que no tienen el cálculo exacto segundo a segundo
+  // Límite fisiológico: spikes del sensor por encima de esto son ruido
+  const powerCap = Math.min(2000, ftp * 10);
+
   const estimateEfforts = (durSec, avg, np, max) => {
     const base = np > 0 ? np : avg;
     const eff = {};
     if (base <= 0 || durSec <= 0) return eff;
+    // Descartar max_power si supera el límite fisiológico (spike de sensor)
+    const safeMax = max > 0 && max <= powerCap ? max : 0;
     durations.forEach(d => {
       if (d <= durSec) {
-        if (d <= 10 && max > 0) {
-          eff[d] = max;
-        } else if (d === 30 && max > 0) {
-          eff[d] = Math.round(max * 0.6 + base * 0.4);
+        if (d <= 10 && safeMax > 0) {
+          eff[d] = safeMax;
+        } else if (d === 30 && safeMax > 0) {
+          eff[d] = Math.round(safeMax * 0.6 + base * 0.4);
         } else {
-          // Fórmula de fatiga fisiológica (exponente ~0.09) para crear curvas realistas
           let est = Math.round(base * Math.pow(durSec / d, 0.09));
-          if (max > 0 && est > max) est = max;
+          if (safeMax > 0 && est > safeMax) est = safeMax;
           eff[d] = est;
         }
       }
@@ -248,7 +251,8 @@ router.get('/power-curve', async (req, res) => {
         efforts = estimateEfforts(Number(a.duration||0), Number(a.avg_power||0), Number(a.np||0), Number(a.max_power||0));
       }
       if (efforts && efforts[dur]) {
-        best = Math.max(best, efforts[dur]);
+        // Aplicar límite también a best_efforts ya almacenados
+        best = Math.max(best, Math.min(efforts[dur], powerCap));
       }
     });
     return {

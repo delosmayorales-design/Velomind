@@ -810,7 +810,8 @@ const FileParser = {
 
         const distance = Math.round(session.total_distance || 0);
 
-        const powers = records.filter(r => r.power > 0 && r.power < 3000).map(r => r.power);
+        const maxPCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
+        const powers = records.filter(r => r.power > 0 && r.power <= maxPCap).map(r => r.power);
         const avgPower = powers.length
           ? Math.round(powers.reduce((s, p) => s + p, 0) / powers.length)
           : (session.avg_power || 0);
@@ -880,8 +881,9 @@ const FileParser = {
     const date = points[0].time.toISOString().substring(0, 10);
     const durationSec = (points[points.length - 1].time - points[0].time) / 1000;
     const distance = this._calcDistance(points);
-    const avgPower = points.filter(p => p.power > 0).length
-      ? Math.round(points.reduce((s, p) => s + (p.power || 0), 0) / points.filter(p => p.power > 0).length)
+    const maxPowerCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
+    const avgPower = points.filter(p => p.power > 0 && p.power <= maxPowerCap).length
+      ? Math.round(points.filter(p => p.power > 0 && p.power <= maxPowerCap).reduce((s, p) => s + p.power, 0) / points.filter(p => p.power > 0 && p.power <= maxPowerCap).length)
       : 0;
     const avgHR = points.filter(p => p.hr > 0).length
       ? Math.round(points.reduce((s, p) => s + (p.hr || 0), 0) / points.filter(p => p.hr > 0).length)
@@ -922,7 +924,8 @@ const FileParser = {
       const power = parseFloat(tp.querySelector('Watts')?.textContent || 0);
       const hr = parseFloat(tp.querySelector('Value')?.textContent || 0);
       if (!isNaN(time)) times.push(time);
-      if (power > 0) powers.push(power);
+      const maxPCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
+      if (power > 0 && power <= maxPCap) powers.push(power);
       if (hr > 0 && hr < 250) hrs.push(hr);
     }
 
