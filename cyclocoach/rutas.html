@@ -890,23 +890,50 @@ async function shareWhatsApp(id) {
   if (!r) return;
 
   const typeLabel = { road: '🚴 Road', gravel: '🪨 Gravel', mtb: '🏔️ MTB' }[r.type] || r.type;
-  const dist = r.distance_km      ? `📏 ${r.distance_km} km`            : '';
+  const dist = r.distance_km      ? `📏 ${r.distance_km} km`               : '';
   const time = r.estimated_minutes ? `⏱️ ~${formatTime(r.estimated_minutes)}` : '';
   const msg  =
     `🚵 *${r.name}* · ${typeLabel}\n` +
     `${[dist, time].filter(Boolean).join('   ')}\n\n` +
     `_Ruta creada con VeloMind_ 💪`;
 
-  // Mostrar la ruta en el mapa para capturarla
+  // Mostrar ruta en el mapa (fitBounds la centra)
   openRouteOnMap(id);
 
-  // Intentar compartir con imagen via Web Share API
   if (typeof html2canvas !== 'undefined' && navigator.canShare) {
     try {
-      await new Promise(res => setTimeout(res, 1200)); // esperar que carguen los tiles
-      const canvas = await html2canvas(document.getElementById('map'), {
-        useCORS: true, allowTaint: false, scale: 1, logging: false
+      // Esperar fin de animación fitBounds
+      await new Promise(res => {
+        const t = setTimeout(res, 1500);
+        map.once('moveend', () => { clearTimeout(t); res(); });
       });
+
+      // Si el zoom es mayor de 13 los nombres de pueblo no aparecen → bajar a 12
+      if (map.getZoom() > 13) {
+        map.setZoom(12);
+        await new Promise(res => {
+          const t = setTimeout(res, 800);
+          map.once('zoomend', () => { clearTimeout(t); res(); });
+        });
+      }
+
+      // Esperar que los tiles terminen de cargar
+      await new Promise(res => setTimeout(res, 2200));
+
+      // Capturar usando las coordenadas exactas del div #map para evitar recortes
+      const mapEl = document.getElementById('map');
+      const rect  = mapEl.getBoundingClientRect();
+      const canvas = await html2canvas(document.body, {
+        useCORS: true, allowTaint: false, scale: 1.5, logging: false,
+        imageTimeout: 0,
+        x:      rect.left + window.scrollX,
+        y:      rect.top  + window.scrollY,
+        width:  rect.width,
+        height: rect.height,
+        windowWidth:  document.documentElement.scrollWidth,
+        windowHeight: document.documentElement.scrollHeight
+      });
+
       await new Promise((res, rej) => canvas.toBlob(async blob => {
         try {
           const file = new File([blob], 'ruta.png', { type: 'image/png' });
