@@ -534,7 +534,8 @@ async function calcRoute(type) {
 
     const color = type === 'gravel' ? '#F59E0B' : type === 'mtb' ? '#10B981' : '#FF6B35';
     if (routeLayer) map.removeLayer(routeLayer);
-    routeLayer = L.polyline(latLngs, { color, weight: 4, opacity: 0.9 }).addTo(map);
+    // interactive:false → la polyline no intercepta clicks del mapa durante el dibujo
+    routeLayer = L.polyline(latLngs, { color, weight: 4, opacity: 0.9, interactive: false }).addTo(map);
 
     document.getElementById('stat-dist').textContent = distKm.toFixed(1);
     document.getElementById('stat-time').textContent = formatTime(durMin);
@@ -579,6 +580,8 @@ async function fetchElevation(latLngs) {
 
 function renderElevChart(elevs) {
   document.getElementById('elev-panel').classList.add('visible');
+  // Notificar a Leaflet que el contenedor cambió de tamaño
+  setTimeout(() => map && map.invalidateSize(), 50);
   const ctx = document.getElementById('elev-chart').getContext('2d');
   if (elevChart) elevChart.destroy();
   elevChart = new Chart(ctx, {
@@ -618,7 +621,7 @@ async function onMapClick(e) {
   const { lat, lng } = e.latlng;
   waypoints.push({ lat, lng });
   const m = L.circleMarker([lat, lng], {
-    radius: 5, fillColor: '#FF6B35', color: '#fff', weight: 2, fillOpacity: 1
+    radius: 5, fillColor: '#FF6B35', color: '#fff', weight: 2, fillOpacity: 1, interactive: false
   }).addTo(map);
   waypointMarkers.push(m);
   if (waypoints.length >= 2) await calcRoute(currentRouteType);
