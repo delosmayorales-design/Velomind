@@ -381,7 +381,7 @@ router.post('/biomechanics-video', upload.single('video'), async (req, res) => {
 
     // 3. Prompt de Análisis de Movimiento
     const prompt = `Eres un Experto Biomecánico de Ciclismo. Analiza el siguiente video del ciclista en movimiento.
-Devuelve UNICAMENTE un JSON válido con tu análisis detallado.
+Responde SIEMPRE en español. Devuelve UNICAMENTE un JSON válido con tu análisis detallado en español.
 
 Evalúa estrictamente:
 1. Estabilidad de la cadera (hip rocking): ¿Hay balanceo excesivo que indique sillín muy alto?
@@ -389,8 +389,8 @@ Evalúa estrictamente:
 3. Técnica del tobillo (ankling): ¿Mucha caída del talón o pedalea demasiado de puntillas?
 4. Fluidez: ¿Hay puntos muertos o tirones bruscos en la fase de recobro?
 
-Formato JSON esperado:
-{"dynamic_analysis":{"hip_stability":"...","knee_tracking":"...","ankle_technique":"...","pedaling_smoothness":"..."},"expert_diagnosis":{"summary":"...","red_flags":["..."],"recommended_adjustments":[{"component":"saddle_height","action":"lower","reason":"..."}]}}`;
+Todos los textos del JSON deben estar en español. Formato JSON esperado:
+{"dynamic_analysis":{"hip_stability":"...","knee_tracking":"...","ankle_technique":"...","pedaling_smoothness":"..."},"expert_diagnosis":{"summary":"...","red_flags":["..."],"recommended_adjustments":[{"component":"saddle_height","action":"bajar","reason":"..."}]}}`;
 
     // Usar gemini-2.5-flash (muy rápido y excelente en video) o 1.5-pro
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
