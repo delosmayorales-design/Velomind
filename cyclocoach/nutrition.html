@@ -587,7 +587,7 @@ function renderAthleteSidebar() {
 function renderWeekDates() {
   const now    = new Date();
   const monday = new Date(now);
-  monday.setDate(now.getDate() - now.getDay() + 1);
+  monday.setDate(now.getDate() - (now.getDay() || 7) + 1);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   document.getElementById('week-dates-nutr').textContent =
@@ -607,7 +607,7 @@ function renderWeeklyGrid() {
   const daysShort = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
   const todayIdx  = (new Date().getDay() + 6) % 7;
   const monday    = new Date();
-  monday.setDate(monday.getDate() - monday.getDay() + 1);
+  monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
 
   const typeColors = {
     recovery:'#A8E6CF', endurance:'#88D8B0', tempo:'#FFD93D',
@@ -700,7 +700,7 @@ function selectDay(idx) {
 
   const days = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
   const monday = new Date();
-  monday.setDate(monday.getDate() - monday.getDay() + 1);
+  monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
   const sessDate = new Date(monday);
   sessDate.setDate(monday.getDate() + idx);
 
@@ -1092,7 +1092,7 @@ function openMenusModal(idx) {
 
   const days = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
   const monday = new Date();
-  monday.setDate(monday.getDate() - monday.getDay() + 1);
+  monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
   const sessDate = new Date(monday);
   sessDate.setDate(monday.getDate() + idx);
 
