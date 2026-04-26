@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script>window.API_URL = (location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'http://localhost:3000/api' : 'https://velomind-backend.onrender.com/api';</script>
   <style>
     /* ── Zona de mapa (debajo del page-header) ────────────────── */
@@ -884,29 +885,42 @@ async function deleteRoute(id) {
   await loadRoutes();
 }
 
-function shareWhatsApp(id) {
+async function shareWhatsApp(id) {
   const r = allRoutes.find(r => r.id === id);
   if (!r) return;
 
   const typeLabel = { road: '🚴 Road', gravel: '🪨 Gravel', mtb: '🏔️ MTB' }[r.type] || r.type;
-  const dist  = r.distance_km    ? `📏 ${r.distance_km} km`              : '';
-  const elev  = r.elevation_gain_m ? `⛰️ ${Math.round(r.elevation_gain_m)} m D+` : '';
-  const time  = r.estimated_minutes ? `⏱️ ~${formatTime(r.estimated_minutes)}`   : '';
-  const stats = [dist, elev, time].filter(Boolean).join('   ');
-
-  // Enlace al punto de inicio en Google Maps (primer punto del GeoJSON)
-  let mapLink = '';
-  const coords = r.geojson?.coordinates;
-  if (coords?.length) {
-    const [startLon, startLat] = coords[0];
-    mapLink = `\n🗺️ Ver inicio: https://maps.google.com/?q=${startLat},${startLon}`;
-  }
-
-  const msg =
+  const dist = r.distance_km      ? `📏 ${r.distance_km} km`            : '';
+  const time = r.estimated_minutes ? `⏱️ ~${formatTime(r.estimated_minutes)}` : '';
+  const msg  =
     `🚵 *${r.name}* · ${typeLabel}\n` +
-    `${stats}\n` +
-    `${mapLink}\n\n` +
+    `${[dist, time].filter(Boolean).join('   ')}\n\n` +
     `_Ruta creada con VeloMind_ 💪`;
+
+  // Mostrar la ruta en el mapa para capturarla
+  openRouteOnMap(id);
+
+  // Intentar compartir con imagen via Web Share API
+  if (typeof html2canvas !== 'undefined' && navigator.canShare) {
+    try {
+      await new Promise(res => setTimeout(res, 1200)); // esperar que carguen los tiles
+      const canvas = await html2canvas(document.getElementById('map'), {
+        useCORS: true, allowTaint: false, scale: 1, logging: false
+      });
+      await new Promise((res, rej) => canvas.toBlob(async blob => {
+        try {
+          const file = new File([blob], 'ruta.png', { type: 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], text: msg });
+          } else {
+            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+          }
+          res();
+        } catch(e) { rej(e); }
+      }, 'image/png'));
+      return;
+    } catch(e) { /* fallback a texto */ }
+  }
 
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
