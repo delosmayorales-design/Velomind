@@ -920,18 +920,13 @@ async function shareWhatsApp(id) {
       // Esperar que los tiles terminen de cargar
       await new Promise(res => setTimeout(res, 2200));
 
-      // Capturar usando las coordenadas exactas del div #map para evitar recortes
+      // Capturar directamente el div #map (evita desplazamiento por sidebar fixed)
       const mapEl = document.getElementById('map');
-      const rect  = mapEl.getBoundingClientRect();
-      const canvas = await html2canvas(document.body, {
+      const canvas = await html2canvas(mapEl, {
         useCORS: true, allowTaint: false, scale: 1.5, logging: false,
         imageTimeout: 0,
-        x:      rect.left + window.scrollX,
-        y:      rect.top  + window.scrollY,
-        width:  rect.width,
-        height: rect.height,
-        windowWidth:  document.documentElement.scrollWidth,
-        windowHeight: document.documentElement.scrollHeight
+        scrollX: 0,
+        scrollY: 0
       });
 
       await new Promise((res, rej) => canvas.toBlob(async blob => {
