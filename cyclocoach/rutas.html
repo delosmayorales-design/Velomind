@@ -451,7 +451,7 @@ function toggleCycleOverlay() {
   btn.classList.toggle('btn-ghost',   !cycleOverlayOn);
 }
 
-// ── Routing Valhalla (gratis, sin API key, perfiles road/gravel/MTB) ──
+// ── Routing: Valhalla con fallback a OSRM ────────────────────────
 function decodePolyline6(encoded) {
   const coords = []; let idx = 0, lat = 0, lng = 0;
   while (idx < encoded.length) {
@@ -463,36 +463,69 @@ function decodePolyline6(encoded) {
     lng += (result & 1) ? ~(result >> 1) : (result >> 1);
     coords.push([lat / 1e6, lng / 1e6]);
   }
-  return coords;
+  return coords; // [[lat, lng], ...]
+}
+
+// Valhalla OSM — perfiles road/gravel/MTB reales
+async function routeValhalla(type) {
+  const costing = type === 'mtb' ? 'mountain_bike' : 'bicycle';
+  const opts    = type === 'road'   ? { bicycle: { use_roads: 0.9, use_hills: 0.5, bicycle_type: 'Road' } }
+                : type === 'gravel' ? { bicycle: { use_roads: 0.2, use_hills: 0.5, bicycle_type: 'Cross' } }
+                :                     { mountain_bike: { use_roads: 0.1 } };
+
+  const res = await fetch('https://valhalla1.openstreetmap.de/route', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      locations: waypoints.map(w => ({ lat: w.lat, lon: w.lng, type: 'break' })),
+      costing,
+      costing_options: opts,
+      directions_options: { units: 'km' },
+    }),
+  });
+  if (!res.ok) throw new Error('Valhalla HTTP ' + res.status);
+  const data    = await res.json();
+  const latLngs = decodePolyline6(data.trip.legs[0].shape);
+  return {
+    latLngs,
+    distKm:  data.trip.summary.length,
+    durMin:  Math.round(data.trip.summary.time / 60),
+  };
+}
+
+// OSRM — fallback fiable (cycling para road/gravel, foot para MTB)
+async function routeOSRM(type) {
+  const profile = type === 'mtb' ? 'foot' : 'cycling';
+  const coords  = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
+  const res     = await fetch(
+    `https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson`
+  );
+  if (!res.ok) throw new Error('OSRM HTTP ' + res.status);
+  const data  = await res.json();
+  if (data.code !== 'Ok') throw new Error('OSRM: ' + data.code);
+  const route   = data.routes[0];
+  const latLngs = route.geometry.coordinates.map(([ln, la]) => [la, ln]);
+  return {
+    latLngs,
+    distKm:  route.distance / 1000,
+    durMin:  Math.round(route.duration / 60),
+  };
 }
 
 async function calcRoute(type) {
   if (waypoints.length < 2) return;
   document.getElementById('route-spinner').classList.add('visible');
   try {
-    const costing = type === 'mtb' ? 'mountain_bike' : 'bicycle';
-    const costingOpts = type === 'road'
-      ? { bicycle: { use_roads: 0.9, use_hills: 0.5 } }
-      : type === 'gravel'
-        ? { bicycle: { use_roads: 0.2, use_hills: 0.5, avoid_bad_surfaces: 0.1 } }
-        : {};
+    let result;
+    try {
+      result = await routeValhalla(type);
+    } catch (e1) {
+      console.warn('[Rutas] Valhalla falló (' + e1.message + '), usando OSRM…');
+      result = await routeOSRM(type);
+    }
 
-    const res = await fetch('https://valhalla1.openstreetmap.de/route', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        locations: waypoints.map(w => ({ lat: w.lat, lon: w.lng, type: 'break' })),
-        costing, costing_options: costingOpts,
-        directions_options: { units: 'km' },
-      }),
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data    = await res.json();
-    const latLngs = decodePolyline6(data.trip.legs[0].shape);
-    const distKm  = data.trip.summary.length;
-    const durMin  = Math.round(data.trip.summary.time / 60);
-
-    routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la,ln]) => [ln,la]) };
+    const { latLngs, distKm, durMin } = result;
+    routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la, ln]) => [ln, la]) };
 
     const color = type === 'gravel' ? '#F59E0B' : type === 'mtb' ? '#10B981' : '#FF6B35';
     if (routeLayer) map.removeLayer(routeLayer);
@@ -504,10 +537,22 @@ async function calcRoute(type) {
 
     fetchElevation(latLngs);
   } catch (e) {
-    console.warn('[Rutas] Error routing:', e.message);
+    console.error('[Rutas] Error calculando ruta:', e);
+    showToast('No se pudo calcular la ruta: ' + e.message, 'error');
   } finally {
     document.getElementById('route-spinner').classList.remove('visible');
   }
+}
+
+function showToast(msg, type = 'info') {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:9999;
+    padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;
+    background:${type==='error'?'#ff4757':'#10B981'};color:#fff;
+    box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none;`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
 }
 
 // ── Elevación (opentopodata, sin API key) ─────────────────────────
