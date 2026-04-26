@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('velomind_theme');
+      if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'light') document.documentElement.classList.add('light-theme');
+    })();
+  </script>
+  <style>
+    html { color-scheme: light; background-color: #f8fafc; }
+    html[data-theme="dark"] { color-scheme: dark; background-color: #0a0b0f; }
+  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Términos de uso — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #9ED62B;
+      --bg: #0a0b0f;
+      --bg-card: #1a1d26;
+      --text: #e8eaf0;
+      --text-muted: #8b8fa8;
+      --border: rgba(255,255,255,0.08);
+    }
+    html[data-theme="light"], .light-theme {
+      --bg: #f8fafc;
+      --bg-card: #ffffff;
+      --text: #1a1d26;
+      --text-muted: #64748b;
+      --border: rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 40px 20px 80px;
+    }
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 36px;
+      text-decoration: none;
+    }
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      color: var(--primary);
+    }
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .updated {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 36px;
+    }
+    h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 32px;
+      margin-bottom: 10px;
+    }
+    p {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    ul {
+      padding-left: 20px;
+      margin-bottom: 10px;
+    }
+    li {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 48px;
+      font-size: 14px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .back:hover { text-decoration: underline; }
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 24px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a href="login.html" class="logo">
+      <img src="img/logo2.png" alt="VeloMind" height="32" onerror="this.style.display='none'">
+      <span class="logo-text">VeloMind</span>
+    </a>
+
+    <h1>Términos de uso</h1>
+    <p class="updated">Última actualización: abril de 2025</p>
+
+    <h2>1. Aceptación</h2>
+    <p>Al acceder y utilizar VeloMind («la Aplicación»), aceptas quedar vinculado por estos Términos de uso. Si no estás de acuerdo, no utilices la Aplicación.</p>
+
+    <h2>2. Descripción del servicio</h2>
+    <p>VeloMind es una aplicación de entrenamiento y seguimiento ciclista que ofrece, entre otras funcionalidades:</p>
+    <ul>
+      <li>Planificación y seguimiento de entrenamientos</li>
+      <li>Creación y gestión de rutas</li>
+      <li>Registro nutricional y de composición corporal</li>
+      <li>Análisis biomecánico y de equipamiento</li>
+      <li>Integración con plataformas de terceros (Strava, entre otras)</li>
+    </ul>
+
+    <h2>3. Uso permitido</h2>
+    <p>La Aplicación está destinada a uso personal. Queda prohibido:</p>
+    <ul>
+      <li>Reproducir, distribuir o modificar la Aplicación sin autorización expresa</li>
+      <li>Usar la Aplicación para fines ilegales o contrarios a estos Términos</li>
+      <li>Intentar acceder a datos de otros usuarios</li>
+      <li>Realizar ingeniería inversa o extraer el código fuente</li>
+    </ul>
+
+    <h2>4. Cuenta de usuario</h2>
+    <p>Eres responsable de mantener la confidencialidad de tus credenciales y de todas las actividades que ocurran bajo tu cuenta. Notifícanos de inmediato cualquier uso no autorizado.</p>
+
+    <h2>5. Datos de salud y rendimiento</h2>
+    <p>La información que introduces en VeloMind (peso, potencia, frecuencia cardíaca, etc.) se usa exclusivamente para ofrecerte el servicio. No sustituye el asesoramiento médico profesional. Consulta siempre a un médico antes de iniciar un programa de entrenamiento intensivo.</p>
+
+    <h2>6. Integraciones con terceros</h2>
+    <p>VeloMind puede conectarse con servicios externos como Strava. El uso de dichos servicios está sujeto a sus propios términos y políticas de privacidad, sobre los que no tenemos control.</p>
+
+    <h2>7. Limitación de responsabilidad</h2>
+    <p>VeloMind se proporciona «tal cual». No garantizamos disponibilidad ininterrumpida ni exactitud absoluta de los datos. En ningún caso seremos responsables de daños indirectos, incidentales o consecuentes derivados del uso de la Aplicación.</p>
+
+    <h2>8. Modificaciones</h2>
+    <p>Podemos actualizar estos Términos en cualquier momento. Te notificaremos los cambios relevantes y el uso continuado de la Aplicación implica la aceptación de los nuevos Términos.</p>
+
+    <h2>9. Ley aplicable</h2>
+    <p>Estos Términos se rigen por la legislación española. Cualquier disputa se someterá a los tribunales competentes de España.</p>
+
+    <h2>10. Contacto</h2>
+    <p>Para cualquier consulta sobre estos Términos, escríbenos a <strong>hola@velomind.app</strong>.</p>
+
+    <hr>
+    <a href="login.html" class="back">← Volver al inicio de sesión</a>
+  </div>
+</body>
+</html>

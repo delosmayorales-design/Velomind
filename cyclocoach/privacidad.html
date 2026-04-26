@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('velomind_theme');
+      if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'light') document.documentElement.classList.add('light-theme');
+    })();
+  </script>
+  <style>
+    html { color-scheme: light; background-color: #f8fafc; }
+    html[data-theme="dark"] { color-scheme: dark; background-color: #0a0b0f; }
+  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de privacidad — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #9ED62B;
+      --bg: #0a0b0f;
+      --bg-card: #1a1d26;
+      --text: #e8eaf0;
+      --text-muted: #8b8fa8;
+      --border: rgba(255,255,255,0.08);
+    }
+    html[data-theme="light"], .light-theme {
+      --bg: #f8fafc;
+      --bg-card: #ffffff;
+      --text: #1a1d26;
+      --text-muted: #64748b;
+      --border: rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 40px 20px 80px;
+    }
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 36px;
+      text-decoration: none;
+    }
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      color: var(--primary);
+    }
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .updated {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 36px;
+    }
+    h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 32px;
+      margin-bottom: 10px;
+    }
+    p {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    ul {
+      padding-left: 20px;
+      margin-bottom: 10px;
+    }
+    li {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--bg-card);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 8px 12px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 48px;
+      font-size: 14px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .back:hover { text-decoration: underline; }
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 24px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a href="login.html" class="logo">
+      <img src="img/logo2.png" alt="VeloMind" height="32" onerror="this.style.display='none'">
+      <span class="logo-text">VeloMind</span>
+    </a>
+
+    <h1>Política de privacidad</h1>
+    <p class="updated">Última actualización: abril de 2025</p>
+
+    <h2>1. Responsable del tratamiento</h2>
+    <p>VeloMind es responsable del tratamiento de los datos personales recogidos a través de la Aplicación. Contacto: <strong>hola@velomind.app</strong>.</p>
+
+    <h2>2. Datos que recogemos</h2>
+    <table>
+      <thead>
+        <tr><th>Categoría</th><th>Ejemplos</th><th>Finalidad</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Cuenta</td>
+          <td>Nombre, correo electrónico, foto de perfil</td>
+          <td>Identificación y acceso a la Aplicación</td>
+        </tr>
+        <tr>
+          <td>Rendimiento</td>
+          <td>Peso, potencia, frecuencia cardíaca, entrenamientos</td>
+          <td>Generar planes y análisis personalizados</td>
+        </tr>
+        <tr>
+          <td>Rutas</td>
+          <td>Trazados GPS, distancias, desniveles</td>
+          <td>Almacenar y mostrar rutas en la Aplicación</td>
+        </tr>
+        <tr>
+          <td>Equipamiento</td>
+          <td>Datos de bicicletas y componentes</td>
+          <td>Gestión del garaje y mantenimiento</td>
+        </tr>
+        <tr>
+          <td>Terceros</td>
+          <td>Actividades importadas de Strava</td>
+          <td>Sincronización de datos de entrenamiento</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. Base legal del tratamiento</h2>
+    <ul>
+      <li><strong>Ejecución del contrato</strong>: datos necesarios para prestarte el servicio.</li>
+      <li><strong>Consentimiento</strong>: integraciones opcionales con terceros (Strava, etc.).</li>
+      <li><strong>Interés legítimo</strong>: seguridad y mejora de la Aplicación.</li>
+    </ul>
+
+    <h2>4. Almacenamiento</h2>
+    <p>Los datos se almacenan en servidores seguros gestionados por <strong>Supabase</strong> con cifrado en tránsito (TLS) y en reposo. No vendemos ni cedemos tus datos a terceros con fines publicitarios.</p>
+
+    <h2>5. Retención de datos</h2>
+    <p>Conservamos tus datos mientras mantengas una cuenta activa. Al eliminar tu cuenta, los datos se borran de forma permanente en un plazo máximo de 30 días.</p>
+
+    <h2>6. Compartición de datos</h2>
+    <p>Solo compartimos datos con:</p>
+    <ul>
+      <li><strong>Supabase</strong> — infraestructura de base de datos y autenticación</li>
+      <li><strong>Strava</strong> — cuando el usuario activa la integración explícitamente</li>
+      <li><strong>Autoridades competentes</strong> — únicamente si lo exige la ley</li>
+    </ul>
+
+    <h2>7. Tus derechos (RGPD)</h2>
+    <p>Tienes derecho a:</p>
+    <ul>
+      <li><strong>Acceso</strong>: conocer qué datos tenemos sobre ti</li>
+      <li><strong>Rectificación</strong>: corregir datos inexactos</li>
+      <li><strong>Supresión</strong>: solicitar el borrado de tus datos</li>
+      <li><strong>Portabilidad</strong>: recibir tus datos en formato estructurado</li>
+      <li><strong>Oposición</strong>: oponerte a ciertos tratamientos</li>
+    </ul>
+    <p>Para ejercer cualquiera de estos derechos, escríbenos a <strong>hola@velomind.app</strong>. También puedes reclamar ante la Agencia Española de Protección de Datos (aepd.es).</p>
+
+    <h2>8. Cookies y almacenamiento local</h2>
+    <p>VeloMind utiliza <strong>localStorage</strong> del navegador para guardar preferencias (tema claro/oscuro, sesión) sin necesidad de cookies de rastreo. No usamos cookies de terceros ni publicidad.</p>
+
+    <h2>9. Menores de edad</h2>
+    <p>VeloMind no está dirigida a menores de 16 años. Si detectamos que un menor ha creado una cuenta sin consentimiento, procederemos a su eliminación.</p>
+
+    <h2>10. Cambios en esta política</h2>
+    <p>Podemos actualizar esta Política ocasionalmente. Te notificaremos los cambios significativos por correo electrónico o mediante un aviso en la Aplicación.</p>
+
+    <hr>
+    <a href="login.html" class="back">← Volver al inicio de sesión</a>
+  </div>
+</body>
+</html>
