@@ -16,95 +16,49 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rutas — VeloMind</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺️</text></svg>">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script>window.API_URL = (location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'http://localhost:3000/api' : 'https://velomind-backend.onrender.com/api';</script>
-
   <style>
-    /* ── Mapa ocupa todo el main-content ─────────────────────── */
-    body, html { overflow: hidden; height: 100%; }
-    .main-content {
+    /* ── Zona de mapa (debajo del page-header) ────────────────── */
+    .map-area {
+      flex: 1;
       display: flex;
-      padding: 0 !important;
-      height: 100vh;
       overflow: hidden;
+      position: relative;
+      min-height: 0;
     }
 
-    /* ── Panel lateral izquierdo (rutas) ──────────────────────── */
+    /* ── Panel izquierdo (lista de rutas) ─────────────────────── */
     .routes-panel {
-      width: 250px;
-      min-width: 250px;
-      background: var(--bg-sidebar, #070A0E);
-      border-right: 1px solid var(--border, rgba(255,255,255,0.07));
+      width: 260px;
+      min-width: 260px;
       display: flex;
       flex-direction: column;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
       overflow: hidden;
       z-index: 5;
     }
-    .routes-panel-header {
-      padding: 18px 14px 12px;
-      border-bottom: 1px solid var(--border, rgba(255,255,255,0.07));
+    .routes-panel-top {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--border);
     }
-    .routes-panel-header h2 {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text-primary, #f0f2f5);
-      margin: 0 0 10px;
-    }
-    .rp-btn {
-      width: 100%;
-      padding: 9px;
-      border-radius: 8px;
-      font-weight: 700;
-      font-size: 12px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      font-family: inherit;
-      transition: all 0.2s;
-      margin-bottom: 7px;
-      border: 1px solid transparent;
-    }
-    .rp-btn-primary {
-      background: var(--primary, #FF6B35);
-      color: #fff;
-      border-color: transparent;
-    }
-    .rp-btn-primary:hover { opacity: 0.85; }
-    .rp-btn-green {
-      background: rgba(16,185,129,0.1);
-      border-color: rgba(16,185,129,0.3);
-      color: #10B981;
-    }
-    .rp-btn-green:hover { background: rgba(16,185,129,0.18); }
-    .rp-btn-blue {
-      background: rgba(0,212,255,0.08);
-      border-color: rgba(0,212,255,0.25);
-      color: #00D4FF;
-    }
-    .rp-btn-blue:hover { background: rgba(0,212,255,0.15); }
-
-    /* Filter tabs */
     .filter-tabs {
       display: flex;
       gap: 4px;
-      padding: 8px 14px;
-      border-bottom: 1px solid var(--border, rgba(255,255,255,0.07));
     }
     .filter-tab {
       flex: 1;
-      padding: 5px 3px;
+      padding: 6px 4px;
       background: transparent;
-      border: 1px solid var(--border, rgba(255,255,255,0.08));
-      border-radius: 6px;
-      color: var(--text-muted, #6b7280);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
       font-size: 11px;
       font-weight: 600;
       cursor: pointer;
@@ -113,242 +67,194 @@
     }
     .filter-tab.active {
       background: rgba(255,107,53,0.12);
-      border-color: rgba(255,107,53,0.35);
-      color: var(--primary, #FF6B35);
+      border-color: rgba(255,107,53,0.4);
+      color: var(--primary);
     }
-
-    /* Route list */
     .routes-list {
       flex: 1;
       overflow-y: auto;
       padding: 6px;
     }
     .route-item {
-      padding: 10px 11px;
-      border-radius: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
       cursor: pointer;
       border: 1px solid transparent;
       margin-bottom: 3px;
       transition: all 0.18s;
     }
-    .route-item:hover { background: rgba(255,255,255,0.04); }
-    .route-item.active {
-      background: rgba(255,107,53,0.1);
-      border-color: rgba(255,107,53,0.3);
-    }
+    .route-item:hover { background: var(--bg-input); }
+    .route-item.active { background: rgba(255,107,53,0.1); border-color: rgba(255,107,53,0.3); }
     .route-item-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-primary, #f0f2f5);
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      flex-wrap: wrap;
+      font-size: 13px; font-weight: 600;
+      color: var(--text-primary);
+      display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
     }
-    .route-item-meta {
-      font-size: 11px;
-      color: var(--text-muted, #6b7280);
-      margin-top: 3px;
-    }
-    .route-item-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 5px;
-    }
-    .ri-action-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted, #6b7280);
-      cursor: pointer;
-      font-size: 11px;
-      padding: 0;
+    .route-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .route-item-actions { display: flex; gap: 10px; margin-top: 6px; }
+    .ri-btn {
+      background: none; border: none;
+      color: var(--text-muted); cursor: pointer;
+      font-size: 11px; padding: 0; font-family: inherit;
       transition: color 0.2s;
     }
-    .ri-action-btn:hover { color: var(--text-primary, #f0f2f5); }
-    .ri-action-btn.fav-active { color: #F59E0B; }
-
+    .ri-btn:hover { color: var(--text-primary); }
+    .ri-btn.del:hover { color: #ff4757; }
+    .ri-btn.fav.on { color: #F59E0B; }
     .badge-type {
-      font-size: 9px;
-      padding: 2px 5px;
-      border-radius: 4px;
-      font-weight: 700;
-      text-transform: uppercase;
+      font-size: 9px; padding: 2px 5px;
+      border-radius: 4px; font-weight: 700; text-transform: uppercase;
     }
-    .badge-road   { background:rgba(59,130,246,0.18);  color:#3B82F6; }
-    .badge-gravel { background:rgba(245,158,11,0.18); color:#F59E0B; }
-    .badge-mtb    { background:rgba(16,185,129,0.18);  color:#10B981; }
-
+    .badge-road   { background:rgba(59,130,246,.18); color:#3B82F6; }
+    .badge-gravel { background:rgba(245,158,11,.18);  color:#F59E0B; }
+    .badge-mtb    { background:rgba(16,185,129,.18);  color:#10B981; }
     .empty-routes {
-      text-align: center;
-      padding: 40px 14px;
-      color: var(--text-muted, #6b7280);
-      font-size: 13px;
-      line-height: 1.6;
+      text-align: center; padding: 40px 14px;
+      color: var(--text-muted); font-size: 13px; line-height: 1.6;
     }
 
-    /* ── Zona mapa ────────────────────────────────────────────── */
-    .map-zone {
+    /* ── Zona del mapa ────────────────────────────────────────── */
+    .map-wrap {
       flex: 1;
-      position: relative;
       display: flex;
       flex-direction: column;
+      position: relative;
       overflow: hidden;
     }
-
     #map {
       flex: 1;
+      min-height: 0;
       cursor: grab;
     }
-    #map.drawing { cursor: crosshair; }
-    #map:active  { cursor: grabbing; }
+    #map.drawing  { cursor: crosshair; }
+    #map:active   { cursor: grabbing; }
     #map.drawing:active { cursor: crosshair; }
 
-    /* Toolbar flotante */
-    .map-toolbar {
-      position: absolute;
-      top: 14px;
-      left: 14px;
-      z-index: 1000;
-      display: none;
-      gap: 7px;
-      flex-wrap: wrap;
-    }
-    .map-toolbar.visible { display: flex; }
-    .mtb {
-      padding: 7px 13px;
-      background: var(--bg-card, #13151c);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      color: var(--text-primary, #f0f2f5);
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-family: inherit;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-      transition: all 0.18s;
-    }
-    .mtb:hover { background: rgba(255,255,255,0.08); }
-    .mtb.danger { color: #ff4757; }
-    .mtb.save   { background:rgba(255,107,53,0.15); border-color:rgba(255,107,53,0.4); color:var(--primary,#FF6B35); }
-
-    /* Stats flotantes */
+    /* Stats flotantes arriba-derecha del mapa */
     .map-stats {
       position: absolute;
-      top: 14px;
-      right: 14px;
-      z-index: 1000;
-      background: var(--bg-card, #13151c);
-      border: 1px solid rgba(255,255,255,0.1);
+      top: 14px; right: 14px;
+      z-index: 500;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 11px 16px;
-      display: none;
-      gap: 18px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      padding: 10px 18px;
+      display: none; gap: 20px;
+      box-shadow: var(--shadow-md);
     }
     .map-stats.visible { display: flex; }
     .stat-it { text-align: center; }
-    .stat-v  { font-size: 19px; font-weight: 800; color: var(--primary,#FF6B35); font-family:'Space Grotesk',sans-serif; }
-    .stat-l  { font-size: 10px; color: var(--text-muted,#6b7280); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 1px; }
+    .stat-v  { font-size: 20px; font-weight: 800; color: var(--primary); font-family:'Space Grotesk',sans-serif; }
+    .stat-l  { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top:1px; }
 
-    /* Wind card */
+    /* Toolbar de dibujo (abajo-izquierda del mapa) */
+    .draw-toolbar {
+      position: absolute;
+      bottom: 20px; left: 14px;
+      z-index: 500;
+      display: none; gap: 7px;
+    }
+    .draw-toolbar.visible { display: flex; }
+    .dt-btn {
+      padding: 8px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; gap: 6px;
+      box-shadow: var(--shadow-md);
+      transition: all 0.18s;
+    }
+    .dt-btn:hover { background: var(--bg-input); }
+    .dt-btn.save { background: rgba(255,107,53,.15); border-color: rgba(255,107,53,.4); color: var(--primary); }
+    .dt-btn.save:hover { background: rgba(255,107,53,.25); }
+    .dt-btn.del  { color: #ff4757; }
+
+    /* Wind card (abajo-derecha del mapa) */
     .wind-card {
       position: absolute;
-      bottom: 20px;
-      right: 14px;
-      z-index: 1000;
-      background: var(--bg-card,#13151c);
-      border: 1px solid rgba(0,212,255,0.3);
+      bottom: 20px; right: 14px;
+      z-index: 500;
+      background: var(--bg-card);
+      border: 1px solid rgba(0,212,255,.3);
       border-radius: 12px;
-      padding: 14px 16px;
-      width: 230px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      padding: 16px;
+      width: 240px;
+      box-shadow: var(--shadow-md);
       display: none;
     }
     .wind-card.visible { display: block; }
-    .wind-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-    .wind-card-title { font-size: 12px; font-weight: 700; color: #00D4FF; }
-    .wind-close {
-      background: none; border: none;
-      color: var(--text-muted,#6b7280);
-      cursor: pointer; font-size: 16px; line-height: 1;
-    }
-    .wind-speed { font-size: 28px; font-weight: 800; color: var(--text-primary,#f0f2f5); font-family:'Space Grotesk',sans-serif; }
-    .wind-dir   { font-size: 13px; color: var(--text-muted,#6b7280); margin-bottom: 10px; }
-    .wind-advice { font-size: 12px; color: var(--text-primary,#f0f2f5); line-height: 1.55; }
-    .wind-note   { font-size: 11px; color: var(--text-muted,#6b7280); margin-top: 7px; }
+    .wind-card-hdr { display:flex;align-items:center;justify-content:space-between;margin-bottom:10px; }
+    .wind-card-ttl { font-size:12px;font-weight:700;color:#00D4FF; }
+    .wind-close    { background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1; }
+    .wind-speed    { font-size:32px;font-weight:800;font-family:'Space Grotesk',sans-serif; }
+    .wind-dir      { font-size:12px;color:var(--text-muted);margin-bottom:10px; }
+    .wind-advice   { font-size:12px;color:var(--text-primary);line-height:1.6; }
+    .wind-note     { font-size:11px;color:var(--text-muted);margin-top:7px; }
 
-    /* Elevación */
-    .elev-panel {
-      height: 120px;
-      background: var(--bg-sidebar,#070A0E);
-      border-top: 1px solid var(--border,rgba(255,255,255,0.07));
-      padding: 8px 14px 6px;
-      display: none;
-      flex-direction: column;
-      flex-shrink: 0;
-    }
-    .elev-panel.visible { display: flex; }
-    .elev-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 4px;
-    }
-    .elev-title { font-size: 10px; font-weight: 700; color: var(--text-muted,#6b7280); text-transform: uppercase; letter-spacing: 0.5px; }
-    .elev-close { background:none;border:none;color:var(--text-muted,#6b7280);cursor:pointer;font-size:13px; }
-
-    /* Modal */
-    .modal-overlay {
-      position: fixed; inset: 0; z-index: 9999;
-      background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .modal-box {
-      background: var(--bg-card,#13151c);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 16px; padding: 26px; width: 320px;
-    }
-    .modal-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:700; color:var(--text-primary,#f0f2f5); margin-bottom:18px; }
-    .modal-input, .modal-select {
-      width: 100%; padding: 9px 12px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px; color: var(--text-primary,#f0f2f5);
-      font-size: 14px; font-family: inherit;
-      margin-bottom: 10px; box-sizing: border-box;
-    }
-    .modal-input:focus, .modal-select:focus { outline:none; border-color:var(--primary,#FF6B35); }
-    .modal-row { display:flex; gap:8px; margin-top:6px; }
-    .modal-btn { flex:1; padding:10px; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; }
-    .modal-btn-cancel { background:rgba(255,255,255,0.06); color:var(--text-muted,#6b7280); }
-    .modal-btn-save   { background:var(--primary,#FF6B35); color:#fff; }
-
-    /* Loading spinner */
-    .route-loading {
+    /* Spinner ruta */
+    .route-spinner {
       position: absolute;
       top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 2000;
-      background: rgba(0,0,0,0.7);
-      padding: 14px 20px;
+      transform: translate(-50%,-50%);
+      z-index: 600;
+      background: rgba(0,0,0,.65);
+      padding: 12px 20px;
       border-radius: 10px;
       color: #fff;
       font-size: 13px;
       display: none;
     }
-    .route-loading.visible { display: block; }
+    .route-spinner.visible { display: flex; align-items: center; gap: 10px; }
+
+    /* Perfil elevación */
+    .elev-panel {
+      height: 130px;
+      background: var(--bg-sidebar, #070A0E);
+      border-top: 1px solid var(--border);
+      padding: 8px 14px 6px;
+      flex-shrink: 0;
+      display: none; flex-direction: column;
+    }
+    .elev-panel.visible { display: flex; }
+    .elev-hdr { display:flex;align-items:center;justify-content:space-between;margin-bottom:4px; }
+    .elev-ttl { font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px; }
+    .elev-close { background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px; }
+
+    /* Modal */
+    .modal-overlay {
+      position:fixed;inset:0;z-index:9999;
+      background:rgba(0,0,0,.7);backdrop-filter:blur(6px);
+      display:flex;align-items:center;justify-content:center;
+    }
+    .modal-box {
+      background:var(--bg-card);
+      border:1px solid var(--border);
+      border-radius:16px;padding:26px;width:320px;
+    }
+    .modal-title { font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;color:var(--text-primary);margin-bottom:18px; }
+    .modal-input,.modal-select {
+      width:100%;padding:9px 12px;
+      background:var(--bg-input);border:1px solid var(--border);
+      border-radius:8px;color:var(--text-primary);
+      font-size:14px;font-family:inherit;
+      margin-bottom:10px;box-sizing:border-box;
+    }
+    .modal-input:focus,.modal-select:focus { outline:none;border-color:var(--primary); }
+    .modal-row { display:flex;gap:8px;margin-top:6px; }
+    .modal-btn { flex:1;padding:10px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit; }
+    .modal-btn-cancel { background:var(--bg-input);color:var(--text-muted); }
+    .modal-btn-save   { background:var(--primary);color:#fff; }
+
+    /* ── Leaflet override (z-index) ───────────────────────────── */
+    .leaflet-control-layers { z-index: 400 !important; }
   </style>
 </head>
 <body>
 
+<!-- ── Sidebar nav (igual que todas las páginas) ────────────────── -->
 <nav class="sidebar">
   <div class="sidebar-logo">
     <img src="logoPerfil.PNG" alt="VeloMind" style="width:80%;max-width:140px;height:auto;border-radius:8px">
@@ -378,97 +284,110 @@
   </div>
 </nav>
 
-<main class="main-content">
+<!-- ── Main content ──────────────────────────────────────────────── -->
+<main class="main-content" style="height:100vh;overflow:hidden;">
 
-  <!-- Panel izquierdo rutas -->
-  <div class="routes-panel">
-    <div class="routes-panel-header">
-      <h2><i class="fas fa-map-marked-alt" style="color:var(--primary,#FF6B35)"></i> Mis Rutas</h2>
-      <button class="rp-btn rp-btn-primary" onclick="startDrawing()">
-        <i class="fas fa-plus"></i> Nueva ruta
+  <!-- Page header: igual estilo que el resto de páginas -->
+  <header class="page-header">
+    <div class="page-title">
+      <h1><i class="fas fa-map-marked-alt" style="color:var(--primary)"></i> Rutas</h1>
+      <p>Crea, importa y guarda tus rutas · Road · Gravel · MTB</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary btn-sm" onclick="startDrawing()">
+        <i class="fas fa-pencil-alt"></i> Nueva ruta
       </button>
-      <button class="rp-btn rp-btn-green" onclick="document.getElementById('gpx-input').click()">
-        <i class="fas fa-file-import"></i> Importar GPX / TCX
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('gpx-input').click()">
+        <i class="fas fa-file-import"></i> Importar GPX
       </button>
       <input id="gpx-input" type="file" accept=".gpx,.tcx" style="display:none" onchange="importGPX(this)">
-      <button class="rp-btn rp-btn-blue" onclick="showWindSuggestion()">
-        <i class="fas fa-wind"></i> Sugerencia del viento
+      <button class="btn btn-secondary btn-sm" id="btn-wind" onclick="showWindSuggestion()">
+        <i class="fas fa-wind"></i> Viento
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleCycleOverlay()" id="btn-overlay" title="Mostrar rutas ciclistas en el mapa">
+        <i class="fas fa-layer-group"></i> Rutas ciclistas
       </button>
     </div>
+  </header>
 
-    <div class="filter-tabs">
-      <button class="filter-tab active" onclick="filterRoutes('all',this)">Todas</button>
-      <button class="filter-tab"        onclick="filterRoutes('road',this)">Road</button>
-      <button class="filter-tab"        onclick="filterRoutes('gravel',this)">Gravel</button>
-      <button class="filter-tab"        onclick="filterRoutes('mtb',this)">MTB</button>
-    </div>
+  <!-- Zona principal: lista | mapa -->
+  <div class="map-area">
 
-    <div class="routes-list" id="routes-list">
-      <div class="empty-routes">
-        <i class="fas fa-route" style="font-size:30px;opacity:0.3;display:block;margin-bottom:10px"></i>
-        Cargando rutas...
+    <!-- Panel izquierdo: lista de rutas guardadas -->
+    <div class="routes-panel">
+      <div class="routes-panel-top">
+        <div class="filter-tabs">
+          <button class="filter-tab active" onclick="filterRoutes('all',this)">Todas</button>
+          <button class="filter-tab"        onclick="filterRoutes('road',this)">Road</button>
+          <button class="filter-tab"        onclick="filterRoutes('gravel',this)">Gravel</button>
+          <button class="filter-tab"        onclick="filterRoutes('mtb',this)">MTB</button>
+        </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Zona mapa -->
-  <div class="map-zone">
-
-    <!-- Toolbar dibujo -->
-    <div class="map-toolbar" id="map-toolbar">
-      <button class="mtb" id="btn-undo" onclick="undoWaypoint()">
-        <i class="fas fa-undo"></i> Deshacer
-      </button>
-      <button class="mtb danger" onclick="clearRoute()">
-        <i class="fas fa-trash"></i> Limpiar
-      </button>
-      <button class="mtb save" onclick="openSaveModal()">
-        <i class="fas fa-save"></i> Guardar ruta
-      </button>
-    </div>
-
-    <!-- Stats -->
-    <div class="map-stats" id="map-stats">
-      <div class="stat-it"><div class="stat-v" id="stat-dist">0.0</div><div class="stat-l">km</div></div>
-      <div class="stat-it"><div class="stat-v" id="stat-elev">—</div><div class="stat-l">D+ m</div></div>
-      <div class="stat-it"><div class="stat-v" id="stat-time">—</div><div class="stat-l">estimado</div></div>
-    </div>
-
-    <!-- Wind card -->
-    <div class="wind-card" id="wind-card">
-      <div class="wind-card-header">
-        <span class="wind-card-title"><i class="fas fa-wind"></i> Viento ahora</span>
-        <button class="wind-close" onclick="document.getElementById('wind-card').classList.remove('visible')">×</button>
-      </div>
-      <div id="wind-body">
-        <div style="color:var(--text-muted,#6b7280);font-size:13px">Cargando...</div>
+      <div class="routes-list" id="routes-list">
+        <div class="empty-routes">
+          <i class="fas fa-route" style="font-size:28px;opacity:0.25;display:block;margin-bottom:10px"></i>
+          Cargando rutas...
+        </div>
       </div>
     </div>
 
-    <!-- Spinner -->
-    <div class="route-loading" id="route-loading">
-      <i class="fas fa-circle-notch fa-spin"></i> Calculando ruta...
-    </div>
+    <!-- Mapa + elevación -->
+    <div class="map-wrap">
 
-    <!-- Mapa -->
-    <div id="map"></div>
-
-    <!-- Perfil elevación -->
-    <div class="elev-panel" id="elev-panel">
-      <div class="elev-header">
-        <span class="elev-title"><i class="fas fa-mountain"></i> Perfil de elevación</span>
-        <button class="elev-close" onclick="document.getElementById('elev-panel').classList.remove('visible')">×</button>
+      <!-- Stats flotantes -->
+      <div class="map-stats" id="map-stats">
+        <div class="stat-it"><div class="stat-v" id="stat-dist">0.0</div><div class="stat-l">km</div></div>
+        <div class="stat-it"><div class="stat-v" id="stat-elev">—</div><div class="stat-l">D+ m</div></div>
+        <div class="stat-it"><div class="stat-v" id="stat-time">—</div><div class="stat-l">Estimado</div></div>
       </div>
-      <canvas id="elev-chart" style="flex:1;min-height:0"></canvas>
+
+      <!-- Toolbar dibujo (abajo del mapa) -->
+      <div class="draw-toolbar" id="draw-toolbar">
+        <button class="dt-btn" onclick="undoWaypoint()">
+          <i class="fas fa-undo"></i> Deshacer
+        </button>
+        <button class="dt-btn del" onclick="clearRoute()">
+          <i class="fas fa-trash"></i> Limpiar
+        </button>
+        <button class="dt-btn save" onclick="openSaveModal()">
+          <i class="fas fa-save"></i> Guardar ruta
+        </button>
+      </div>
+
+      <!-- Wind card -->
+      <div class="wind-card" id="wind-card">
+        <div class="wind-card-hdr">
+          <span class="wind-card-ttl"><i class="fas fa-wind"></i> Viento ahora</span>
+          <button class="wind-close" onclick="document.getElementById('wind-card').classList.remove('visible')">×</button>
+        </div>
+        <div id="wind-body"><div style="color:var(--text-muted);font-size:13px">Obteniendo datos...</div></div>
+      </div>
+
+      <!-- Spinner -->
+      <div class="route-spinner" id="route-spinner">
+        <i class="fas fa-circle-notch fa-spin"></i> Calculando ruta...
+      </div>
+
+      <!-- El mapa -->
+      <div id="map"></div>
+
+      <!-- Perfil de elevación -->
+      <div class="elev-panel" id="elev-panel">
+        <div class="elev-hdr">
+          <span class="elev-ttl"><i class="fas fa-mountain"></i> Perfil de elevación</span>
+          <button class="elev-close" onclick="document.getElementById('elev-panel').classList.remove('visible')">×</button>
+        </div>
+        <canvas id="elev-chart" style="flex:1;min-height:0"></canvas>
+      </div>
     </div>
   </div>
 </main>
 
-<!-- Modal guardar -->
+<!-- Modal guardar ruta -->
 <div id="save-modal" style="display:none">
   <div class="modal-overlay">
     <div class="modal-box">
-      <div class="modal-title"><i class="fas fa-save" style="color:var(--primary,#FF6B35)"></i> Guardar ruta</div>
+      <div class="modal-title"><i class="fas fa-save" style="color:var(--primary)"></i> Guardar ruta</div>
       <input  id="modal-name" class="modal-input" type="text" placeholder="Nombre de la ruta">
       <select id="modal-type" class="modal-select">
         <option value="road">🚴 Road</option>
@@ -477,7 +396,7 @@
       </select>
       <div class="modal-row">
         <button class="modal-btn modal-btn-cancel" onclick="closeSaveModal()">Cancelar</button>
-        <button class="modal-btn modal-btn-save"   onclick="saveCurrentRoute()" id="modal-save-btn">
+        <button class="modal-btn modal-btn-save" id="modal-save-btn" onclick="saveCurrentRoute()">
           <i class="fas fa-check"></i> Guardar
         </button>
       </div>
@@ -492,15 +411,11 @@
 const API_BASE = window.API_URL;
 
 // ── Estado ───────────────────────────────────────────────────────
-let map, elevChart;
-let waypoints        = [];
-let waypointMarkers  = [];
-let routeLayer       = null;
-let routeGeoJSON     = null;
-let allRoutes        = [];
-let activeFilter     = 'all';
-let drawingActive    = false;
-let currentRouteType = 'road';
+let map, elevChart, cycleOverlayLayer, cycleOverlayOn = false;
+let waypoints = [], waypointMarkers = [];
+let routeLayer = null, routeGeoJSON = null;
+let allRoutes = [], activeFilter = 'all';
+let drawingActive = false, currentRouteType = 'road';
 
 // ── Mapa ─────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -511,29 +426,34 @@ document.addEventListener('DOMContentLoaded', () => {
     maxZoom: 19,
   }).addTo(map);
 
-  // Overlay rutas ciclistas (opcional)
-  const cycleOverlay = L.tileLayer('https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png', {
-    opacity: 0.45, maxZoom: 19,
+  cycleOverlayLayer = L.tileLayer('https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png', {
+    opacity: 0.5, maxZoom: 19,
     attribution: '© Waymarked Trails'
   });
-
-  L.control.layers({}, { 'Rutas ciclistas (overlay)': cycleOverlay }).addTo(map);
 
   map.on('click', onMapClick);
 
   if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(p => {
-      map.setView([p.coords.latitude, p.coords.longitude], 13);
-    }, () => {});
+    navigator.geolocation.getCurrentPosition(
+      p => map.setView([p.coords.latitude, p.coords.longitude], 13),
+      () => {}
+    );
   }
 
   loadRoutes();
 });
 
-// ── Decode Valhalla/Google polyline (precision 6) ─────────────────
+function toggleCycleOverlay() {
+  cycleOverlayOn = !cycleOverlayOn;
+  cycleOverlayOn ? cycleOverlayLayer.addTo(map) : map.removeLayer(cycleOverlayLayer);
+  const btn = document.getElementById('btn-overlay');
+  btn.classList.toggle('btn-primary', cycleOverlayOn);
+  btn.classList.toggle('btn-ghost',   !cycleOverlayOn);
+}
+
+// ── Routing Valhalla (gratis, sin API key, perfiles road/gravel/MTB) ──
 function decodePolyline6(encoded) {
-  const coords = [];
-  let idx = 0, lat = 0, lng = 0;
+  const coords = []; let idx = 0, lat = 0, lng = 0;
   while (idx < encoded.length) {
     let b, shift = 0, result = 0;
     do { b = encoded.charCodeAt(idx++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
@@ -543,62 +463,50 @@ function decodePolyline6(encoded) {
     lng += (result & 1) ? ~(result >> 1) : (result >> 1);
     coords.push([lat / 1e6, lng / 1e6]);
   }
-  return coords; // [[lat,lng],...]
+  return coords;
 }
 
-// ── Calcular ruta con Valhalla OSM (gratis, sin API key) ──────────
-// Perfiles: bicycle (road/gravel), mountain_bike (MTB)
 async function calcRoute(type) {
   if (waypoints.length < 2) return;
-  document.getElementById('route-loading').classList.add('visible');
+  document.getElementById('route-spinner').classList.add('visible');
   try {
-    const costing = type === 'mtb' ? 'mountain_bike'
-                  : type === 'gravel' ? 'bicycle' : 'bicycle';
-
+    const costing = type === 'mtb' ? 'mountain_bike' : 'bicycle';
     const costingOpts = type === 'road'
       ? { bicycle: { use_roads: 0.9, use_hills: 0.5 } }
       : type === 'gravel'
         ? { bicycle: { use_roads: 0.2, use_hills: 0.5, avoid_bad_surfaces: 0.1 } }
         : {};
 
-    const body = {
-      locations: waypoints.map(w => ({ lat: w.lat, lon: w.lng, type: 'break' })),
-      costing,
-      costing_options: costingOpts,
-      directions_options: { units: 'km' },
-    };
-
-    const res  = await fetch('https://valhalla1.openstreetmap.de/route', {
+    const res = await fetch('https://valhalla1.openstreetmap.de/route', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        locations: waypoints.map(w => ({ lat: w.lat, lon: w.lng, type: 'break' })),
+        costing, costing_options: costingOpts,
+        directions_options: { units: 'km' },
+      }),
     });
-    if (!res.ok) throw new Error('Valhalla ' + res.status);
-    const data = await res.json();
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data    = await res.json();
+    const latLngs = decodePolyline6(data.trip.legs[0].shape);
+    const distKm  = data.trip.summary.length;
+    const durMin  = Math.round(data.trip.summary.time / 60);
 
-    const leg      = data.trip.legs[0];
-    const latLngs  = decodePolyline6(leg.shape);
-    const distKm   = data.trip.summary.length;          // km
-    const durMin   = Math.round(data.trip.summary.time / 60);
+    routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la,ln]) => [ln,la]) };
 
-    routeGeoJSON = {
-      type: 'LineString',
-      coordinates: latLngs.map(([la, ln]) => [ln, la]),
-    };
-
-    const color = type === 'road' ? '#FF6B35' : type === 'gravel' ? '#F59E0B' : '#10B981';
+    const color = type === 'gravel' ? '#F59E0B' : type === 'mtb' ? '#10B981' : '#FF6B35';
     if (routeLayer) map.removeLayer(routeLayer);
     routeLayer = L.polyline(latLngs, { color, weight: 4, opacity: 0.9 }).addTo(map);
 
     document.getElementById('stat-dist').textContent = distKm.toFixed(1);
     document.getElementById('stat-time').textContent = formatTime(durMin);
+    document.getElementById('map-stats').classList.add('visible');
 
-    // Elevación
     fetchElevation(latLngs);
   } catch (e) {
-    console.warn('[Rutas] Error calculando ruta:', e.message);
+    console.warn('[Rutas] Error routing:', e.message);
   } finally {
-    document.getElementById('route-loading').classList.remove('visible');
+    document.getElementById('route-spinner').classList.remove('visible');
   }
 }
 
@@ -606,43 +514,36 @@ async function calcRoute(type) {
 async function fetchElevation(latLngs) {
   const step    = Math.max(1, Math.floor(latLngs.length / 80));
   const sampled = latLngs.filter((_, i) => i % step === 0);
-  const locs    = sampled.map(([la, ln]) => `${la},${ln}`).join('|');
+  const locs    = sampled.map(([la,ln]) => `${la},${ln}`).join('|');
   try {
     const res  = await fetch(`https://api.opentopodata.org/v1/srtm30m?locations=${locs}`);
     const data = await res.json();
     if (data.status !== 'OK') return;
     const elevs = data.results.map(r => r.elevation ?? 0);
     let gain = 0;
-    for (let i = 1; i < elevs.length; i++) { const d = elevs[i]-elevs[i-1]; if (d>0) gain+=d; }
+    for (let i = 1; i < elevs.length; i++) { const d = elevs[i]-elevs[i-1]; if (d > 0) gain += d; }
     document.getElementById('stat-elev').textContent = Math.round(gain);
     renderElevChart(elevs);
   } catch { /* silencioso */ }
 }
 
 function renderElevChart(elevs) {
-  const panel = document.getElementById('elev-panel');
-  panel.classList.add('visible');
+  document.getElementById('elev-panel').classList.add('visible');
   const ctx = document.getElementById('elev-chart').getContext('2d');
   if (elevChart) elevChart.destroy();
   elevChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: elevs.map((_, i) => i),
-      datasets: [{
-        data: elevs,
-        borderColor: '#FF6B35',
-        backgroundColor: 'rgba(255,107,53,0.12)',
-        borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0,
-      }]
+      datasets: [{ data: elevs, borderColor: '#FF6B35', backgroundColor: 'rgba(255,107,53,0.1)',
+        borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: c => Math.round(c.parsed.y) + ' m' }
-      }},
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => Math.round(c.parsed.y) + ' m' } } },
       scales: {
         x: { display: false },
-        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b7280', font:{size:10} } }
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b7280', font: { size: 10 } } }
       }
     }
   });
@@ -653,28 +554,24 @@ function startDrawing() {
   clearRoute();
   drawingActive = true;
   document.getElementById('map').classList.add('drawing');
-  document.getElementById('map-toolbar').classList.add('visible');
+  document.getElementById('draw-toolbar').classList.add('visible');
   document.getElementById('map-stats').classList.add('visible');
-
-  // Leer tipo del filtro activo o road por defecto
-  const activeTab = document.querySelector('.filter-tab.active');
-  const tabType   = activeTab?.textContent.trim().toLowerCase();
-  currentRouteType = ['road','gravel','mtb'].includes(tabType) ? tabType : 'road';
+  const tab = document.querySelector('.filter-tab.active');
+  const t   = tab?.textContent.trim().toLowerCase();
+  currentRouteType = ['road','gravel','mtb'].includes(t) ? t : 'road';
+  document.getElementById('modal-name').value = '';
+  document.getElementById('modal-type').value = currentRouteType;
 }
 
 async function onMapClick(e) {
   if (!drawingActive) return;
   const { lat, lng } = e.latlng;
   waypoints.push({ lat, lng });
-
-  const marker = L.circleMarker([lat, lng], {
+  const m = L.circleMarker([lat, lng], {
     radius: 5, fillColor: '#FF6B35', color: '#fff', weight: 2, fillOpacity: 1
   }).addTo(map);
-  waypointMarkers.push(marker);
-
-  if (waypoints.length >= 2) {
-    await calcRoute(currentRouteType);
-  }
+  waypointMarkers.push(m);
+  if (waypoints.length >= 2) await calcRoute(currentRouteType);
 }
 
 function undoWaypoint() {
@@ -692,41 +589,30 @@ function clearRoute() {
   waypointMarkers.length = 0;
   if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
   routeGeoJSON = null;
-  document.getElementById('stat-dist').textContent = '0.0';
-  document.getElementById('stat-elev').textContent = '—';
-  document.getElementById('stat-time').textContent = '—';
+  ['stat-dist','stat-elev','stat-time'].forEach((id, i) =>
+    document.getElementById(id).textContent = i === 0 ? '0.0' : '—');
   document.getElementById('elev-panel').classList.remove('visible');
 }
 
-// ── Importar GPX/TCX ─────────────────────────────────────────────
+// ── Importar GPX ─────────────────────────────────────────────────
 function importGPX(input) {
-  const file = input.files[0];
-  if (!file) return;
+  const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
     try {
       const xml    = new DOMParser().parseFromString(e.target.result, 'text/xml');
-      const trkpts = Array.from(xml.querySelectorAll('trkpt,rtept,wpt'));
-      if (!trkpts.length) { alert('No se encontraron puntos en el archivo'); return; }
+      const pts    = Array.from(xml.querySelectorAll('trkpt,rtept,wpt'));
+      if (!pts.length) { alert('No se encontraron puntos en el archivo'); return; }
 
-      const latLngs = trkpts.map(pt => [
-        parseFloat(pt.getAttribute('lat')),
-        parseFloat(pt.getAttribute('lon')),
-      ]);
-      const elevs = trkpts.map(pt => {
-        const el = pt.querySelector('ele');
-        return el ? parseFloat(el.textContent) : null;
-      }).filter(v => v !== null);
+      const latLngs = pts.map(p => [parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))]);
+      const elevs   = pts.map(p => { const el = p.querySelector('ele'); return el ? parseFloat(el.textContent) : null; }).filter(v => v !== null);
 
       drawingActive = false;
       clearRoute();
       document.getElementById('map').classList.remove('drawing');
+      document.getElementById('draw-toolbar').classList.remove('visible');
 
-      routeGeoJSON = {
-        type: 'LineString',
-        coordinates: latLngs.map(([la, ln]) => [ln, la]),
-      };
-
+      routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la,ln]) => [ln,la]) };
       if (routeLayer) map.removeLayer(routeLayer);
       routeLayer = L.polyline(latLngs, { color: '#10B981', weight: 4, opacity: 0.9 }).addTo(map);
       map.fitBounds(routeLayer.getBounds(), { padding: [30,30] });
@@ -734,40 +620,31 @@ function importGPX(input) {
       const distKm = haversineTotal(latLngs);
       document.getElementById('stat-dist').textContent = distKm.toFixed(1);
       document.getElementById('stat-time').textContent = formatTime(Math.round(distKm / 0.28));
+      document.getElementById('map-stats').classList.add('visible');
+      document.getElementById('draw-toolbar').classList.add('visible');
 
       if (elevs.length) {
         let gain = 0;
-        for (let i=1;i<elevs.length;i++) { const d=elevs[i]-elevs[i-1]; if(d>0) gain+=d; }
+        for (let i=1;i<elevs.length;i++) { const d=elevs[i]-elevs[i-1]; if(d>0)gain+=d; }
         document.getElementById('stat-elev').textContent = Math.round(gain);
         renderElevChart(elevs);
       }
-
-      document.getElementById('map-toolbar').classList.add('visible');
-      document.getElementById('map-stats').classList.add('visible');
-      document.getElementById('modal-name').value =
-        file.name.replace(/\.(gpx|tcx)$/i,'').replace(/[_-]/g,' ');
-    } catch(err) {
-      alert('Error al leer el archivo: ' + err.message);
-    }
+      document.getElementById('modal-name').value = file.name.replace(/\.(gpx|tcx)$/i,'').replace(/[_-]/g,' ');
+    } catch(err) { alert('Error al leer: ' + err.message); }
     input.value = '';
   };
   reader.readAsText(file);
 }
 
 // ── Guardar ruta ─────────────────────────────────────────────────
-function openSaveModal() {
-  if (!routeGeoJSON) { alert('Traza al menos 2 puntos antes de guardar'); return; }
-  document.getElementById('save-modal').style.display = 'block';
-}
-function closeSaveModal() {
-  document.getElementById('save-modal').style.display = 'none';
-}
+function openSaveModal()  { if (!routeGeoJSON) { alert('Traza al menos 2 puntos primero'); return; } document.getElementById('save-modal').style.display = 'block'; }
+function closeSaveModal() { document.getElementById('save-modal').style.display = 'none'; }
 
 async function saveCurrentRoute() {
   const name    = document.getElementById('modal-name').value.trim() || 'Mi Ruta';
   const type    = document.getElementById('modal-type').value;
   const distKm  = parseFloat(document.getElementById('stat-dist').textContent) || null;
-  const elevGain= parseInt(document.getElementById('stat-elev').textContent) || null;
+  const elevGain= parseInt(document.getElementById('stat-elev').textContent)   || null;
   const timeMin = parseTimeMin(document.getElementById('stat-time').textContent);
   const btn = document.getElementById('modal-save-btn');
   btn.disabled = true; btn.textContent = 'Guardando...';
@@ -781,17 +658,14 @@ async function saveCurrentRoute() {
     clearRoute();
     drawingActive = false;
     document.getElementById('map').classList.remove('drawing');
-    document.getElementById('map-toolbar').classList.remove('visible');
+    document.getElementById('draw-toolbar').classList.remove('visible');
     document.getElementById('map-stats').classList.remove('visible');
     await loadRoutes();
-  } catch(e) {
-    alert('Error al guardar: ' + e.message);
-  } finally {
-    btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Guardar';
-  }
+  } catch(e) { alert('Error al guardar: ' + e.message); }
+  finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Guardar'; }
 }
 
-// ── Cargar rutas guardadas ────────────────────────────────────────
+// ── Cargar y listar rutas ─────────────────────────────────────────
 async function loadRoutes() {
   try {
     const res = await Auth.apiFetch(`${API_BASE}/routes`);
@@ -814,17 +688,13 @@ function filterRoutes(type, btn) {
 function renderRouteList() {
   const list     = document.getElementById('routes-list');
   const filtered = activeFilter === 'all' ? allRoutes : allRoutes.filter(r => r.type === activeFilter);
-
   if (!filtered.length) {
     list.innerHTML = `<div class="empty-routes">
-      <i class="fas fa-route" style="font-size:30px;opacity:0.3;display:block;margin-bottom:10px"></i>
-      ${activeFilter === 'all'
-        ? 'Aún no tienes rutas.<br>Crea una nueva o importa un GPX.'
-        : 'No hay rutas de tipo ' + activeFilter + '.'}
+      <i class="fas fa-route" style="font-size:28px;opacity:0.25;display:block;margin-bottom:10px"></i>
+      ${activeFilter === 'all' ? 'Sin rutas guardadas.<br>Crea una o importa un GPX.' : 'Sin rutas de tipo ' + activeFilter + '.'}
     </div>`;
     return;
   }
-
   list.innerHTML = filtered.map(r => `
     <div class="route-item" data-id="${r.id}" onclick="openRouteOnMap('${r.id}')">
       <div class="route-item-name">
@@ -833,21 +703,19 @@ function renderRouteList() {
         ${r.is_favorite ? '<i class="fas fa-star" style="color:#F59E0B;font-size:10px"></i>' : ''}
       </div>
       <div class="route-item-meta">
-        ${r.distance_km ? r.distance_km + ' km' : ''}
-        ${r.elevation_gain_m ? ' · ' + Math.round(r.elevation_gain_m) + ' m D+' : ''}
-        ${r.estimated_minutes ? ' · ~' + formatTime(r.estimated_minutes) : ''}
+        ${r.distance_km ? r.distance_km + ' km' : ''}${r.elevation_gain_m ? ' · ' + Math.round(r.elevation_gain_m) + ' m D+' : ''}${r.estimated_minutes ? ' · ~' + formatTime(r.estimated_minutes) : ''}
       </div>
       <div class="route-item-actions">
-        <button class="ri-action-btn ${r.is_favorite?'fav-active':''}" title="Favorito"
+        <button class="ri-btn fav ${r.is_favorite?'on':''}" title="Favorito"
           onclick="event.stopPropagation();toggleFav('${r.id}',${!r.is_favorite})">
-          <i class="fas fa-star"></i>
+          <i class="fas fa-star"></i> ${r.is_favorite ? 'Fav' : 'Fav'}
         </button>
-        <button class="ri-action-btn" title="Exportar GPX"
+        <button class="ri-btn" title="Exportar GPX"
           onclick="event.stopPropagation();exportGPX('${r.id}')">
           <i class="fas fa-file-export"></i> GPX
         </button>
-        <button class="ri-action-btn" title="Eliminar"
-          onclick="event.stopPropagation();deleteRoute('${r.id}')" style="color:#ff4757">
+        <button class="ri-btn del" title="Eliminar"
+          onclick="event.stopPropagation();deleteRoute('${r.id}')">
           <i class="fas fa-trash"></i>
         </button>
       </div>
@@ -858,61 +726,42 @@ function renderRouteList() {
 function openRouteOnMap(id) {
   const route = allRoutes.find(r => r.id === id);
   if (!route?.geojson) return;
-
   drawingActive = false;
   clearRoute();
   document.getElementById('map').classList.remove('drawing');
-
+  document.getElementById('draw-toolbar').classList.remove('visible');
   routeGeoJSON = route.geojson;
-  const color  = route.type === 'gravel' ? '#F59E0B' : route.type === 'mtb' ? '#10B981' : '#FF6B35';
-  const latLngs = route.geojson.coordinates.map(([ln, la]) => [la, ln]);
-
+  const color   = route.type === 'gravel' ? '#F59E0B' : route.type === 'mtb' ? '#10B981' : '#FF6B35';
+  const latLngs = route.geojson.coordinates.map(([ln,la]) => [la,ln]);
   if (routeLayer) map.removeLayer(routeLayer);
   routeLayer = L.polyline(latLngs, { color, weight: 4, opacity: 0.9 }).addTo(map);
   map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
-
   document.getElementById('stat-dist').textContent = route.distance_km?.toFixed(1) ?? '—';
   document.getElementById('stat-elev').textContent = route.elevation_gain_m ? Math.round(route.elevation_gain_m) : '—';
   document.getElementById('stat-time').textContent = route.estimated_minutes ? formatTime(route.estimated_minutes) : '—';
-  document.getElementById('map-toolbar').classList.add('visible');
   document.getElementById('map-stats').classList.add('visible');
-
-  document.querySelectorAll('.route-item').forEach(el =>
-    el.classList.toggle('active', el.dataset.id === id));
-
+  document.querySelectorAll('.route-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
   fetchElevation(latLngs);
 }
 
 async function toggleFav(id, fav) {
-  await Auth.apiFetch(`${API_BASE}/routes/${id}`, {
-    method: 'PATCH', body: JSON.stringify({ is_favorite: fav }),
-  });
+  await Auth.apiFetch(`${API_BASE}/routes/${id}`, { method:'PATCH', body: JSON.stringify({ is_favorite: fav }) });
   await loadRoutes();
 }
 
 async function deleteRoute(id) {
   if (!confirm('¿Eliminar esta ruta?')) return;
   await Auth.apiFetch(`${API_BASE}/routes/${id}`, { method: 'DELETE' });
-  if (routeLayer && allRoutes.find(r => r.id === id)) {
-    map.removeLayer(routeLayer); routeLayer = null;
-  }
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
   await loadRoutes();
 }
 
 function exportGPX(id) {
-  const route = allRoutes.find(r => r.id === id);
-  if (!route?.geojson?.coordinates) return;
-  const trkpts = route.geojson.coordinates
-    .map(([ln, la]) => `    <trkpt lat="${la}" lon="${ln}"></trkpt>`).join('\n');
-  const gpx = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="VeloMind">
-  <trk><name>${escHtml(route.name)}</name><trkseg>\n${trkpts}\n  </trkseg></trk>
-</gpx>`;
-  const a = Object.assign(document.createElement('a'), {
-    href: URL.createObjectURL(new Blob([gpx], { type:'application/gpx+xml' })),
-    download: route.name.replace(/\s+/g,'_') + '.gpx',
-  });
-  a.click();
+  const r = allRoutes.find(r => r.id === id);
+  if (!r?.geojson?.coordinates) return;
+  const trkpts = r.geojson.coordinates.map(([ln,la]) => `    <trkpt lat="${la}" lon="${ln}"></trkpt>`).join('\n');
+  const blob   = new Blob([`<?xml version="1.0"?>\n<gpx version="1.1" creator="VeloMind"><trk><name>${escHtml(r.name)}</name><trkseg>\n${trkpts}\n</trkseg></trk></gpx>`], { type:'application/gpx+xml' });
+  Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: r.name.replace(/\s+/g,'_')+'.gpx' }).click();
 }
 
 // ── Viento (Open-Meteo, sin API key) ─────────────────────────────
@@ -921,95 +770,76 @@ async function showWindSuggestion() {
   if (card.classList.contains('visible')) { card.classList.remove('visible'); return; }
   card.classList.add('visible');
   document.getElementById('wind-body').innerHTML =
-    '<div style="color:var(--text-muted,#6b7280);font-size:13px"><i class="fas fa-circle-notch fa-spin"></i> Obteniendo datos...</div>';
+    '<div style="color:var(--text-muted);font-size:13px"><i class="fas fa-circle-notch fa-spin"></i> Obteniendo datos...</div>';
 
   if (!navigator.geolocation) {
-    document.getElementById('wind-body').innerHTML =
-      '<div style="color:#ff4757;font-size:12px">Geolocalización no disponible.</div>';
+    document.getElementById('wind-body').innerHTML = '<div style="color:#ff4757;font-size:12px">Geolocalización no disponible.</div>';
     return;
   }
-
   navigator.geolocation.getCurrentPosition(async pos => {
     try {
       const { latitude: lat, longitude: lon } = pos.coords;
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-                  `&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m` +
-                  `&wind_speed_unit=kmh&timezone=auto`;
-      const res  = await fetch(url);
+      const res  = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kmh&timezone=auto`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      const cur  = data.current;
-
-      const speed  = Math.round(cur.wind_speed_10m);
-      const gusts  = Math.round(cur.wind_gusts_10m);
-      const deg    = cur.wind_direction_10m;
-
-      // Dirección de donde viene el viento
-      const compassFrom = degToCompass(deg);
-      // El viento te empuja en la dirección opuesta → sal hacia donde viene
-      const salDir      = compassFrom;
-      const vueltaDir   = degToCompass((deg + 180) % 360);
-
-      const level = speed < 15 ? { txt: 'Suave', color: '#10B981' }
-                  : speed < 30 ? { txt: 'Moderado', color: '#F59E0B' }
-                  : speed < 50 ? { txt: 'Fuerte', color: '#EF4444' }
-                  :              { txt: 'Muy fuerte', color: '#8B5CF6' };
-
+      const d    = await res.json();
+      const cur  = d.current;
+      const spd  = Math.round(cur.wind_speed_10m);
+      const gust = Math.round(cur.wind_gusts_10m);
+      const deg  = cur.wind_direction_10m;
+      const from = degToCompass(deg);
+      const lvl  = spd < 15 ? { c:'#10B981', txt:'Suave'     }
+                 : spd < 30 ? { c:'#F59E0B', txt:'Moderado'  }
+                 : spd < 50 ? { c:'#EF4444', txt:'Fuerte'    }
+                 :             { c:'#8B5CF6', txt:'Muy fuerte'};
       document.getElementById('wind-body').innerHTML = `
-        <div class="wind-speed" style="color:${level.color}">${speed} <span style="font-size:13px;font-weight:500">km/h</span></div>
-        <div class="wind-dir">Desde el ${compassFrom} · Ráfagas ${gusts} km/h · <strong style="color:${level.color}">${level.txt}</strong></div>
+        <div class="wind-speed" style="color:${lvl.c}">${spd}<span style="font-size:13px;font-weight:500"> km/h</span></div>
+        <div class="wind-dir">Desde el <strong>${from}</strong> · Ráfagas ${gust} km/h · <span style="color:${lvl.c};font-weight:700">${lvl.txt}</span></div>
         <div class="wind-advice">
-          <strong>Sal hacia el ${salDir}</strong> (pedalea contra el viento ahora).<br>
-          Vuelve desde el ${vueltaDir} con el viento a favor.
+          Sal hacia el <strong>${from}</strong> (contra el viento).<br>
+          Vuelve desde el <strong>${degToCompass((deg+180)%360)}</strong> con el viento a favor.
         </div>
-        <div class="wind-note">
-          ${speed < 15 ? '✅ Cualquier ruta es buena hoy.'
-          : speed < 30 ? '⚠️ Planifica bien el regreso para no llegar agotado.'
-          : speed < 50 ? '🔴 Ruta corta y circular. Evita exposición lateral.'
-          : '⛔ Viento extremo. Considera el rodillo hoy.'}
-        </div>`;
+        <div class="wind-note">${
+          spd < 15 ? '✅ Cualquier ruta es buena hoy.'
+        : spd < 30 ? '⚠️ Planifica el regreso para no llegar agotado.'
+        : spd < 50 ? '🔴 Ruta corta. Evita exposición lateral al viento.'
+        :             '⛔ Viento extremo — considera el rodillo hoy.'
+        }</div>`;
     } catch(e) {
-      document.getElementById('wind-body').innerHTML =
-        `<div style="color:#ff4757;font-size:12px">Error al obtener el viento.<br><small>${e.message}</small></div>`;
+      document.getElementById('wind-body').innerHTML = `<div style="color:#ff4757;font-size:12px">Error: ${e.message}</div>`;
     }
   }, () => {
-    document.getElementById('wind-body').innerHTML =
-      '<div style="color:#ff4757;font-size:12px">Activa la ubicación en tu navegador para ver el viento.</div>';
+    document.getElementById('wind-body').innerHTML = '<div style="color:#ff4757;font-size:12px">Activa la ubicación en el navegador.</div>';
   });
 }
 
 function degToCompass(deg) {
-  const dirs = ['Norte','Noreste','Este','Sureste','Sur','Suroeste','Oeste','Noroeste'];
-  return dirs[Math.round(deg / 45) % 8];
+  return ['Norte','Noreste','Este','Sureste','Sur','Suroeste','Oeste','Noroeste'][Math.round(deg/45)%8];
 }
 
 // ── Utilidades ───────────────────────────────────────────────────
 function formatTime(min) {
   if (!min || isNaN(min)) return '—';
-  const h = Math.floor(min / 60), m = min % 60;
-  return h ? `${h}h${m > 0 ? ' ' + m + 'min' : ''}` : `${m}min`;
+  const h = Math.floor(min/60), m = min%60;
+  return h ? `${h}h${m ? ' '+m+'min' : ''}` : `${m}min`;
 }
-
 function parseTimeMin(str) {
-  if (!str || str === '—') return null;
-  const h = (str.match(/(\d+)h/)  || [])[1];
-  const m = (str.match(/(\d+)min/) || [])[1];
-  return ((h ? +h * 60 : 0) + (m ? +m : 0)) || null;
+  if (!str || str==='—') return null;
+  const h = (str.match(/(\d+)h/)  ||[])[1];
+  const m = (str.match(/(\d+)min/)||[])[1];
+  return (+h*60||0)+(+m||0)||null;
 }
-
-function haversineTotal(latLngs) {
-  let d = 0, R = 6371;
-  for (let i = 1; i < latLngs.length; i++) {
-    const [la1, ln1] = latLngs[i-1], [la2, ln2] = latLngs[i];
-    const dLa = (la2-la1)*Math.PI/180, dLn = (ln2-ln1)*Math.PI/180;
-    const a = Math.sin(dLa/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLn/2)**2;
-    d += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+function haversineTotal(ll) {
+  let d=0,R=6371;
+  for(let i=1;i<ll.length;i++){
+    const[la1,ln1]=ll[i-1],[la2,ln2]=ll[i];
+    const dLa=(la2-la1)*Math.PI/180,dLn=(ln2-ln1)*Math.PI/180;
+    const a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLn/2)**2;
+    d+=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
   }
   return d;
 }
-
-function escHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 </body>
