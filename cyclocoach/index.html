@@ -187,6 +187,23 @@
         <div class="step-title">¿Quién eres?</div>
         <div class="step-subtitle">Datos básicos para personalizar tu experiencia</div>
       </div>
+
+      <!-- Avatar upload -->
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px">
+        <div id="profile-avatar-circle"
+          style="width:80px;height:80px;border-radius:50%;background:var(--surface2,#1e2130);
+                 border:2px solid rgba(255,107,53,0.3);display:flex;align-items:center;
+                 justify-content:center;font-size:28px;font-weight:700;color:var(--primary,#FF6B35);
+                 cursor:pointer;position:relative;overflow:hidden;transition:filter 0.2s;"
+          title="Cambiar foto de perfil"
+          onclick="document.getElementById('profile-avatar-input').click()">
+          <span id="profile-avatar-initials">?</span>
+        </div>
+        <input id="profile-avatar-input" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleProfileAvatarChange(this)">
+        <span style="font-size:11px;color:var(--text-muted,#6b7280);margin-top:6px;cursor:pointer"
+              onclick="document.getElementById('profile-avatar-input').click()">Cambiar foto</span>
+      </div>
+
       <div class="form-group">
         <label class="form-label">Nombre completo</label>
         <input type="text" id="ob-name" class="form-input" placeholder="Ej: Carlos García" autocomplete="name">
@@ -569,18 +586,53 @@ document.getElementById('ob-age').addEventListener('input', function(){
   if (age>=16&&age<=80&&!el.value) el.placeholder=(220-age)+' (estimado)';
 });
 
+// ─── Avatar en pantalla de perfil ───────────────────────────
+function renderProfileAvatar(user) {
+  const circle = document.getElementById('profile-avatar-circle');
+  const initials = document.getElementById('profile-avatar-initials');
+  if (!circle) return;
+  if (user && user.avatar_url) {
+    initials.style.display = 'none';
+    circle.style.backgroundImage = `url('${user.avatar_url}')`;
+    circle.style.backgroundSize = 'cover';
+    circle.style.backgroundPosition = 'center';
+  } else if (user && user.name) {
+    const txt = user.name.split(' ').map(w=>w[0]).join('').toUpperCase().substring(0,2);
+    initials.textContent = txt;
+    initials.style.display = '';
+    circle.style.backgroundImage = '';
+  }
+}
+
+async function handleProfileAvatarChange(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const circle = document.getElementById('profile-avatar-circle');
+  circle.style.filter = 'brightness(0.4)';
+  try {
+    const user = await Auth.uploadAvatar(file);
+    renderProfileAvatar(user);
+  } catch(e) {
+    alert('Error al subir foto: ' + e.message);
+  } finally {
+    circle.style.filter = '';
+    input.value = '';
+  }
+}
+
 // Pre-fill if existing profile
 (async function prefill(){
   try {
     let a = JSON.parse(localStorage.getItem('velomind_athlete')||'null');
-    
+
     // Forzar carga de datos actualizados desde el servidor
     if (Auth.isAuthenticated() && typeof BackendSync !== 'undefined') {
       const profile = await BackendSync.loadProfile();
       if (profile) a = profile;
     }
-    
+
     if (!a) return;
+    renderProfileAvatar(a);
     const set = (id,v)=>{ const el=document.getElementById(id); if(el&&v!=null&&v!=='') el.value=v; };
     set('ob-name',a.name); set('ob-age',a.age); set('ob-sex',a.sex);
     set('ob-weight',a.weight); set('ob-height',a.height);
