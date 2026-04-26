@@ -19,63 +19,10 @@ app.use(cors({
 app.use(express.json());
 
 // ─────────────────────────────────────────
-// DEBUG: Ver actividades sin filtro (público)
-// ─────────────────────────────────────────
-app.get('/api/debug/all-activities', async (req, res) => {
-  try {
-    const { data: acts } = await supabase.from('activities').select('id, user_id, name, date').limit(20);
-    // También ver estructura de la primera actividad
-    const first = acts?.[0];
-    res.json({ activities: acts, sample_user_id: first?.user_id, tipo: typeof first?.user_id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// DEBUG: Migrar actividades a usuario
-app.post('/api/debug/migrate-activities', async (req, res) => {
-  try {
-    console.log('[migrate] req.body:', req.body);
-    const body = req.body || {};
-    const fromUserId = body.from_user_id || req.query.from;
-    const toUserId = body.to_user_id || req.query.to;
-    
-    console.log('[migrate] from:', fromUserId, 'to:', toUserId);
-    
-    if (!fromUserId || !toUserId) {
-      return res.status(400).json({ error: 'from_user_id y to_user_id requeridos', body: req.body });
-    }
-    
-    // Migrar actividades
-    const { data: acts, error: fetchError } = await supabase
-      .from('activities')
-      .update({ user_id: toUserId })
-      .eq('user_id', fromUserId)
-      .select();
-    
-    if (fetchError) throw fetchError;
-    
-    res.json({ migrated: acts?.length || 0, from: fromUserId, to: toUserId });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-app.get('/api/debug/schema', async (req, res) => {
-  try {
-    // Columns de activities
-    const { data: acts } = await supabase.from('activities').select('*').limit(1);
-    // Columns de users
-    const { data: users } = await supabase.from('users').select('*').limit(1);
-    res.json({ 
-      activity_columns: acts?.[0] ? Object.keys(acts[0]) : [],
-      user_columns: users?.[0] ? Object.keys(users[0]) : [],
-      sample_activity: acts?.[0],
-      sample_user: users?.[0]
-    });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// ─────────────────────────────────────────
-// ✅ RUTAS (BIEN)
+// ✅ RUTAS
 // ─────────────────────────────────────────
 app.use('/api/auth',       require('./routes/auth'));
-app.use('/api/activities', require('./routes/activities').router);
+app.use('/api/activities', require('./routes/activities'));
 app.use('/api/analytics',  require('./routes/analytics'));
 app.use('/api/providers',  require('./routes/providers'));
 app.use('/api/body',       require('./routes/body'));

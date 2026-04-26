@@ -3,109 +3,16 @@ const supabase = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { recalculatePMC } = require('../services/pmc');
 const router = express.Router();
-const publicRouter = express.Router(); // Router público sin auth
 
-// ─── PÚBLICO: Buscar usuario por email ─────────────────────────────────────
-publicRouter.get('/find-user', async (req, res) => {
-  try {
-    const email = req.query.email;
-    if (!email) return res.status(400).json({ error: 'email requerido' });
-    
-    const { data: user } = await supabase.from('users').select('id, email, name, ftp').ilike('email', '%' + email + '%').limit(5);
-    res.json({ users: user });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// ─── PÚBLICO: Ver todas las actividades (debug) ─────────────────────────────────────
-publicRouter.get('/all-activities', async (req, res) => {
-  try {
-    const { data: acts } = await supabase.from('activities').select('id, user_id, name, date').limit(20);
-    res.json({ activities: acts });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// Rutas protegidas
 router.use(requireAuth);
 
-module.exports = { router, publicRouter };
-
-// ─── DEBUG: Verificar sesión ─────────────────────────────────────
-router.get('/debug', async (req, res) => {
-  try {
-    const uid = req.user.id;
-    const email = req.user.email;
-    
-    // Buscar el usuario en la tabla users
-    const { data: userData } = await supabase.from('users').select('id, email, name').eq('id', uid).single();
-    
-    // Contar actividades
-    const { count } = await supabase.from('activities').select('*', { count: 'exact', head: true }).eq('user_id', uid);
-    
-    res.json({ 
-      debug: true, 
-      token_user_id: uid, 
-      token_email: email,
-      supabase_user: userData,
-      actividades_count: count
-    });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// ─── DEBUG: Ver actividades sin filtro ─────────────────────────────────────
-router.get('/debug-all', async (req, res) => {
-  try {
-    const uid = req.user.id;
-    console.log('[DEBUG /activities/debug-all] UID:', uid);
-    
-    // Ver todas las actividades sin filtro de usuario
-    const { data: all } = await supabase.from('activities').select('id, user_id, name, date').limit(10);
-    console.log('[DEBUG] Total en BDD (muestra 10):', all);
-    
-    res.json({ debug: true, totalEnBDD: all?.length || 0, muestras: all });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// ─── DEBUG: Buscar usuario por email ─────────────────────────────────────
-router.get('/find-user', async (req, res) => {
-  try {
-    const email = req.query.email;
-    if (!email) return res.status(400).json({ error: 'email requerido' });
-    
-    const { data: user } = await supabase.from('users').select('id, email, name, ftp').ilike('email', '%' + email + '%').limit(5);
-    res.json({ users: user });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// ─── DEBUG: Buscar usuario por email (público) ─────────────────────────────────────
-router.get('/public-find-user', async (req, res) => {
-  try {
-    const email = req.query.email;
-    if (!email) return res.status(400).json({ error: 'email requerido' });
-    
-    const { data: user } = await supabase.from('users').select('id, email, name, ftp').ilike('email', '%' + email + '%').limit(5);
-    res.json({ users: user });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// ─── DEBUG: Buscar usuario por email (sin auth) ─────────────────────────────────────
-router.get('/public-find-user', async (req, res) => {
-  try {
-    const email = req.query.email;
-    if (!email) return res.status(400).json({ error: 'email requerido' });
-    
-    const { data: user } = await supabase.from('users').select('id, email, name, ftp').ilike('email', '%' + email + '%').limit(5);
-    res.json({ users: user });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
+module.exports = router;
 
 // Listar
 router.get('/', async (req, res) => {
   try {
     const uid = req.user.id;
     const { limit = 5000, from, to, source } = req.query;
-
-    console.log('\n[GET /activities] 🔍 CONSULTANDO DATOS');
-    console.log('👉 UID del usuario que pide:', uid);
 
     let query = supabase
       .from('activities')
@@ -121,21 +28,7 @@ router.get('/', async (req, res) => {
       .order('date', { ascending: false })
       .range(0, max - 1);
 
-    if (error) {
-      console.error('[Activities] ERROR:', error);
-      throw error;
-    }
-    console.log('👉 FILAS DEVUELTAS POR SUPABASE:', data?.length || 0);
-    console.log('👉 Primera actividad (si existe):', data?.[0] ? JSON.stringify(data[0]).substring(0, 200) : 'NO HAY');
-    if (data?.length === 0) console.log('⚠️ ADVERTENCIA: Supabase devolvió 0 filas. Revisa que el user_id coincida y que las políticas RLS permitan leer.');
-    if (data?.length > 0) console.log('👉 Primer user_id en actividades:', data[0].user_id);
-    
-    // DEBUG: también verificar qué actividades hay en la base de datos para este usuario
-    if (data?.length === 0) {
-      const { data: allForUser } = await supabase.from('activities').select('id, name, date, user_id').eq('user_id', uid);
-      console.log('👉 DEBUG - Total actividades para este uid en BDD:', allForUser?.length || 0);
-      console.log('👉 DEBUG - Muestra:', allForUser?.slice(0, 3));
-    }
+    if (error) throw error;
 
     res.json({ activities: data || [], total: count || 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -298,6 +191,3 @@ async function updateGarageStats(userId, gearId, distance, durationSeconds, isMe
   }
 }
 
-module.exports = { router, publicRouter };
-module.exports.router = router;
-module.exports.publicRouter = publicRouter;
