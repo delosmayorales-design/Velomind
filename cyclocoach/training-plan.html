@@ -809,7 +809,7 @@ function fillAdjustmentForm() {
 function renderWeekDates() {
   const now = new Date();
   const monday = new Date(now);
-  monday.setDate(now.getDate() - now.getDay() + 1);
+  monday.setDate(now.getDate() - (now.getDay() || 7) + 1);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   document.getElementById('week-dates').textContent =
@@ -843,7 +843,7 @@ function renderPlan(plan, athlete) {
 
   const sessContainer = document.getElementById('weekly-plan');
   const mondayDate = new Date();
-  mondayDate.setDate(mondayDate.getDate() - mondayDate.getDay() + 1);
+  mondayDate.setDate(mondayDate.getDate() - (mondayDate.getDay() || 7) + 1);
 
   // todayIdx: Mon=0 … Sun=6
   const todayIdx = (new Date().getDay() + 6) % 7;
@@ -1548,7 +1548,7 @@ async function savePlan() {
   btn.innerHTML = '<i class="fas fa-spinner spinning"></i> Guardando...';
   try {
     const monday = new Date();
-    monday.setDate(monday.getDate() - monday.getDay() + 1);
+    monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
     const planData = {
       week_start:       monday.toISOString().substring(0, 10),
       sessions:         currentPlan.sessions,
