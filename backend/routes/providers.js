@@ -154,12 +154,16 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
     let hasMore = true;
     const MAX_PAGES = 50; // Guardia de seguridad: máx 50 páginas × 200 = 10 000 actividades
 
-    console.log(`[Strava Sync] Obteniendo TODAS las actividades históricas del atleta`);
+    // Ventana de 1 año: solo actividades recientes
+    const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60);
+    const oneYearAgoDate = new Date(oneYearAgo * 1000).toISOString().substring(0, 10);
+
+    console.log(`[Strava Sync] Obteniendo actividades desde: ${oneYearAgoDate}`);
 
     // Paginación completa hasta que no haya más resultados
     while (hasMore && page <= MAX_PAGES) {
       const r = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}`,
+        `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=200&page=${page}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -325,6 +329,15 @@ rowsToInsert.push({
         }
       }
     }
+
+    // Eliminar del DB actividades de Strava más antiguas que la ventana de 1 año
+    const { error: delErr } = await supabase
+      .from('activities')
+      .delete()
+      .eq('user_id', uid)
+      .eq('source', 'Strava')
+      .lt('date', oneYearAgoDate);
+    if (delErr) console.warn('[Strava Sync] Error al limpiar actividades antiguas:', delErr.message);
 
     // Blindaje contra cuelgues del servidor en procesos asíncronos
     setImmediate(async () => {
