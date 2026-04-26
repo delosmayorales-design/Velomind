@@ -419,6 +419,12 @@
         Saldrás <strong>contra el viento</strong> (cuando estás fresco) y volverás <strong>con viento a favor</strong> (cuando estás cansado).
       </p>
 
+      <!-- Selector de día -->
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <button class="wr-day-btn active" data-day="today" onclick="selectWindDay(this)">📅 Hoy</button>
+        <button class="wr-day-btn" data-day="tomorrow" onclick="selectWindDay(this)">📅 Mañana</button>
+      </div>
+
       <!-- Estado del viento -->
       <div id="wr-wind-status" style="background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text-primary)">
         <i class="fas fa-circle-notch fa-spin" style="color:#00D4FF"></i> Obteniendo viento...
@@ -470,6 +476,18 @@
   font-family: inherit; transition: all 0.18s;
 }
 .wr-shape-btn.active {
+  background: rgba(0,212,255,0.12);
+  border-color: rgba(0,212,255,0.4);
+  color: #00D4FF;
+}
+.wr-day-btn {
+  flex: 1; padding: 8px 6px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-muted);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: all 0.18s;
+}
+.wr-day-btn.active {
   background: rgba(0,212,255,0.12);
   border-color: rgba(0,212,255,0.4);
   color: #00D4FF;
@@ -1050,6 +1068,7 @@ function escHtml(s) {
 
 // ── Ruta por viento ───────────────────────────────────────────────
 let windRouteData = null; // { lat, lon, windDeg, windSpeed }
+let windBothDays  = null; // { lat, lon, today: {spd,gust,deg}, tomorrow: {spd,gust,deg,date} }
 let wrShape = 'out-back';
 
 function selectShape(btn) {
@@ -1058,11 +1077,42 @@ function selectShape(btn) {
   wrShape = btn.dataset.shape;
 }
 
+function renderWindStatus(day) {
+  if (!windBothDays) return;
+  const d    = day === 'tomorrow' ? windBothDays.tomorrow : windBothDays.today;
+  const from = degToCompass(d.deg);
+  const lvlColor = d.spd < 15 ? '#10B981' : d.spd < 30 ? '#F59E0B' : '#EF4444';
+  const dayLabel = day === 'tomorrow'
+    ? `<span style="font-size:10px;color:#94a3b8;font-weight:600;margin-left:6px">· pronóstico mañana (máx. diario)</span>`
+    : '';
+  windRouteData = { lat: windBothDays.lat, lon: windBothDays.lon, windDeg: d.deg, windSpeed: d.spd };
+  document.getElementById('wr-wind-status').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px;font-weight:800;color:${lvlColor};font-family:'Space Grotesk',sans-serif">${d.spd}<span style="font-size:13px;font-weight:500"> km/h</span></div>
+      <div>
+        <div style="font-weight:700;color:var(--text-primary)">Desde el ${from} · Ráfagas ${d.gust} km/h${dayLabel}</div>
+        <div style="color:#00D4FF;font-size:12px;margin-top:3px">
+          ↗ Sal hacia el <strong>${from}</strong> · ↙ Vuelve con viento a favor
+        </div>
+      </div>
+    </div>`;
+}
+
+function selectWindDay(btn) {
+  document.querySelectorAll('.wr-day-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (windBothDays) renderWindStatus(btn.dataset.day);
+}
+
 async function openWindRouteModal() {
   document.getElementById('wind-route-modal').style.display = 'block';
   document.getElementById('wr-wind-status').innerHTML =
     '<i class="fas fa-circle-notch fa-spin" style="color:#00D4FF"></i> Obteniendo posición y viento...';
   windRouteData = null;
+  windBothDays  = null;
+
+  // Reset selector a "Hoy"
+  document.querySelectorAll('.wr-day-btn').forEach(b => b.classList.toggle('active', b.dataset.day === 'today'));
 
   if (!navigator.geolocation) {
     document.getElementById('wr-wind-status').innerHTML =
@@ -1072,27 +1122,32 @@ async function openWindRouteModal() {
   navigator.geolocation.getCurrentPosition(async pos => {
     const { latitude: lat, longitude: lon } = pos.coords;
     try {
-      const res  = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,weathercode&wind_speed_unit=kmh&timezone=auto`);
-      const data = await res.json();
-      const cur  = data.current;
-      const spd  = Math.round(cur.wind_speed_10m);
-      const gust = Math.round(cur.wind_gusts_10m);
-      const deg  = cur.wind_direction_10m;
-      const from = degToCompass(deg);
+      const res  = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        `&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,weathercode` +
+        `&daily=wind_speed_10m_max,wind_direction_10m_dominant,wind_gusts_10m_max` +
+        `&wind_speed_unit=kmh&timezone=auto&forecast_days=2`
+      );
+      const data  = await res.json();
+      const cur   = data.current;
+      const daily = data.daily;
 
-      windRouteData = { lat, lon, windDeg: deg, windSpeed: spd };
+      windBothDays = {
+        lat, lon,
+        today: {
+          spd:  Math.round(cur.wind_speed_10m),
+          gust: Math.round(cur.wind_gusts_10m),
+          deg:  cur.wind_direction_10m,
+        },
+        tomorrow: {
+          spd:  Math.round(daily.wind_speed_10m_max[1]),
+          gust: Math.round(daily.wind_gusts_10m_max[1]),
+          deg:  daily.wind_direction_10m_dominant[1],
+        },
+      };
 
-      const lvlColor = spd < 15 ? '#10B981' : spd < 30 ? '#F59E0B' : '#EF4444';
-      document.getElementById('wr-wind-status').innerHTML = `
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="font-size:28px;font-weight:800;color:${lvlColor};font-family:'Space Grotesk',sans-serif">${spd}<span style="font-size:13px;font-weight:500"> km/h</span></div>
-          <div>
-            <div style="font-weight:700;color:var(--text-primary)">Desde el ${from} · Ráfagas ${gust} km/h</div>
-            <div style="color:#00D4FF;font-size:12px;margin-top:3px">
-              ↗ Sal hacia el <strong>${from}</strong> · ↙ Vuelve con viento a favor
-            </div>
-          </div>
-        </div>`;
+      const activeDay = document.querySelector('.wr-day-btn.active')?.dataset.day || 'today';
+      renderWindStatus(activeDay);
     } catch(e) {
       document.getElementById('wr-wind-status').innerHTML =
         `<span style="color:#ff4757">Error al obtener el viento: ${e.message}</span>`;
