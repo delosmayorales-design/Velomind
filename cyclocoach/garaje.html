@@ -1523,13 +1523,27 @@ const G = (() => {
       doc.text(`Kilómetros totales: ${Math.round(bike.total_km).toLocaleString('es')} km`, 14, y);
       
       const tableData = bike.components.map(c => {
-        const valStr = fmtVal(c);
-        const parts = valStr.split(' / ');
+        // Extraer valores en texto plano (sin HTML) para el PDF
+        let uso = '--', limite = '--';
+        if (c.threshold_hours) {
+          const used = Math.round(c.current_hours || 0);
+          const remH = Math.max(0, c.threshold_hours - used);
+          uso    = `${used} h usadas`;
+          limite = `${c.threshold_hours} h (${remH} h restantes)`;
+        } else if (c.threshold_days) {
+          uso    = `${c.installed_days_ago} días`;
+          limite = `${c.threshold_days} días`;
+        } else if (c.threshold_km) {
+          const used  = Math.round(c.current_km || 0);
+          const remKm = Math.max(0, c.threshold_km - used);
+          uso    = `${used.toLocaleString('es')} km`;
+          limite = `${c.threshold_km.toLocaleString('es')} km (${Math.round(remKm).toLocaleString('es')} km rest.)`;
+        }
         return [
-          c.name,
+          c.name || '--',
           [c.brand, c.model].filter(Boolean).join(' ') || '--',
-          parts[0] || '--',
-          parts[1] || '--',
+          uso,
+          limite,
           statusLabel(c.status)
         ];
       });
