@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rutas — VeloMind</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Chart.js para elevación -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ── Layout ────────────────────────────────────────────────── */
+    body { overflow: hidden; }
+    .routes-layout {
+      display: flex;
+      height: 100vh;
+      margin-left: 220px; /* sidebar width */
+    }
+
+    /* ── Panel izquierdo ───────────────────────────────────────── */
+    .routes-panel {
+      width: 260px;
+      min-width: 260px;
+      background: var(--surface, #13151c);
+      border-right: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 10;
+    }
+    .routes-panel-header {
+      padding: 20px 16px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .routes-panel-header h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text, #f0f2f5);
+      margin: 0 0 12px;
+    }
+    .btn-new-route {
+      width: 100%;
+      padding: 10px;
+      background: var(--primary, #FF6B35);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: inherit;
+      transition: opacity 0.2s;
+    }
+    .btn-new-route:hover { opacity: 0.85; }
+
+    .btn-wind {
+      width: 100%;
+      padding: 9px;
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      border-radius: 8px;
+      color: #00D4FF;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: inherit;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+    .btn-wind:hover { background: rgba(0,212,255,0.15); }
+
+    .btn-gpx {
+      width: 100%;
+      padding: 9px;
+      background: rgba(16,185,129,0.08);
+      border: 1px solid rgba(16,185,129,0.25);
+      border-radius: 8px;
+      color: #10B981;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: inherit;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+    .btn-gpx:hover { background: rgba(16,185,129,0.15); }
+
+    .routes-filter {
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .filter-tabs {
+      display: flex;
+      gap: 4px;
+    }
+    .filter-tab {
+      flex: 1;
+      padding: 5px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      color: var(--text-muted, #6b7280);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .filter-tab.active {
+      background: rgba(255,107,53,0.15);
+      border-color: rgba(255,107,53,0.4);
+      color: var(--primary, #FF6B35);
+    }
+
+    .routes-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .route-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      margin-bottom: 4px;
+      transition: all 0.2s;
+    }
+    .route-item:hover { background: rgba(255,255,255,0.04); }
+    .route-item.active {
+      background: rgba(255,107,53,0.1);
+      border-color: rgba(255,107,53,0.3);
+    }
+    .route-item-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text, #f0f2f5);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .route-item-meta {
+      font-size: 11px;
+      color: var(--text-muted, #6b7280);
+      margin-top: 3px;
+    }
+    .route-type-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+    .badge-road    { background: rgba(59,130,246,0.2); color:#3B82F6; }
+    .badge-gravel  { background: rgba(245,158,11,0.2); color:#F59E0B; }
+    .badge-mtb     { background: rgba(16,185,129,0.2); color:#10B981; }
+
+    .empty-routes {
+      text-align: center;
+      padding: 40px 16px;
+      color: var(--text-muted, #6b7280);
+      font-size: 13px;
+    }
+
+    /* ── Mapa ──────────────────────────────────────────────────── */
+    .map-container {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    #map {
+      flex: 1;
+      z-index: 1;
+    }
+
+    /* Toolbar del mapa */
+    .map-toolbar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+    }
+    .map-tool-btn {
+      padding: 8px 14px;
+      background: var(--surface, #13151c);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: var(--text, #f0f2f5);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      font-family: inherit;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .map-tool-btn:hover { background: rgba(255,255,255,0.08); }
+    .map-tool-btn.active { background: rgba(255,107,53,0.2); border-color: rgba(255,107,53,0.5); color: var(--primary,#FF6B35); }
+    .map-tool-btn.danger  { color: #ff4757; border-color: rgba(255,71,87,0.3); }
+
+    /* Stats flotantes */
+    .map-stats {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      background: var(--surface, #13151c);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      gap: 20px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      min-width: 280px;
+    }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 20px; font-weight: 800; color: var(--primary,#FF6B35); font-family:'Space Grotesk',sans-serif; }
+    .stat-label { font-size: 10px; color: var(--text-muted,#6b7280); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ── Panel elevación ───────────────────────────────────────── */
+    .elevation-panel {
+      height: 140px;
+      background: var(--surface,#13151c);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 10px 16px 8px;
+      display: none;
+      flex-direction: column;
+    }
+    .elevation-panel.visible { display: flex; }
+    .elevation-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .elevation-title { font-size: 11px; font-weight: 700; color: var(--text-muted,#6b7280); text-transform: uppercase; letter-spacing: 0.5px; }
+    .elevation-close { background:none; border:none; color:var(--text-muted,#6b7280); cursor:pointer; font-size:14px; }
+
+    /* ── Modal guardar ─────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-box {
+      background: #13151c;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 28px;
+      width: 340px;
+    }
+    .modal-title { font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; color:var(--text,#f0f2f5); margin-bottom:20px; }
+    .modal-input {
+      width: 100%; padding: 10px 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; color: var(--text,#f0f2f5);
+      font-size: 14px; font-family: inherit;
+      margin-bottom: 12px; box-sizing: border-box;
+    }
+    .modal-input:focus { outline: none; border-color: var(--primary,#FF6B35); }
+    .modal-select {
+      width: 100%; padding: 10px 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; color: var(--text,#f0f2f5);
+      font-size: 14px; font-family: inherit;
+      margin-bottom: 16px; box-sizing: border-box;
+    }
+    .modal-row { display:flex; gap:10px; }
+    .modal-btn { flex:1; padding:11px; border:none; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
+    .modal-btn-cancel { background:rgba(255,255,255,0.06); color:var(--text-muted,#6b7280); }
+    .modal-btn-save   { background:var(--primary,#FF6B35); color:#fff; }
+
+    /* ── Wind card ─────────────────────────────────────────────── */
+    .wind-card {
+      position: absolute;
+      bottom: 160px;
+      right: 16px;
+      z-index: 1000;
+      background: var(--surface,#13151c);
+      border: 1px solid rgba(0,212,255,0.3);
+      border-radius: 12px;
+      padding: 16px;
+      width: 240px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      display: none;
+    }
+    .wind-card.visible { display: block; }
+    .wind-card-title { font-size:12px; font-weight:700; color:#00D4FF; margin-bottom:10px; display:flex;align-items:center;gap:6px;justify-content:space-between; }
+    .wind-arrow { font-size: 32px; text-align:center; margin:8px 0; }
+    .wind-advice { font-size:12px; color:var(--text,#f0f2f5); line-height:1.5; }
+    .wind-sub { font-size:11px; color:var(--text-muted,#6b7280); margin-top:6px; }
+
+    @media (max-width:768px) {
+      .routes-layout { margin-left: 0; }
+      .routes-panel  { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar nav -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logoPerfil.PNG" alt="VeloMind" style="width:80%;max-width:140px;height:auto;border-radius:8px">
+  </div>
+  <div class="sidebar-nav">
+    <a href="analytics.html"     class="nav-item"><i class="fas fa-chart-bar"></i> Métricas</a>
+    <a href="activities.html"    class="nav-item"><i class="fas fa-upload"></i> Actividades</a>
+    <a href="training-plan.html" class="nav-item"><i class="fas fa-calendar-check"></i> Mi Plan</a>
+    <a href="nutrition.html"     class="nav-item"><i class="fas fa-apple-alt"></i> Nutrición</a>
+    <a href="body-weight.html"   class="nav-item"><i class="fas fa-weight"></i> Peso y W/Kg</a>
+    <a href="rutas.html"         class="nav-item active"><i class="fas fa-map-marked-alt"></i> Rutas</a>
+    <a href="biomechanics.html"  class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="mecanica-general.html" class="nav-item"><i class="fas fa-wrench"></i> Mecánica</a>
+    <a href="garaje.html"        class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
+    <a href="kit-designer.html"  class="nav-item"><i class="fas fa-tshirt"></i> Diseñador Ropa</a>
+    <a href="integrations.html"  class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html"         class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="name">Cargando...</div>
+        <div class="ftp"  id="ftp">FTP: --</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Layout principal -->
+<div class="routes-layout">
+
+  <!-- Panel izquierdo -->
+  <div class="routes-panel">
+    <div class="routes-panel-header">
+      <h2><i class="fas fa-map-marked-alt" style="color:var(--primary,#FF6B35)"></i> Mis Rutas</h2>
+      <button class="btn-new-route" onclick="startDrawing()">
+        <i class="fas fa-plus"></i> Nueva ruta
+      </button>
+      <button class="btn-gpx" onclick="document.getElementById('gpx-input').click()">
+        <i class="fas fa-file-import"></i> Importar GPX / TCX
+      </button>
+      <input id="gpx-input" type="file" accept=".gpx,.tcx" style="display:none" onchange="importGPX(this)">
+      <button class="btn-wind" onclick="toggleWindSuggestion()">
+        <i class="fas fa-wind"></i> Sugerencia del viento
+      </button>
+    </div>
+
+    <div class="routes-filter">
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-type="all"    onclick="filterRoutes('all',this)">Todas</button>
+        <button class="filter-tab"        data-type="road"   onclick="filterRoutes('road',this)">Road</button>
+        <button class="filter-tab"        data-type="gravel" onclick="filterRoutes('gravel',this)">Gravel</button>
+        <button class="filter-tab"        data-type="mtb"    onclick="filterRoutes('mtb',this)">MTB</button>
+      </div>
+    </div>
+
+    <div class="routes-list" id="routes-list">
+      <div class="empty-routes">
+        <i class="fas fa-route" style="font-size:32px;opacity:0.3;display:block;margin-bottom:12px"></i>
+        Cargando rutas...
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor mapa -->
+  <div class="map-container">
+
+    <!-- Toolbar -->
+    <div class="map-toolbar" id="map-toolbar" style="display:none">
+      <button class="map-tool-btn active" id="btn-draw" onclick="setMode('draw')">
+        <i class="fas fa-pencil-alt"></i> Trazar
+      </button>
+      <button class="map-tool-btn" id="btn-undo" onclick="undoWaypoint()">
+        <i class="fas fa-undo"></i> Deshacer
+      </button>
+      <button class="map-tool-btn danger" id="btn-clear" onclick="clearRoute()">
+        <i class="fas fa-trash"></i> Limpiar
+      </button>
+      <button class="map-tool-btn" id="btn-save-route" onclick="openSaveModal()" style="background:rgba(255,107,53,0.15);border-color:rgba(255,107,53,0.4);color:var(--primary,#FF6B35)">
+        <i class="fas fa-save"></i> Guardar
+      </button>
+    </div>
+
+    <!-- Stats flotantes -->
+    <div class="map-stats" id="map-stats" style="display:none">
+      <div class="stat-item">
+        <div class="stat-value" id="stat-dist">0.0</div>
+        <div class="stat-label">km</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-elev">—</div>
+        <div class="stat-label">D+ (m)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-time">—</div>
+        <div class="stat-label">Estimado</div>
+      </div>
+    </div>
+
+    <!-- Wind card -->
+    <div class="wind-card" id="wind-card">
+      <div class="wind-card-title">
+        <span><i class="fas fa-wind"></i> Viento ahora</span>
+        <button onclick="document.getElementById('wind-card').classList.remove('visible')"
+          style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:14px">×</button>
+      </div>
+      <div class="wind-arrow" id="wind-arrow">↑</div>
+      <div class="wind-advice" id="wind-advice">Cargando...</div>
+      <div class="wind-sub" id="wind-sub"></div>
+    </div>
+
+    <!-- Mapa Leaflet -->
+    <div id="map"></div>
+
+    <!-- Panel elevación -->
+    <div class="elevation-panel" id="elevation-panel">
+      <div class="elevation-header">
+        <span class="elevation-title"><i class="fas fa-mountain"></i> Perfil de elevación</span>
+        <button class="elevation-close" onclick="document.getElementById('elevation-panel').classList.remove('visible')">×</button>
+      </div>
+      <canvas id="elevation-chart" style="flex:1"></canvas>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal guardar ruta -->
+<div id="save-modal" style="display:none">
+  <div class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-title"><i class="fas fa-save" style="color:var(--primary,#FF6B35)"></i> Guardar ruta</div>
+      <input id="route-name-input" class="modal-input" type="text" placeholder="Nombre de la ruta" value="Mi Ruta">
+      <select id="route-type-select" class="modal-select">
+        <option value="road">🚴 Road</option>
+        <option value="gravel">🪨 Gravel</option>
+        <option value="mtb">🏔️ MTB</option>
+      </select>
+      <div class="modal-row">
+        <button class="modal-btn modal-btn-cancel" onclick="closeSaveModal()">Cancelar</button>
+        <button class="modal-btn modal-btn-save"   onclick="saveCurrentRoute()">
+          <i class="fas fa-check"></i> Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/backend-sync.js"></script>
+<script>
+const API_BASE = window.API_URL ||
+  (location.hostname==='localhost'||location.hostname==='127.0.0.1'
+    ? 'http://localhost:3000/api'
+    : 'https://velomind-backend.onrender.com/api');
+
+// ── Estado ──────────────────────────────────────────────────────
+let map, elevationChart;
+let waypoints    = [];   // [{lat,lng}] puntos del usuario
+let routeLayer   = null; // polyline activa en mapa
+let routeGeoJSON = null; // GeoJSON de la ruta calculada
+let allRoutes    = [];
+let activeFilter = 'all';
+let currentMode  = 'draw';
+let drawingMode  = false;
+let loadedRouteId = null;
+
+// Marcadores temporales
+const waypointMarkers = [];
+
+// ── Inicializar mapa ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  loadRoutes();
+});
+
+function initMap() {
+  // Intentar centrar en posición del usuario
+  map = L.map('map', { zoomControl: true }).setView([40.4168, -3.7038], 12);
+
+  // Tiles OSM estándar
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // Overlay CyclOSM (carril bici y rutas ciclistas)
+  const cyclOSM = L.tileLayer('https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png', {
+    maxZoom: 19, opacity: 0.5,
+    attribution: '© <a href="https://cycling.waymarkedtrails.org">Waymarked Trails</a>'
+  });
+
+  // Control de capas
+  L.control.layers(
+    { 'Mapa estándar': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }) },
+    { 'Rutas ciclistas': cyclOSM }
+  ).addTo(map);
+
+  // Click para añadir waypoints en modo dibujo
+  map.on('click', onMapClick);
+
+  // Geolocalización
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      map.setView([pos.coords.latitude, pos.coords.longitude], 13);
+    }, () => {});
+  }
+}
+
+// ── Modo dibujo ──────────────────────────────────────────────────
+function startDrawing() {
+  drawingMode = true;
+  loadedRouteId = null;
+  clearRoute();
+  document.getElementById('map-toolbar').style.display = 'flex';
+  document.getElementById('map-stats').style.display = 'flex';
+  map.getContainer().style.cursor = 'crosshair';
+  setMode('draw');
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.map-tool-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('btn-' + mode);
+  if (btn) btn.classList.add('active');
+}
+
+async function onMapClick(e) {
+  if (!drawingMode || currentMode !== 'draw') return;
+  const { lat, lng } = e.latlng;
+  waypoints.push({ lat, lng });
+
+  // Marcador pequeño
+  const marker = L.circleMarker([lat, lng], {
+    radius: 5, fillColor: '#FF6B35', color: '#fff',
+    weight: 2, opacity: 1, fillOpacity: 1
+  }).addTo(map);
+  waypointMarkers.push(marker);
+
+  if (waypoints.length >= 2) {
+    await recalcRoute();
+  }
+}
+
+async function recalcRoute() {
+  if (waypoints.length < 2) return;
+
+  // Llamar a OSRM (cycling profile, servidor público)
+  const coords = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
+  try {
+    const url = `https://router.project-osrm.org/route/v1/cycling/${coords}?overview=full&geometries=geojson`;
+    const res  = await fetch(url);
+    const data = await res.json();
+
+    if (data.code !== 'Ok' || !data.routes[0]) return;
+
+    const route = data.routes[0];
+    routeGeoJSON = route.geometry;
+
+    if (routeLayer) map.removeLayer(routeLayer);
+    routeLayer = L.geoJSON(routeGeoJSON, {
+      style: { color: '#FF6B35', weight: 4, opacity: 0.9 }
+    }).addTo(map);
+
+    const distKm  = route.distance / 1000;
+    const minutes = Math.round(route.duration / 60);
+
+    document.getElementById('stat-dist').textContent = distKm.toFixed(1);
+    document.getElementById('stat-time').textContent = formatTime(minutes);
+
+    // Pedir elevación
+    fetchElevation(routeGeoJSON.coordinates);
+
+  } catch (e) {
+    console.warn('[Rutas] OSRM error:', e.message);
+  }
+}
+
+async function fetchElevation(coords) {
+  // Muestrear cada N puntos para no superar el límite de la API
+  const step    = Math.max(1, Math.floor(coords.length / 100));
+  const sampled = coords.filter((_, i) => i % step === 0);
+  const locations = sampled.map(c => `${c[1]},${c[0]}`).join('|');
+
+  try {
+    const res  = await fetch(`https://api.opentopodata.org/v1/srtm30m?locations=${locations}`);
+    const data = await res.json();
+    if (data.status !== 'OK') return;
+
+    const elevs = data.results.map(r => r.elevation || 0);
+    let gain = 0;
+    for (let i = 1; i < elevs.length; i++) {
+      const diff = elevs[i] - elevs[i-1];
+      if (diff > 0) gain += diff;
+    }
+    document.getElementById('stat-elev').textContent = Math.round(gain);
+    renderElevationChart(elevs);
+  } catch (e) {
+    console.warn('[Rutas] Elevación no disponible');
+  }
+}
+
+function renderElevationChart(elevs) {
+  const panel = document.getElementById('elevation-panel');
+  panel.classList.add('visible');
+  const ctx = document.getElementById('elevation-chart').getContext('2d');
+  if (elevationChart) elevationChart.destroy();
+  elevationChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: elevs.map((_, i) => i),
+      datasets: [{
+        data: elevs,
+        borderColor: '#FF6B35',
+        backgroundColor: 'rgba(255,107,53,0.15)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => `${Math.round(ctx.parsed.y)} m` }
+      }},
+      scales: {
+        x: { display: false },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b7280', font:{size:10} } }
+      }
+    }
+  });
+}
+
+function undoWaypoint() {
+  if (!waypoints.length) return;
+  waypoints.pop();
+  const m = waypointMarkers.pop();
+  if (m) map.removeLayer(m);
+  if (waypoints.length >= 2) recalcRoute();
+  else if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+}
+
+function clearRoute() {
+  waypoints = [];
+  waypointMarkers.forEach(m => map.removeLayer(m));
+  waypointMarkers.length = 0;
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  routeGeoJSON = null;
+  document.getElementById('stat-dist').textContent = '0.0';
+  document.getElementById('stat-elev').textContent = '—';
+  document.getElementById('stat-time').textContent = '—';
+  document.getElementById('elevation-panel').classList.remove('visible');
+}
+
+// ── Importar GPX ─────────────────────────────────────────────────
+function importGPX(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const xml = new DOMParser().parseFromString(e.target.result, 'text/xml');
+      const trkpts = xml.querySelectorAll('trkpt,rtept,wpt');
+      if (!trkpts.length) { alert('No se encontraron puntos en el archivo GPX'); return; }
+
+      const coords = Array.from(trkpts).map(pt => [
+        parseFloat(pt.getAttribute('lon')),
+        parseFloat(pt.getAttribute('lat'))
+      ]);
+      const elevNodes = Array.from(trkpts).map(pt => {
+        const el = pt.querySelector('ele');
+        return el ? parseFloat(el.textContent) : null;
+      });
+
+      clearRoute();
+      drawingMode = false;
+      routeGeoJSON = { type: 'LineString', coordinates: coords };
+      loadedRouteId = null;
+
+      if (routeLayer) map.removeLayer(routeLayer);
+      routeLayer = L.geoJSON(routeGeoJSON, {
+        style: { color: '#10B981', weight: 4, opacity: 0.9 }
+      }).addTo(map);
+      map.fitBounds(routeLayer.getBounds(), { padding: [30,30] });
+
+      // Stats
+      const distKm = calcDistance(coords);
+      document.getElementById('stat-dist').textContent = distKm.toFixed(1);
+      const elevs = elevNodes.filter(e => e !== null);
+      if (elevs.length) {
+        let gain = 0;
+        for (let i=1;i<elevs.length;i++) { const d=elevs[i]-elevs[i-1]; if(d>0) gain+=d; }
+        document.getElementById('stat-elev').textContent = Math.round(gain);
+        renderElevationChart(elevs);
+      }
+      document.getElementById('stat-time').textContent = formatTime(Math.round(distKm / 0.25));
+      document.getElementById('map-toolbar').style.display = 'flex';
+      document.getElementById('map-stats').style.display = 'flex';
+
+      // Pre-rellenar nombre con el del archivo
+      const routeName = file.name.replace(/\.(gpx|tcx)$/i,'').replace(/_/g,' ');
+      document.getElementById('route-name-input').value = routeName;
+
+    } catch(err) {
+      alert('Error al leer el archivo: ' + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function calcDistance(coords) {
+  let d = 0;
+  for (let i=1;i<coords.length;i++) {
+    const [lon1,lat1] = coords[i-1];
+    const [lon2,lat2] = coords[i];
+    const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+    const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    d += R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+  return d;
+}
+
+// ── Guardar ruta ─────────────────────────────────────────────────
+function openSaveModal() {
+  if (!routeGeoJSON) { alert('Traza al menos 2 puntos antes de guardar'); return; }
+  document.getElementById('save-modal').style.display = 'block';
+}
+function closeSaveModal() {
+  document.getElementById('save-modal').style.display = 'none';
+}
+
+async function saveCurrentRoute() {
+  const name = document.getElementById('route-name-input').value.trim() || 'Mi Ruta';
+  const type = document.getElementById('route-type-select').value;
+  const distKm  = parseFloat(document.getElementById('stat-dist').textContent) || null;
+  const elevGain = parseInt(document.getElementById('stat-elev').textContent) || null;
+  const timeMin  = parseTimeMinutes(document.getElementById('stat-time').textContent);
+
+  const btn = document.querySelector('.modal-btn-save');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  try {
+    const res = await Auth.apiFetch(`${API_BASE}/routes`, {
+      method: 'POST',
+      body: JSON.stringify({ name, type, geojson: routeGeoJSON, distance_km: distKm, elevation_gain_m: elevGain, estimated_minutes: timeMin }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Error');
+    closeSaveModal();
+    clearRoute();
+    drawingMode = false;
+    document.getElementById('map-toolbar').style.display = 'none';
+    document.getElementById('map-stats').style.display = 'none';
+    map.getContainer().style.cursor = '';
+    await loadRoutes();
+  } catch(e) {
+    alert('Error al guardar: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Guardar';
+  }
+}
+
+// ── Cargar y mostrar rutas ────────────────────────────────────────
+async function loadRoutes() {
+  try {
+    const res = await Auth.apiFetch(`${API_BASE}/routes`);
+    if (!res.ok) throw new Error();
+    allRoutes = await res.json();
+    renderRouteList();
+  } catch(e) {
+    document.getElementById('routes-list').innerHTML =
+      '<div class="empty-routes"><i class="fas fa-exclamation-circle"></i><br>No se pudieron cargar las rutas</div>';
+  }
+}
+
+function filterRoutes(type, btn) {
+  activeFilter = type;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderRouteList();
+}
+
+function renderRouteList() {
+  const list = document.getElementById('routes-list');
+  const filtered = activeFilter === 'all' ? allRoutes : allRoutes.filter(r => r.type === activeFilter);
+
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-routes">
+      <i class="fas fa-route" style="font-size:32px;opacity:0.3;display:block;margin-bottom:12px"></i>
+      ${activeFilter==='all'?'Aún no tienes rutas guardadas.<br>Crea una nueva o importa un GPX.':'No hay rutas de tipo '+activeFilter}
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(r => `
+    <div class="route-item" data-id="${r.id}" onclick="loadRouteOnMap('${r.id}')">
+      <div class="route-item-name">
+        <span>${r.name}</span>
+        <span class="route-type-badge badge-${r.type}">${r.type.toUpperCase()}</span>
+        ${r.is_favorite ? '<i class="fas fa-star" style="color:#F59E0B;font-size:10px"></i>' : ''}
+      </div>
+      <div class="route-item-meta">
+        ${r.distance_km ? r.distance_km+' km' : ''}
+        ${r.elevation_gain_m ? ' · '+r.elevation_gain_m+' m D+' : ''}
+        ${r.estimated_minutes ? ' · ~'+formatTime(r.estimated_minutes) : ''}
+      </div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button onclick="event.stopPropagation();toggleFav('${r.id}',${!r.is_favorite})"
+          style="background:none;border:none;color:${r.is_favorite?'#F59E0B':'#6b7280'};cursor:pointer;font-size:12px;padding:0">
+          <i class="fas fa-star"></i>
+        </button>
+        <button onclick="event.stopPropagation();exportRouteGPX('${r.id}')"
+          style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:12px;padding:0" title="Exportar GPX">
+          <i class="fas fa-file-export"></i>
+        </button>
+        <button onclick="event.stopPropagation();deleteRoute('${r.id}')"
+          style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:12px;padding:0" title="Eliminar">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function loadRouteOnMap(id) {
+  const route = allRoutes.find(r => r.id === id);
+  if (!route || !route.geojson) return;
+
+  // Desactivar modo dibujo
+  drawingMode = false;
+  clearRoute();
+  map.getContainer().style.cursor = '';
+  document.getElementById('map-toolbar').style.display = 'flex';
+  document.getElementById('map-stats').style.display = 'flex';
+
+  loadedRouteId = id;
+  routeGeoJSON  = route.geojson;
+
+  if (routeLayer) map.removeLayer(routeLayer);
+  routeLayer = L.geoJSON(routeGeoJSON, {
+    style: { color: '#FF6B35', weight: 4, opacity: 0.9 }
+  }).addTo(map);
+  map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
+
+  document.getElementById('stat-dist').textContent = route.distance_km?.toFixed(1) ?? '—';
+  document.getElementById('stat-elev').textContent = route.elevation_gain_m ? Math.round(route.elevation_gain_m) : '—';
+  document.getElementById('stat-time').textContent = route.estimated_minutes ? formatTime(route.estimated_minutes) : '—';
+
+  // Marcar activo en lista
+  document.querySelectorAll('.route-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+
+  // Pedir elevación si no hay
+  if (route.geojson.coordinates) fetchElevation(route.geojson.coordinates);
+}
+
+async function toggleFav(id, fav) {
+  await Auth.apiFetch(`${API_BASE}/routes/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ is_favorite: fav }),
+  });
+  await loadRoutes();
+}
+
+async function deleteRoute(id) {
+  if (!confirm('¿Eliminar esta ruta?')) return;
+  await Auth.apiFetch(`${API_BASE}/routes/${id}`, { method: 'DELETE' });
+  if (loadedRouteId === id) { clearRoute(); loadedRouteId = null; }
+  await loadRoutes();
+}
+
+function exportRouteGPX(id) {
+  const route = allRoutes.find(r => r.id === id);
+  if (!route?.geojson?.coordinates) return;
+  const coords = route.geojson.coordinates;
+  const trkpts = coords.map(c => `    <trkpt lat="${c[1]}" lon="${c[0]}"></trkpt>`).join('\n');
+  const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="VeloMind">
+  <trk>
+    <name>${route.name}</name>
+    <trkseg>
+${trkpts}
+    </trkseg>
+  </trk>
+</gpx>`;
+  const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = route.name.replace(/\s+/g,'_') + '.gpx';
+  a.click();
+}
+
+// ── Sugerencia del viento ─────────────────────────────────────────
+async function toggleWindSuggestion() {
+  const card = document.getElementById('wind-card');
+  if (card.classList.contains('visible')) { card.classList.remove('visible'); return; }
+  card.classList.add('visible');
+  document.getElementById('wind-advice').textContent = 'Obteniendo datos meteorológicos...';
+
+  if (!navigator.geolocation) {
+    document.getElementById('wind-advice').textContent = 'Geolocalización no disponible.';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+    try {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      // Open-Meteo: gratis, sin API key, datos de viento
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m,weathercode&wind_speed_unit=kmh`;
+      const res  = await fetch(url);
+      const data = await res.json();
+      const cur  = data.current;
+      const speed = Math.round(cur.wind_speed_10m);
+      const deg   = cur.wind_direction_10m;
+
+      // Dirección del viento: el viento VIENE DE esta dirección
+      const dirs = ['N','NE','E','SE','S','SO','O','NO','N'];
+      const dir  = dirs[Math.round(deg/45)];
+
+      // Flecha apuntando a donde sopla el viento (origen + 180°)
+      const arrDeg = (deg + 180) % 360;
+      document.getElementById('wind-arrow').style.transform = `rotate(${arrDeg}deg)`;
+      document.getElementById('wind-arrow').textContent = '↑';
+
+      // Consejo: salir en contra del viento (de donde viene), volver con él
+      const oppDir = dirs[Math.round(((deg+180)%360)/45)];
+      document.getElementById('wind-advice').innerHTML =
+        `<strong>${speed} km/h</strong> desde el <strong>${dir}</strong>.<br>
+         Sal hacia el <strong>${dir}</strong> (contra el viento) y vuelve con él.`;
+      document.getElementById('wind-sub').textContent =
+        speed < 15 ? 'Viento suave — cualquier ruta es buena.'
+        : speed < 30 ? 'Viento moderado — planifica bien el regreso.'
+        : '⚠️ Viento fuerte — ruta circular corta recomendada.';
+
+    } catch(e) {
+      document.getElementById('wind-advice').textContent = 'No se pudieron obtener los datos del viento.';
+    }
+  }, () => {
+    document.getElementById('wind-advice').textContent = 'Activa la ubicación para ver el viento local.';
+  });
+}
+
+// ── Utilidades ───────────────────────────────────────────────────
+function formatTime(minutes) {
+  if (!minutes || isNaN(minutes)) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? `${h}h ${m>0?m+'min':''}` : `${m}min`;
+}
+
+function parseTimeMinutes(str) {
+  if (!str || str === '—') return null;
+  const hMatch = str.match(/(\d+)h/);
+  const mMatch = str.match(/(\d+)min/);
+  return (hMatch ? parseInt(hMatch[1])*60 : 0) + (mMatch ? parseInt(mMatch[1]) : 0) || null;
+}
+</script>
+</body>
+</html>

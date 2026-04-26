@@ -133,3 +133,19 @@ CREATE TABLE IF NOT EXISTS maintenance_thresholds (
 
 -- Foto de perfil del atleta
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
+-- Rutas de ciclismo
+CREATE TABLE IF NOT EXISTS routes (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name              TEXT NOT NULL DEFAULT 'Mi Ruta',
+  type              TEXT NOT NULL DEFAULT 'road',
+  geojson           JSONB NOT NULL,
+  distance_km       NUMERIC,
+  elevation_gain_m  NUMERIC,
+  estimated_minutes INTEGER,
+  notes             TEXT,
+  is_favorite       BOOLEAN DEFAULT false,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ DEFAULT NOW()
+);
