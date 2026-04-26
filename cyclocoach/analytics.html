@@ -1460,17 +1460,20 @@ async function autoEstimateZones() {
     }
 
     // ── FC Máx: filtrar picos de sensor ──
+    // HR_CEILING: cap fisiológico por edad para excluir lecturas imposibles
     const ageForHR = parseInt(athlete.age) || 35;
     const HR_CEILING = Math.min(220, Math.round(220 - ageForHR * 0.5 + 20));
     const validMaxHRs = state.activities
       .map(a => parseInt(a.max_hr) || 0)
       .filter(hr => hr >= 100 && hr <= HR_CEILING);
     let stravaMaxHR = 0;
-    if (validMaxHRs.length >= 3) {
+    if (validMaxHRs.length > 0) {
       const sorted = [...validMaxHRs].sort((a, b) => b - a);
-      stravaMaxHR = sorted[Math.floor(sorted.length * 0.05)] || sorted[0];
-    } else if (validMaxHRs.length > 0) {
-      stravaMaxHR = Math.max(...validMaxHRs);
+      // Si el valor más alto supera en >12 bpm al segundo (fallo puntual del sensor),
+      // descartarlo y usar el segundo. En todos los demás casos, el máximo real es válido
+      // (el percentil 5% descartaba demasiados, perdiendo picos reales como 180+).
+      const isTopSpike = sorted.length >= 2 && (sorted[0] - sorted[1]) > 12;
+      stravaMaxHR = isTopSpike ? sorted[1] : sorted[0];
     }
 
     let estimatedMaxHR = stravaMaxHR > 0 ? stravaMaxHR
