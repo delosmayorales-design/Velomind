@@ -309,6 +309,9 @@
       <button class="btn btn-secondary btn-sm" id="btn-wind" onclick="showWindSuggestion()">
         <i class="fas fa-wind"></i> Viento
       </button>
+      <button class="btn btn-secondary btn-sm" onclick="openWindRouteModal()" style="background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.35);color:#00D4FF;">
+        <i class="fas fa-wind"></i> Ruta por viento
+      </button>
       <button class="btn btn-ghost btn-sm" onclick="toggleCycleOverlay()" id="btn-overlay" title="Mostrar rutas ciclistas en el mapa">
         <i class="fas fa-layer-group"></i> Rutas ciclistas
       </button>
@@ -408,6 +411,74 @@
     </div>
   </div>
 </div>
+
+<!-- Modal: Ruta por viento -->
+<div id="wind-route-modal" style="display:none">
+  <div class="modal-overlay" onclick="if(event.target===this)closeWindRouteModal()">
+    <div class="modal-box" style="width:360px">
+      <div class="modal-title">
+        <i class="fas fa-wind" style="color:#00D4FF"></i> Ruta inteligente por viento
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.6">
+        Saldrás <strong>contra el viento</strong> (cuando estás fresco) y volverás <strong>con viento a favor</strong> (cuando estás cansado).
+      </p>
+
+      <!-- Estado del viento -->
+      <div id="wr-wind-status" style="background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text-primary)">
+        <i class="fas fa-circle-notch fa-spin" style="color:#00D4FF"></i> Obteniendo viento...
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <div style="flex:1">
+          <label style="font-size:11px;color:var(--text-muted);font-weight:600;display:block;margin-bottom:5px">DISTANCIA (km)</label>
+          <input id="wr-km" class="modal-input" type="number" min="5" max="300" value="50" style="margin-bottom:0">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:11px;color:var(--text-muted);font-weight:600;display:block;margin-bottom:5px">TIPO DE RUTA</label>
+          <select id="wr-type" class="modal-select" style="margin-bottom:0">
+            <option value="road">🚴 Road</option>
+            <option value="gravel">🪨 Gravel</option>
+            <option value="mtb">🏔️ MTB</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label style="font-size:11px;color:var(--text-muted);font-weight:600;display:block;margin-bottom:5px">FORMA DE LA RUTA</label>
+        <div style="display:flex;gap:6px">
+          <button class="wr-shape-btn active" data-shape="out-back" onclick="selectShape(this)">
+            ↗↙ Ida y vuelta
+          </button>
+          <button class="wr-shape-btn" data-shape="loop" onclick="selectShape(this)">
+            🔄 Circular
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-row">
+        <button class="modal-btn modal-btn-cancel" onclick="closeWindRouteModal()">Cancelar</button>
+        <button class="modal-btn modal-btn-save" id="wr-gen-btn" onclick="generateWindRoute()" style="background:linear-gradient(135deg,#00D4FF,#0099cc)">
+          <i class="fas fa-magic"></i> Generar ruta
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.wr-shape-btn {
+  flex: 1; padding: 8px 6px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-muted);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: all 0.18s;
+}
+.wr-shape-btn.active {
+  background: rgba(0,212,255,0.12);
+  border-color: rgba(0,212,255,0.4);
+  color: #00D4FF;
+}
+</style>
 
 <script src="js/auth.js"></script>
 <script src="js/app.js"></script>
@@ -894,6 +965,157 @@ function haversineTotal(ll) {
 }
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Ruta por viento ───────────────────────────────────────────────
+let windRouteData = null; // { lat, lon, windDeg, windSpeed }
+let wrShape = 'out-back';
+
+function selectShape(btn) {
+  document.querySelectorAll('.wr-shape-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  wrShape = btn.dataset.shape;
+}
+
+async function openWindRouteModal() {
+  document.getElementById('wind-route-modal').style.display = 'block';
+  document.getElementById('wr-wind-status').innerHTML =
+    '<i class="fas fa-circle-notch fa-spin" style="color:#00D4FF"></i> Obteniendo posición y viento...';
+  windRouteData = null;
+
+  if (!navigator.geolocation) {
+    document.getElementById('wr-wind-status').innerHTML =
+      '<span style="color:#ff4757">⚠️ Geolocalización no disponible.</span>';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lon } = pos.coords;
+    try {
+      const res  = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,weathercode&wind_speed_unit=kmh&timezone=auto`);
+      const data = await res.json();
+      const cur  = data.current;
+      const spd  = Math.round(cur.wind_speed_10m);
+      const gust = Math.round(cur.wind_gusts_10m);
+      const deg  = cur.wind_direction_10m;
+      const from = degToCompass(deg);
+
+      windRouteData = { lat, lon, windDeg: deg, windSpeed: spd };
+
+      const lvlColor = spd < 15 ? '#10B981' : spd < 30 ? '#F59E0B' : '#EF4444';
+      document.getElementById('wr-wind-status').innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:28px;font-weight:800;color:${lvlColor};font-family:'Space Grotesk',sans-serif">${spd}<span style="font-size:13px;font-weight:500"> km/h</span></div>
+          <div>
+            <div style="font-weight:700;color:var(--text-primary)">Desde el ${from} · Ráfagas ${gust} km/h</div>
+            <div style="color:#00D4FF;font-size:12px;margin-top:3px">
+              ↗ Sal hacia el <strong>${from}</strong> · ↙ Vuelve con viento a favor
+            </div>
+          </div>
+        </div>`;
+    } catch(e) {
+      document.getElementById('wr-wind-status').innerHTML =
+        `<span style="color:#ff4757">Error al obtener el viento: ${e.message}</span>`;
+    }
+  }, () => {
+    document.getElementById('wr-wind-status').innerHTML =
+      '<span style="color:#ff4757">⚠️ Activa la ubicación para continuar.</span>';
+  });
+}
+
+function closeWindRouteModal() {
+  document.getElementById('wind-route-modal').style.display = 'none';
+}
+
+// Calcular punto GPS a X km de distancia en una dirección (bearing en grados)
+function destinationPoint(lat, lon, bearingDeg, distKm) {
+  const R   = 6371;
+  const d   = distKm / R;
+  const br  = bearingDeg * Math.PI / 180;
+  const la1 = lat * Math.PI / 180;
+  const lo1 = lon * Math.PI / 180;
+  const la2 = Math.asin(Math.sin(la1)*Math.cos(d) + Math.cos(la1)*Math.sin(d)*Math.cos(br));
+  const lo2 = lo1 + Math.atan2(Math.sin(br)*Math.sin(d)*Math.cos(la1), Math.cos(d)-Math.sin(la1)*Math.sin(la2));
+  return [la2 * 180/Math.PI, lo2 * 180/Math.PI];
+}
+
+async function generateWindRoute() {
+  if (!windRouteData) { alert('Espera a que se carguen los datos del viento'); return; }
+  const km   = parseFloat(document.getElementById('wr-km').value) || 50;
+  const type = document.getElementById('wr-type').value;
+  const { lat, lon, windDeg } = windRouteData;
+
+  const btn = document.getElementById('wr-gen-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Calculando...';
+
+  try {
+    // El viento VIENE DE windDeg → salimos en esa dirección (contra el viento)
+    // "into wind" bearing = windDeg mismo (nos dirigimos hacia donde viene el viento)
+    const intoBearing = windDeg;
+
+    let routeWaypoints;
+    if (wrShape === 'out-back') {
+      // Ida y vuelta: salida → punto central → salida
+      const mid = destinationPoint(lat, lon, intoBearing, km / 2);
+      routeWaypoints = [
+        { lat, lon },
+        { lat: mid[0], lon: mid[1] },
+        { lat, lon },
+      ];
+    } else {
+      // Circular: triángulo. Sal contra viento, gira 120°, vuelve con viento
+      const leg  = km / 3;
+      const p1   = destinationPoint(lat, lon, intoBearing, leg);
+      const p2   = destinationPoint(p1[0], p1[1], (intoBearing + 120) % 360, leg);
+      routeWaypoints = [
+        { lat, lon },
+        { lat: p1[0], lon: p1[1] },
+        { lat: p2[0], lon: p2[1] },
+        { lat, lon },
+      ];
+    }
+
+    // Calcular ruta con los waypoints generados
+    clearRoute();
+    drawingActive = false;
+    document.getElementById('map').classList.remove('drawing');
+    waypoints = routeWaypoints.map(w => ({ lat: w.lat, lng: w.lon }));
+    currentRouteType = type;
+
+    let result;
+    try { result = await routeValhalla(type); }
+    catch { result = await routeOSRM(type); }
+
+    const { latLngs, distKm, durMin } = result;
+    routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la,ln]) => [ln,la]) };
+
+    const color = type === 'gravel' ? '#F59E0B' : type === 'mtb' ? '#10B981' : '#00D4FF';
+    if (routeLayer) map.removeLayer(routeLayer);
+    routeLayer = L.polyline(latLngs, { color, weight: 5, opacity: 0.9, interactive: false }).addTo(map);
+    map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
+
+    // Marcador de salida/llegada
+    L.circleMarker([lat, lon], {
+      radius: 10, fillColor: '#00D4FF', color: '#fff', weight: 3, fillOpacity: 1, interactive: false
+    }).addTo(map).bindPopup('📍 Salida / Llegada').openPopup();
+
+    document.getElementById('stat-dist').textContent = distKm.toFixed(1);
+    document.getElementById('stat-time').textContent = formatTime(durMin);
+    document.getElementById('map-stats').classList.add('visible');
+    document.getElementById('draw-toolbar').classList.add('visible');
+    document.getElementById('modal-name').value =
+      `Ruta ${wrShape === 'loop' ? 'circular' : 'ida y vuelta'} ${Math.round(distKm)}km · ${degToCompass(windDeg)}`;
+    document.getElementById('modal-type').value = type;
+
+    fetchElevation(latLngs);
+    closeWindRouteModal();
+    showToast(`Ruta generada: ${distKm.toFixed(1)} km · ${degToCompass(windDeg)} → ${degToCompass((windDeg+180)%360)} a favor`, 'info');
+  } catch(e) {
+    showToast('No se pudo generar la ruta: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-magic"></i> Generar ruta';
+  }
 }
 </script>
 </body>
