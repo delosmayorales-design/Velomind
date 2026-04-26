@@ -459,14 +459,17 @@
 
         <!-- Upload -->
         <div class="card">
-          <div class="card-header"><div class="card-title">📷 Fotos</div></div>
+          <div class="card-header"><div class="card-title">📷 Foto &nbsp;·&nbsp; 🎥 Video</div></div>
           <div class="card-body">
             <div class="upload-zone" id="dropZone">
-              <div style="font-size:28px">📷</div>
+              <div style="font-size:22px;letter-spacing:6px">📷&nbsp;🎥</div>
               <div style="font-weight:600;font-size:13px;margin-top:6px">Arrastra o haz clic</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">JPG / PNG / WEBP · Máx 4 fotos · 4MB c/u</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.7">
+                📷 JPG / PNG / WEBP · hasta 4 fotos<br>
+                🎥 MP4 / MOV · hasta 100 MB
+              </div>
             </div>
-            <input type="file" id="fileInput" accept="image/*" multiple style="display:none">
+            <input type="file" id="fileInput" accept="image/*,video/*" multiple style="display:none">
             <div class="photo-strip" id="photoStrip"></div>
           </div>
         </div>
@@ -496,27 +499,33 @@
                   placeholder="rodilla, espalda, manos...">
               </div>
 
-              <div class="measure-guide-box" style="margin-top: 15px; border-color: var(--primary-light); background: rgba(158,214,43, 0.03)">
-                <div class="field-label" style="color:var(--primary-light)"><i class="fas fa-camera"></i> La foto perfecta</div>
-                <div class="guide-step">
-                  <i class="fas fa-arrows-alt"></i>
-                  <div><strong>Vista Lateral:</strong> Cámara a la altura de la cadera, perpendicular a la bici.</div>
+              <div class="measure-guide-box" style="margin-top:15px;border-color:var(--primary-light);background:rgba(158,214,43,0.03)">
+                <div class="field-label" style="color:var(--primary-light);cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:0"
+                  onclick="toggleGuide()">
+                  <span><i class="fas fa-camera"></i> Cómo sacar la foto perfecta</span>
+                  <i class="fas fa-chevron-down" id="guideChevron" style="font-size:10px;transition:transform .2s"></i>
                 </div>
-                <div class="guide-step">
-                  <i class="fas fa-clock"></i>
-                  <div><strong>Posición Pedal:</strong> Biela vertical (el pie abajo del todo, a las 6 en punto).</div>
-                </div>
-                <div class="guide-step">
-                  <i class="fas fa-level-up-alt"></i>
-                  <div><strong>Nivelado:</strong> Bici en llano o rodillo. No saques la foto en cuesta.</div>
-                </div>
-                <div class="guide-step">
-                  <i class="fas fa-user-check"></i>
-                  <div><strong>Ropa:</strong> Ropa ajustada (culote) para que la IA detecte tus articulaciones.</div>
-                </div>
-                <div class="guide-step">
-                  <i class="fas fa-hand-paper"></i>
-                  <div><strong>Manos:</strong> En las <strong>manetas</strong> (carretera/gravel) para un análisis estándar, o abajo para posición Aero.</div>
+                <div id="guideContent" style="display:none;margin-top:10px">
+                  <div class="guide-step">
+                    <i class="fas fa-arrows-alt"></i>
+                    <div><strong>Vista Lateral:</strong> Cámara a la altura de la cadera, perpendicular a la bici.</div>
+                  </div>
+                  <div class="guide-step">
+                    <i class="fas fa-clock"></i>
+                    <div><strong>Posición Pedal:</strong> Biela vertical (el pie abajo del todo, a las 6 en punto).</div>
+                  </div>
+                  <div class="guide-step">
+                    <i class="fas fa-level-up-alt"></i>
+                    <div><strong>Nivelado:</strong> Bici en llano o rodillo. No saques la foto en cuesta.</div>
+                  </div>
+                  <div class="guide-step">
+                    <i class="fas fa-user-check"></i>
+                    <div><strong>Ropa:</strong> Ropa ajustada (culote) para que la IA detecte tus articulaciones.</div>
+                  </div>
+                  <div class="guide-step">
+                    <i class="fas fa-hand-paper"></i>
+                    <div><strong>Manos:</strong> En las <strong>manetas</strong> para análisis estándar, o abajo para posición Aero.</div>
+                  </div>
                 </div>
               </div>
 
@@ -848,10 +857,15 @@ dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); loadFiles(e.dataTransfer.files); });
-fileInput.addEventListener('change', e => loadFiles(e.target.files));
+fileInput.addEventListener('change', e => { loadFiles(e.target.files); e.target.value = ''; });
 
 function loadFiles(files) {
   Array.from(files).forEach(f => {
+    if (f.type.startsWith('video/')) {
+      // Redirigir al panel de análisis de video
+      handleVideoFile(f);
+      return;
+    }
     if (!f.type.startsWith('image/') || photos.length >= 4) return;
     const reader = new FileReader();
     reader.onload = ev => {
@@ -861,6 +875,14 @@ function loadFiles(files) {
     };
     reader.readAsDataURL(f);
   });
+}
+
+function toggleGuide() {
+  const content  = document.getElementById('guideContent');
+  const chevron  = document.getElementById('guideChevron');
+  const open     = content.style.display !== 'none';
+  content.style.display   = open ? 'none' : 'block';
+  chevron.style.transform = open ? '' : 'rotate(180deg)';
 }
 
 function renderStrip() {
