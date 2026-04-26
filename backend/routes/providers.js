@@ -149,13 +149,14 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
   }
 
   try {
-    // Descargar el historial completo (hasta 2000 rutas para asegurar que trae todo)
+    // Descargar el historial de actividades de exactamente 1 año atrás
     let page = 1;
     let acts = [];
+    const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60);
     
     while (true) {
       const r = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}&_t=${Date.now()}`,
+        `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=200&page=${page}&_t=${Date.now()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -192,15 +193,18 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       }
     }
 
+    // Ordenar todas las actividades de más antigua a más reciente (orden cronológico)
+    acts.sort((a, b) => new Date(a.start_date_local || a.start_date) - new Date(b.start_date_local || b.start_date));
+
     const rowsToInsert = [];
 
     for (const a of acts) {
-      // 1. Filtrar primero: solo nos interesan salidas en bici (Ride, VirtualRide, Gravel, MTB) o carrera
-      const isRide = (a.sport_type || a.type || '').includes('Ride');
-      const isRun = (a.sport_type || a.type || '').includes('Run');
-      if (!isRide && !isRun) continue;
+      // 1. Filtrar primero: SOLO salidas ciclistas (Ride, VirtualRide, EBikeRide, GravelRide, MountainBikeRide)
+      const typeStr = a.sport_type || a.type || '';
+      const isRide = typeStr.includes('Ride') || typeStr.includes('MountainBike') || typeStr.includes('Gravel');
+      if (!isRide) continue;
       
-      const type = isRun ? 'running' : 'cycling';
+      const type = 'cycling';
 
       // Calcular TSS e Intensity Factor (IF) basándonos en la potencia normalizada
       const np = a.weighted_average_watts || a.average_watts || 0;
