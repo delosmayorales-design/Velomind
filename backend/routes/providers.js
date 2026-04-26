@@ -239,20 +239,31 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
 
     const rowsToInsert = [];
 
+    // LOG: tipos de actividad recibidos de Strava
+    const typeCount = acts.reduce((acc, a) => {
+      const t = a.sport_type || a.type || 'unknown';
+      acc[t] = (acc[t] || 0) + 1;
+      return acc;
+    }, {});
+    console.log(`[Strava Sync] ── Tipos de actividad recibidos de Strava (${acts.length} total):`, JSON.stringify(typeCount));
+
     for (const a of acts) {
       // 1. Filtrar primero: SOLO salidas ciclistas (Ride, VirtualRide, EBikeRide, GravelRide, MountainBikeRide)
       const typeStr = a.sport_type || a.type || '';
       const nameLower = (a.name || '').toLowerCase();
-      
+
       const validCyclingTypes = ['Ride', 'VirtualRide', 'EBikeRide', 'MountainBikeRide', 'GravelRide'];
       let isRide = validCyclingTypes.includes(typeStr);
-      
+
       // Detección opcional por nombre si Strava lo catalogó diferente (ej: Workout con "mtb" en el título)
       if (!isRide && (nameLower.includes('mtb') || nameLower.includes('gravel') || nameLower.includes('ciclismo'))) {
         isRide = true;
       }
-      
-      if (!isRide) continue;
+
+      if (!isRide) {
+        console.log(`[Strava Sync] ⚠️ DESCARTADA: "${a.name}" → tipo="${typeStr}" (no es ciclismo)`);
+        continue;
+      }
       
       const type = 'cycling';
 
@@ -311,22 +322,30 @@ rowsToInsert.push({
       });
     }
     
-    console.log(`[Strava Sync] Total descargadas de Strava: ${acts.length} | Actividades ciclistas: ${rowsToInsert.length} | user_id: ${uid}`);
+    console.log(`[Strava Sync] ── Total Strava: ${acts.length} | Ciclistas filtradas: ${rowsToInsert.length} | user_id: ${uid}`);
+    if (rowsToInsert.length > 0) {
+      console.log('[Strava Sync] Primera fila a insertar:', JSON.stringify(rowsToInsert[0]).substring(0, 300));
+      console.log('[Strava Sync] Última fila a insertar:', JSON.stringify(rowsToInsert[rowsToInsert.length - 1]).substring(0, 300));
+    }
 
     // Guardar en base de datos en bloques de 100 para no bloquear la API
     let fallos = 0;
     for (let i = 0; i < rowsToInsert.length; i += 100) {
       const chunk = rowsToInsert.slice(i, i + 100);
-      const { error } = await supabase.from('activities').upsert(chunk, { onConflict: 'id' });
+      const { data: upsertData, error } = await supabase.from('activities').upsert(chunk, { onConflict: 'id' });
       if (error) {
-        console.warn(`[Strava Sync] Chunk falló (${error.message}). Reintentando fila a fila para salvar los datos...`);
+        console.error(`[Strava Sync] ❌ Chunk[${i}-${i+chunk.length}] FALLÓ: code=${error.code} msg=${error.message} details=${error.details} hint=${error.hint}`);
         for (const row of chunk) {
           const { error: rowErr } = await supabase.from('activities').upsert(row, { onConflict: 'id' });
           if (rowErr) {
-            console.error(`[Strava Sync] Fila rechazada por BD (${row.id}):`, rowErr.message);
+            console.error(`[Strava Sync] ❌ Fila rechazada (${row.id}): code=${rowErr.code} msg=${rowErr.message}`);
             fallos++;
+          } else {
+            console.log(`[Strava Sync] ✅ Fila OK en reintento: ${row.id}`);
           }
         }
+      } else {
+        console.log(`[Strava Sync] ✅ Chunk[${i}-${i+chunk.length}] guardado OK`);
       }
     }
 

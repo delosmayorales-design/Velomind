@@ -49,11 +49,26 @@ router.get('/debug', async (req, res) => {
 
 // GET /api/garage  — devuelve { garage: { bikes:[...] }, history:[] }
 router.get('/', async (req, res) => {
+  const uid = req.user.id;
+  console.log('\n[GET /garage] ══════════════════════════');
+  console.log('[GET /garage] user autenticado:', JSON.stringify(req.user));
+
+  // DEBUG: ver TODAS las bicis en la BD (sin filtro de usuario)
+  const { data: allBikes } = await supabase.from('bikes').select('id, user_id, name');
+  console.log('[GET /garage] Total bicis en BD:', allBikes?.length || 0);
+  console.log('[GET /garage] Distribución por user_id:', JSON.stringify(
+    (allBikes || []).reduce((acc, b) => { acc[b.user_id] = (acc[b.user_id] || 0) + 1; return acc; }, {})
+  ));
+
   const { data: bikes, error: bikesErr } = await supabase
     .from('bikes').select('*')
-    .eq('user_id', req.user.id)
+    .eq('user_id', uid)
     .order('is_active', { ascending: false })
     .order('updated_at',  { ascending: false });
+
+  console.log('[GET /garage] Bicis devueltas para user_id=' + uid + ':', bikes?.length || 0);
+  if (bikes?.length) console.log('[GET /garage] Nombres:', bikes.map(b => `${b.name} (uid=${b.user_id})`).join(', '));
+  if (bikesErr) console.error('[GET /garage] ERROR Supabase:', bikesErr.message);
 
   if (bikesErr) return res.status(500).json({ error: bikesErr.message });
 
