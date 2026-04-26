@@ -218,21 +218,26 @@ router.get('/power-curve', async (req, res) => {
   const durations = [5, 10, 30, 60, 120, 300, 600, 1200, 1800, 3600];
   const labels    = ['5s','10s','30s','1min','2min','5min','10min','20min','30min','60min'];
 
-  // Límite fisiológico: spikes del sensor por encima de esto son ruido
-  const powerCap = Math.min(2000, ftp * 10);
+  // Límite fisiológico más realista: evita spikes irreales de potenciómetros
+  const powerCap = Math.min(1500, ftp * 5);
 
   const estimateEfforts = (durSec, avg, np, max) => {
     const base = np > 0 ? np : avg;
     const eff = {};
     if (base <= 0 || durSec <= 0) return eff;
-    // Descartar max_power si supera el límite fisiológico (spike de sensor)
-    const safeMax = max > 0 && max <= powerCap ? max : 0;
+    
+    // Descartar max_power si es un spike obvio. Si no hay max, usar un estimado razonable.
+    let safeMax = max > 0 && max <= powerCap ? max : 0;
+    if (safeMax === 0) safeMax = Math.round(base * 2.8); // Sprint estimado conservador
+
     durations.forEach(d => {
       if (d <= durSec) {
-        if (d <= 10 && safeMax > 0) {
-          eff[d] = safeMax;
-        } else if (d === 30 && safeMax > 0) {
-          eff[d] = Math.round(safeMax * 0.6 + base * 0.4);
+        if (d === 5) {
+          eff[d] = Math.round(safeMax);
+        } else if (d === 10) {
+          eff[d] = Math.round(safeMax * 0.85 + base * 0.15);
+        } else if (d === 30) {
+          eff[d] = Math.round(safeMax * 0.45 + base * 0.55);
         } else {
           let est = Math.round(base * Math.pow(durSec / d, 0.09));
           if (safeMax > 0 && est > safeMax) est = safeMax;
