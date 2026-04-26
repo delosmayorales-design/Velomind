@@ -281,6 +281,26 @@
       <div class="chart-wrap-lg"><canvas id="pmc-canvas"></canvas></div>
     </div>
 
+    <!-- ROW 2b: Perfil de Ciclista -->
+    <div class="card mb-6" id="rider-profile-card" style="display:none">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-user-circle"></i> Tu Perfil de Ciclista</div>
+        <span id="rider-profile-badge" class="badge" style="font-size:13px;padding:4px 12px"></span>
+      </div>
+      <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;padding:4px 0 8px">
+        <!-- Radar -->
+        <div style="flex:0 0 160px;height:160px;position:relative">
+          <canvas id="rider-radar-canvas"></canvas>
+        </div>
+        <!-- Info -->
+        <div style="flex:1;min-width:200px">
+          <div id="rider-profile-name" style="font-size:24px;font-weight:800;margin-bottom:6px"></div>
+          <div id="rider-profile-desc" style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:12px;max-width:420px"></div>
+          <div id="rider-profile-stats" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- ROW 3: Weekly TSS + Zones -->
     <div class="grid-2">
       <div class="card">
@@ -389,8 +409,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/app.js?v=103"></script>
-<script src="js/backend-sync.js?v=103"></script>
+<script src="js/app.js?v=104"></script>
+<script src="js/backend-sync.js?v=104"></script>
 <script>
 
 // ─── STATE ────────────────────────────────────────────────────
@@ -785,6 +805,7 @@ function render() {
   try { renderVolumeStats(acts, days); } catch(e) { console.error('Error renderVolumeStats', e); }
   try { renderBestEfforts(acts, ftp); } catch(e) { console.error('Error renderBestEfforts', e); }
   try { loadPowerCurve(days); } catch(e) { console.error('Error loadPowerCurve', e); }
+  try { renderRiderProfile(state.activities, state.athlete || AppState?.athlete || {}, null); } catch(e) { console.error('Error renderRiderProfile', e); }
 }
 
 // ─── PMC CHART ────────────────────────────────────────────────
@@ -1362,6 +1383,155 @@ async function renderBestEfforts(acts, ftp) {
   }
 }
 
+// ─── RIDER PROFILE ────────────────────────────────────────────
+var riderRadarChart = null;
+
+function computeRiderProfile(acts, athlete, curve) {
+  var ftp    = Number(athlete && athlete.ftp) || 0;
+  var weight = Number(athlete && athlete.weight) || 0;
+  if (!ftp || acts.length < 5) return null;
+
+  var wkg    = weight > 0 ? ftp / weight : 0;
+  var pwrActs = acts.filter(function(a){ return a.avg_power > 0 && a.avg_power <= 2500 && a.duration > 0; });
+  var allActs = acts.filter(function(a){ return a.duration > 0; });
+
+  // 1. RESISTENCIA — duración media de las salidas
+  var avgDurH = allActs.reduce(function(s,a){ return s + a.duration; }, 0) / allActs.length / 3600;
+  var resistencia = Math.min(100, (avgDurH / 3.5) * 100);
+
+  // 2. ESCALADA — W/kg + desnivel medio por km
+  var elevActs = allActs.filter(function(a){ return a.distance > 1000 && (a.elevation || 0) >= 0; });
+  var avgElevPerKm = elevActs.length
+    ? elevActs.reduce(function(s,a){ return s + (a.elevation / (a.distance / 1000)); }, 0) / elevActs.length : 0;
+  var wkgScore  = wkg > 0 ? Math.min(100, Math.max(0, (wkg - 1.8) / 2.7 * 100)) : 40;
+  var elevScore = Math.min(100, (avgElevPerKm / 22) * 100);
+  var escalada  = wkgScore * 0.65 + elevScore * 0.35;
+
+  // 3. SPRINT — pico de potencia relativo al FTP
+  var p5s  = curve && curve.find(function(c){ return c.dur === 5; });
+  var p30s = curve && curve.find(function(c){ return c.dur === 30; });
+  var maxFromActs = pwrActs.reduce(function(m,a){ return Math.max(m, a.max_power || 0); }, 0);
+  var peakPwr = (p5s && p5s.power) ? p5s.power : ((p30s && p30s.power) ? p30s.power * 1.15 : maxFromActs);
+  var sprintRatio = peakPwr > 0 ? peakPwr / ftp : 0;
+  var sprint = Math.min(100, Math.max(0, (sprintRatio - 3.0) / 6.0 * 100));
+
+  // 4. REGULARIDAD — baja variabilidad NP/avg (ideal TT/Rodador)
+  var viActs = pwrActs.filter(function(a){ return a.np > 0 && a.np >= a.avg_power; });
+  var avgVI  = viActs.length
+    ? viActs.reduce(function(s,a){ return s + (a.np / a.avg_power); }, 0) / viActs.length : 1.06;
+  var regularidad = Math.min(100, Math.max(0, (1 - (avgVI - 1.0) / 0.18) * 100));
+
+  // 5. UMBRAL — FTP en contexto (normalizado para ciclistas reales 150-400W)
+  var p20mObj = curve && curve.find(function(c){ return c.dur === 1200; });
+  var p20m    = p20mObj ? p20mObj.power : 0;
+  var ftpScore    = Math.min(100, Math.max(0, (ftp - 150) / 250 * 100));
+  var sustainScore = p20m > 0 ? Math.min(100, Math.max(0, (p20m / ftp - 0.80) / 0.25 * 100)) : ftpScore;
+  var umbral = ftpScore * 0.55 + sustainScore * 0.45;
+
+  var scores = {
+    resistencia: Math.round(Math.max(0, Math.min(100, resistencia))),
+    escalada:    Math.round(Math.max(0, Math.min(100, escalada))),
+    sprint:      Math.round(Math.max(0, Math.min(100, sprint))),
+    regularidad: Math.round(Math.max(0, Math.min(100, regularidad))),
+    umbral:      Math.round(Math.max(0, Math.min(100, umbral))),
+  };
+
+  var PROFILES = [
+    { id:'sprinter', name:'Sprinter', emoji:'⚡', color:'#EF4444',
+      desc:'Tu arma es la potencia explosiva. Eres letal en llegadas al sprint y marcas diferencias en finales llanos. Tu entrenamiento debe incluir series cortas máximas y trabajo de velocidad.',
+      condition: function(s){ return s.sprint > 62 && s.sprint >= s.escalada && s.sprint >= s.resistencia; } },
+    { id:'escalador', name:'Escalador', emoji:'🏔️', color:'#10B981',
+      desc:'La montaña es tu terreno. Tu relación W/kg y el desnivel acumulado en tus rutas te convierten en una amenaza en puerto. Trabaja la resistencia muscular y el ritmo en subidas largas.',
+      condition: function(s){ return s.escalada > 62 && s.escalada >= s.sprint; } },
+    { id:'puncheur', name:'Puncheur', emoji:'💪', color:'#F59E0B',
+      desc:'Eres explosivo en los repechos cortos y aguantas en subidas duras. Combinas potencia anaeróbica con capacidad aeróbica. Tu baza son los finales en circuito y las clásicas con pavés.',
+      condition: function(s){ return s.escalada > 52 && s.sprint > 52; } },
+    { id:'contrarrelojista', name:'Contrarrelojista', emoji:'🕐', color:'#8B5CF6',
+      desc:'Eres una máquina de ritmo. Tu pedaleo es eficiente y constante. Aprovecha tu capacidad de mantener el umbral durante períodos largos — las CRI y triatlones son tu hábitat.',
+      condition: function(s){ return s.regularidad > 62 && s.umbral > 52; } },
+    { id:'fondista', name:'Fondista', emoji:'🏅', color:'#3B82F6',
+      desc:'La resistencia es tu fortaleza. Puedes mantener el ritmo durante horas y eres clave en fondos y audax. Trabaja la potencia en intervalos para elevar el techo aeróbico.',
+      condition: function(s){ return s.resistencia > 62; } },
+    { id:'rodador', name:'Rodador', emoji:'🔄', color:'#6B7280',
+      desc:'Eres completo y versátil. Te adaptas a diferentes terrenos y ritmos. Con trabajo específico de intervalos o montaña puedes decantar tu perfil hacia un rol más definido.',
+      condition: function(){ return true; } },
+  ];
+
+  var profile = null;
+  for (var i = 0; i < PROFILES.length; i++) {
+    if (PROFILES[i].condition(scores)) { profile = PROFILES[i]; break; }
+  }
+
+  return { profile: profile, scores: scores, wkg: wkg > 0 ? wkg.toFixed(2) : null, avgVI: avgVI.toFixed(2) };
+}
+
+function renderRiderProfile(acts, athlete, curve) {
+  var card = document.getElementById('rider-profile-card');
+  if (!card) return;
+
+  var result = computeRiderProfile(acts, athlete, curve);
+  if (!result || !result.profile) { card.style.display = 'none'; return; }
+
+  card.style.display = '';
+  var p = result.profile;
+  var s = result.scores;
+
+  // Badge + nombre
+  var badge = document.getElementById('rider-profile-badge');
+  if (badge) { badge.textContent = p.emoji + ' ' + p.name; badge.style.background = p.color + '22'; badge.style.color = p.color; badge.style.border = '1px solid ' + p.color + '55'; }
+  var nameEl = document.getElementById('rider-profile-name');
+  if (nameEl) nameEl.innerHTML = '<span style="color:' + p.color + '">' + p.emoji + ' ' + p.name + '</span>';
+  var descEl = document.getElementById('rider-profile-desc');
+  if (descEl) descEl.textContent = p.desc;
+
+  // Stats pills
+  var statsEl = document.getElementById('rider-profile-stats');
+  if (statsEl) {
+    function pill(label, val, color) {
+      return '<div style="padding:5px 10px;background:' + color + '18;border:1px solid ' + color + '44;border-radius:20px;font-size:11px;color:' + color + ';font-weight:600">' + label + ': ' + val + '</div>';
+    }
+    var html = '';
+    if (result.wkg && result.wkg > 0) html += pill('W/kg', result.wkg, '#10B981');
+    html += pill('Sprint', s.sprint + '%', '#EF4444');
+    html += pill('Escalada', s.escalada + '%', '#10B981');
+    html += pill('Umbral', s.umbral + '%', '#8B5CF6');
+    html += pill('Regularidad', s.regularidad + '%', '#3B82F6');
+    statsEl.innerHTML = html;
+  }
+
+  // Radar chart
+  if (riderRadarChart) { riderRadarChart.destroy(); riderRadarChart = null; }
+  var ctx = document.getElementById('rider-radar-canvas');
+  if (!ctx) return;
+  riderRadarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['Resistencia', 'Escalada', 'Sprint', 'Regularidad', 'Umbral'],
+      datasets: [{
+        data: [s.resistencia, s.escalada, s.sprint, s.regularidad, s.umbral],
+        backgroundColor: p.color + '28',
+        borderColor: p.color,
+        borderWidth: 2,
+        pointBackgroundColor: p.color,
+        pointRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return c.raw + ' / 100'; } } } },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { display: false, stepSize: 25 },
+          grid: { color: 'rgba(255,255,255,0.07)' },
+          angleLines: { color: 'rgba(255,255,255,0.07)' },
+          pointLabels: { color: '#9CA3AF', font: { size: 9 } }
+        }
+      }
+    }
+  });
+}
+
 // ─── BOOT ─────────────────────────────────────────────────────
 init().catch(function(e) {
   console.error('[Métricas] Error:', e);
@@ -1575,6 +1745,8 @@ async function loadPowerCurve(days) {
     var pc = await res.json();
     if (!pc.curve || !pc.curve.length) { console.warn('[PowerCurve] Sin datos de curva'); return; }
     renderPowerCurve(pc);
+    // Actualizar perfil de ciclista con la curva de potencia real (sprint más preciso)
+    try { renderRiderProfile(state.activities, state.athlete || AppState?.athlete || {}, pc.curve); } catch(e) {}
   } catch(e) { console.warn('[PowerCurve]', e.message); }
 }
 
