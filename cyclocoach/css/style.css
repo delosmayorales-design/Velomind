@@ -1156,4 +1156,10 @@ html.light-theme .trouble-sym { color: #111827 !important; }
 html.light-theme .mobile-menu-btn { color: #111827 !important; border-color: rgba(0,0,0,0.15) !important; }
 html.light-theme .btn-ghost { color: #4b5563 !important; }
 html.light-theme .btn-ghost:hover { color: #111827 !important; background: rgba(0,0,0,0.05) !important; }
+html.light-theme .btn-secondary { color: #111827 !important; border-color: rgba(0,0,0,0.18) !important; }
+html.light-theme .btn-secondary:hover { color: #111827 !important; }
+html.light-theme .btn-primary { color: #ffffff !important; }
+html.light-theme #btn-weather-hoy, html.light-theme #btn-weather-manana { color: #111827 !important; }
+html.light-theme #btn-weather-hoy[style*="background:var(--primary)"],
+html.light-theme #btn-weather-hoy[style*="background: var(--primary)"] { color: #ffffff !important; }
 html.light-theme .card-title, html.light-theme .nav-section-title { color: #111827 !important; }
