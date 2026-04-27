@@ -541,7 +541,7 @@
         </div>
         <div id="weather-controls" style="display:none; gap:8px">
           <button class="btn btn-secondary btn-sm" id="btn-weather-hoy" onclick="renderWeatherDay('hoy')" style="background:var(--primary);color:#111;border-color:var(--primary)">Hoy (<span id="lbl-hoy"></span>)</button>
-          <button class="btn btn-secondary btn-sm" id="btn-weather-manana" onclick="renderWeatherDay('manana')">Mañana (<span id="lbl-manana"></span>)</button>
+          <button class="btn btn-secondary btn-sm" id="btn-weather-manana" onclick="renderWeatherDay('manana')" style="color:var(--text-primary)">Mañana (<span id="lbl-manana"></span>)</button>
         </div>
       </div>
       <div class="card-body" style="padding:0">
@@ -2245,12 +2245,12 @@ function renderWeatherDay(day) {
   
   if (btnHoy) {
     btnHoy.style.background = day === 'hoy' ? 'var(--primary)' : 'var(--bg-input)';
-    btnHoy.style.color = day === 'hoy' ? '#111' : 'var(--text-secondary)';
+    btnHoy.style.color = day === 'hoy' ? '#111' : 'var(--text-primary)';
     btnHoy.style.borderColor = day === 'hoy' ? 'var(--primary)' : 'var(--border)';
   }
   if (btnManana) {
     btnManana.style.background = day === 'manana' ? 'var(--primary)' : 'var(--bg-input)';
-    btnManana.style.color = day === 'manana' ? '#111' : 'var(--text-secondary)';
+    btnManana.style.color = day === 'manana' ? '#111' : 'var(--text-primary)';
     btnManana.style.borderColor = day === 'manana' ? 'var(--primary)' : 'var(--border)';
   }
 
