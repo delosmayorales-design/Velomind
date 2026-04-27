@@ -1214,6 +1214,7 @@ html.light-theme [onclick*="analyze" i], html.light-theme [onclick*="analyze" i]
 html.light-theme [onclick*="diagnos" i], html.light-theme [onclick*="diagnos" i] *,
 html.light-theme [onclick*="biomec" i], html.light-theme [onclick*="biomec" i] *,
 html.light-theme [onclick*="calcul" i], html.light-theme [onclick*="calcul" i] *,
+html.light-theme [onclick*="calcManual" i], html.light-theme [onclick*="calcManual" i] *,
 html.light-theme [style*="background: var(--primary)" i], html.light-theme [style*="background: var(--primary)" i] *,
 html.light-theme [style*="background:var(--primary)" i], html.light-theme [style*="background:var(--primary)" i] *,
 html.light-theme [style*="background-color: var(--primary)" i], html.light-theme [style*="background-color: var(--primary)" i] *,
