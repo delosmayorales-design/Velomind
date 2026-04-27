@@ -295,6 +295,9 @@
               <i class="fas fa-info-circle"></i>
               <div style="font-size:12px">Orina amarillo claro = correctamente hidratado.</div>
             </div>
+            <button id="btn-reminders" onclick="toggleReminders()" style="margin-top:14px;width:100%;padding:11px;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);border-radius:10px;color:#00D4FF;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s">
+              <i class="fas fa-bell"></i> Activar recordatorios de agua y comida
+            </button>
           </div>
         </div>
       </div>
@@ -977,6 +980,137 @@ function closeMenusModal() {
 initNutrition();
 renderCommonErrors();
 loadPrefs();
+
+// ── Recordatorios de hidratación y comidas ────────────────────
+const REMINDERS_KEY = 'velomind_reminders_active';
+const _reminderTimers = [];
+
+function reminderIsActive() {
+  return localStorage.getItem(REMINDERS_KEY) === '1';
+}
+
+function updateReminderBtn(active) {
+  const btn = document.getElementById('btn-reminders');
+  if (!btn) return;
+  if (active) {
+    btn.style.background = 'rgba(0,212,255,.2)';
+    btn.style.borderColor = 'rgba(0,212,255,.7)';
+    btn.innerHTML = '<i class="fas fa-bell-slash"></i> Desactivar recordatorios';
+  } else {
+    btn.style.background = 'rgba(0,212,255,.1)';
+    btn.style.borderColor = 'rgba(0,212,255,.3)';
+    btn.innerHTML = '<i class="fas fa-bell"></i> Activar recordatorios de agua y comida';
+  }
+}
+
+async function toggleReminders() {
+  if (reminderIsActive()) {
+    localStorage.setItem(REMINDERS_KEY, '0');
+    _reminderTimers.forEach(clearTimeout);
+    _reminderTimers.length = 0;
+    updateReminderBtn(false);
+    showToast('🔕 Recordatorios desactivados', '#64748b');
+    return;
+  }
+
+  if (!('Notification' in window)) {
+    showToast('Tu navegador no soporta notificaciones', '#ff4757');
+    return;
+  }
+
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') {
+    showToast('Permiso de notificaciones denegado. Actívalo en ajustes del navegador.', '#ff4757');
+    return;
+  }
+
+  localStorage.setItem(REMINDERS_KEY, '1');
+  updateReminderBtn(true);
+  scheduleRemindersForToday();
+  showToast('🔔 Recordatorios activados — recibirás avisos de agua y comidas', '#00D4FF');
+}
+
+async function showReminderNotification(title, body, tag) {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    reg.showNotification(title, {
+      body,
+      icon: './logoPerfil.PNG',
+      badge: './logoPerfil.PNG',
+      tag,
+      data: { url: './nutrition.html' },
+      vibrate: [200, 100, 200],
+    });
+  } catch {
+    // Fallback si service worker no disponible
+    new Notification(title, { body, icon: './logoPerfil.PNG' });
+  }
+}
+
+function scheduleRemindersForToday() {
+  _reminderTimers.forEach(clearTimeout);
+  _reminderTimers.length = 0;
+
+  const now = new Date();
+  const todayStr = now.toDateString();
+
+  // ── Vasos de agua ────────────────────────────────────────────
+  const glasses = Math.round((weeklyNutrition[selectedDayIdx ?? (new Date().getDay() + 6) % 7]?.hydration_ml || 2100) / 250);
+  const capped  = Math.min(20, glasses);
+  const startMin = 7 * 60;
+  const endMin   = 22 * 60;
+
+  for (let i = 0; i < capped; i++) {
+    const mins = capped > 1 ? startMin + Math.round(((endMin - startMin) / (capped - 1)) * i) : startMin;
+    const fireAt = new Date();
+    fireAt.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+    const delay = fireAt - now;
+    if (delay <= 0) continue; // ya pasó esta hora
+    const t = setTimeout(() => {
+      if (!reminderIsActive()) return;
+      showReminderNotification(
+        `💧 Vaso ${i + 1} de ${capped}`,
+        `Hora de beber 250ml de agua · ${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`,
+        `agua-${i}`
+      );
+    }, delay);
+    _reminderTimers.push(t);
+  }
+
+  // ── Comidas ──────────────────────────────────────────────────
+  const meals = [
+    { hh: 7,  mm: 30, title: '🍳 Desayuno',        body: 'Hora del desayuno — carbohidratos y proteína para empezar el día.' },
+    { hh: 10, mm: 30, title: '🍌 Almuerzo media mañana', body: 'Snack de media mañana — fruta, yogur o barrita.' },
+    { hh: 14, mm: 0,  title: '🍽️ Comida',           body: 'Hora de comer — la toma más importante del día.' },
+    { hh: 17, mm: 0,  title: '🥤 Merienda',          body: 'Merienda — recarga de carbohidratos si entrenas hoy.' },
+    { hh: 20, mm: 30, title: '🌙 Cena',              body: 'Hora de cenar — proteína y verduras para recuperar.' },
+  ];
+
+  meals.forEach(({ hh, mm, title, body }, idx) => {
+    const fireAt = new Date();
+    fireAt.setHours(hh, mm, 0, 0);
+    const delay = fireAt - now;
+    if (delay <= 0) return;
+    const t = setTimeout(() => {
+      if (!reminderIsActive()) return;
+      showReminderNotification(title, body, `comida-${idx}`);
+    }, delay);
+    _reminderTimers.push(t);
+  });
+}
+
+// Restaurar al cargar si ya estaban activos
+if (reminderIsActive()) {
+  Notification.requestPermission().then(p => {
+    if (p === 'granted') {
+      updateReminderBtn(true);
+      // Esperar a que se cargue la nutrición antes de programar
+      setTimeout(scheduleRemindersForToday, 2000);
+    } else {
+      localStorage.setItem(REMINDERS_KEY, '0');
+    }
+  });
+}
 </script>
 </body>
 </html>
