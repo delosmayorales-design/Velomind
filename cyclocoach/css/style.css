@@ -1225,5 +1225,6 @@ html.light-theme [style*="background-color:var(--primary)" i], html.light-theme 
    AUMENTAR TAMAÑO DEL LOGO (Pantallas Login y Perfil)
    ══════════════════════════════════════════════════════════ */
 img[src*="logoPerfil" i] {
-  width: 180px !important;
+  width: 280px !important;
+  max-width: 90vw !important;
 }
