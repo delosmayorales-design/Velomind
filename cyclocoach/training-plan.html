@@ -1930,33 +1930,65 @@ function acExpandBlocks(intervals) {
   return blocks;
 }
 
+// Voces conocidas buenas en cada plataforma, por orden de preferencia
+const AC_VOICE_PRIORITY = [
+  'Mónica', 'Monica',       // iOS/macOS es-ES — voz Apple de alta calidad
+  'Paulina',                // iOS/macOS es-MX — voz Apple natural
+  'Soledad',                // macOS es-ES
+  'Lupe',                   // macOS es-MX
+  'Google español de Estados Unidos',
+  'Google español',
+  'Microsoft Helena',       // Windows es-ES
+  'Microsoft Laura',        // Windows es-ES
+  'Helena', 'Laura',
+  'María', 'Maria', 'Jorge',
+];
+
+let _acVoice   = null;
+let _acVoiceOK = false;
+
+function acPreloadVoice() {
+  const pick = () => {
+    const voices = speechSynthesis.getVoices();
+    if (!voices.length) return;
+    _acVoiceOK = true;
+    for (const name of AC_VOICE_PRIORITY) {
+      const v = voices.find(v => v.name.includes(name) && v.lang.startsWith('es'));
+      if (v) { _acVoice = v; return; }
+    }
+    // Fallback: cualquier voz española
+    _acVoice = voices.find(v => v.lang === 'es-ES') ||
+               voices.find(v => v.lang.startsWith('es')) || null;
+  };
+  pick();
+  if (!_acVoiceOK) speechSynthesis.onvoiceschanged = pick;
+}
+
+if ('speechSynthesis' in window) acPreloadVoice();
+
 function acBestVoice() {
-  const voices = speechSynthesis.getVoices();
-  return (
-    voices.find(v => v.lang.startsWith('es') && /google/i.test(v.name) && /female|mujer/i.test(v.name)) ||
-    voices.find(v => v.lang.startsWith('es') && /google/i.test(v.name)) ||
-    voices.find(v => v.lang === 'es-ES') ||
-    voices.find(v => v.lang.startsWith('es')) ||
-    null
-  );
+  if (!_acVoiceOK) acPreloadVoice();
+  return _acVoice;
 }
 
 // pauseTimer=true: detiene el tick del cronómetro mientras dura el anuncio
 function acSpeak(text, pauseTimer = false) {
   if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = 'es-ES'; utt.rate = 0.9; utt.pitch = 1.0; utt.volume = 1.0;
+  const utt  = new SpeechSynthesisUtterance(text);
   const voice = acBestVoice();
-  if (voice) utt.voice = voice;
+  utt.lang   = voice?.lang || 'es-ES';
+  utt.voice  = voice || utt.voice;
+  utt.rate   = 0.88;   // ligeramente más lento → más claro
+  utt.pitch  = 1.08;   // un toque más expresivo
+  utt.volume = 1.0;
 
   if (pauseTimer) {
     AC.speaking = true;
     const resume = () => { AC.speaking = false; };
-    utt.onend = resume;
+    utt.onend  = resume;
     utt.onerror = resume;
-    // Seguridad: libera el bloqueo tras 12 s máximo
-    setTimeout(resume, 12000);
+    setTimeout(resume, 12000); // seguridad
   }
   speechSynthesis.speak(utt);
 }
