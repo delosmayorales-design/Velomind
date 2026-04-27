@@ -1186,15 +1186,13 @@ function scheduleRemindersForToday() {
 
 // Restaurar al cargar si ya estaban activos
 if (reminderIsActive()) {
-  Notification.requestPermission().then(p => {
-    if (p === 'granted') {
-      updateReminderBtn(true);
-      // Esperar a que se cargue la nutrición antes de programar
-      setTimeout(scheduleRemindersForToday, 2000);
-    } else {
-      localStorage.setItem(REMINDERS_KEY, '0');
-    }
-  });
+  if ('Notification' in window && Notification.permission === 'granted') {
+    updateReminderBtn(true);
+    setTimeout(scheduleRemindersForToday, 2000);
+  } else {
+    localStorage.setItem(REMINDERS_KEY, '0');
+    updateReminderBtn(false);
+  }
 }
 </script>
 </body>
