@@ -619,6 +619,22 @@ const TrainingPlanGenerator = {
     return goalMap[phase] || goalMap['base'];
   },
 
+  /** Segmentos locales ordenados por duración estimada al umbral */
+  _LOCAL_SEGMENTS: [
+    { name: 'El Angel',    km: 1.0, grad: 5,   minThresh: 3.5, minVO2: 2.5 },
+    { name: 'Siles',       km: 1.5, grad: 4,   minThresh: 5,   minVO2: 4   },
+    { name: 'La Garganta', km: 2.3, grad: 4.5, minThresh: 8,   minVO2: 6   },
+    { name: 'Los Chozos',  km: 2.5, grad: 4,   minThresh: 9,   minVO2: 6.5 },
+  ],
+
+  /** Devuelve el segmento cuya duración estimada más se acerca a targetMin */
+  _pickSegment(targetMin, intensityKey = 'minThresh') {
+    const segs = this._LOCAL_SEGMENTS;
+    return segs.reduce((best, s) =>
+      Math.abs(s[intensityKey] - targetMin) < Math.abs(best[intensityKey] - targetMin) ? s : best
+    );
+  },
+
   /** Genera estructura de intervalos detallada */
   _buildIntervals(type, ftp, durMin, tss, ifTarget, variant = 'main') {
     const pct = (ratio) => Math.round(ftp * ratio);
@@ -672,30 +688,34 @@ const TrainingPlanGenerator = {
         intervals.push({ label: 'Vuelta a la calma', dur: `${cool} min`, watts: `${pct(0.45)}–${pct(0.55)} W`, rpm: '90 rpm', desc: 'Reducir gradualmente.' });
         break;
 
-      case 'tempo':
+      case 'tempo': {
         intervals.push({ label: 'Calentamiento progresivo', dur: `${warm} min`, watts: `${pct(0.55)}–${pct(0.70)} W`, rpm: '88 rpm', desc: 'Incremento gradual.' });
         if (variant === 'main') {
           if (main >= 25) {
             let blockTime = Math.floor(main / 2.5);
             let recTime = main - (blockTime * 2);
-            intervals.push({ label: `Bloque Z3 (×2 repeticiones)`, dur: `${blockTime} min c/u`, watts: `${pct(0.76)}–${pct(0.88)} W`, rpm: '85-90 rpm', desc: '"Comfortably hard". Respiración elevada pero rítmica.' });
-            intervals.push({ label: `Recuperación Z1 (×1 repeticiones)`, dur: `${recTime} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Pedaleo suave para recuperar.' });
+            const tempoSeg = this._pickSegment(blockTime, 'minThresh');
+            intervals.push({ label: `Bloques Z3 en ${tempoSeg.name} (×2 repeticiones)`, dur: `${blockTime} min c/u`, watts: `${pct(0.76)}–${pct(0.88)} W`, rpm: '85-90 rpm', desc: `Sube ${tempoSeg.name} (${tempoSeg.km} km / ${tempoSeg.grad}%) "comfortably hard". Respiración elevada pero rítmica.` });
+            intervals.push({ label: `Recuperación Z1 (×1 repeticiones)`, dur: `${recTime} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Pedaleo suave bajando.' });
           } else {
-            intervals.push({ label: `Bloque Z3 / Sweetspot`, dur: `${main} min`, watts: `${pct(0.76)}–${pct(0.88)} W`, rpm: '85-90 rpm', desc: '"Comfortably hard". Respiración elevada pero rítmica.' });
+            const tempoSegS = this._pickSegment(main, 'minThresh');
+            intervals.push({ label: `Bloque Sweetspot en ${tempoSegS.name}`, dur: `${main} min`, watts: `${pct(0.76)}–${pct(0.88)} W`, rpm: '85-90 rpm', desc: `${tempoSegS.name} sostenido en sweetspot. "Comfortably hard".` });
           }
         } else {
           let reps = 4;
           let blockTime = Math.floor((main * 0.8) / reps);
           let recTime = Math.floor((main * 0.2) / (reps - 1));
-          intervals.push({ label: `Intervalos Z3 cortos (×${reps} repeticiones)`, dur: `${blockTime} min c/u`, watts: `${pct(0.80)}–${pct(0.88)} W`, rpm: '90 rpm', desc: 'Sweetspot dinámico.' });
-          intervals.push({ label: `Recuperación (×${reps-1} repeticiones)`, dur: `${recTime} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Micro-descansos.' });
+          const tempoSegAlt = this._pickSegment(blockTime, 'minThresh');
+          intervals.push({ label: `Intervalos Z3 en ${tempoSegAlt.name} (×${reps} repeticiones)`, dur: `${blockTime} min c/u`, watts: `${pct(0.80)}–${pct(0.88)} W`, rpm: '90 rpm', desc: `Sweetspot dinámico en ${tempoSegAlt.name}.` });
+          intervals.push({ label: `Recuperación (×${reps-1} repeticiones)`, dur: `${recTime} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Micro-descansos bajando.' });
           let remaining = main - (reps * blockTime + (reps - 1) * recTime);
           if (remaining > 0) cool += remaining;
         }
         intervals.push({ label: 'Vuelta a la calma', dur: `${cool} min`, watts: `< ${pct(0.60)} W`, rpm: 'libre', desc: 'Reducción gradual.' });
         break;
+      }
 
-      case 'threshold':
+      case 'threshold': {
         intervals.push({ label: 'Calentamiento', dur: `${warm} min`, watts: `${pct(0.55)}–${pct(0.70)} W`, rpm: '88-92 rpm', desc: 'Incluye sprints cortos para activar.' });
         if (variant === 'main') {
           let repsTh = main > 40 ? 3 : 2;
@@ -704,25 +724,28 @@ const TrainingPlanGenerator = {
           if (workTh < 8) { repsTh = 1; workTh = main; recTh = 0; }
           let actualMainTh = (repsTh * workTh) + ((repsTh > 1 ? repsTh - 1 : 0) * recTh);
           cool += (main - actualMainTh);
+          const thSeg = this._pickSegment(workTh, 'minThresh');
           if (repsTh > 1) {
-            intervals.push({ label: `Intervalo Umbral (×${repsTh} repeticiones)`, dur: `${workTh} min c/u`, watts: `${pct(0.93)}–${pct(1.03)} W`, rpm: '85-90 rpm', desc: 'Esfuerzo sostenido en el FTP.' });
-            intervals.push({ label: `Recuperación activa (×${repsTh-1} repeticiones)`, dur: `${recTh} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Recuperación sin parar. Mantén el ritmo.' });
+            intervals.push({ label: `Series de umbral en ${thSeg.name} (×${repsTh} repeticiones)`, dur: `${workTh} min c/u`, watts: `${pct(0.93)}–${pct(1.03)} W`, rpm: '85-90 rpm', desc: `Sube ${thSeg.name} (${thSeg.km} km / ${thSeg.grad}%) al FTP. Respiración muy alta pero controlada.` });
+            intervals.push({ label: `Recuperación activa (×${repsTh-1} repeticiones)`, dur: `${recTh} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Recuperación bajando. No parar.' });
           } else {
-            intervals.push({ label: `Intervalo al umbral`, dur: `${workTh} min`, watts: `${pct(0.93)}–${pct(1.03)} W`, rpm: '85-90 rpm', desc: 'Esfuerzo sostenido en el FTP.' });
+            intervals.push({ label: `Intervalo al umbral en ${thSeg.name}`, dur: `${workTh} min`, watts: `${pct(0.93)}–${pct(1.03)} W`, rpm: '85-90 rpm', desc: `Sube ${thSeg.name} (${thSeg.km} km / ${thSeg.grad}%) sostenido al FTP.` });
           }
         } else {
           let repsOU = 3;
           let blockTime = Math.floor((main * 0.75) / repsOU);
           let recTime = Math.floor((main * 0.25) / (repsOU - 1));
-          intervals.push({ label: `Over-Unders: 2m al 90% + 1m al 105% (×${repsOU} repeticiones)`, dur: `${blockTime} min c/u`, watts: `${pct(0.90)} / ${pct(1.05)} W`, rpm: '90 rpm', desc: 'Cambios de ritmo (Criss-Cross) para tolerar y limpiar lactato.' });
-          intervals.push({ label: `Recuperación activa (×${repsOU-1} repeticiones)`, dur: `${recTime} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Recuperación completa.' });
+          const ouSeg = this._pickSegment(blockTime, 'minThresh');
+          intervals.push({ label: `Over-Unders en ${ouSeg.name}: 2m al 90% + 1m al 105% (×${repsOU} repeticiones)`, dur: `${blockTime} min c/u`, watts: `${pct(0.90)} / ${pct(1.05)} W`, rpm: '90 rpm', desc: `Cambios de ritmo en ${ouSeg.name}. Alterna intensidad para tolerar y limpiar lactato.` });
+          intervals.push({ label: `Recuperación activa (×${repsOU-1} repeticiones)`, dur: `${recTime} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Recuperación completa bajando.' });
           let actualMainOU = (repsOU * blockTime) + ((repsOU > 1 ? repsOU - 1 : 0) * recTime);
           cool += (main - actualMainOU);
         }
         intervals.push({ label: 'Vuelta a la calma', dur: `${cool} min`, watts: `< ${pct(0.60)} W`, rpm: 'libre', desc: 'Reducir gradualmente.' });
         break;
+      }
 
-      case 'vo2max':
+      case 'vo2max': {
         intervals.push({ label: 'Calentamiento', dur: `${warm} min`, watts: `${pct(0.55)}–${pct(0.70)} W`, rpm: '90 rpm', desc: 'Activación completa. Incluye 2×2 min al 90% FTP.' });
         if (variant === 'main') {
           let repWorkV = 4;
@@ -732,8 +755,9 @@ const TrainingPlanGenerator = {
           if (repsV < 2) { repsV = 2; repWorkV = Math.floor(main/4); repRestV = Math.floor(main/4); }
           let actualMainV = repsV * (repWorkV + repRestV);
           cool += (main - actualMainV);
-          intervals.push({ label: `Serie VO₂ Max (×${repsV} repeticiones)`, dur: `${repWorkV} min c/u`, watts: `${pct(1.06)}–${pct(1.20)} W`, rpm: '90-100 rpm', desc: 'Esfuerzo muy duro. FC máxima ~90-95%.' });
-          intervals.push({ label: `Recuperación activa (×${repsV} repeticiones)`, dur: `${repRestV} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Recuperación activa. No parar, pedalear suave.' });
+          const vo2Seg = this._pickSegment(repWorkV, 'minVO2');
+          intervals.push({ label: `Series VO₂Max en ${vo2Seg.name} (×${repsV} repeticiones)`, dur: `${repWorkV} min c/u`, watts: `${pct(1.06)}–${pct(1.20)} W`, rpm: '90-100 rpm', desc: `Sube ${vo2Seg.name} (${vo2Seg.km} km / ${vo2Seg.grad}%) a tope. FC máxima ~90-95%. Baja pedaleando suave.` });
+          intervals.push({ label: `Recuperación activa (×${repsV} repeticiones)`, dur: `${repRestV} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Recuperación activa bajando. No parar.' });
         } else {
           let blockDur = 8;
           let restDur = 4;
@@ -741,13 +765,16 @@ const TrainingPlanGenerator = {
           if (repsMicro < 2) { repsMicro = 2; blockDur = 6; restDur = 3; }
           let actualMainM = repsMicro * (blockDur + restDur);
           cool += (main - actualMainM);
-          intervals.push({ label: `Micro-intervalos 40s ON / 20s OFF (×${repsMicro} repeticiones)`, dur: `${blockDur} min c/u`, watts: `${pct(1.15)} / ${pct(0.50)} W`, rpm: '100 / 85 rpm', desc: 'Bloque continuo alternando 40s fuerte y 20s suave.' });
+          const vo2SegB = this._pickSegment(blockDur, 'minVO2');
+          intervals.push({ label: `Micro-intervalos 40s ON / 20s OFF en ${vo2SegB.name} (×${repsMicro} repeticiones)`, dur: `${blockDur} min c/u`, watts: `${pct(1.15)} / ${pct(0.50)} W`, rpm: '100 / 85 rpm', desc: `Bloques en ${vo2SegB.name}: 40s fuerte + 20s suave de forma continua.` });
           intervals.push({ label: `Recuperación de bloque (×${repsMicro} repeticiones)`, dur: `${restDur} min c/u`, watts: `${pct(0.45)}–${pct(0.50)} W`, rpm: '90 rpm', desc: 'Limpiar lactato entre bloques.' });
         }
         intervals.push({ label: 'Vuelta a la calma', dur: `${cool} min`, watts: `< ${pct(0.60)} W`, rpm: 'libre', desc: 'Reducción gradual. Hidratación.' });
         break;
+      }
 
-      case 'sprint':
+      case 'sprint': {
+        const sprintSeg = this._LOCAL_SEGMENTS[0]; // El Angel: corta y empinada
         intervals.push({ label: 'Calentamiento extenso', dur: `${warm} min`, watts: `${pct(0.55)}–${pct(0.70)} W`, rpm: '88-95 rpm', desc: 'Activación completa.' });
         if (variant === 'main') {
           let sprintReps = Math.floor(main / 3);
@@ -755,7 +782,7 @@ const TrainingPlanGenerator = {
           if (sprintReps > 12) sprintReps = 12;
           let actualMainS = sprintReps * 3;
           cool += (main - actualMainS);
-          intervals.push({ label: `Sprints principales (×${sprintReps} repeticiones)`, dur: '20 s c/u', watts: `${pct(1.50)}–máx`, rpm: '110-130+ rpm', desc: 'MÁXIMO esfuerzo. Power peaking.' });
+          intervals.push({ label: `Sprints en ${sprintSeg.name} (×${sprintReps} repeticiones)`, dur: '20 s c/u', watts: `${pct(1.50)}–máx`, rpm: '110-130+ rpm', desc: `MÁXIMO esfuerzo arrancando en ${sprintSeg.name} (${sprintSeg.km} km / ${sprintSeg.grad}%). Power peaking.` });
           intervals.push({ label: `Recuperación (×${sprintReps} repeticiones)`, dur: '2.5 min c/u', watts: `< ${pct(0.55)} W`, rpm: 'libre', desc: 'Recuperación completa entre sprints.' });
         } else {
           let sprintReps = Math.floor(main / 4);
@@ -763,13 +790,14 @@ const TrainingPlanGenerator = {
           if (sprintReps > 10) sprintReps = 10;
           let actualMainS = sprintReps * 4;
           cool += (main - actualMainS);
-          intervals.push({ label: `Sprints desde parado (×${sprintReps} repeticiones)`, dur: '12 s c/u', watts: `Máx W`, rpm: 'arranca duro', desc: 'Fuerza máxima absoluta. Arranca casi parado.' });
+          intervals.push({ label: `Sprints desde parado en ${sprintSeg.name} (×${sprintReps} repeticiones)`, dur: '12 s c/u', watts: `Máx W`, rpm: 'arranca duro', desc: `Fuerza máxima absoluta. Arranca casi parado en la entrada de ${sprintSeg.name}.` });
           intervals.push({ label: `Recuperación (×${sprintReps} repeticiones)`, dur: '3.5 min c/u', watts: `< ${pct(0.55)} W`, rpm: 'libre', desc: 'Recuperación completa y total.' });
         }
         intervals.push({ label: 'Vuelta a la calma', dur: `${cool} min`, watts: `< ${pct(0.55)} W`, rpm: 'libre', desc: 'Limpiar el lactato. Muy importante post-sprints.' });
         break;
+      }
 
-      case 'strength':
+      case 'strength': {
         intervals.push({ label: 'Calentamiento', dur: `${warm} min`, watts: `${pct(0.55)}–${pct(0.65)} W`, rpm: '85 rpm', desc: 'Calentamiento estándar.' });
         if (variant === 'main') {
           let repsS = 4;
@@ -778,19 +806,22 @@ const TrainingPlanGenerator = {
           if (workS < 5) { repsS = 3; workS = Math.floor((main * 0.8) / repsS); recS = Math.floor((main * 0.2) / repsS); }
           let actualMainStr = repsS * (workS + recS);
           cool += (main - actualMainStr);
-          intervals.push({ label: `Bloques de fuerza Z3-Z4 (×${repsS} repeticiones)`, dur: `${workS} min c/u`, watts: `${pct(0.80)}–${pct(0.95)} W`, rpm: '50-65 rpm', desc: 'BAJA cadencia clave. Activa fibras de alta potencia.' });
-          intervals.push({ label: `Recuperación activa (×${repsS} repeticiones)`, dur: `${recS} min c/u`, watts: `< ${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Cadencia alta para limpiar lactato.' });
+          const strSeg = this._pickSegment(workS, 'minThresh');
+          intervals.push({ label: `Fuerza en ${strSeg.name} — cadencia baja (×${repsS} repeticiones)`, dur: `${workS} min c/u`, watts: `${pct(0.80)}–${pct(0.95)} W`, rpm: '50-65 rpm', desc: `Sube ${strSeg.name} (${strSeg.km} km / ${strSeg.grad}%) con cadencia muy baja. Activa fibras de alta potencia.` });
+          intervals.push({ label: `Recuperación activa (×${repsS} repeticiones)`, dur: `${recS} min c/u`, watts: `< ${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Cadencia alta bajando para limpiar lactato.' });
         } else {
           let repsS = 6;
           let workS = Math.floor((main * 0.75) / repsS);
           let recS = Math.floor((main * 0.25) / repsS);
           let actualMainStr = repsS * (workS + recS);
           cool += (main - actualMainStr);
-          intervals.push({ label: `Fuerza específica Z4 (×${repsS} repeticiones)`, dur: `${workS} min c/u`, watts: `${pct(0.90)}–${pct(1.00)} W`, rpm: '55-60 rpm', desc: 'Fuerza submáxima con cadencia muy baja.' });
+          const strSegB = this._pickSegment(workS, 'minThresh');
+          intervals.push({ label: `Fuerza específica en ${strSegB.name} (×${repsS} repeticiones)`, dur: `${workS} min c/u`, watts: `${pct(0.90)}–${pct(1.00)} W`, rpm: '55-60 rpm', desc: `${strSegB.name}: fuerza submáxima con cadencia muy baja. Siente cada pedalada.` });
           intervals.push({ label: `Recuperación fluida (×${repsS} repeticiones)`, dur: `${recS} min c/u`, watts: `< ${pct(0.55)} W`, rpm: '100+ rpm', desc: 'Mucho molinillo para limpiar lactato.' });
         }
         intervals.push({ label: 'Vuelta a la calma', dur: `${cool} min`, watts: `< ${pct(0.55)} W`, rpm: 'libre', desc: 'Importante: estirar cuádriceps post-sesión.' });
         break;
+      }
 
       case 'race':
         intervals.push({ label: 'Activación suave', dur: `${warm + main} min`, watts: `${pct(0.55)}–${pct(0.65)} W`, rpm: '85-90 rpm', desc: 'Llegar a la línea de salida con las piernas activas.' });
