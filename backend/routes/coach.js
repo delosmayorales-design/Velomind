@@ -1736,7 +1736,8 @@ Tu tarea:
 1. MAPEO EXACTO DE DÍAS (dayIndex): Determina de qué días habla el atleta usando la referencia de índices de arriba.
 2. APLICA LOS CAMBIOS ÚNICAMENTE EN SU DÍA CORRESPONDIENTE:
    - 🛑 ¡CRÍTICO!: Si el atleta dice que AYER no entrenó, DEBES establecer "isRest": true, "durationMin": 0 y "tss": 0 EXCLUSIVAMENTE para el índice de AYER (${ayerIdx}). ¡NUNCA modifiques HOY (${todayIdx}) como descanso si el reporte era sobre ayer!
-   - 🚴 Si avisa que HOY o MAÑANA hará una salida distinta (ej. grupeta de 3.5h), reemplaza la sesión de ESE ÍNDICE EXACTO con una ruta acorde, dándole consejos tácticos en la "description" y calculando el "durationMin" y "tss" previstos.
+   - 🚴 Si avisa que HOY o MAÑANA hará una salida distinta (ej. rodillo, grupeta), reemplaza la sesión de ESE ÍNDICE EXACTO con una ruta acorde, dándole consejos tácticos en la "description" y calculando el "durationMin" y "tss" previstos.
+   - IMPORTANTE: Si programas una sesión activa ("isRest": false), el "type" DEBE ser exactamente uno de: "recovery", "endurance", "tempo", "threshold", "vo2max", "sprint", "long", "race", "strength". Además, incluye obligatoriamente un "name" y un "emoji" (ej: "🔵", "🚴").
 3. RECALCULA EL RESTO DE LA SEMANA (días futuros):
    - ⚠️ REASIGNACIÓN: Si el atleta no pudo hacer una sesión dura, muévela a un día futuro disponible.
    - 📉 COMPENSACIÓN: Si hará muchas horas de grupeta, asegúrate de que el día siguiente sea suave o descanso.
@@ -1747,11 +1748,11 @@ Devuelve EXACTAMENTE este JSON:
   "modifications": [
     {
       "dayIndex": número_del_día_modificado,
-      "changes": { "isRest": true, "type": "Descanso", "durationMin": 0, "tss": 0, "advice": "Descanso registrado." }
+      "changes": { "isRest": true, "type": "recovery", "durationMin": 0, "tss": 0, "advice": "Descanso registrado." }
     },
     {
       "dayIndex": número_de_otro_día_afectado,
-      "changes": { "isRest": false, "type": "long", "durationMin": 210, "tss": 150, "description": "Salida con la grupeta. Intenta ir a rueda para ahorrar energía...", "advice": "He adaptado tu salida con la grupeta." }
+      "changes": { "isRest": false, "type": "endurance", "name": "Rodillo Z2", "emoji": "🔵", "durationMin": 60, "tss": 45, "description": "Sesión constante en rodillo.", "advice": "He adaptado tu entrenamiento a rodillo." }
     }
   ]
 }

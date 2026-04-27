@@ -1,12 +1,16 @@
-/* VeloMind — Workout TCX Encoder
- * Generates Garmin-compatible .tcx workout files for Garmin Connect
- * TCX (Training Center XML) v2 — accepted by Garmin Connect, Zwift, TrainingPeaks
+/* VeloMind — Workout ZWO Encoder
+ * Genera archivos .zwo compatibles con Zwift y software de rodillo inteligente
+ * (Zwift, Rouvy, FulGaz, TrainerRoad via import, etc.)
  */
 const FITWorkoutEncoder = (() => {
   'use strict';
 
   function escapeXml(str) {
     return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function pct(watts, ftp) {
+    return (watts / ftp).toFixed(3);
   }
 
   // Build structured workout steps from a TrainingPlanGenerator session
@@ -25,7 +29,7 @@ const FITWorkoutEncoder = (() => {
     const mainMin = Math.max(20, durMin - warmMin - coolMin);
 
     const warmup   = (min) => ({ name:'Calentamiento', sec:min*60, intensity:2, ...w(0.50,0.55) });
-    const cooldown = (min) => ({ name:'Enfriamiento',  sec:min*60, intensity:3, ...w(0.45,0.55) });
+    const cooldown = (min) => ({ name:'Enfriamiento',  sec:min*60, intensity:3, ...w(0.55,0.45) });
     const rest     = (min) => ({ name:'Recuperacion',  sec:min*60, intensity:1, ...w(0.45,0.55) });
 
     const steps = [];
@@ -100,43 +104,47 @@ const FITWorkoutEncoder = (() => {
     return steps;
   }
 
-  // Encode workout steps to TCX XML string
-  function encodeTCX(workoutName, steps) {
-    const stepXml = steps.map((s, i) => {
-      const intensity = s.intensity === 1 ? 'Rest' : 'Active';
+  // Genera XML en formato Zwift ZWO
+  function encodeZWO(workoutName, steps, ftp) {
+    const stepsXml = steps.map(s => {
+      const name = `name="${escapeXml(s.name || 'Paso')}"`;
 
-      const duration = s.open
-        ? '<Duration xsi:type="UserInitiated_t"/>'
-        : `<Duration xsi:type="Time_t"><Seconds>${s.sec}</Seconds></Duration>`;
+      if (s.open) {
+        return `    <FreeRide Duration="${s.sec || 300}" ${name}/>`;
+      }
 
-      // Power info en el nombre — CustomPowerZone_t no está en el schema público TCX v2
-      const powerSuffix = (s.lo > 0 && s.hi > 0) ? ` ${s.lo}-${s.hi}W` : '';
-      const stepName    = escapeXml((s.name || 'Paso') + powerSuffix);
-
-      return `    <Step xsi:type="Step_t">
-      <StepId>${i + 1}</StepId>
-      <Name>${stepName}</Name>
-      ${duration}
-      <Intensity>${intensity}</Intensity>
-      <Target xsi:type="None_t"/>
-    </Step>`;
+      // Calentamiento: rampa ascendente
+      if (s.intensity === 2) {
+        return `    <Warmup Duration="${s.sec}" PowerLow="${pct(s.lo, ftp)}" PowerHigh="${pct(s.hi, ftp)}" ${name}/>`;
+      }
+      // Enfriamiento: rampa descendente
+      if (s.intensity === 3) {
+        return `    <Cooldown Duration="${s.sec}" PowerLow="${pct(s.lo, ftp)}" PowerHigh="${pct(s.hi, ftp)}" ${name}/>`;
+      }
+      // Recuperación / descanso
+      if (s.intensity === 1) {
+        const mid = pct(Math.round((s.lo + s.hi) / 2), ftp);
+        return `    <SteadyState Duration="${s.sec}" Power="${mid}" ${name}/>`;
+      }
+      // Esfuerzo activo: SteadyState con potencia media
+      const mid = pct(Math.round((s.lo + s.hi) / 2), ftp);
+      return `    <SteadyState Duration="${s.sec}" Power="${mid}" ${name}/>`;
     }).join('\n');
 
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<TrainingCenterDatabase
-  xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd">
-  <Workouts>
-    <Workout Sport="Biking">
-      <Name>${escapeXml(workoutName)}</Name>
-${stepXml}
-    </Workout>
-  </Workouts>
-</TrainingCenterDatabase>`;
+    return `<?xml version="1.0" encoding="utf-8"?>
+<workout_file>
+  <author>VeloMind</author>
+  <name>${escapeXml(workoutName)}</name>
+  <description>FTP referencia: ${ftp}W — generado por VeloMind</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+${stepsXml}
+  </workout>
+</workout_file>`;
   }
 
-  // Trigger browser download
+  // Descarga en el navegador
   function download(filename, content) {
     const blob = new Blob([content], { type: 'application/xml;charset=utf-8' });
     const url  = URL.createObjectURL(blob);
@@ -147,7 +155,6 @@ ${stepXml}
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  // Sanitize string for filename
   function sanitize(str) {
     return (str || 'workout')
       .replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i')
@@ -155,18 +162,17 @@ ${stepXml}
       .replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0, 40);
   }
 
-  // Export a single session to .tcx
   function exportSession(session, ftp) {
     if (session.isRest) { alert('Los días de descanso no necesitan exportarse.'); return; }
+    if (!ftp || ftp < 50) ftp = 200;
     const wt           = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[session.type]) || {};
     const sessionLabel = (wt.label || session.name || session.type || 'Entrenamiento').slice(0, 40);
-    const filename     = `VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.tcx`;
+    const filename     = `VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.zwo`;
     const steps        = buildSteps(session, ftp);
-    const xml          = encodeTCX(sessionLabel, steps);
+    const xml          = encodeZWO(sessionLabel, steps, ftp);
     download(filename, xml);
   }
 
-  // Export all non-rest sessions
   function exportWeek(sessions, ftp) {
     const trainSessions = sessions.filter(s => !s.isRest);
     if (!trainSessions.length) { alert('No hay sesiones de entrenamiento esta semana.'); return; }
@@ -179,7 +185,7 @@ ${stepXml}
     next();
   }
 
-  return { buildSteps, encodeTCX, download, exportSession, exportWeek };
+  return { buildSteps, encodeZWO, download, exportSession, exportWeek };
 })();
 
 window.FITWorkoutEncoder = FITWorkoutEncoder;
