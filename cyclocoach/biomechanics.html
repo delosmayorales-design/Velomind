@@ -389,6 +389,23 @@
       z-index: 5; border: 1px solid var(--border-light);
       pointer-events: none;
     }
+
+    /* ── Light theme overrides ───────────────────── */
+    html.light-theme .vstep { color: #374151; background: rgba(0,0,0,.02); }
+    html.light-theme .vstep.active { color: #1d4ed8; border-color: #93c5fd; background: rgba(29,78,216,.06); }
+    html.light-theme .vstep.done { color: #065f46; }
+    html.light-theme .video-result-card { background: #f9fafb; border-color: #e5e7eb; }
+    html.light-theme .video-result-card h4 { color: #1d4ed8; }
+    html.light-theme .video-result-card p { color: #4b5563; }
+    html.light-theme .video-red-flag { background: rgba(220,38,38,.05); border-color: rgba(220,38,38,.2); color: #b91c1c; }
+    html.light-theme .video-adj-item { background: rgba(5,150,105,.05); border-color: rgba(5,150,105,.2); color: #065f46; }
+    html.light-theme .canvas-label-tag { background: rgba(255,255,255,.88); color: #374151; border-color: rgba(0,0,0,.12); }
+    html.light-theme .video-drop-zone { border-color: #93c5fd; }
+    html.light-theme .video-drop-zone:hover { border-color: #1d4ed8; background: rgba(29,78,216,.04); }
+    html.light-theme [style*="color:#C4EF44"], html.light-theme [style*="color: #C4EF44"] { color: #4d7c0f !important; }
+    html.light-theme [style*="color:#34d399"], html.light-theme [style*="color: #34d399"] { color: #065f46 !important; }
+    html.light-theme [style*="color:#94a3b8"], html.light-theme [style*="color: #94a3b8"] { color: #4b5563 !important; }
+    html.light-theme [style*="color:#60a5fa"], html.light-theme [style*="color: #60a5fa"] { color: #1d4ed8 !important; }
   </style>
 </head>
 <body>
@@ -542,9 +559,7 @@
               <i class="fas fa-user-alt"></i> Ejemplo
             </button>
             <span id="placing-label" class="placing-label" style="display:none"></span>
-            <span class="toolbar-hint" id="toolbar-hint">
-              Sube una foto y analiza, o usa el modo de ejemplo
-            </span>
+            <span class="toolbar-hint" id="toolbar-hint"></span>
           </div>
           <div class="bio-canvas-container" id="canvasWrapper">
             <div class="canvas-box">
@@ -586,7 +601,7 @@
               </div>
             </div>
             <div class="canvas-box" id="videoPanelBox" style="display:flex;flex-direction:column">
-              <div class="canvas-label-tag" style="color:#60a5fa">Análisis en Rodillo</div>
+              <div class="canvas-label-tag">Análisis en Rodillo</div>
 
               <!-- Reproductor de video (visible cuando hay video cargado) -->
               <video id="videoPreview" controls loop muted playsinline
