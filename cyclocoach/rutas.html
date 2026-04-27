@@ -623,18 +623,28 @@ function decodePolyline6(encoded) {
   return coords; // [[lat, lng], ...]
 }
 
-// Calcula desnivel positivo con umbral de histéresis (≈ método Strava/Garmin)
-// Sin umbral el ruido SRTM infla el D+ hasta el doble
-function calcElevGain(elevs, threshold = 8) {
+// Suaviza elevaciones con media móvil para eliminar ruido SRTM
+function smoothElevs(elevs, win = 3) {
+  return elevs.map((_, i) => {
+    const s = Math.max(0, i - win), e = Math.min(elevs.length, i + win + 1);
+    return elevs.slice(s, e).reduce((a, b) => a + b, 0) / (e - s);
+  });
+}
+// Calcula D+ con histéresis sobre datos suavizados (≈ método Garmin/Strava)
+function calcElevGain(elevs, threshold = 4) {
   if (!elevs?.length) return 0;
-  let gain = 0, ref = elevs[0];
-  for (let i = 1; i < elevs.length; i++) {
-    const diff = elevs[i] - ref;
-    if (diff >= threshold)       { gain += diff; ref = elevs[i]; }
-    else if (diff <= -threshold) { ref = elevs[i]; }
+  const sm = smoothElevs(elevs);
+  let gain = 0, ref = sm[0];
+  for (let i = 1; i < sm.length; i++) {
+    const diff = sm[i] - ref;
+    if (diff >= threshold)       { gain += diff; ref = sm[i]; }
+    else if (diff <= -threshold) { ref = sm[i]; }
   }
   return Math.round(gain);
 }
+
+// Velocidades de referencia por tipo (km/h) para estimar duración real
+const SPEED_BY_TYPE = { road: 35, gravel: 25, mtb: 18 };
 
 // Valhalla OSM — perfiles road/gravel/MTB reales
 async function routeValhalla(type) {
@@ -658,10 +668,12 @@ async function routeValhalla(type) {
   const data = await res.json();
   const latLngs = data.trip.legs.flatMap(leg => decodePolyline6(leg.shape));
   const elevs   = data.trip.legs.flatMap(leg => leg.elevation || []);
+  const distKm  = data.trip.summary.length;
+  const speed   = SPEED_BY_TYPE[type] || 30;
   return {
     latLngs,
-    distKm:   data.trip.summary.length,
-    durMin:   Math.round(data.trip.summary.time / 60),
+    distKm,
+    durMin:   Math.round(distKm / speed * 60),
     elevGain: calcElevGain(elevs),
     elevs,
   };
@@ -679,10 +691,12 @@ async function routeOSRM(type) {
   if (data.code !== 'Ok') throw new Error('OSRM: ' + data.code);
   const route   = data.routes[0];
   const latLngs = route.geometry.coordinates.map(([ln, la]) => [la, ln]);
+  const distKm  = route.distance / 1000;
+  const speed   = SPEED_BY_TYPE[type] || 30;
   return {
     latLngs,
-    distKm:  route.distance / 1000,
-    durMin:  Math.round(route.duration / 60),
+    distKm,
+    durMin:  Math.round(distKm / speed * 60),
   };
 }
 
