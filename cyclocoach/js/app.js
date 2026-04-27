@@ -463,6 +463,7 @@ const TrainingPlanGenerator = {
         targetWatts: Math.round(ftp * ifTarget),
         description: dynamicDesc,
         alt_description: altDesc,
+        terrain: terrainAdvice.trim(),
         advice: t.description + terrainAdvice,
         intervals,
         alt_intervals,
