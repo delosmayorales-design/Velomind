@@ -1304,18 +1304,22 @@ const NutritionPlanner = {
 
     let carbs_g = Math.round(weight * carbPerKg);
     let protein_g = Math.round(weight * proteinPerKg);
-    let fat_g = Math.round((dailyCalories - carbs_g * 4 - protein_g * 4) / 9);
-    const minFat = Math.round(weight * 0.7);
-    if (fat_g < minFat) {
-      fat_g = minFat;
-      const kcalLeft = dailyCalories - protein_g * 4 - fat_g * 9;
-      carbs_g = Math.max(120, Math.round(kcalLeft / 4));
+    // Cap grasa al 28% de las calorías totales (recomendación deportiva: 20-30%)
+    const maxFatKcal = dailyCalories * 0.28;
+    const minFatKcal = weight * 0.8 * 9; // mínimo 0.8g/kg para funciones hormonales
+    const fatKcal = Math.min(maxFatKcal, Math.max(minFatKcal, dailyCalories - carbs_g * 4 - protein_g * 4));
+    let fat_g = Math.round(fatKcal / 9);
+    // Reasignar las kcal sobrantes del cap en carbohidratos
+    const kcalUsed = carbs_g * 4 + protein_g * 4 + fat_g * 9;
+    if (kcalUsed < dailyCalories - 20) {
+      carbs_g = Math.round((dailyCalories - protein_g * 4 - fat_g * 9) / 4);
     }
 
     // ── Hidratación Dinámica ──
-    // Base (35ml/kg) + 300ml fijos + 600ml por cada hora de ejercicio
+    // Base (30ml/kg para atletas) + 500ml por cada hora de ejercicio
+    // 30ml/kg es más preciso que 35 cuando el ejercicio se suma por separado
     const durationH = durationSec / 3600;
-    const hydration_ml = Math.round(weight * 35 + 300 + (durationH * 650));
+    const hydration_ml = Math.round(weight * 30 + (durationH * 750));
 
     const durationMin = Math.max(0, Math.round(durationSec / 60));
     const during = durationMin >= 60 ? this._duringWorkout(durationMin) : null;
