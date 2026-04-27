@@ -441,8 +441,8 @@
       <button class="btn btn-ai btn-sm" id="btn-ai-coach" onclick="runAICoach()">
         <i class="fas fa-chart-line"></i> Diagnóstico
       </button>
-      <button class="btn btn-secondary btn-sm" id="btn-export-garmin" onclick="exportWeekToGarmin()" style="background:rgba(52,211,153,0.12);border-color:rgba(52,211,153,0.35);color:var(--success);" title="Exporta todos los entrenamientos de la semana como archivos .fit para Garmin">
-        <i class="fas fa-watch"></i> Exportar a Garmin
+      <button class="btn btn-secondary btn-sm" id="btn-export-zwift" onclick="exportWeekToZwift()" style="background:rgba(52,211,153,0.12);border-color:rgba(52,211,153,0.35);color:var(--success);" title="Exporta todos los entrenamientos de la semana como archivos .zwo para Zwift/rodillo">
+        <i class="fas fa-bolt"></i> Exportar a Zwift
       </button>
       <button class="btn btn-secondary btn-sm" onclick="regeneratePlan()">
         <i class="fas fa-sync-alt"></i> Regenerar
@@ -1077,9 +1077,9 @@ function renderPlan(plan, athlete) {
               <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:${color}">${tssVal}</div>
               <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">TSS</div>
             </div>
-            <button onclick="event.stopPropagation();exportSessionToGarmin(${i})" title="Exportar a Garmin"
+            <button onclick="event.stopPropagation();exportSessionToZwift(${i})" title="Exportar a Zwift (.zwo)"
               style="background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.35);color:var(--success);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit">
-              <i class="fas fa-watch"></i> .fit
+              <i class="fas fa-bolt"></i> .zwo
             </button>
             <button onclick="event.stopPropagation();startAudioCoach(${i})" title="Coach de audio — narración del entrenamiento"
               style="background:rgba(196,239,68,.12);border:1px solid rgba(196,239,68,.3);color:#C4EF44;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit">
@@ -2157,13 +2157,13 @@ function stopAudioCoach() {
 
 initTrainingPlan();
 
-function exportSessionToGarmin(index) {
+function exportSessionToZwift(index) {
   if (!currentPlan) { alert('El plan aún no está generado.'); return; }
   const ftp = (AppState.athlete || {}).ftp || 200;
   FITWorkoutEncoder.exportSession(currentPlan.sessions[index], ftp);
 }
 
-function exportWeekToGarmin() {
+function exportWeekToZwift() {
   if (!currentPlan) { alert('El plan aún no está generado.'); return; }
   const ftp = (AppState.athlete || {}).ftp || 200;
   const trainSessions = currentPlan.sessions.filter(s => !s.isRest);
