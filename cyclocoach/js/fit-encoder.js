@@ -109,21 +109,16 @@ const FITWorkoutEncoder = (() => {
         ? '<Duration xsi:type="UserInitiated_t"/>'
         : `<Duration xsi:type="Time_t"><Seconds>${s.sec}</Seconds></Duration>`;
 
-      const target = (s.lo > 0 || s.hi > 0)
-        ? `<Target xsi:type="Power_t">
-          <PowerZone xsi:type="CustomPowerZone_t">
-            <Low xsi:type="PowerInWatts_t"><Watts>${s.lo}</Watts></Low>
-            <High xsi:type="PowerInWatts_t"><Watts>${s.hi}</Watts></High>
-          </PowerZone>
-        </Target>`
-        : '<Target xsi:type="None_t"/>';
+      // Power info en el nombre — CustomPowerZone_t no está en el schema público TCX v2
+      const powerSuffix = (s.lo > 0 && s.hi > 0) ? ` ${s.lo}-${s.hi}W` : '';
+      const stepName    = escapeXml((s.name || 'Paso') + powerSuffix);
 
       return `    <Step xsi:type="Step_t">
       <StepId>${i + 1}</StepId>
-      <Name>${escapeXml(s.name || 'Paso')}</Name>
+      <Name>${stepName}</Name>
       ${duration}
       <Intensity>${intensity}</Intensity>
-      ${target}
+      <Target xsi:type="None_t"/>
     </Step>`;
     }).join('\n');
 
