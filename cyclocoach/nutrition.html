@@ -438,7 +438,7 @@
 
     <!-- Botón generar -->
     <button class="btn-generate" id="btn-generate-menus" onclick="generateMenus()" style="width:100%;justify-content:center;margin-bottom:20px">
-      <i class="fas fa-magic"></i> Generar 3 Menús con IA
+      <i class="fas fa-magic"></i> Generar 3 Menús
     </button>
 
     <!-- Spinner -->
@@ -460,6 +460,7 @@
   </div>
 </div>
 
+<script src="js/meal-generator.js"></script>
 <script src="js/app.js"></script>
 <script src="js/backend-sync.js"></script>
 <script>
@@ -866,12 +867,12 @@ function updatePrefChips(val) {
   document.getElementById('pref-todo').classList.toggle('active',      val === 'come de todo');
 }
 
-async function generateMenus() {
+function generateMenus() {
   if (selectedDayIdx === null) return;
   const adj = getAdjustedNutrition(selectedDayIdx);
   if (!adj) return;
 
-  const btn = document.getElementById('btn-generate-menus');
+  const btn      = document.getElementById('btn-generate-menus');
   const spinner  = document.getElementById('menus-spinner');
   const result   = document.getElementById('menus-result');
   const errorBox = document.getElementById('menus-error');
@@ -881,30 +882,21 @@ async function generateMenus() {
   result.style.display   = 'none';
   errorBox.style.display = 'none';
 
-  const athlete = AppState.athlete || {};
-  const payload = {
-    weight:      athlete.weight      || 70,
-    experience:  athlete.experience  || 'intermedio',
-    preferences: currentPref,
-    likes:       document.getElementById('prefs-likes').value.trim(),
-    dislikes:    document.getElementById('prefs-dislikes').value.trim(),
-    calories:    adj.dailyCalories,
-    carbs:       adj.carbs_g,
-    protein:     adj.protein_g,
-    fat:         adj.fat_g,
-  };
+  const sess = currentTrainingPlan?.sessions?.[selectedDayIdx] || {};
+  const sessionType = sess.isRest ? null : (sess.type || null);
+  const tss = Math.round((sess.tssShare || 0.14) * (currentTrainingPlan?.tss_target || currentTrainingPlan?.targetTSS || 400));
 
   try {
-    const r = await fetch(`${window.API_URL}/coach/daily-menus`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
-      body: JSON.stringify(payload),
+    const data = LocalMenuGenerator.generate({
+      calories:    adj.dailyCalories,
+      carbs:       adj.carbs_g,
+      protein:     adj.protein_g,
+      fat:         adj.fat_g,
+      preferences: currentPref,
+      dislikes:    document.getElementById('prefs-dislikes').value.trim(),
+      sessionType,
+      tss,
     });
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      throw new Error(err.error || `Error ${r.status}`);
-    }
-    const data = await r.json();
     renderMenus(data.menus || []);
     result.style.display = 'block';
     savePrefsDraft();
