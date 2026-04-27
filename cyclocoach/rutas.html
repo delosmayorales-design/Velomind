@@ -640,10 +640,10 @@ const SPEED_BY_TYPE = { road: 35, gravel: 25, mtb: 18 };
 
 // Valhalla OSM — perfiles road/gravel/MTB reales
 async function routeValhalla(type) {
-  const costing = type === 'mtb' ? 'mountain_bike' : 'bicycle';
-  const opts    = type === 'road'   ? { bicycle:       { bicycle_type: 'Road',     use_roads: 1.0, avoid_bad_surfaces: 1.0, use_hills: 0.5 } }
-                : type === 'gravel' ? { bicycle:       { bicycle_type: 'Cross',    use_roads: 0.1, avoid_bad_surfaces: 0.0, use_hills: 0.6 } }
-                :                     { mountain_bike: {                            use_roads: 0.0, avoid_bad_surfaces: 0.0 } };
+  const costing = 'bicycle';
+  const opts    = type === 'road'   ? { bicycle: { bicycle_type: 'Road',     use_roads: 1.0, avoid_bad_surfaces: 1.0, use_hills: 0.5 } }
+                : type === 'gravel' ? { bicycle: { bicycle_type: 'Cross',    use_roads: 0.1, avoid_bad_surfaces: 0.0, use_hills: 0.6 } }
+                :                     { bicycle: { bicycle_type: 'Mountain', use_roads: 0.0, avoid_bad_surfaces: 0.0, use_hills: 1.0 } };
 
   const res = await fetch('https://valhalla1.openstreetmap.de/route', {
     method: 'POST',
