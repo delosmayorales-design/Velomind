@@ -40,6 +40,8 @@
       .power-table-td { padding: 12px 8px !important; font-size: 12px !important; }
       .power-table-th { padding: 8px 8px !important; font-size: 10px !important; }
       #power-table { min-width: 100%; }
+      .grid-2col { grid-template-columns: 1fr !important; }
+      #power-curve-chart-wrap { height: 180px; }
     }
   </style>
 </head>
@@ -351,8 +353,8 @@
         <div class="card-title"><i class="fas fa-chart-line" style="color:#C4EF44"></i> Curva de Potencia</div>
         <span id="power-ftp-label" class="badge" style="background:rgba(196,239,68,0.1);color:#C4EF44;border:1px solid rgba(196,239,68,0.25)"></span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div style="height:200px;position:relative;align-self:start"><canvas id="power-curve-chart"></canvas></div>
+      <div class="grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div id="power-curve-chart-wrap" style="height:200px;position:relative;align-self:start"><canvas id="power-curve-chart"></canvas></div>
         <div style="overflow-x:auto">
           <table id="power-table" style="width:100%;border-collapse:collapse">
             <thead>
@@ -388,7 +390,7 @@
         <button onclick="autoEstimateZones()" class="btn btn-secondary btn-sm" id="btn-auto-zones"><i class="fas fa-magic"></i> Auto-calcular desde Strava</button>
       </div>
       <div id="zones-info-bar" style="display:none;padding:10px 16px;background:rgba(59,130,246,0.08);border-radius:8px;font-size:12px;color:var(--text-muted);margin-bottom:16px"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="zones-tables">
+      <div class="grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="zones-tables">
         <div>
           <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;color:var(--text-primary)"><i class="fas fa-bolt" style="color:#F59E0B;margin-right:4px"></i> Zonas de Potencia</div>
           <div id="power-zones-table"></div>
