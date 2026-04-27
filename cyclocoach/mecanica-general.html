@@ -291,23 +291,47 @@
                 <div class="calc-row">
                     <select id="tireWidth">
                         <option value="">Ancho neumático (mm)</option>
-                        <option value="21">21mm (tubular)</option>
-                        <option value="23">23mm</option>
-                        <option value="25">25mm</option>
-                        <option value="28">28mm</option>
-                        <option value="30">30mm</option>
-                        <option value="32">32mm</option>
-                        <option value="35">35mm</option>
-                        <option value="40">40mm (Gravel)</option>
-                        <option value="45">45mm</option>
-                        <option value="50">50mm (Mud)</option>
+                        <optgroup label="Ruta (700c)">
+                            <option value="21">21mm — tubular</option>
+                            <option value="23">23mm — 700x23c</option>
+                            <option value="25">25mm — 700x25c</option>
+                            <option value="28">28mm — 700x28c</option>
+                            <option value="30">30mm — 700x30c</option>
+                        </optgroup>
+                        <optgroup label="Gravel (700c / 650b)">
+                            <option value="32">32mm — 700x32c</option>
+                            <option value="35">35mm — 700x35c</option>
+                            <option value="38">38mm — 700x38c / 650bx38</option>
+                            <option value="40">40mm — 700x40c</option>
+                            <option value="42">42mm — 700x42c / 650bx42</option>
+                            <option value="45">45mm — 700x45c / 650bx47</option>
+                            <option value="47">47mm — 700x47c</option>
+                            <option value="50">50mm — 700x50c / 650bx50</option>
+                        </optgroup>
+                        <optgroup label="MTB (29&quot; / 27.5&quot; / 26&quot;)">
+                            <option value="53">53mm — 2.10&quot;</option>
+                            <option value="57">57mm — 2.25&quot;</option>
+                            <option value="60">60mm — 2.35&quot;</option>
+                            <option value="61">61mm — 2.40&quot;</option>
+                        </optgroup>
                     </select>
                     <select id="rimWidth">
-                        <option value="">LLanta interna (mm)</option>
-                        <option value="19">19mm (profesional)</option>
-                        <option value="21">21mm</option>
-                        <option value="23">23mm (moderna)</option>
-                        <option value="25">25mm (allround)</option>
+                        <option value="">Llanta interna (mm)</option>
+                        <optgroup label="Ruta">
+                            <option value="17">17mm — clásica</option>
+                            <option value="19">19mm — profesional</option>
+                            <option value="21">21mm — moderna</option>
+                        </optgroup>
+                        <optgroup label="Gravel / Allroad">
+                            <option value="23">23mm</option>
+                            <option value="25">25mm — allround</option>
+                            <option value="27">27mm — gravel</option>
+                        </optgroup>
+                        <optgroup label="MTB">
+                            <option value="30">30mm</option>
+                            <option value="33">33mm</option>
+                            <option value="35">35mm — enduro/DH</option>
+                        </optgroup>
                     </select>
                 </div>
                 <div class="calc-row">
