@@ -397,19 +397,19 @@
     <div class="card mb-6">
       <div class="card-header">
         <div class="card-title"><i class="fas fa-sliders-h"></i> Mis Zonas de Entrenamiento</div>
-        <button onclick="autoEstimateZones()" class="btn btn-secondary btn-sm" id="btn-auto-zones"><i class="fas fa-magic"></i> Auto-calcular desde Strava</button>
+        <button onclick="autoEstimateZones()" class="btn btn-secondary btn-sm" id="btn-auto-zones"><i class="fas fa-magic"></i> Autocalcular desde actividades</button>
       </div>
       <div id="zones-info-bar" style="display:none;padding:10px 16px;background:rgba(59,130,246,0.08);border-radius:8px;font-size:12px;color:var(--text-muted);margin-bottom:16px"></div>
       <div class="grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="zones-tables">
         <div>
           <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;color:var(--text-primary)"><i class="fas fa-bolt" style="color:#F59E0B;margin-right:4px"></i> Zonas de Potencia</div>
           <div id="power-zones-table"></div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Basado en tu FTP. Usa <em>Auto-calcular desde Strava</em> para actualizar.</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Basado en tu FTP. Usa <em>Autocalcular desde actividades</em> para actualizar.</div>
         </div>
         <div>
           <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;color:var(--text-primary)"><i class="fas fa-heartbeat" style="color:#EF4444;margin-right:4px"></i> Zonas de Pulso</div>
           <div id="hr-zones-table"></div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Basado en LTHR (Umbral Láctico FC). Usa <em>Auto-calcular desde Strava</em> para actualizar.</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Basado en LTHR (Umbral Láctico FC). Usa <em>Autocalcular desde actividades</em> para actualizar.</div>
         </div>
     </div></div>
     </div>
@@ -1743,7 +1743,7 @@ async function autoEstimateZones() {
     infoBar.innerHTML = 'Error al calcular: ' + e.message;
     infoBar.style.display = 'block';
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic"></i> Auto-calcular desde Strava'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic"></i> Autocalcular desde actividades'; }
   }
 }
 

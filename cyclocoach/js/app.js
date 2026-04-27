@@ -85,8 +85,8 @@ const Utils = {
     if (tsb > 25)  return { label: 'Muy fresco',      color: '#64a0ff', icon: '🚀' };
     if (tsb > 5)   return { label: 'Fresco',          color: '#00C882', icon: '✅' };
     if (tsb > -10) return { label: 'En forma',        color: '#b4e600', icon: '💪' };
-    if (tsb > -20) return { label: 'Cansado',         color: '#FFC800', icon: '⚖️' };
-    if (tsb > -30) return { label: 'Fatigado',        color: '#FF9632', icon: '🔥' };
+    if (tsb > -20) return { label: 'Carga alta',        color: '#FFC800', icon: '⚖️' };
+    if (tsb > -30) return { label: 'Fatiga acumulada', color: '#FF9632', icon: '🔥' };
     return           { label: 'Sobreentrenado',   color: '#ff4757', icon: '🛑' };
   },
 
