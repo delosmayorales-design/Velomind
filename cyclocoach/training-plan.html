@@ -737,7 +737,6 @@ function renderFormState(s, training) {
   content.innerHTML = `
     <div class="fs-header">
       <span class="phase-badge ${phaseClass}">${phaseLabel(s.phase)}</span>
-      <span class="form-pill ${formClass}">${s.form?.label || 'En forma'}</span>
       <span class="fs-date"><i class="fas fa-calendar-day" style="margin-right:4px;opacity:.5"></i>${today}</span>
     </div>
 
