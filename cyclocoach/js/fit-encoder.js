@@ -159,13 +159,13 @@ const FITWorkoutEncoder = (() => {
 
     // File ID  (local 0, global 0)
     parts.push(defMsg(0, 0, [
-      {num:8, size:1, baseType:0x00}, // type (enum)
-      {num:2, size:2, baseType:0x84}, // manufacturer (uint16)
-      {num:1, size:4, baseType:0x86}, // time_created (uint32)
+      {num:0, size:1, baseType:0x00}, // type         (field 0)
+      {num:1, size:2, baseType:0x84}, // manufacturer (field 1)
+      {num:4, size:4, baseType:0x86}, // time_created (field 4)
     ]));
     parts.push(dataMsg(0, [
       {value:5,           size:1}, // workout
-      {value:255,         size:2}, // unknown manufacturer
+      {value:255,         size:2}, // development manufacturer
       {value:timeCreated, size:4},
     ]));
 
@@ -183,29 +183,31 @@ const FITWorkoutEncoder = (() => {
 
     // Workout Step  (local 2, global 27)
     parts.push(defMsg(2, 27, [
-      {num:0, size:2,  baseType:0x84}, // message_index
-      {num:1, size:16, baseType:0x07}, // wkt_step_name
-      {num:2, size:1,  baseType:0x00}, // duration_type
-      {num:3, size:4,  baseType:0x86}, // duration_value (ms)
-      {num:4, size:1,  baseType:0x00}, // target_type
-      {num:5, size:4,  baseType:0x86}, // target_value
-      {num:6, size:4,  baseType:0x86}, // custom_target_value_low  (watts)
-      {num:7, size:4,  baseType:0x86}, // custom_target_value_high (watts)
+      {num:0,  size:2,  baseType:0x84}, // message_index
+      {num:1,  size:16, baseType:0x07}, // wkt_step_name
+      {num:2,  size:1,  baseType:0x00}, // duration_type
+      {num:3,  size:4,  baseType:0x86}, // duration_value (ms)
+      {num:4,  size:1,  baseType:0x00}, // target_type
+      {num:5,  size:4,  baseType:0x86}, // target_value
+      {num:6,  size:4,  baseType:0x86}, // custom_target_value_low  (watts)
+      {num:7,  size:4,  baseType:0x86}, // custom_target_value_high (watts)
+      {num:23, size:1,  baseType:0x00}, // intensity (0=ACTIVE,1=REST,2=WARMUP,3=COOLDOWN)
     ]));
 
     steps.forEach((s, i) => {
-      const durType  = s.open ? 5 : 0;        // 5=OPEN(lap button), 0=TIME
+      const durType  = s.open ? 5 : 0;            // 5=OPEN(lap button), 0=TIME
       const durValue = s.open ? 0 : s.sec * 1000; // ms for TIME type
       const hasPower = (s.lo > 0 || s.hi > 0);
       parts.push(dataMsg(2, [
-        {value:i,              size:2},
-        {value:s.name||'Paso', size:16, isStr:true},
-        {value:durType,        size:1},
-        {value:durValue,       size:4},
-        {value:hasPower?4:2,   size:1}, // 4=POWER, 2=OPEN
-        {value:0,              size:4}, // target_value=0 → custom range
-        {value:s.lo||0,        size:4},
-        {value:s.hi||0,        size:4},
+        {value:i,                size:2},
+        {value:s.name||'Paso',   size:16, isStr:true},
+        {value:durType,          size:1},
+        {value:durValue,         size:4},
+        {value:hasPower ? 4 : 2, size:1}, // 4=POWER, 2=OPEN
+        {value:0,                size:4}, // target_value=0 → custom range
+        {value:s.lo||0,          size:4},
+        {value:s.hi||0,          size:4},
+        {value:s.intensity||0,   size:1},
       ]));
     });
 
