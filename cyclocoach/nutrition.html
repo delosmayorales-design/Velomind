@@ -1014,6 +1014,60 @@ loadPrefs();
 const REMINDERS_KEY = 'velomind_reminders_active';
 const _reminderTimers = [];
 
+// ── Push helpers ──────────────────────────────────────────────
+function _b64ToUint8(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+function _getWaterMinutes() {
+  const hydration = weeklyNutrition[selectedDayIdx ?? (new Date().getDay() + 6) % 7]?.hydration_ml || 2100;
+  const capped = Math.min(20, Math.round(hydration / 250));
+  const s = 7 * 60, e = 22 * 60;
+  return Array.from({ length: capped }, (_, i) =>
+    capped > 1 ? s + Math.round(((e - s) / (capped - 1)) * i) : s
+  );
+}
+
+const _mealTimes = [
+  { title: '🍳 Desayuno',     body: 'Hora del desayuno — carbohidratos y proteína para empezar el día.', hour: 7,  minute: 30 },
+  { title: '🍌 Media mañana', body: 'Snack de media mañana — fruta, yogur o barrita.',                   hour: 10, minute: 30 },
+  { title: '🍽️ Comida',      body: 'Hora de comer — la toma más importante del día.',                   hour: 14, minute: 0  },
+  { title: '🥤 Merienda',     body: 'Merienda — recarga de carbohidratos si entrenas hoy.',              hour: 17, minute: 0  },
+  { title: '🌙 Cena',         body: 'Hora de cenar — proteína y verduras para recuperar.',               hour: 20, minute: 30 },
+];
+
+async function subscribeToPush() {
+  if (!('PushManager' in window)) return;
+  const token = localStorage.getItem('velomind_token');
+  if (!token) return;
+  try {
+    const keyRes = await fetch(`${window.API_URL}/push/vapid-key`);
+    if (!keyRes.ok) return;
+    const { publicKey } = await keyRes.json();
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: _b64ToUint8(publicKey) });
+    await fetch(`${window.API_URL}/push/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ subscription: sub.toJSON(), waterTimes: _getWaterMinutes(), mealTimes: _mealTimes })
+    });
+  } catch (e) { console.warn('[push subscribe]', e.message); }
+}
+
+async function unsubscribeFromPush() {
+  const token = localStorage.getItem('velomind_token');
+  if (token) {
+    fetch(`${window.API_URL}/push/subscribe`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }).catch(() => {});
+  }
+  if ('serviceWorker' in navigator) {
+    const reg = await navigator.serviceWorker.ready.catch(() => null);
+    const sub = await reg?.pushManager.getSubscription().catch(() => null);
+    if (sub) sub.unsubscribe().catch(() => {});
+  }
+}
+
 function reminderIsActive() {
   return localStorage.getItem(REMINDERS_KEY) === '1';
 }
@@ -1039,6 +1093,7 @@ async function toggleReminders() {
     _reminderTimers.length = 0;
     updateReminderBtn(false);
     showToast('🔕 Recordatorios desactivados', '#64748b');
+    unsubscribeFromPush();
     return;
   }
 
@@ -1056,6 +1111,7 @@ async function toggleReminders() {
   localStorage.setItem(REMINDERS_KEY, '1');
   updateReminderBtn(true);
   scheduleRemindersForToday();
+  subscribeToPush();
   showToast('🔔 Recordatorios activados — recibirás avisos de agua y comidas', '#00D4FF');
 }
 

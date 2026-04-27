@@ -31,6 +31,7 @@ app.use('/api/garage',     require('./routes/garage'));
 app.use('/api/plans',      require('./routes/plans'));
 app.use('/api/payments',   require('./routes/payments'));
 app.use('/api/routes',     require('./routes/routes'));
+app.use('/api/push',       require('./routes/push'));
 
 // ─────────────────────────────────────────
 // 404
@@ -52,6 +53,9 @@ app.use((err, req, res, next) => {
 // ─────────────────────────────────────────
 // START SERVER
 // ─────────────────────────────────────────
+// Push reminders scheduler
+if (process.env.NODE_ENV !== 'test') require('./services/pushScheduler').start();
+
 if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log('');
