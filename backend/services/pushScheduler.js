@@ -19,12 +19,10 @@ async function sendReminders() {
     // Agua
     for (const mins of (sub.water_times || [])) {
       if (mins !== currentMin) continue;
-      const hh = String(Math.floor(mins / 60)).padStart(2, '0');
-      const mm = String(mins % 60).padStart(2, '0');
       try {
         await webpush.sendNotification(sub.subscription, JSON.stringify({
           title: '💧 Hora de hidratarte',
-          body:  `Bebe un vaso de agua ahora — ${hh}:${mm}`,
+          body:  'Bebe un vaso de agua ahora para mantener un buen rendimiento.',
           tag:   `agua-${mins}`,
           url:   './nutrition.html'
         }));
