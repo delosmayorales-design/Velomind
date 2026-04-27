@@ -728,7 +728,17 @@ async function routeWithFallback(type) {
       }
     }
   }
-  // Road / Gravel: Valhalla → OSRM
+  // Road: BRouter fastbike (solo asfaltado) → Valhalla Road → OSRM cycling
+  if (type === 'road') {
+    try { return await routeBRouter('road'); } catch(e1) {
+      console.warn('[Rutas] BRouter road falló (' + e1.message + '), usando Valhalla…');
+      try { return await routeValhalla('road'); } catch(e2) {
+        console.warn('[Rutas] Valhalla road falló (' + e2.message + '), usando OSRM…');
+        return await routeOSRM('road');
+      }
+    }
+  }
+  // Gravel: Valhalla Cross → OSRM cycling
   try { return await routeValhalla(type); } catch(e1) {
     console.warn('[Rutas] Valhalla falló (' + e1.message + '), usando OSRM…');
     return await routeOSRM(type);
