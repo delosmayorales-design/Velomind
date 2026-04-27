@@ -1906,6 +1906,32 @@ document.addEventListener('DOMContentLoaded', () => {
    THEME ADAPTER (Light / Dark Mode)
 ══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
+  // Inyectar CSS global para forzar texto blanco en fondos verdes oscuros durante el modo claro
+  if (!document.getElementById('light-theme-green-fix')) {
+    const themeFixStyle = document.createElement('style');
+    themeFixStyle.id = 'light-theme-green-fix';
+    themeFixStyle.innerHTML = `
+      html.light-theme .btn-success,
+      html.light-theme .bg-success,
+      html.light-theme .btn-primary,
+      html.light-theme [class*="bg-green-"],
+      html.light-theme [style*="background: #10B981"],
+      html.light-theme [style*="background-color: #10B981"],
+      html.light-theme [style*="background: #00C882"],
+      html.light-theme [style*="background-color: #00C882"],
+      html.light-theme [style*="background: green"],
+      html.light-theme [style*="background-color: green"],
+      html.light-theme [style*="background: darkgreen"],
+      html.light-theme [style*="background-color: darkgreen"] {
+        color: #ffffff !important;
+      }
+      html.light-theme .btn-success *, html.light-theme .bg-success *, html.light-theme .btn-primary * {
+        color: #ffffff !important;
+      }
+    `;
+    document.head.appendChild(themeFixStyle);
+  }
+
   const sidebarNav = document.querySelector('.sidebar-nav');
   if (sidebarNav) {
     const sectionTitle = document.createElement('div');
