@@ -609,7 +609,7 @@ function toggleCycleOverlay() {
   btn.classList.toggle('btn-ghost',   !cycleOverlayOn);
 }
 
-// ── Routing: Valhalla con fallback a OSRM ────────────────────────
+// ── Routing: BRouter (MTB) → Valhalla → OSRM ────────────────────
 function decodePolyline6(encoded) {
   const coords = []; let idx = 0, lat = 0, lng = 0;
   while (idx < encoded.length) {
@@ -639,12 +639,36 @@ function calcElevGain(elevs, threshold = 3) {
 // Velocidades de referencia por tipo (km/h) para estimar duración real
 const SPEED_BY_TYPE = { road: 35, gravel: 25, mtb: 18 };
 
-// Valhalla OSM — perfiles road/gravel/MTB reales
+// BRouter — perfil MTB real: usa tags OSM mtb:scale, evita carreteras asfaltadas
+async function routeBRouter(type) {
+  const profile = type === 'mtb' ? 'mtb' : type === 'gravel' ? 'trekking' : 'fastbike';
+  const lonlats = waypoints.map(w => `${w.lng},${w.lat}`).join('|');
+  const url = `https://brouter.de/brouter?lonlats=${lonlats}&profile=${profile}&alternativeidx=0&format=geojson`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('BRouter HTTP ' + res.status);
+  const data = await res.json();
+  const feature = data.features?.[0];
+  if (!feature) throw new Error('BRouter: sin ruta');
+  const latLngs = feature.geometry.coordinates.map(([ln, la, el]) => [la, ln]);
+  const elevs   = feature.geometry.coordinates.map(([ln, la, el]) => el || 0).filter(e => e > 0);
+  const distKm  = (feature.properties?.['track-length'] || 0) / 1000 ||
+                  latLngs.reduce((acc, c, i) => {
+                    if (!i) return 0;
+                    const [la1,ln1] = latLngs[i-1], [la2,ln2] = c;
+                    const R = 6371, dLa = (la2-la1)*Math.PI/180, dLn = (ln2-ln1)*Math.PI/180;
+                    const a = Math.sin(dLa/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLn/2)**2;
+                    return acc + R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                  }, 0);
+  const speed = SPEED_BY_TYPE[type] || 20;
+  return { latLngs, distKm, durMin: Math.round(distKm / speed * 60), elevGain: calcElevGain(elevs), elevs };
+}
+
+// Valhalla OSM — perfiles road/gravel/MTB
 async function routeValhalla(type) {
   const costing = 'bicycle';
   const opts    = type === 'road'   ? { bicycle: { bicycle_type: 'Road',     use_roads: 1.0, avoid_bad_surfaces: 1.0, use_hills: 0.5 } }
                 : type === 'gravel' ? { bicycle: { bicycle_type: 'Cross',    use_roads: 0.1, avoid_bad_surfaces: 0.0, use_hills: 0.6 } }
-                :                     { bicycle: { bicycle_type: 'Mountain', use_roads: 0.0, avoid_bad_surfaces: 0.0, use_hills: 1.0 } };
+                :                     { bicycle: { bicycle_type: 'Mountain', use_roads: 0.0, avoid_bad_surfaces: 0.0, use_hills: 1.0, use_tracks: 1.0 } };
 
   const res = await fetch('https://valhalla1.openstreetmap.de/route', {
     method: 'POST',
@@ -672,12 +696,11 @@ async function routeValhalla(type) {
   };
 }
 
-// OSRM — fallback fiable (cycling para road/gravel, foot para MTB)
+// OSRM — último fallback (cycling para todos los tipos)
 async function routeOSRM(type) {
-  const profile = type === 'mtb' ? 'foot' : 'cycling';
-  const coords  = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
-  const res     = await fetch(
-    `https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson`
+  const coords = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
+  const res    = await fetch(
+    `https://router.project-osrm.org/route/v1/cycling/${coords}?overview=full&geometries=geojson`
   );
   if (!res.ok) throw new Error('OSRM HTTP ' + res.status);
   const data  = await res.json();
@@ -693,17 +716,30 @@ async function routeOSRM(type) {
   };
 }
 
+// Función unificada de routing con cadena de fallback según tipo
+async function routeWithFallback(type) {
+  if (type === 'mtb') {
+    // MTB: BRouter (perfil mtb real) → Valhalla Mountain → OSRM cycling
+    try { return await routeBRouter('mtb'); } catch(e1) {
+      console.warn('[Rutas] BRouter MTB falló (' + e1.message + '), usando Valhalla…');
+      try { return await routeValhalla('mtb'); } catch(e2) {
+        console.warn('[Rutas] Valhalla MTB falló (' + e2.message + '), usando OSRM…');
+        return await routeOSRM('mtb');
+      }
+    }
+  }
+  // Road / Gravel: Valhalla → OSRM
+  try { return await routeValhalla(type); } catch(e1) {
+    console.warn('[Rutas] Valhalla falló (' + e1.message + '), usando OSRM…');
+    return await routeOSRM(type);
+  }
+}
+
 async function calcRoute(type) {
   if (waypoints.length < 2) return;
   document.getElementById('route-spinner').classList.add('visible');
   try {
-    let result;
-    try {
-      result = await routeValhalla(type);
-    } catch (e1) {
-      console.warn('[Rutas] Valhalla falló (' + e1.message + '), usando OSRM…');
-      result = await routeOSRM(type);
-    }
+    const result = await routeWithFallback(type);
 
     const { latLngs, distKm, durMin, elevGain, elevs } = result;
     routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la, ln]) => [ln, la]) };
@@ -1306,10 +1342,7 @@ async function generateWindRoute() {
     waypoints = routeWaypoints.map(w => ({ lat: w.lat, lng: w.lon }));
     currentRouteType = type;
 
-    let result;
-    try { result = await routeValhalla(type); }
-    catch { result = await routeOSRM(type); }
-
+    const result = await routeWithFallback(type);
     const { latLngs, distKm, durMin, elevGain, elevs } = result;
     routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la,ln]) => [ln,la]) };
 
