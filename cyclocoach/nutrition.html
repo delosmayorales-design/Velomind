@@ -1021,22 +1021,34 @@ function _b64ToUint8(b64) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
+// getTimezoneOffset() devuelve minutos DETRÁS de UTC (España UTC+2 → -120)
+// Para convertir hora local a UTC: localMin + offset (mod 1440)
+function _localToUtcMin(localMin) {
+  return (localMin + new Date().getTimezoneOffset() + 1440) % 1440;
+}
+
 function _getWaterMinutes() {
   const hydration = weeklyNutrition[selectedDayIdx ?? (new Date().getDay() + 6) % 7]?.hydration_ml || 2100;
   const capped = Math.min(20, Math.round(hydration / 250));
   const s = 7 * 60, e = 22 * 60;
-  return Array.from({ length: capped }, (_, i) =>
-    capped > 1 ? s + Math.round(((e - s) / (capped - 1)) * i) : s
-  );
+  return Array.from({ length: capped }, (_, i) => {
+    const local = capped > 1 ? s + Math.round(((e - s) / (capped - 1)) * i) : s;
+    return _localToUtcMin(local);
+  });
 }
 
-const _mealTimes = [
+const _mealTimesLocal = [
   { title: '🍳 Desayuno',     body: 'Hora del desayuno — carbohidratos y proteína para empezar el día.', hour: 7,  minute: 30 },
   { title: '🍌 Media mañana', body: 'Snack de media mañana — fruta, yogur o barrita.',                   hour: 10, minute: 30 },
   { title: '🍽️ Comida',      body: 'Hora de comer — la toma más importante del día.',                   hour: 14, minute: 0  },
   { title: '🥤 Merienda',     body: 'Merienda — recarga de carbohidratos si entrenas hoy.',              hour: 17, minute: 0  },
   { title: '🌙 Cena',         body: 'Hora de cenar — proteína y verduras para recuperar.',               hour: 20, minute: 30 },
 ];
+// Convertir comidas a UTC para que el servidor (UTC) dispare a la hora local correcta
+const _mealTimes = _mealTimesLocal.map(m => {
+  const utcMin = _localToUtcMin(m.hour * 60 + m.minute);
+  return { ...m, hour: Math.floor(utcMin / 60), minute: utcMin % 60 };
+});
 
 async function subscribeToPush() {
   if (!('PushManager' in window)) return;
