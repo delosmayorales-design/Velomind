@@ -815,6 +815,7 @@ const FileParser = {
   async parse(file) {
     const ext = file.name.split('.').pop().toLowerCase();
     if (ext === 'fit') {
+      await this._ensureFitLibrary();
       const buffer = await file.arrayBuffer();
       return this.parseFIT(buffer, file.name);
     }
@@ -825,14 +826,28 @@ const FileParser = {
     throw new Error('Formato no soportado. Usa FIT, GPX, TCX o CSV.');
   },
 
+  _ensureFitLibrary() {
+    return new Promise((resolve, reject) => {
+      if (typeof window.FitParser !== 'undefined' || typeof window.EasyFit !== 'undefined') {
+        return resolve();
+      }
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/fit-file-parser@1.9.0/dist/fit-file-parser.min.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('No se pudo descargar la librería FIT. Revisa tu conexión a internet.'));
+      document.head.appendChild(script);
+    });
+  },
+
   parseFIT(buffer, name) {
     return new Promise((resolve, reject) => {
-      if (typeof EasyFit === 'undefined') {
+      const ParserClass = window.FitParser || window.EasyFit;
+      if (!ParserClass) {
         reject(new Error('Librería FIT no disponible. Recarga la página.'));
         return;
       }
-      const easyfit = new EasyFit({ force: true, speedUnit: 'm/s', lengthUnit: 'm', mode: 'list' });
-      easyfit.parse(buffer, (err, data) => {
+      const parser = new ParserClass({ force: true, speedUnit: 'm/s', lengthUnit: 'm', mode: 'list' });
+      parser.parse(buffer, (err, data) => {
         if (err) { reject(new Error('No se pudo leer el archivo FIT: ' + err)); return; }
 
         const session = data.activity?.sessions?.[0];

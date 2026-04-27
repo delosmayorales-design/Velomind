@@ -167,7 +167,7 @@ ${stepsXml}
     if (!ftp || ftp < 50) ftp = 200;
     const wt           = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[session.type]) || {};
     const sessionLabel = (wt.label || session.name || session.type || 'Entrenamiento').slice(0, 40);
-    const filename     = `VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.zwo`;
+    const filename     = `Zwift_VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.zwo`;
     const steps        = buildSteps(session, ftp);
     const xml          = encodeZWO(sessionLabel, steps, ftp);
     download(filename, xml);
