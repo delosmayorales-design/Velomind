@@ -427,14 +427,31 @@ const TrainingPlanGenerator = {
       let dynamicDesc = buildDesc(intervals);
       let altDesc = buildDesc(alt_intervals);
 
-      // ── Asignación del consejo de terreno ──
+      // ── Consejo de terreno con segmentos locales ──
       let terrainAdvice = '';
-      if (['vo2max', 'threshold'].includes(t.type)) {
-        terrainAdvice = ` ⛰️ Terreno ideal: Busca un tramo de subida constante del 4-7% sin cruces ni interrupciones.`;
+      if (t.type === 'sprint') {
+        const seg = this._LOCAL_SEGMENTS[0];
+        terrainAdvice = ` ⚡ Terreno ideal: ${seg.name} (${seg.km} km / ${seg.grad}%) — arranca en la entrada y da todo.`;
+      } else if (t.type === 'vo2max') {
+        const repDur = intervals.find(iv => iv.label.includes('VO₂') || iv.label.includes('Micro'))?.dur;
+        const mins = repDur ? parseFloat(repDur) : 4;
+        const seg = this._pickSegment(mins, 'minVO2');
+        terrainAdvice = ` ⛰️ Terreno ideal: ${seg.name} (${seg.km} km / ${seg.grad}%) — sube fuerte, baja suave como recuperación.`;
+      } else if (t.type === 'threshold') {
+        const repDur = intervals.find(iv => iv.label.includes('umbral') || iv.label.includes('Umbral') || iv.label.includes('Over'))?.dur;
+        const mins = repDur ? parseFloat(repDur) : 8;
+        const seg = this._pickSegment(mins, 'minThresh');
+        terrainAdvice = ` ⛰️ Terreno ideal: ${seg.name} (${seg.km} km / ${seg.grad}%) — sostenido al FTP de inicio a fin.`;
       } else if (t.type === 'strength') {
-        terrainAdvice = ` ⛰️ Terreno ideal: Subida tendida del 5-8% para poder ir atrancado con seguridad.`;
-      } else if (t.type === 'sprint') {
-        terrainAdvice = ` ⚡ Terreno ideal: Llano o falso llano ascendente (1-3%) con buena visibilidad.`;
+        const repDur = intervals.find(iv => iv.label.includes('uerza') || iv.label.includes('fuerza'))?.dur;
+        const mins = repDur ? parseFloat(repDur) : 6;
+        const seg = this._pickSegment(mins, 'minThresh');
+        terrainAdvice = ` ⛰️ Terreno ideal: ${seg.name} (${seg.km} km / ${seg.grad}%) — cadencia baja (50-65 rpm), máxima aplicación de fuerza.`;
+      } else if (t.type === 'tempo') {
+        const repDur = intervals.find(iv => iv.label.includes('Z3') || iv.label.includes('Sweetspot') || iv.label.includes('Tempo'))?.dur;
+        const mins = repDur ? parseFloat(repDur) : 12;
+        const seg = this._pickSegment(mins, 'minThresh');
+        terrainAdvice = ` ⛰️ Terreno ideal: ${seg.name} (${seg.km} km / ${seg.grad}%) — sweetspot sostenido, respiración elevada pero rítmica.`;
       } else if (['endurance', 'recovery', 'long'].includes(t.type)) {
         terrainAdvice = ` 🛣️ Terreno ideal: Terreno lo más llano y continuo posible para mantener los vatios estables.`;
       }
