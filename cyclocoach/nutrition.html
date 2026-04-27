@@ -1040,9 +1040,9 @@ function _getWaterMinutes() {
 const _mealTimesLocal = [
   { title: '🍳 Desayuno',     body: 'Hora del desayuno — carbohidratos y proteína para empezar el día.', hour: 7,  minute: 30 },
   { title: '🍌 Media mañana', body: 'Snack de media mañana — fruta, yogur o barrita.',                   hour: 10, minute: 30 },
-  { title: '🍽️ Comida',      body: 'Hora de comer — la toma más importante del día.',                   hour: 14, minute: 0  },
+  { title: '🍽️ Comida',      body: 'Hora de comer — la toma más importante del día.',                   hour: 15, minute: 0  },
   { title: '🥤 Merienda',     body: 'Merienda — recarga de carbohidratos si entrenas hoy.',              hour: 17, minute: 0  },
-  { title: '🌙 Cena',         body: 'Hora de cenar — proteína y verduras para recuperar.',               hour: 20, minute: 30 },
+  { title: '🌙 Cena',         body: 'Hora de cenar — proteína y verduras para recuperar.',               hour: 21, minute: 30 },
 ];
 // Convertir comidas a UTC para que el servidor (UTC) dispare a la hora local correcta
 const _mealTimes = _mealTimesLocal.map(m => {
@@ -1178,9 +1178,9 @@ function scheduleRemindersForToday() {
   const meals = [
     { hh: 7,  mm: 30, title: '🍳 Desayuno',        body: 'Hora del desayuno — carbohidratos y proteína para empezar el día.' },
     { hh: 10, mm: 30, title: '🍌 Almuerzo media mañana', body: 'Snack de media mañana — fruta, yogur o barrita.' },
-    { hh: 14, mm: 0,  title: '🍽️ Comida',           body: 'Hora de comer — la toma más importante del día.' },
+    { hh: 15, mm: 0,  title: '🍽️ Comida',           body: 'Hora de comer — la toma más importante del día.' },
     { hh: 17, mm: 0,  title: '🥤 Merienda',          body: 'Merienda — recarga de carbohidratos si entrenas hoy.' },
-    { hh: 20, mm: 30, title: '🌙 Cena',              body: 'Hora de cenar — proteína y verduras para recuperar.' },
+    { hh: 21, mm: 30, title: '🌙 Cena',              body: 'Hora de cenar — proteína y verduras para recuperar.' },
   ];
 
   meals.forEach(({ hh, mm, title, body }, idx) => {
