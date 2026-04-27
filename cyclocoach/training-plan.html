@@ -565,6 +565,9 @@
       </div>
     </div>
 
+    <!-- FTP TEST ADVISOR -->
+    <div id="ftp-advisor-section" style="margin-bottom:20px"></div>
+
     <!-- PLAN SEMANAL -->
     <div id="coach-alerts-section" class="hidden" style="margin-bottom:20px"></div>
 
@@ -1104,6 +1107,7 @@ function renderPlan(plan, athlete) {
 
   renderPrinciples(plan.phase);
   renderProgressionChart(metrics.ctl || 40, plan.targetTSS);
+  renderFTPAdvisor();
 }
 
 // ── Adapt inline ─────────────────────────────────────────────
@@ -2301,6 +2305,131 @@ function renderWeatherDay(day) {
   
   if (!html) html = '<div style="width:100%; text-align:center; color:var(--text-muted); padding: 20px;">No hay datos disponibles.</div>';
   document.getElementById('weather-content').innerHTML = html;
+}
+
+// ── FTP Test Advisor ───────────────────────────────────────────
+async function renderFTPAdvisor() {
+  const el = document.getElementById('ftp-advisor-section');
+  if (!el) return;
+
+  const metrics = AppState.getCurrentMetrics() || {};
+  const tsb = Math.round(metrics.tsb || 0);
+  const ctl = Math.round(metrics.ctl || 0);
+
+  // Solo mostrar si hay datos de forma reales
+  if (ctl < 10) { el.innerHTML = ''; return; }
+
+  // Evaluar forma
+  const formOk   = tsb >= 5 && tsb <= 30;
+  const formGood = tsb >= 10 && tsb <= 25;
+
+  // Obtener previsión de viento 7 días
+  let windDays = [];
+  try {
+    const pos = await new Promise((res, rej) =>
+      navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+    );
+    const { latitude: lat, longitude: lon } = pos.coords;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+      `&daily=windspeed_10m_max,precipitation_sum,weathercode&timezone=auto&forecast_days=7`;
+    const data = await (await fetch(url)).json();
+    windDays = (data.daily?.time || []).map((date, i) => ({
+      date,
+      wind:  Math.round(data.daily.windspeed_10m_max[i]),
+      rain:  Math.round(data.daily.precipitation_sum[i] * 10) / 10,
+      code:  data.daily.weathercode[i],
+    }));
+  } catch (_) { /* sin GPS o sin red: seguimos sin viento */ }
+
+  // Día ideal: viento 15-40 km/h, sin lluvia significativa, forma ok
+  const WIND_MIN = 15, WIND_MAX = 40;
+  const bestDays = windDays.filter(d =>
+    d.wind >= WIND_MIN && d.wind <= WIND_MAX && d.rain < 2
+  );
+
+  // Calcular puntuación de cada día candidato
+  const scored = bestDays.map(d => {
+    const windScore = 1 - Math.abs(d.wind - 25) / 25;   // óptimo ~25 km/h
+    const formScore = formGood ? 1 : formOk ? 0.6 : 0.2;
+    return { ...d, score: windScore * formScore };
+  }).sort((a, b) => b.score - a.score);
+
+  const top = scored[0];
+
+  // Etiqueta de forma
+  const formLabel = tsb > 30  ? { t: 'Muy descansado', c: '#38BDF8', tip: 'Llevas demasiado tiempo sin carga. Haz 1-2 días de activación antes.' }
+    : tsb >= 10               ? { t: 'Forma pico ✓',   c: '#10b981', tip: 'Condición óptima para un test.' }
+    : tsb >= 5                ? { t: 'Buena forma',     c: '#C4EF44', tip: 'Aceptable. Un día más de descarga sería ideal.' }
+    : tsb >= -5               ? { t: 'Neutro',          c: '#94a3b8', tip: 'Necesitas 2-3 días de descarga antes del test.' }
+    : tsb >= -20              ? { t: 'Fatigado',        c: '#F97316', tip: 'No es buen momento. Descansa primero.' }
+    :                           { t: 'Muy fatigado',    c: '#ff4757', tip: 'Espera al menos una semana.' };
+
+  const windIcon = (w) => w >= 30 ? '💨💨' : w >= 15 ? '💨' : '🍃';
+
+  const daysHtml = windDays.length ? windDays.slice(0, 7).map(d => {
+    const isTop   = top && d.date === top.date;
+    const windOk  = d.wind >= WIND_MIN && d.wind <= WIND_MAX;
+    const rainOk  = d.rain < 2;
+    const dayName = new Date(d.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'short', day:'numeric' });
+    const bg      = isTop ? 'rgba(196,239,68,0.15)' : windOk && rainOk ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)';
+    const border  = isTop ? '1px solid rgba(196,239,68,0.5)' : '1px solid rgba(255,255,255,0.06)';
+    const windCol = windOk ? (d.wind >= 25 ? '#C4EF44' : '#10b981') : 'var(--text-muted)';
+    return `<div style="background:${bg};border:${border};border-radius:8px;padding:8px 10px;text-align:center;min-width:62px">
+      ${isTop ? '<div style="font-size:9px;font-weight:700;color:#C4EF44;text-transform:uppercase;margin-bottom:2px">★ IDEAL</div>' : ''}
+      <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">${dayName}</div>
+      <div style="font-size:13px;font-weight:700;color:${windCol}">${windIcon(d.wind)} ${d.wind}<span style="font-size:9px"> km/h</span></div>
+      ${d.rain > 0 ? `<div style="font-size:10px;color:#60a5fa;margin-top:2px">🌧 ${d.rain}mm</div>` : '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">sin lluvia</div>'}
+    </div>`;
+  }).join('') : '';
+
+  const recommendation = !windDays.length
+    ? `<p style="color:var(--text-muted);font-size:12px;margin:0">Activa la ubicación para ver la previsión de viento y el mejor día.</p>`
+    : top && formOk
+    ? `<p style="margin:0;font-size:13px;color:var(--text-primary)">Mejor día: <strong style="color:#C4EF44">${new Date(top.date+'T12:00:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})}</strong> — ${top.wind} km/h de viento${formGood ? ' · Forma pico' : ''}.</p>`
+    : top && !formOk
+    ? `<p style="margin:0;font-size:13px;color:var(--text-primary)">Hay viento ${top.wind > WIND_MAX ? 'excesivo' : 'adecuado'} el <strong>${new Date(top.date+'T12:00:00').toLocaleDateString('es-ES',{weekday:'long'})}</strong>, pero tu forma (TSB ${tsb > 0 ? '+' : ''}${tsb}) no es óptima todavía. ${formLabel.tip}</p>`
+    : `<p style="margin:0;font-size:12px;color:var(--text-muted)">Esta semana no hay días con viento y forma ideales. ${formLabel.tip}</p>`;
+
+  el.innerHTML = `
+  <div style="background:var(--bg-card);border:1px solid rgba(196,239,68,0.2);border-radius:var(--radius-lg);padding:16px;margin-bottom:4px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">🎯</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text-primary)">Test de FTP</div>
+          <div style="font-size:11px;color:var(--text-muted)">Mejor día según forma + viento</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px;font-weight:700;color:${formLabel.c};background:${formLabel.c}22;padding:2px 8px;border-radius:8px">${formLabel.t}</span>
+        <span style="font-size:11px;color:var(--text-muted)">TSB ${tsb > 0 ? '+' : ''}${tsb}</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:12px">${recommendation}</div>
+
+    ${daysHtml ? `<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">${daysHtml}</div>` : ''}
+
+    <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:12px">
+      <button onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('i').classList.toggle('fa-chevron-down');this.querySelector('i').classList.toggle('fa-chevron-up')"
+        style="background:none;border:none;color:var(--text-muted);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px;padding:0;font-family:inherit">
+        <i class="fas fa-chevron-down"></i> Cómo hacer el test de FTP con viento
+      </button>
+      <div class="hidden" style="margin-top:10px;font-size:12px;color:var(--text-secondary);line-height:1.7">
+        <p style="margin:0 0 8px"><strong style="color:var(--text-primary)">Protocolo 20 min (viento de cara)</strong></p>
+        <p style="margin:0 0 6px">Elige una carretera recta donde el viento venga de frente. Así el esfuerzo es constante y medible, sin bajadas ni cruces.</p>
+        <ol style="margin:0 0 8px;padding-left:18px">
+          <li><strong>Calentamiento 20 min</strong> — Z1/Z2, aumentando progresivamente. Incluye 3×1 min a ritmo vivo para activar.</li>
+          <li><strong>Esfuerzo de 5 min a tope</strong> — Vacía las piernas. No es el test, es la preparación neurológica.</li>
+          <li><strong>Recuperación 5 min</strong> — Pedaleo muy suave.</li>
+          <li><strong>Test: 20 min al máximo sostenible</strong> — El ritmo más alto que puedas mantener SIN cavar. Potencia media constante, con el viento de cara. Empieza conservador los primeros 5 min.</li>
+          <li><strong>Enfriamiento 10 min</strong> — Z1 suave.</li>
+        </ol>
+        <p style="margin:0;color:#C4EF44;font-weight:600">FTP = 95% de la potencia media de esos 20 min</p>
+        <p style="margin:6px 0 0;color:var(--text-muted)">Ejemplo: media 220W → FTP = 220 × 0,95 = <strong style="color:var(--text-primary)">209W</strong></p>
+      </div>
+    </div>
+  </div>`;
 }
 </script>
 </body>
