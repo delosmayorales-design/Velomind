@@ -88,6 +88,9 @@
     }
     .tab-btn.active {
       background: var(--primary);
+      color: #111;
+    }
+    html.light-theme .tab-btn.active {
       color: #ffffff;
     }
 
@@ -350,6 +353,13 @@
       border-right: 1px solid var(--border);
     }
     .canvas-box:last-child { border-right: none; background: #05070a; }
+
+    @media (max-width: 768px) {
+      .bio-canvas-container { flex-direction: column; }
+      .canvas-box { border-right: none; border-bottom: 1px solid var(--border); min-height: 380px; }
+      .canvas-box:last-child { border-bottom: none; }
+      .field-row { grid-template-columns: 1fr; }
+    }
     .video-panel-state {
       position: absolute; inset: 0;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -694,7 +704,7 @@
 
     <!-- ── MANUAL TAB CONTENT (FULL WIDTH) ── -->
     <div id="tab-manual-content" style="display:none;">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 24px; align-items: start;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 24px; align-items: start;">
         
         <!-- Columna Izquierda: Cuerpo -->
         <div class="card">

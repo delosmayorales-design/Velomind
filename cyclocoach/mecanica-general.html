@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -21,9 +21,9 @@
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
   <style>
-    .mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+    .mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 16px; }
     
-    .tab-nav { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg-input); padding: 4px; border-radius: var(--radius-md); width: fit-content; }
+    .tab-nav { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg-input); padding: 4px; border-radius: var(--radius-md); width: 100%; max-width: fit-content; flex-wrap: wrap; }
     .tab-btn { padding: 8px 16px; background: transparent; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: var(--transition); }
     .tab-btn:hover { color: var(--text-secondary); }
     .tab-btn.active { background: var(--primary); color: #111; }
@@ -73,8 +73,12 @@
     .mod-card h3 { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; margin-bottom: 14px; color: var(--text); font-family: 'Space Grotesk', sans-serif; }
     .mod-card h3 i { color: var(--primary); width: 24px; }
     .mod-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5; }
-    .mod-card[style*="grid-column:span2"] { grid-column: span 2; }
-    @media (max-width: 768px) { .mod-card[style*="grid-column:span2"] { grid-column: span 1; } }
+    .mod-card[style*="span 2"] { grid-column: span 2; }
+    @media (max-width: 768px) { 
+      .mod-card[style*="span 2"] { grid-column: span 1 !important; }
+      .calc-row { grid-template-columns: 1fr; }
+      .torque-grid { grid-template-columns: 1fr; }
+    }
     
     .calc-btn { width: 100%; padding: 12px; background: var(--primary); color: #111; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 8px; transition: var(--transition); font-family: 'Space Grotesk', sans-serif; }
     .calc-btn:hover { background: var(--primary-dark); box-shadow: 0 4px 16px rgba(158,214,43,0.3); }

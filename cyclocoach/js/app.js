@@ -1770,13 +1770,15 @@ document.addEventListener('DOMContentLoaded', () => {
       div[style*="grid-template-columns: 2fr 1fr"],
       div[style*="grid-template-columns: 1fr 1fr 1fr"],
       div[style*="grid-template-columns:repeat(4,1fr)"],
-      div[style*="grid-template-columns:repeat(5,1fr)"] {
+      div[style*="grid-template-columns:repeat(5,1fr)"],
+      div[style*="grid-template-columns: repeat(7"],
+      div[style*="grid-template-columns:repeat(7"] {
         display: flex !important; flex-direction: column !important; gap: 12px !important;
         width: 100% !important; max-width: 100% !important;
       }
       
       /* Clases comunes de layout en la app */
-      .metrics-grid, .grid-2, #stats-row, .summary-grid, .color-grid, .mod-grid, .calc-row { 
+      .metrics-grid, .grid-2, #stats-row, .summary-grid, .color-grid, .mod-grid, .calc-row, .wc-grid, .plan-grid, .plan-sessions { 
         display: flex !important; flex-direction: column !important; gap: 12px !important;
         width: 100% !important; max-width: 100% !important;
       }

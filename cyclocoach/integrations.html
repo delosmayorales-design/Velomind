@@ -1,16 +1,17 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
     (function() {
-      var theme = localStorage.getItem('velomind_theme') || 'dark';
+      var theme = localStorage.getItem('velomind_theme');
+      if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', theme);
       if (theme === 'light') document.documentElement.classList.add('light-theme');
     })();
   </script>
   <style>
-    html { color-scheme: dark; background-color: #0a0b0f; }
-    html[data-theme="light"] { color-scheme: light; background-color: #0a0b0f; }
+    html { color-scheme: light; background-color: #f8fafc; }
+    html[data-theme="dark"] { color-scheme: dark; background-color: #0a0b0f; }
   </style>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -213,7 +214,12 @@
       grid-template-columns: 1fr 1fr;
       gap: 20px;
     }
-    @media (max-width: 900px) { .integrations-grid { grid-template-columns: 1fr; } }
+    .setup-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 900px) { .integrations-grid, .setup-grid { grid-template-columns: 1fr; } }
 
     .tab-row {
       display: flex;
@@ -222,7 +228,9 @@
       border-radius: 10px;
       padding: 4px;
       margin-bottom: 28px;
-      width: fit-content;
+      width: 100%;
+      max-width: fit-content;
+      flex-wrap: wrap;
     }
     .tab-btn {
       padding: 8px 18px;
@@ -451,7 +459,7 @@
 
     <!-- TAB: SETUP GUIDE -->
     <div class="tab-panel" id="tab-setup">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+      <div class="setup-grid">
 
         <!-- Strava Setup -->
         <div class="card">
