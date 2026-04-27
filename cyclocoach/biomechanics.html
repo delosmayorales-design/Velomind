@@ -10,7 +10,7 @@
   </script>
   <style>
     html { color-scheme: dark; background-color: #0a0b0f; }
-    html[data-theme="light"] { color-scheme: light; background-color: #0a0b0f; }
+    html[data-theme="light"] { color-scheme: light; background-color: #f3f4f6; }
   </style>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -193,6 +193,9 @@
     .canvas-wrapper {
       position: relative;
       background: #000;
+    }
+    html.light-theme .canvas-wrapper {
+      background: #e5e7eb;
       border-radius: 0 0 var(--radius-lg) var(--radius-lg);
       overflow: hidden;
       min-height: 320px;
@@ -329,6 +332,8 @@
     .guide-step strong { color: var(--text-primary); }
 
     /* ── Side-by-side comparison ───────────────── */
+    html.light-theme .bio-canvas-container { background: #e5e7eb !important; }
+    html.light-theme .canvas-box:last-child { background: #d1d5db !important; }
     .bio-canvas-container {
       display: flex;
       background: #000;
