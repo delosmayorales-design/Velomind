@@ -1552,6 +1552,10 @@ REGLAS IMPORTANTES:
 - Comida española/mediterránea, fácil de comprar en supermercado.
 - Cantidades concretas en g, ml o unidades. Sin recetas elaboradas.
 - Macros aproximados (±10% válido).
+- Leche o bebida vegetal: máximo 200ml por toma (un vaso normal). Nunca 500ml.
+- Yogur: máximo 1 unidad (125-150g) por toma.
+- Aceite de oliva: máximo 1 cucharada (10ml) por toma.
+- Queso: máximo 30-40g por toma.
 
 FORMATO DE RESPUESTA (JSON estricto):
 {"menus":[{"name":"Menú 1 · Simple","meals":{"desayuno":[{"food":"Nombre alimento","amount":"cantidad"}],"comida":[...],"cena":[...],"snacks":[...]},"totals":{"calories":0,"carbs":0,"protein":0,"fat":0}}, ...]}`;
