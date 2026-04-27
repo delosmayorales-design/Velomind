@@ -212,7 +212,7 @@ input, select, textarea, button { font-family: inherit; }
 }
 
 .athlete-avatar {
-  width: 36px; height: 36px;
+  width: 46px; height: 46px;
   background: linear-gradient(135deg, var(--primary-dark), var(--primary));
   border-radius: 50%;
   display: flex;
@@ -220,7 +220,7 @@ input, select, textarea, button { font-family: inherit; }
   justify-content: center;
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 18px;
   color: #05070a;
   flex-shrink: 0;
   box-shadow: 0 0 14px rgba(158,214,43,0.35);
@@ -1205,6 +1205,25 @@ html.light-theme [style*="background-color:rgb(16,185,129)" i], html.light-theme
 html.light-theme [style*="background: green" i], html.light-theme [style*="background: green" i] *,
 html.light-theme [style*="background-color: green" i], html.light-theme [style*="background-color: green" i] *,
 html.light-theme [style*="background: darkgreen" i], html.light-theme [style*="background: darkgreen" i] *,
-html.light-theme [style*="background-color: darkgreen" i], html.light-theme [style*="background-color: darkgreen" i] * {
+html.light-theme [style*="background-color: darkgreen" i], html.light-theme [style*="background-color: darkgreen" i] *,
+html.light-theme .adapt-submit, html.light-theme .adapt-submit *,
+html.light-theme .params-apply-btn, html.light-theme .params-apply-btn *,
+html.light-theme .btn-save-personal, html.light-theme .btn-save-personal *,
+html.light-theme .adapt-trigger, html.light-theme .adapt-trigger *,
+html.light-theme [onclick*="analyze" i], html.light-theme [onclick*="analyze" i] *,
+html.light-theme [onclick*="diagnos" i], html.light-theme [onclick*="diagnos" i] *,
+html.light-theme [onclick*="biomec" i], html.light-theme [onclick*="biomec" i] *,
+html.light-theme [onclick*="calcul" i], html.light-theme [onclick*="calcul" i] *,
+html.light-theme [style*="background: var(--primary)" i], html.light-theme [style*="background: var(--primary)" i] *,
+html.light-theme [style*="background:var(--primary)" i], html.light-theme [style*="background:var(--primary)" i] *,
+html.light-theme [style*="background-color: var(--primary)" i], html.light-theme [style*="background-color: var(--primary)" i] *,
+html.light-theme [style*="background-color:var(--primary)" i], html.light-theme [style*="background-color:var(--primary)" i] * {
   color: #ffffff !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   AUMENTAR TAMAÑO DEL LOGO (Pantallas Login y Perfil)
+   ══════════════════════════════════════════════════════════ */
+img[src*="logoPerfil" i] {
+  width: 180px !important;
 }
