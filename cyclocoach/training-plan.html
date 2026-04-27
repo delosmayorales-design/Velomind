@@ -964,6 +964,7 @@ function renderPlan(plan, athlete) {
     const sessDate = new Date(mondayDate);
     sessDate.setDate(mondayDate.getDate() + i);
 
+    const isToday_rest = i === todayIdx;
     if (sess.isRest) {
       return `
         <div class="session-card-item rest">
@@ -979,6 +980,21 @@ function renderPlan(plan, athlete) {
               <div style="font-size:12px;color:var(--text-muted)">${sess.description}</div>
             </div>
           </div>
+          ${isToday_rest ? `
+          <div class="adapt-zone" style="background:rgba(255,107,53,.03);border-top:1px solid rgba(255,107,53,.1)" onclick="event.stopPropagation()">
+            <div class="adapt-trigger" onclick="toggleRealityForm(${i})" style="color:#FF6B35">
+              <i class="fas fa-pen-to-square" style="font-size:10px"></i>
+              <span>Registrar lo que realmente hice hoy (Post-entreno)</span>
+              <i class="fas fa-chevron-down" id="reality-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
+            </div>
+            <div id="reality-body-${i}" class="adapt-body" style="display:none">
+              <textarea class="adapt-input" id="reality-input-${i}" placeholder="Día de descanso — ¿hiciste algo? Ej: Salí 30 min a caminar, estiramientos..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px"></textarea>
+              <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(255,107,53,.15);color:#FF6B35;border-color:rgba(255,107,53,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
+                <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
+              </button>
+              <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
+            </div>
+          </div>` : ''}
         </div>`;
     }
 
@@ -1715,15 +1731,17 @@ function getEstadoUsuario() {
 }
 
 // ── Header button: scroll to today's adapt zone ──────────────
-function runAICoach() {
-  const todayIdx = (new Date().getDay() + 6) % 7;
-  const body = document.getElementById(`adapt-body-${todayIdx}`);
-  if (body) {
-    body.style.display = '';
-    const chev = document.getElementById(`adapt-chev-${todayIdx}`);
-    if (chev) chev.style.transform = 'rotate(180deg)';
-    document.getElementById(`adapt-input-${todayIdx}`)?.focus();
-    body.scrollIntoView({ behavior: 'smooth', block: 'center' });
+async function runAICoach() {
+  const btn = document.getElementById('btn-ai-coach');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando...'; }
+  try {
+    await loadCoachData();
+    const target = document.getElementById('form-state-section') || document.getElementById('coach-alerts-section');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {
+    showToast('Error al obtener el análisis IA', '#ff4757');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-robot"></i> Análisis IA'; }
   }
 }
 
