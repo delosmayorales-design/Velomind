@@ -1928,7 +1928,12 @@ document.addEventListener('DOMContentLoaded', () => {
       html.light-theme [style*="background: green"], html.light-theme [style*="background: green"] *,
       html.light-theme [style*="background-color: green"], html.light-theme [style*="background-color: green"] *,
       html.light-theme [style*="background: darkgreen"], html.light-theme [style*="background: darkgreen"] *,
-      html.light-theme [style*="background-color: darkgreen"], html.light-theme [style*="background-color: darkgreen"] * {
+      html.light-theme [style*="background-color: darkgreen"], html.light-theme [style*="background-color: darkgreen"] *,
+      [style*="background: #4d7a00"], [style*="background: #4d7a00"] *,
+      [style*="background-color: #4d7a00"], [style*="background-color: #4d7a00"] *,
+      [style*="background: #4D7A00"], [style*="background: #4D7A00"] *,
+      [style*="background-color: #4D7A00"], [style*="background-color: #4D7A00"] *,
+      [style*="77, 122, 0"], [style*="77, 122, 0"] * {
         color: #ffffff !important;
       }
     `;
