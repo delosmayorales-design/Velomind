@@ -1609,12 +1609,13 @@ function renderZones() {
       hrEl.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:13px">Configura tu edad o FC Máx en <a href="index.html" style="color:var(--primary)">Mi Perfil</a> para ver las zonas de pulso.</div>';
     } else {
       const usedLTHR = lthr || Math.round(maxHR * 0.88);
-      let html = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">LTHR estimado: <strong>${usedLTHR} bpm</strong>${!athlete.lthr ? ' (auto, 88% FC máx)' : ''}</div>`;
+      let html = '';
       HR_ZONES_FRIEL.forEach(z => {
         const bMin = Math.round(usedLTHR * z.minPct);
         const bMax = z.maxPct >= 2 ? null : Math.round(usedLTHR * z.maxPct);
         html += renderZoneRow(z, bMin, bMax, ' bpm');
       });
+      html += `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">LTHR estimado: <strong>${usedLTHR} bpm</strong>${!athlete.lthr ? ' (auto, 88% FC máx)' : ''}</div>`;
       hrEl.innerHTML = html;
     }
   }
