@@ -638,16 +638,21 @@ async function routeValhalla(type) {
       costing,
       costing_options: opts,
       directions_options: { units: 'km' },
+      elevation_interval: 50,
     }),
   });
   if (!res.ok) throw new Error('Valhalla HTTP ' + res.status);
   const data = await res.json();
-  // Concatenar todos los legs (un leg por cada par de waypoints)
   const latLngs = data.trip.legs.flatMap(leg => decodePolyline6(leg.shape));
+  const elevs   = data.trip.legs.flatMap(leg => leg.elevation || []);
+  let elevGain = 0;
+  for (let i = 1; i < elevs.length; i++) { const d = elevs[i] - elevs[i-1]; if (d > 0) elevGain += d; }
   return {
     latLngs,
-    distKm: data.trip.summary.length,
-    durMin: Math.round(data.trip.summary.time / 60),
+    distKm:   data.trip.summary.length,
+    durMin:   Math.round(data.trip.summary.time / 60),
+    elevGain: Math.round(elevGain),
+    elevs,
   };
 }
 
@@ -682,19 +687,23 @@ async function calcRoute(type) {
       result = await routeOSRM(type);
     }
 
-    const { latLngs, distKm, durMin } = result;
+    const { latLngs, distKm, durMin, elevGain, elevs } = result;
     routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la, ln]) => [ln, la]) };
 
     const color = type === 'gravel' ? '#F59E0B' : type === 'mtb' ? '#10B981' : '#FF6B35';
     if (routeLayer) map.removeLayer(routeLayer);
-    // interactive:false → la polyline no intercepta clicks del mapa durante el dibujo
     routeLayer = L.polyline(latLngs, { color, weight: 4, opacity: 0.9, interactive: false }).addTo(map);
 
     document.getElementById('stat-dist').textContent = distKm.toFixed(1);
     document.getElementById('stat-time').textContent = formatTime(durMin);
     document.getElementById('map-stats').classList.add('visible');
 
-    fetchElevation(latLngs);
+    if (elevGain != null) {
+      document.getElementById('stat-elev').textContent = elevGain;
+      if (elevs?.length) renderElevChart(elevs);
+    } else {
+      fetchElevation(latLngs);
+    }
   } catch (e) {
     console.error('[Rutas] Error calculando ruta:', e);
     showToast('No se pudo calcular la ruta: ' + e.message, 'error');
@@ -1287,7 +1296,7 @@ async function generateWindRoute() {
     try { result = await routeValhalla(type); }
     catch { result = await routeOSRM(type); }
 
-    const { latLngs, distKm, durMin } = result;
+    const { latLngs, distKm, durMin, elevGain, elevs } = result;
     routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la,ln]) => [ln,la]) };
 
     const color = type === 'gravel' ? '#F59E0B' : type === 'mtb' ? '#10B981' : '#00D4FF';
@@ -1295,7 +1304,6 @@ async function generateWindRoute() {
     routeLayer = L.polyline(latLngs, { color, weight: 5, opacity: 0.9, interactive: false }).addTo(map);
     map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
 
-    // Marcador de salida/llegada
     L.circleMarker([lat, lon], {
       radius: 10, fillColor: '#00D4FF', color: '#fff', weight: 3, fillOpacity: 1, interactive: false
     }).addTo(map).bindPopup('📍 Salida / Llegada').openPopup();
@@ -1308,7 +1316,12 @@ async function generateWindRoute() {
       `Ruta ${wrShape === 'loop' ? 'circular' : 'ida y vuelta'} ${Math.round(distKm)}km · ${degToCompass(windDeg)}`;
     document.getElementById('modal-type').value = type;
 
-    fetchElevation(latLngs);
+    if (elevGain != null) {
+      document.getElementById('stat-elev').textContent = elevGain;
+      if (elevs?.length) renderElevChart(elevs);
+    } else {
+      fetchElevation(latLngs);
+    }
     closeWindRouteModal();
     showToast(`Ruta generada: ${distKm.toFixed(1)} km · ${degToCompass(windDeg)} → ${degToCompass((windDeg+180)%360)} a favor`, 'info');
   } catch(e) {
