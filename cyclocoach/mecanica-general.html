@@ -164,11 +164,48 @@
                 <div class="calc-row">
                     <input type="number" id="gearCadence" placeholder="Cadencia RPM (ej. 90)">
                     <select id="gearTire">
-                        <option value="2105">700x25c (Ruta)</option>
-                        <option value="2136">700x28c (Ruta)</option>
-                        <option value="2146">700x32c (Ruta/Gravel)</option>
-                        <option value="2180">700x40c (Gravel)</option>
-                        <option value="2326">29x2.20 (MTB)</option>
+                        <optgroup label="700c — Ruta">
+                            <option value="2086">700x20c</option>
+                            <option value="2097">700x23c</option>
+                            <option value="2105">700x25c</option>
+                            <option value="2136">700x28c</option>
+                            <option value="2143">700x30c</option>
+                        </optgroup>
+                        <optgroup label="700c — Gravel">
+                            <option value="2155">700x32c</option>
+                            <option value="2168">700x35c</option>
+                            <option value="2180">700x38c</option>
+                            <option value="2200">700x40c</option>
+                            <option value="2210">700x42c</option>
+                            <option value="2224">700x45c</option>
+                            <option value="2243">700x47c</option>
+                            <option value="2248">700x50c</option>
+                        </optgroup>
+                        <optgroup label="650b — Gravel">
+                            <option value="2072">650bx38</option>
+                            <option value="2100">650bx42</option>
+                            <option value="2126">650bx47</option>
+                            <option value="2148">650bx50</option>
+                        </optgroup>
+                        <optgroup label="27.5&quot; — MTB">
+                            <option value="2150">27.5x2.10</option>
+                            <option value="2166">27.5x2.25</option>
+                            <option value="2173">27.5x2.35</option>
+                            <option value="2180">27.5x2.40</option>
+                        </optgroup>
+                        <optgroup label="29&quot; — MTB">
+                            <option value="2280">29x2.00</option>
+                            <option value="2288">29x2.10</option>
+                            <option value="2326">29x2.20</option>
+                            <option value="2354">29x2.35</option>
+                            <option value="2360">29x2.40</option>
+                        </optgroup>
+                        <optgroup label="26&quot; — MTB clásico">
+                            <option value="2055">26x2.00</option>
+                            <option value="2068">26x2.10</option>
+                            <option value="2082">26x2.25</option>
+                            <option value="2090">26x2.35</option>
+                        </optgroup>
                     </select>
                 </div>
                 <button class="calc-btn" onclick="calcGear()">CALCULAR VELOCIDAD</button>
