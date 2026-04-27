@@ -38,9 +38,11 @@
     .macro-summary-ring { position:relative; width:140px; height:140px; flex-shrink:0; }
 
     /* ── Hydration ───────────────────────────────────────────── */
-    .hydration-bar { display:flex; gap:4px; flex-wrap:wrap; margin-top:8px; }
-    .water-unit { width:20px; height:30px; background:rgba(0,212,255,0.3); border:1px solid rgba(0,212,255,0.5); border-radius:3px; transition:background 0.3s ease; }
-    .water-unit.filled { background:rgba(0,212,255,0.8); }
+    .hydration-bar { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .water-unit { display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 4px 5px; background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.2); border-radius:8px; width:46px; transition:all 0.25s ease; cursor:default; }
+    .water-unit.filled { background:rgba(0,212,255,0.15); border-color:rgba(0,212,255,0.5); }
+    .water-unit .w-icon { font-size:15px; line-height:1; }
+    .water-unit .w-time { font-size:10px; font-weight:700; color:rgba(0,212,255,0.85); font-family:'Space Grotesk',sans-serif; letter-spacing:0.2px; }
 
     /* ── Timeline ────────────────────────────────────────────── */
     .timeline { position:relative; padding-left:28px; }
@@ -651,8 +653,16 @@ function renderNutritionUI(n, athlete, isTraining) {
   const glasses = Math.round(hydration_ml / 250);
   document.getElementById('hydration-total').textContent = hydration_ml.toLocaleString();
   document.getElementById('hydration-badge').textContent = hydration_ml.toLocaleString() + ' ml';
+  const capped = Math.min(20, glasses);
+  const startMin = 7 * 60;   // 07:00
+  const endMin   = 22 * 60;  // 22:00
   let hydHTML = '';
-  for (let i = 0; i < Math.min(20, glasses); i++) hydHTML += `<div class="water-unit filled" title="250ml"></div>`;
+  for (let i = 0; i < capped; i++) {
+    const mins = capped > 1 ? startMin + Math.round(((endMin - startMin) / (capped - 1)) * i) : startMin;
+    const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+    const mm = String(mins % 60).padStart(2, '0');
+    hydHTML += `<div class="water-unit filled" title="Vaso ${i+1} · 250ml · ${hh}:${mm}"><span class="w-icon">💧</span><span class="w-time">${hh}:${mm}</span></div>`;
+  }
   document.getElementById('hydration-units').innerHTML = hydHTML;
   document.getElementById('hydration-equiv').innerHTML = `🥤 ${glasses} vasos de 250ml<br>💧 ${Math.round(hydration_ml/500)} botellas de 500ml<br>🫙 ${(hydration_ml/1000).toFixed(1)} litros`;
 
