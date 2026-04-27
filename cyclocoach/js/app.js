@@ -290,13 +290,42 @@ const TrainingPlanGenerator = {
     let targetTSS = Math.round(hours * 3600 * Math.pow(baseIF, 2) / 36);
     if (goal === 'perdida_peso') targetTSS = Math.round(targetTSS * 0.9);
 
+    // ── Ajuste automático de carga según TSB ──────────────────────
+    let adaptation = null;
+    let effectivePhase = phase;
+    const tsbRound = Math.round(tsb);
+
+    if (tsb < -30) {
+      effectivePhase = 'recovery';
+      targetTSS = Math.round(targetTSS * 0.60);
+      adaptation = { level: 'danger', icon: '🛑', title: 'Semana de recuperación forzada',
+        text: `Tu TSB actual es ${tsbRound}. Estás en zona de sobreentrenamiento. El plan ha sido sustituido por una semana de recuperación activa para proteger tu salud y evitar lesiones.` };
+    } else if (tsb < -20) {
+      targetTSS = Math.round(targetTSS * 0.75);
+      adaptation = { level: 'warning', icon: '⚠️', title: 'Plan aligerado — Fatiga alta',
+        text: `Tu TSB actual es ${tsbRound}. Tienes fatiga acumulada alta. El volumen semanal se ha reducido un 25% y las sesiones más duras se han suavizado. Prioriza el sueño y la nutrición.` };
+    } else if (tsb < -10) {
+      targetTSS = Math.round(targetTSS * 0.85);
+      adaptation = { level: 'caution', icon: '⚖️', title: 'Plan ajustado — Fatiga moderada',
+        text: `Tu TSB actual es ${tsbRound}. Hay fatiga moderada. El volumen se ha reducido un 15% para que puedas asimilar bien la carga sin acumular más estrés.` };
+    } else if (tsb >= -10 && tsb <= 5) {
+      adaptation = { level: 'ok', icon: '💪', title: 'En forma — Plan estándar',
+        text: `Tu TSB actual es ${tsbRound}. Estás en equilibrio entre fitness y fatiga. El plan sigue la carga planificada para tu objetivo.` };
+    } else if (tsb > 5 && tsb <= 20) {
+      adaptation = { level: 'good', icon: '✅', title: 'Fresco y listo — Plan completo',
+        text: `Tu TSB actual es ${tsbRound}. Estás fresco con buen nivel de fitness. El plan incluye la carga completa para aprovechar tu estado de forma.` };
+    } else if (tsb > 20) {
+      adaptation = { level: 'peak', icon: '🚀', title: 'Forma óptima — Plan de calidad',
+        text: `Tu TSB actual es ${tsbRound}. Estás en pico de forma. El plan prioriza sesiones de calidad para convertir esa frescura en rendimiento.` };
+    }
+
     // Consejo según TSB
-    const advice = this._getAdvice(tsb, ctl, phase);
+    const advice = this._getAdvice(tsb, ctl, effectivePhase);
 
-    // Sesiones según goal y phase
-    const sessions = this._buildSessions(trainingGoal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities);
+    // Sesiones según goal y phase (con carga ya ajustada)
+    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, activities);
 
-    return { phase, targetTSS, advice, sessions, ctl: Math.round(ctl), tsb: Math.round(tsb) };
+    return { phase: effectivePhase, targetTSS, advice, adaptation, sessions, ctl: Math.round(ctl), tsb: tsbRound };
   },
 
   _detectPhase(eventDate) {
@@ -325,7 +354,21 @@ const TrainingPlanGenerator = {
 
   _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities) {
     // ── Selección de plantilla según goal y phase ──
-    const templates = this._getTemplate(goal, phase, exp, tsb);
+    let templates = this._getTemplate(goal, phase, exp, tsb);
+
+    // Con fatiga alta sustituir la sesión más intensa por endurance
+    if (tsb < -20 && tsb >= -30) {
+      const hardTypes = ['vo2max', 'sprint', 'strength'];
+      let swapped = false;
+      templates = templates.map(t => {
+        if (!swapped && !t.isRest && hardTypes.includes(t.type)) {
+          swapped = true;
+          return { ...t, type: 'endurance', name: 'Z2 — Sesión suavizada por fatiga', ifTarget: 0.65,
+            description: 'Sustituye la sesión de alta intensidad prevista. Tu cuerpo necesita asimilar antes de añadir más estrés.' };
+        }
+        return t;
+      });
+    }
 
     // Calcular duración de cada sesión en minutos a partir de la distribución de TSS
     return templates.map(t => {

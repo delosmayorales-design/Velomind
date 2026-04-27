@@ -921,8 +921,37 @@ function renderPlan(plan, athlete) {
     document.getElementById('plan-target-tss-val').textContent = plan.targetTSS;
     document.getElementById('plan-hours-val').textContent = (athlete.weekly_hours || 8) + 'h';
   }
-  document.getElementById('plan-summary-inline').innerHTML = 
+  document.getElementById('plan-summary-inline').innerHTML =
     `Objetivo: <strong style="color:var(--primary)">${plan.targetTSS} TSS</strong> · Disponibilidad: <strong>${athlete.weekly_hours || 8}h</strong> · Fase: <strong>${phaseLabel(plan.phase)}</strong>`;
+
+  // ── Banner de adaptación por TSB ──────────────────────────────
+  const alertSection = document.getElementById('coach-alerts-section');
+  if (alertSection) {
+    if (plan.adaptation) {
+      const a = plan.adaptation;
+      const colors = {
+        danger:  { bg: 'rgba(255,71,87,0.12)',  border: 'rgba(255,71,87,0.4)',  text: '#ff4757' },
+        warning: { bg: 'rgba(255,200,0,0.12)',  border: 'rgba(255,200,0,0.4)',  text: '#FFC800' },
+        caution: { bg: 'rgba(255,150,50,0.10)', border: 'rgba(255,150,50,0.35)', text: '#FF9632' },
+        ok:      { bg: 'rgba(180,230,0,0.10)',  border: 'rgba(180,230,0,0.3)',  text: '#b4e600' },
+        good:    { bg: 'rgba(0,200,130,0.10)',  border: 'rgba(0,200,130,0.3)',  text: '#00C882' },
+        peak:    { bg: 'rgba(100,160,255,0.12)', border: 'rgba(100,160,255,0.4)', text: '#64a0ff' },
+      };
+      const c = colors[a.level] || colors.ok;
+      alertSection.innerHTML = `
+        <div style="background:${c.bg};border:1px solid ${c.border};border-radius:12px;padding:14px 18px;display:flex;align-items:flex-start;gap:14px">
+          <div style="font-size:22px;line-height:1;flex-shrink:0">${a.icon}</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:${c.text};margin-bottom:3px">${a.title}</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.55">${a.text}</div>
+          </div>
+        </div>`;
+      alertSection.classList.remove('hidden');
+    } else {
+      alertSection.classList.add('hidden');
+      alertSection.innerHTML = '';
+    }
+  }
 
   const sessContainer = document.getElementById('weekly-plan');
   const mondayDate = new Date();
