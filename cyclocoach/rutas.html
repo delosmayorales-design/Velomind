@@ -623,6 +623,19 @@ function decodePolyline6(encoded) {
   return coords; // [[lat, lng], ...]
 }
 
+// Calcula desnivel positivo con umbral de histéresis (≈ método Strava/Garmin)
+// Sin umbral el ruido SRTM infla el D+ hasta el doble
+function calcElevGain(elevs, threshold = 8) {
+  if (!elevs?.length) return 0;
+  let gain = 0, ref = elevs[0];
+  for (let i = 1; i < elevs.length; i++) {
+    const diff = elevs[i] - ref;
+    if (diff >= threshold)       { gain += diff; ref = elevs[i]; }
+    else if (diff <= -threshold) { ref = elevs[i]; }
+  }
+  return Math.round(gain);
+}
+
 // Valhalla OSM — perfiles road/gravel/MTB reales
 async function routeValhalla(type) {
   const costing = type === 'mtb' ? 'mountain_bike' : 'bicycle';
@@ -645,13 +658,11 @@ async function routeValhalla(type) {
   const data = await res.json();
   const latLngs = data.trip.legs.flatMap(leg => decodePolyline6(leg.shape));
   const elevs   = data.trip.legs.flatMap(leg => leg.elevation || []);
-  let elevGain = 0;
-  for (let i = 1; i < elevs.length; i++) { const d = elevs[i] - elevs[i-1]; if (d > 0) elevGain += d; }
   return {
     latLngs,
     distKm:   data.trip.summary.length,
     durMin:   Math.round(data.trip.summary.time / 60),
-    elevGain: Math.round(elevGain),
+    elevGain: calcElevGain(elevs),
     elevs,
   };
 }
@@ -733,9 +744,7 @@ async function fetchElevation(latLngs) {
     const data = await res.json();
     if (data.status !== 'OK') return;
     const elevs = data.results.map(r => r.elevation ?? 0);
-    let gain = 0;
-    for (let i = 1; i < elevs.length; i++) { const d = elevs[i]-elevs[i-1]; if (d > 0) gain += d; }
-    document.getElementById('stat-elev').textContent = Math.round(gain);
+    document.getElementById('stat-elev').textContent = calcElevGain(elevs);
     renderElevChart(elevs);
   } catch { /* silencioso */ }
 }
@@ -839,9 +848,7 @@ function importGPX(input) {
       document.getElementById('draw-toolbar').classList.add('visible');
 
       if (elevs.length) {
-        let gain = 0;
-        for (let i=1;i<elevs.length;i++) { const d=elevs[i]-elevs[i-1]; if(d>0)gain+=d; }
-        document.getElementById('stat-elev').textContent = Math.round(gain);
+        document.getElementById('stat-elev').textContent = calcElevGain(elevs);
         renderElevChart(elevs);
       }
       document.getElementById('modal-name').value = file.name.replace(/\.(gpx|tcx)$/i,'').replace(/[_-]/g,' ');
