@@ -195,6 +195,20 @@
     .wind-advice   { font-size:12px;color:var(--text-primary);line-height:1.6; }
     .wind-note     { font-size:11px;color:var(--text-muted);margin-top:7px; }
 
+    /* Waypoint markers arrastrables */
+    .wp-dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #FF6B35;
+      border: 2.5px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      cursor: grab;
+      transition: transform 0.1s;
+    }
+    .wp-dot:hover  { transform: scale(1.5); }
+    .wp-dot:active { cursor: grabbing; }
+    .leaflet-marker-draggable .wp-dot { cursor: grab; }
+
     /* Spinner ruta */
     .route-spinner {
       position: absolute;
@@ -827,6 +841,41 @@ function renderElevChart(elevs) {
 }
 
 // ── Dibujo ───────────────────────────────────────────────────────
+function createWaypointMarker(lat, lng) {
+  const icon = L.divIcon({
+    className: '',
+    html: '<div class="wp-dot"></div>',
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+  const marker = L.marker([lat, lng], { icon, draggable: true, autoPan: true }).addTo(map);
+
+  marker.bindTooltip('Arrastra para mover · Clic derecho para eliminar', {
+    direction: 'top', offset: [0, -10], opacity: 0.85
+  });
+
+  marker.on('dragend', function() {
+    const idx = waypointMarkers.indexOf(marker);
+    if (idx < 0) return;
+    const pos = marker.getLatLng();
+    waypoints[idx] = { lat: pos.lat, lng: pos.lng };
+    if (waypoints.length >= 2) calcRoute(currentRouteType);
+  });
+
+  marker.on('contextmenu', function(e) {
+    L.DomEvent.stopPropagation(e);
+    const idx = waypointMarkers.indexOf(marker);
+    if (idx < 0) return;
+    waypoints.splice(idx, 1);
+    waypointMarkers.splice(idx, 1);
+    map.removeLayer(marker);
+    if (waypoints.length >= 2) calcRoute(currentRouteType);
+    else if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  });
+
+  return marker;
+}
+
 function startDrawing() {
   clearRoute();
   drawingActive = true;
@@ -844,10 +893,7 @@ async function onMapClick(e) {
   if (!drawingActive) return;
   const { lat, lng } = e.latlng;
   waypoints.push({ lat, lng });
-  const m = L.circleMarker([lat, lng], {
-    radius: 5, fillColor: '#FF6B35', color: '#fff', weight: 2, fillOpacity: 1, interactive: false
-  }).addTo(map);
-  waypointMarkers.push(m);
+  waypointMarkers.push(createWaypointMarker(lat, lng));
   if (waypoints.length >= 2) await calcRoute(currentRouteType);
 }
 
