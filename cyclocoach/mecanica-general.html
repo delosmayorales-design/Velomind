@@ -153,6 +153,7 @@
       <button class="tab-btn" onclick="showTab('presiones')"><i class="fas fa-compress-arrows-alt"></i> Presiones</button>
       <button class="tab-btn" onclick="showTab('suspension')"><i class="fas fa-water"></i> Suspensión</button>
       <button class="tab-btn" onclick="showTab('frenos')"><i class="fas fa-stop-circle"></i> Frenos</button>
+      <button class="tab-btn" onclick="showTab('ruidos')"><i class="fas fa-volume-up"></i> Diagnóstico de Ruidos</button>
     </div>
 
     <!-- MÓDULO 1: TRANSMISIÓN -->
@@ -500,6 +501,22 @@
         </div>
     </div>
 
+    <!-- MÓDULO 5: DIAGNÓSTICO DE RUIDOS -->
+    <div id="ruidos" class="tab-content">
+      <div class="mod-grid" style="grid-template-columns:1fr">
+        <div class="mod-card">
+          <h3><i class="fas fa-volume-up"></i> Diagnóstico Interactivo de Ruidos</h3>
+          <p>Responde las preguntas para identificar la causa del ruido y cómo solucionarlo.</p>
+
+          <!-- Breadcrumb -->
+          <div id="noise-breadcrumb" style="display:none;margin-bottom:14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--text-muted)"></div>
+
+          <!-- Wizard -->
+          <div id="noise-wizard"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </main>
 
@@ -641,6 +658,169 @@ async function diagnoseMechanicProblem() {
     btn.disabled = false;
   }
 }
+
+// ── Diagnóstico de Ruidos ─────────────────────────────────────
+
+const NOISE_TREE = {
+  start: {
+    q: '¿Cuándo ocurre el ruido?',
+    opts: [
+      { label: '🚴 Al pedalear',                  next: 'pedaling' },
+      { label: '🛑 Al frenar',                    next: 'braking' },
+      { label: '⚙️ Al cambiar de marcha',         next: 'shifting' },
+      { label: '🔄 Siempre, rodando',             next: 'always' },
+      { label: '💪 Solo al hacer fuerza / sprint', next: 'result_bb' },
+    ]
+  },
+  pedaling: {
+    q: '¿Cómo es el patrón del ruido?',
+    opts: [
+      { label: '🔁 Un clic o crujido por pedalada',    next: 'pedaling_click' },
+      { label: '📢 Roce continuo mientras pedaleo',    next: 'result_brake_rub' },
+      { label: '🔊 Aparece al empujar fuerte',         next: 'result_bb' },
+    ]
+  },
+  pedaling_click: {
+    q: '¿De dónde crees que viene el sonido?',
+    opts: [
+      { label: '⚙️ Centro de la bici (pedalier / bielas)', next: 'result_chain_bb' },
+      { label: '🔼 Parte trasera (cassette / cambio)',      next: 'result_cassette' },
+      { label: '👟 Zona de los zapatos / calas',            next: 'result_cleat' },
+    ]
+  },
+  braking: {
+    q: '¿Qué tipo de frenos tienes?',
+    opts: [
+      { label: '💿 Frenos de disco',                    next: 'braking_disc' },
+      { label: '⭕ Frenos de llanta (V-brake / caliper)', next: 'result_rim_brake' },
+    ]
+  },
+  braking_disc: {
+    q: '¿Cómo es el ruido al frenar?',
+    opts: [
+      { label: '😬 Chirrido agudo al frenar',           next: 'result_disc_squeal' },
+      { label: '🔔 Roce constante aunque no frene',     next: 'result_disc_rub' },
+      { label: '💥 Golpe o vibración al frenar',        next: 'result_disc_warp' },
+    ]
+  },
+  shifting: {
+    q: '¿El cambio funciona correctamente?',
+    opts: [
+      { label: 'Sube bien pero baja mal (o al revés)',  next: 'result_indexing' },
+      { label: 'Ambas direcciones van mal',             next: 'result_derailleur' },
+      { label: 'Funciona pero hace ruido al cambiar',   next: 'result_chain_wear' },
+    ]
+  },
+  always: {
+    q: '¿Dónde notas el origen del ruido?',
+    opts: [
+      { label: '🔝 Manillar / dirección (parte delantera)', next: 'result_headset' },
+      { label: '🪑 Sillín o tija',                          next: 'result_saddle' },
+      { label: '🚲 En las ruedas',                          next: 'always_wheels' },
+    ]
+  },
+  always_wheels: {
+    q: '¿El ruido cambia de frecuencia con la velocidad?',
+    opts: [
+      { label: 'Sí, más rápido = más frecuente',  next: 'result_spoke' },
+      { label: 'No, es constante siempre',         next: 'result_hub' },
+    ]
+  },
+
+  result_bb:          { result:true, icon:'⚙️', cause:'Pedalier — rodamientos flojos o desgastados', prob:85, verify:'Agarra las bielas y empuja lateralmente. Si hay juego, el pedalier está flojo. Pedalea de pie: si el crujido desaparece, es el sillín; si persiste, el pedalier.', fix:'1. Aprieta la tapa del pedalier con la llave específica.\n2. Desmonta las bielas, limpia el eje y aplica grasa.\n3. Si los rodamientos están deteriorados: sustitúyelos.', difficulty:'Media', tools:'Llave de pedalier, extractor de bielas, grasa' },
+  result_chain_bb:    { result:true, icon:'🔗', cause:'Cadena seca, sucia o platos desgastados', prob:70, verify:'Inspecciona la cadena: óxido o aspecto seco = lubricación urgente. Con medidor de cadena: >0,75% de desgaste = cambio.', fix:'1. Limpia la cadena con desengrasante.\n2. Lubrica (seco en verano, húmedo en invierno).\n3. Si el desgaste supera el límite: cambia cadena y revisa cassette.', difficulty:'Fácil', tools:'Desengrasante, lubricante, medidor de cadena' },
+  result_cassette:    { result:true, icon:'🔧', cause:'Cassette flojo o pata de cambio doblada', prob:65, verify:'Mueve el cassette lateralmente con la rueda parada. Si hay juego: está flojo. Mira la pata de cambio desde atrás: debe estar paralela al cassette.', fix:'1. Aprieta el cassette con llave de cassette y cadena-látigo.\n2. Si la pata está doblada: enderézala o sustitúyela (recambio barato).\n3. Recalibra la indexación.', difficulty:'Fácil-Media', tools:'Llave de cassette, cadena-látigo' },
+  result_cleat:       { result:true, icon:'👟', cause:'Calas sueltas o desgastadas', prob:80, verify:'Aprieta los tornillos de las calas. Si el ruido desaparece al pedalear con zapatillas de calle: las calas son el problema.', fix:'1. Aprieta los tornillos de las calas (2–4 Nm).\n2. Aplica grasa anti-chirrido en la zona de contacto cala-pedal.\n3. Con >10.000 km: sustitúyelas.', difficulty:'Fácil', tools:'Llave Allen, grasa' },
+  result_brake_rub:   { result:true, icon:'🛑', cause:'Freno rozando llanta o disco', prob:90, verify:'Levanta la rueda y gírala. Si roza continuamente: freno mal centrado. Si roza en un solo punto: llanta ligeramente ovalada o disco doblado.', fix:'1. Afloja los dos tornillos del freno.\n2. Aprieta la palanca y vuelve a apretar los tornillos con el freno pulsado.\n3. Para disco: afloja el adaptador, centra y aprieta.', difficulty:'Fácil', tools:'Llave Allen 5mm' },
+  result_disc_squeal: { result:true, icon:'😬', cause:'Pastillas o disco contaminados (grasa/aceite)', prob:75, verify:'Inspecciona el disco: manchas brillantes o aceitosas = contaminado. Las pastillas tocadas con los dedos también se contaminan.', fix:'1. Limpia el disco con desengrasante de frenos (no WD-40).\n2. Si las pastillas están contaminadas: sustitúyelas, no se recuperan.\n3. Haz bed-in: 20 frenadas progresivas desde 25 km/h.', difficulty:'Fácil-Media', tools:'Desengrasante de frenos, pastillas nuevas si contaminadas' },
+  result_disc_rub:    { result:true, icon:'💿', cause:'Disco descentrado respecto a las pastillas', prob:85, verify:'Mira el disco desde atrás mientras giras la rueda. ¿El disco está equidistante entre las dos pastillas?', fix:'1. Afloja los 2 tornillos del adaptador de freno.\n2. Tira de la palanca para centrar automáticamente.\n3. Aprieta los tornillos en cruz (6–8 Nm).', difficulty:'Fácil', tools:'Llave Allen 5mm, llave de torque' },
+  result_disc_warp:   { result:true, icon:'💥', cause:'Disco doblado', prob:70, verify:'Gira la rueda y observa si el disco se desplaza lateralmente. Un movimiento >0,5 mm indica disco doblado.', fix:'1. Con herramienta de disco, dobla suavemente en el sentido contrario poco a poco.\n2. Si el disco está muy doblado: sustitúyelo — es un componente de seguridad.', difficulty:'Media', tools:'Herramienta de alineación de discos' },
+  result_rim_brake:   { result:true, icon:'⭕', cause:'Zapatas desalineadas o llanta sucia', prob:80, verify:'Las zapatas deben tocar la banda de rodadura de la llanta, no el neumático. Inspecciona si hay suciedad o desgaste irregular.', fix:'1. Limpia la llanta con alcohol isopropílico.\n2. Alinea las zapatas: deben tocar la llanta paralelas y centradas.\n3. Ajusta con las tuercas de las zapatas.', difficulty:'Fácil', tools:'Llave Allen, alcohol isopropílico' },
+  result_indexing:    { result:true, icon:'⚙️', cause:'Indexación desajustada o cable estirado', prob:85, verify:'Pon la cadena en el piñón central y pedalea suave. Si duda o hace ruido: indexación fuera.', fix:'1. Gira el barril de ajuste (antihorario = más tensión, clockwise = menos).\n2. Ajusta de 1/4 de vuelta en 1/4 de vuelta.\n3. Si el cable está muy estirado: aflójalo, recórtalo y recalibra.', difficulty:'Fácil', tools:'Sin herramientas (barril a mano)' },
+  result_derailleur:  { result:true, icon:'🔀', cause:'Desviador desalineado o límites H/L mal ajustados', prob:75, verify:'Comprueba que el desviador quede paralelo al cassette. Si la cadena se sale por encima/abajo de los límites: los tornillos H o L están mal.', fix:'1. Ajusta los tornillos H (piñón pequeño) y L (piñón grande).\n2. Revisa la pata de cambio: si está doblada, sustitúyela.\n3. Recalibra la indexación.', difficulty:'Media', tools:'Destornillador plano, regla de pata de cambio (opcional)' },
+  result_chain_wear:  { result:true, icon:'🔗', cause:'Cadena o cassette desgastados', prob:70, verify:'Mide el desgaste de la cadena con medidor. >0,75% = cambio urgente. Con cassette muy desgastado el ruido persiste incluso con cadena nueva.', fix:'1. Sustituye la cadena si supera 0,75% de desgaste.\n2. Si llevas 2–3 cadenas con el mismo cassette: cámbialo también.\n3. Limpia y lubrica antes de montar la cadena nueva.', difficulty:'Fácil-Media', tools:'Medidor de cadena, herramienta de rompecadenas' },
+  result_headset:     { result:true, icon:'🔝', cause:'Juego de dirección flojo o rodamientos deteriorados', prob:80, verify:'Pon el freno delantero y mece la bici adelante-atrás. ¿Notas golpeteo? Agarra la horquilla y muévela lateralmente.', fix:'1. Afloja el tornillo lateral del potencia.\n2. Aprieta el tornillo del ahead-set (tapa superior).\n3. Alinea el manillar y aprieta el potencia.\n4. Si los rodamientos están dañados: sustitúyelos.', difficulty:'Media', tools:'Llave Allen 4–5mm, llave de torque' },
+  result_saddle:      { result:true, icon:'🪑', cause:'Sillín, tija o abrazadera flojos', prob:90, verify:'Mueve el sillín de lado a lado y adelante-atrás. Cualquier movimiento indica un tornillo flojo.', fix:'1. Aprieta los tornillos del sillín (rails): 8–10 Nm.\n2. Aprieta la abrazadera de la tija: 5–8 Nm (carbono: consulta el par).\n3. Si la tija es telescópica: comprueba que no haya grasa en la zona de la abrazadera.', difficulty:'Fácil', tools:'Llave Allen 4–6mm, llave de torque' },
+  result_spoke:       { result:true, icon:'🕸️', cause:'Radio suelto o rueda ligeramente ladeada', prob:75, verify:'Pellizca los radios de dos en dos. Un radio flojo suena más grave y blando. Gira la rueda y observa si se bambolea.', fix:'1. Aprieta el radio flojo con llave de radios (1/4 de vuelta cada vez).\n2. Si hay 3 o más radios sueltos: lleva la rueda a centrar.\n3. Si la rueda se bambolea visiblemente: centrado urgente.', difficulty:'Media–Difícil', tools:'Llave de radios, pie de centrado (opcional)' },
+  result_hub:         { result:true, icon:'🔩', cause:'Rodamientos del buje deteriorados o flojos', prob:65, verify:'Agarra la rueda por los lados y empuja lateralmente. Juego lateral = rodamientos flojos o desgastados.', fix:'1. Ajusta el cono del buje (bujes de cono tradicional) con llave de cono.\n2. Si son rodamientos sellados: sustitúyelos.\n3. Engrasa el buje cada 5.000–10.000 km como mantenimiento preventivo.', difficulty:'Media–Difícil', tools:'Llave de cono, llave inglesa, grasa' },
+};
+
+let noisePath = [];
+
+function noiseStep(key) {
+  const node = NOISE_TREE[key];
+  if (!node) return;
+  noisePath.push(key);
+
+  const wizard  = document.getElementById('noise-wizard');
+  const crumb   = document.getElementById('noise-breadcrumb');
+
+  // Breadcrumb
+  const crumbLabels = { start:'Inicio', pedaling:'Al pedalear', pedaling_click:'Clic/pedalada', braking:'Al frenar', braking_disc:'Disco', shifting:'Al cambiar', always:'Siempre', always_wheels:'Ruedas' };
+  crumb.style.display = 'flex';
+  crumb.innerHTML = noisePath.slice(0, -1).map((k, i) => {
+    const lbl = crumbLabels[k] || k;
+    return `<span style="cursor:pointer;color:var(--primary);text-decoration:underline dotted" onclick="noiseBack(${i})">${lbl}</span><span style="opacity:.4"> › </span>`;
+  }).join('') + `<span style="color:var(--text-muted)">${crumbLabels[key] || (node.result ? 'Diagnóstico' : key)}</span>`;
+
+  if (node.result) {
+    const probColor = node.prob >= 80 ? 'var(--success)' : node.prob >= 65 ? 'var(--warning)' : 'var(--text-muted)';
+    const fixHtml = node.fix.split('\n').map(l => `<div style="margin-bottom:5px">${l}</div>`).join('');
+    wizard.innerHTML = `
+      <div style="background:rgba(196,239,68,.07);border:1px solid rgba(196,239,68,.25);border-radius:12px;padding:18px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span style="font-size:24px">${node.icon}</span>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--text-primary)">${node.cause}</div>
+            <div style="font-size:11px;color:${probColor};font-weight:600">Probabilidad estimada: ${node.prob}%</div>
+          </div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:5px">🔍 Cómo verificarlo</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.6">${node.verify}</div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:5px">🔧 Solución paso a paso</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.7">${fixHtml}</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+          <span style="font-size:11px;background:var(--bg-input);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text-muted)">⚡ Dificultad: ${node.difficulty}</span>
+          <span style="font-size:11px;background:var(--bg-input);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text-muted)">🧰 ${node.tools}</span>
+        </div>
+      </div>
+      <button onclick="noiseReset()" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+        🔄 Nuevo diagnóstico
+      </button>`;
+  } else {
+    const optHtml = node.opts.map(o => `
+      <button onclick="noiseStep('${o.next}')" style="width:100%;text-align:left;padding:12px 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;margin-bottom:8px"
+        onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">
+        ${o.label}
+      </button>`).join('');
+    wizard.innerHTML = `
+      <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:14px">${node.q}</div>
+      ${optHtml}
+      ${noisePath.length > 1 ? `<button onclick="noiseBack(${noisePath.length-2})" style="margin-top:4px;background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;padding:4px 0;font-family:inherit">← Volver</button>` : ''}`;
+  }
+}
+
+function noiseBack(pathIdx) {
+  noisePath = noisePath.slice(0, pathIdx);
+  noiseStep(noisePath.pop() || 'start');
+}
+
+function noiseReset() {
+  noisePath = [];
+  noiseStep('start');
+}
+
+// Arranca el wizard cuando se activa el tab de ruidos
+const _origShowTab = showTab;
+window.showTab = function(tab) {
+  _origShowTab(tab);
+  if (tab === 'ruidos' && noisePath.length === 0) noiseReset();
+};
 </script>
 </body>
 </html>
