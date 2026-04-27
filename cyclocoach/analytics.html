@@ -1570,15 +1570,10 @@ const HR_ZONES_FRIEL = [
 ];
 
 function renderZoneRow(zone, val1, val2, unit) {
-  return `<div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:12px 14px;border-radius:8px;margin-bottom:8px;background:var(--bg-input);border:1px solid var(--border)">
-    <div style="width:10px;height:10px;border-radius:50%;background:${zone.color};flex-shrink:0;box-shadow:0 0 8px ${zone.color}66"></div>
-    <div style="min-width:0">
-      <div style="font-size:13px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${zone.name}</div>
-      <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${zone.desc || zone.description || ''}</div>
-    </div>
-    <div style="text-align:right;font-family:'Space Grotesk',sans-serif;">
-      <div style="font-size:14px;font-weight:800;color:${zone.color};white-space:nowrap">${val1}${unit}${val2 ? ' – ' + val2 + unit : '+'}</div>
-    </div>
+  return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;margin-bottom:6px;background:var(--bg-input);border:1px solid var(--border)">
+    <div style="width:8px;height:8px;border-radius:50%;background:${zone.color};flex-shrink:0;box-shadow:0 0 6px ${zone.color}66"></div>
+    <div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${zone.name}</div>
+    <div style="font-size:13px;font-weight:700;color:${zone.color};white-space:nowrap;font-family:'Space Grotesk',sans-serif">${val1}${unit}${val2 ? ' – ' + val2 + unit : '+'}</div>
   </div>`;
 }
 
