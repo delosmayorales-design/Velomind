@@ -623,22 +623,14 @@ function decodePolyline6(encoded) {
   return coords; // [[lat, lng], ...]
 }
 
-// Suaviza elevaciones con media móvil para eliminar ruido SRTM
-function smoothElevs(elevs, win = 3) {
-  return elevs.map((_, i) => {
-    const s = Math.max(0, i - win), e = Math.min(elevs.length, i + win + 1);
-    return elevs.slice(s, e).reduce((a, b) => a + b, 0) / (e - s);
-  });
-}
-// Calcula D+ con histéresis sobre datos suavizados (≈ método Garmin/Strava)
-function calcElevGain(elevs, threshold = 4) {
+// Calcula D+ con histéresis sobre los datos brutos (umbral calibrado contra Strava)
+function calcElevGain(elevs, threshold = 3) {
   if (!elevs?.length) return 0;
-  const sm = smoothElevs(elevs);
-  let gain = 0, ref = sm[0];
-  for (let i = 1; i < sm.length; i++) {
-    const diff = sm[i] - ref;
-    if (diff >= threshold)       { gain += diff; ref = sm[i]; }
-    else if (diff <= -threshold) { ref = sm[i]; }
+  let gain = 0, ref = elevs[0];
+  for (let i = 1; i < elevs.length; i++) {
+    const diff = elevs[i] - ref;
+    if (diff >= threshold)       { gain += diff; ref = elevs[i]; }
+    else if (diff <= -threshold) { ref = elevs[i]; }
   }
   return Math.round(gain);
 }
