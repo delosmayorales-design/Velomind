@@ -452,7 +452,9 @@ function showToast(msg, type = 'info') {
   setTimeout(() => toast.remove(), 4000);
 }
 
-initActivities();
+initActivities().then(() => {
+  if (typeof BackendSync !== 'undefined') BackendSync.autoSyncIfNeeded();
+});
 
 (function() {
   const wrap = document.getElementById('act-sync-btn');

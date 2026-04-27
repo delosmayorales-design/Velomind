@@ -152,18 +152,21 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
     let page = 1;
     let acts = [];
     let hasMore = true;
-    const MAX_PAGES = 50; // Guardia de seguridad: máx 50 páginas × 200 = 10 000 actividades
 
-    // Ventana de 1 año: solo actividades recientes
+    // Si se pasa `since` (auto-sync incremental) usarlo; si no, ventana de 1 año completa
+    const sinceParam = req.body?.since;
+    const isIncremental = sinceParam && Number.isFinite(Number(sinceParam));
     const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60);
-    const oneYearAgoDate = new Date(oneYearAgo * 1000).toISOString().substring(0, 10);
+    const after = isIncremental ? Math.floor(Number(sinceParam)) : oneYearAgo;
+    const MAX_PAGES = isIncremental ? 3 : 50; // Incremental: máx 3 páginas (suficiente para salidas recientes)
 
-    console.log(`[Strava Sync] Obteniendo actividades desde: ${oneYearAgoDate}`);
+    const afterDate = new Date(after * 1000).toISOString().substring(0, 10);
+    console.log(`[Strava Sync] ${isIncremental ? '⚡ Incremental' : '🔄 Completo'} — actividades desde: ${afterDate}`);
 
-    // Paginación completa hasta que no haya más resultados
+    // Paginación hasta que no haya más resultados
     while (hasMore && page <= MAX_PAGES) {
       const r = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=200&page=${page}`,
+        `https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=200&page=${page}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

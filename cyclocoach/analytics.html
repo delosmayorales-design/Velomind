@@ -1532,10 +1532,14 @@ function renderRiderProfile(acts, athlete, curve) {
 }
 
 // ─── BOOT ─────────────────────────────────────────────────────
-init().catch(function(e) {
-  console.error('[Métricas] Error:', e);
-  setStatus('Error cargando datos');
-});
+init()
+  .then(function() {
+    if (typeof BackendSync !== 'undefined') BackendSync.autoSyncIfNeeded();
+  })
+  .catch(function(e) {
+    console.error('[Métricas] Error:', e);
+    setStatus('Error cargando datos');
+  });
 
 // ─── AYUDA ───────────────────────────────────────────────────
 function toggleHelp() {

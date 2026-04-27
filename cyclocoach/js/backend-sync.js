@@ -260,6 +260,44 @@ function isLegacyDemoActivity(a) {
     return data;
   }
 
+  /**
+   * Auto-sync silencioso al abrir la app.
+   * Solo actúa si Strava está conectado y han pasado más de 60 min desde el último sync.
+   * Usa sync incremental (solo actividades recientes) para ser rápido.
+   */
+  async function autoSyncIfNeeded() {
+    if (localStorage.getItem('velomind_strava_connected') !== '1') return;
+
+    const lastSync = parseInt(localStorage.getItem('velomind_strava_last_sync') || '0', 10);
+    const minsSince = (Date.now() - lastSync) / 60000;
+    if (minsSince < 60) return; // Sincronizado hace menos de 1 hora, no hacer nada
+
+    try {
+      const before = (window.AppState?.activities || []).length;
+
+      // Pasar `since` para fetch incremental; con buffer de 1h para no perder nada
+      const since = lastSync ? Math.floor(lastSync / 1000) - 3600 : null;
+      const body = since ? JSON.stringify({ since }) : undefined;
+
+      await apiFetch('/providers/strava/sync', { method: 'POST', body });
+      await loadActivities();
+
+      const after = (window.AppState?.activities || []).length;
+      const newCount = Math.max(0, after - before);
+
+      localStorage.setItem('velomind_strava_last_sync', Date.now().toString());
+
+      if (newCount > 0 && typeof window.showToast === 'function') {
+        window.showToast(
+          `🚴 ${newCount} actividad${newCount !== 1 ? 'es nuevas' : ' nueva'} importada${newCount !== 1 ? 's' : ''} desde Strava`,
+          '#00C882'
+        );
+      }
+    } catch(e) {
+      console.warn('[AutoSync Strava]', e.message);
+    }
+  }
+
   /** Sincroniza actividades de Garmin vía backend */
   async function syncGarmin(onProgress) {
     if (onProgress) onProgress('Conectando con Garmin Connect...', 20);
@@ -435,6 +473,7 @@ function isLegacyDemoActivity(a) {
     loadPowerCurve,
     syncStrava,
     syncGarmin,
+    autoSyncIfNeeded,
     getProviderStatus,
     loadWeightLog,
     saveWeight,
