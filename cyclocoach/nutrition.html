@@ -68,27 +68,10 @@
     .session-meta { display:flex; gap:12px; margin-top:6px; flex-wrap:wrap; }
     .meta-tag { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--text-muted); }
 
-    /* ── Estado / adapt zone ─────────────────────────────────── */
-    .adapt-zone { border-top:1px solid rgba(196,239,68,.1); background:rgba(158,214,43,.03); }
-    .adapt-trigger { display:flex; align-items:center; gap:8px; padding:8px 20px; cursor:pointer; font-size:11px; color:rgba(158,214,43,0.7); transition:color .15s; user-select:none; }
-    .adapt-trigger:hover { color:#9ED62B; }
-    .adapt-body { padding:0 16px 12px; display:flex; flex-direction:column; gap:8px; }
-    .adapt-input-row { display:flex; gap:8px; align-items:center; }
-    .adapt-input { flex:1; padding:7px 11px; background:var(--bg-card); border:1px solid rgba(196,239,68,.2); border-radius:8px; color:var(--text); font-size:12px; font-family:inherit; outline:none; transition:border-color .15s; }
-    .adapt-input:focus { border-color:rgba(196,239,68,.5); }
-    .adapt-submit { padding:7px 14px; background:rgba(158,214,43,.15); border:1px solid rgba(158,214,43,.3); border-radius:8px; color:#9ED62B; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; font-family:inherit; transition:background .15s; }
-    .adapt-submit:hover { background:rgba(158,214,43,.25); }
-    .estado-chip { padding:5px 12px; border-radius:20px; font-size:12px; font-weight:500; cursor:pointer; background:var(--bg-input); border:1px solid var(--border); color:var(--text-muted); font-family:inherit; transition:all .18s; }
-    .estado-chip:hover { border-color:rgba(139,92,246,.5); color:var(--text-primary); }
-    .estado-chip.active { background:rgba(158,214,43,0.15); border-color:rgba(158,214,43,0.5); color:#9ED62B; font-weight:600; }
-
     /* ── Section divider ─────────────────────────────────────── */
     .section-divider { display:flex; align-items:center; gap:12px; margin:28px 0 20px; }
     .section-divider hr { flex:1; border:none; border-top:1px solid rgba(255,255,255,.08); }
     .section-divider span { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); white-space:nowrap; }
-
-    /* ── Extra badge ─────────────────────────────────────────── */
-    .extra-badge { display:inline-flex; align-items:center; gap:4px; background:rgba(255,71,87,.12); border:1px solid rgba(255,71,87,.3); color:#ff4757; font-size:11px; font-weight:600; padding:2px 8px; border-radius:12px; }
 
     /* ── AI Menus ────────────────────────────────────────────── */
     .menus-section { margin-top:28px; }
@@ -448,68 +431,16 @@
 <script src="js/backend-sync.js"></script>
 <script>
 
-// ── Constants ─────────────────────────────────────────────────
-const SNACK_DB = {
-  'palmera': 350, 'palmera de chocolate': 380, 'palmera chocolate': 380,
-  'croissant': 270, 'cruasán': 270, 'napolitana': 280, 'napolitana de chocolate': 310,
-  'donuts': 250, 'donut': 250, 'rosquilla': 200,
-  'chocolatina': 120, 'chocolate': 200, 'tableta de chocolate': 550, 'tableta chocolate': 550,
-  'galleta': 50, 'galletas': 150, 'galletas maría': 120,
-  'pizza': 270, 'hamburguesa': 500, 'bocadillo': 400, 'bocata': 400,
-  'helado': 200, 'cerveza': 150, 'caña': 120, 'birra': 150,
-  'vino': 120, 'copa de vino': 120,
-  'refresco': 140, 'coca cola': 140, 'fanta': 130,
-  'patatas fritas': 350, 'chips': 200,
-  'brazo gitano': 280, 'ensaimada': 350, 'magdalena': 150, 'muffin': 200,
-  'plátano': 90, 'manzana': 80, 'naranja': 60,
-  'barrita': 200, 'gel': 100, 'tortilla': 250, 'tortilla española': 300,
-};
-
-const ESTADO_OPTS = [
-  { key: 'bien',       label: 'Bien',        icon: '👍', calBonus:    0, carbMult: 1.00 },
-  { key: 'cansado',    label: 'Cansado',     icon: '😴', calBonus:  100, carbMult: 1.10 },
-  { key: 'muy_cansado',label: 'Muy cansado', icon: '🥱', calBonus:  150, carbMult: 1.15 },
-  { key: 'desganado',  label: 'Desganado',   icon: '😕', calBonus: -100, carbMult: 0.90 },
-  { key: 'con_hambre', label: 'Con hambre',  icon: '🍽️', calBonus:  150, carbMult: 1.10 },
-  { key: 'fresco',     label: 'Fresco',      icon: '💪', calBonus:    0, carbMult: 1.05 },
-];
-
 // ── State ─────────────────────────────────────────────────────
 let macroChart = null;
 let carbChart  = null;
 let currentTrainingPlan = null;
 let weeklyNutrition = [];   // [7] NutritionPlanner base results
-let weeklyStates    = [];   // [7] { estado, extraFood, extraCals }
 let selectedDayIdx  = null;
 
 // ── Utility ───────────────────────────────────────────────────
-function estimateExtraCalories(text) {
-  if (!text?.trim()) return 0;
-  const lower = text.toLowerCase().trim();
-  if (SNACK_DB[lower] !== undefined) return SNACK_DB[lower];
-  for (const [key, cals] of Object.entries(SNACK_DB)) {
-    if (lower.includes(key)) return cals;
-  }
-  const m = lower.match(/(\d+)\s*(kcal|cal|calorías)/);
-  if (m) return parseInt(m[1]);
-  return text.length > 2 ? 250 : 0;
-}
-
 function getAdjustedNutrition(idx) {
-  const base  = weeklyNutrition[idx];
-  const state = weeklyStates[idx];
-  if (!base) return null;
-  const opt   = ESTADO_OPTS.find(o => o.key === state.estado) || ESTADO_OPTS[0];
-  const extra = state.extraCals || 0;
-  return {
-    ...base,
-    dailyCalories: Math.max(1200, base.dailyCalories + opt.calBonus - extra),
-    carbs_g:       Math.max(50,   Math.round(base.carbs_g * opt.carbMult - extra / 4)),
-    protein_g:     base.protein_g,
-    fat_g:         base.fat_g,
-    _extraCals:    extra,
-    _estadoLabel:  opt.label,
-  };
+  return weeklyNutrition[idx] || null;
 }
 
 // ── Init ──────────────────────────────────────────────────────
@@ -537,8 +468,6 @@ async function initNutrition() {
     const ath = AppState.athlete || { weight:70, height:175, age:30, ftp:200, goal:'resistencia', experience:'intermedio' };
     currentTrainingPlan = TrainingPlanGenerator.generate(ath, []);
   }
-
-  weeklyStates = Array(7).fill(null).map(() => ({ estado: 'bien', extraFood: '', extraCals: 0 }));
 
   renderAthleteSidebar();
   renderWeekDates();
@@ -623,13 +552,6 @@ function renderWeeklyGrid() {
     const isToday = i === todayIdx;
     const isRest  = sess.isRest;
     const color   = isRest ? 'var(--text-muted)' : (typeColors[sess.type] || '#88D8B0');
-    const state   = weeklyStates[i];
-    const extraCals = state.extraCals || 0;
-
-    const estadoChips = ESTADO_OPTS.map(o => `
-      <button class="estado-chip ${state.estado === o.key ? 'active' : ''}"
-        onclick="setEstado(${i},'${o.key}')">${o.icon} ${o.label}</button>
-    `).join('');
 
     return `
       <div class="session-card-item ${isRest ? 'rest' : ''}" id="nutr-card-${i}">
@@ -650,35 +572,11 @@ function renderWeeklyGrid() {
               <span class="meta-tag"><i class="fas fa-bread-slice" style="color:var(--accent)"></i> ${adj ? adj.carbs_g : '--'}g CH</span>
               <span class="meta-tag"><i class="fas fa-drumstick-bite" style="color:var(--accent-green)"></i> ${adj ? adj.protein_g : '--'}g P</span>
               <span class="meta-tag"><i class="fas fa-tint" style="color:#00D4FF"></i> ${adj ? (adj.hydration_ml/1000).toFixed(1) : '--'}L</span>
-              ${extraCals > 0 ? `<span class="extra-badge"><i class="fas fa-minus-circle"></i> ${extraCals} kcal extra</span>` : ''}
             </div>
           </div>
           <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
         </div>
 
-        <!-- Estado + extra food zone -->
-        <div class="adapt-zone" onclick="event.stopPropagation()">
-          <div class="adapt-trigger" onclick="toggleDayState(${i})">
-            <i class="fas fa-sliders-h" style="font-size:10px"></i>
-            <span>${isToday ? '¿Cómo te encuentras hoy?' : '¿Ajustar este día?'}</span>
-            <i class="fas fa-chevron-down" id="state-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
-          </div>
-          <div id="state-body-${i}" class="adapt-body" style="display:none">
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-              ${estadoChips}
-            </div>
-            <div class="adapt-input-row">
-              <input class="adapt-input" id="extra-food-${i}"
-                placeholder="¿Comiste algo extra? Ej: palmera de chocolate, croissant..."
-                value="${state.extraFood}"
-                onkeydown="if(event.key==='Enter')applyDayState(${i})">
-              <button class="adapt-submit" onclick="applyDayState(${i})">
-                <i class="fas fa-sync-alt"></i> Recalcular
-              </button>
-            </div>
-            <div id="state-result-${i}" style="display:none"></div>
-          </div>
-        </div>
       </div>`;
   }).join('');
 }
@@ -716,63 +614,6 @@ function selectDay(idx) {
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Estado interaction ────────────────────────────────────────
-function toggleDayState(idx) {
-  const body = document.getElementById(`state-body-${idx}`);
-  const chev = document.getElementById(`state-chev-${idx}`);
-  const open = body.style.display === 'none';
-  body.style.display = open ? '' : 'none';
-  chev.style.transform = open ? 'rotate(180deg)' : '';
-  if (open) document.getElementById(`extra-food-${idx}`)?.focus();
-}
-
-function setEstado(idx, estadoKey) {
-  weeklyStates[idx].estado = estadoKey;
-  // update chips
-  const body = document.getElementById(`state-body-${idx}`);
-  body.querySelectorAll('.estado-chip').forEach(chip => {
-    chip.classList.toggle('active', chip.textContent.trim().includes(
-      ESTADO_OPTS.find(o => o.key === estadoKey)?.label || ''
-    ));
-  });
-}
-
-function applyDayState(idx) {
-  const extraFood = document.getElementById(`extra-food-${idx}`)?.value?.trim() || '';
-  const extraCals = estimateExtraCalories(extraFood);
-
-  weeklyStates[idx].extraFood = extraFood;
-  weeklyStates[idx].extraCals = extraCals;
-
-  const resultEl = document.getElementById(`state-result-${idx}`);
-  if (extraCals > 0) {
-    resultEl.innerHTML = `
-      <div style="font-size:11px;color:rgba(255,71,87,.8);padding:4px 0">
-        <i class="fas fa-minus-circle"></i> ${extraCals} kcal descontadas (${extraFood}) — plan ajustado
-      </div>`;
-    resultEl.style.display = '';
-  } else {
-    resultEl.style.display = 'none';
-  }
-
-  // Re-render grid card meta (calories)
-  renderWeeklyGrid();
-  // Restore state UI
-  const body = document.getElementById(`state-body-${idx}`);
-  if (body) body.style.display = '';
-  const chev = document.getElementById(`state-chev-${idx}`);
-  if (chev) chev.style.transform = 'rotate(180deg)';
-
-  // Re-render detail if this day is selected
-  if (selectedDayIdx === idx) selectDay(idx);
-
-  // Toast
-  const msg = extraCals > 0
-    ? `✅ ${extraCals} kcal descontadas — plan recalculado`
-    : `✅ Plan ajustado por estado`;
-  showToast(msg);
-}
-
 // ── Render: nutrition detail UI ───────────────────────────────
 function renderNutritionUI(n, athlete, isTraining) {
   const { dailyCalories, bmr, workoutCals, carbs_g, protein_g, fat_g, hydration_ml, workoutNutrition, tips } = n;
@@ -788,10 +629,6 @@ function renderNutritionUI(n, athlete, isTraining) {
   document.getElementById('cals-breakdown').textContent = `BMR ${bmr}` + (workoutCals ? ` + ${workoutCals} entreno` : '');
   document.getElementById('bmr-display').textContent   = bmr.toLocaleString() + ' kcal';
   document.getElementById('workout-cals-display').textContent = workoutCals ? workoutCals.toLocaleString() + ' kcal' : '0 kcal';
-
-  if (n._extraCals > 0) {
-    document.getElementById('cals-breakdown').textContent += ` - ${n._extraCals} extra`;
-  }
 
   const carbsKcal = carbs_g * 4;
   const protKcal  = protein_g * 4;
