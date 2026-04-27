@@ -1199,8 +1199,24 @@ function showVideoResults(data) {
       <h4>Diagnóstico General</h4><p>${diag.summary}</p></div>`;
   }
 
+  const ratingColor = { OK: '#34d399', Mejorable: '#fbbf24', Problema: '#f87171' };
+  const ratingBg    = { OK: 'rgba(52,211,153,.1)', Mejorable: 'rgba(251,191,36,.1)', Problema: 'rgba(248,113,113,.1)' };
   for (const [key, label] of Object.entries(dynLabels)) {
-    if (da[key]) html += `<div class="video-result-card"><h4>${label}</h4><p>${da[key]}</p></div>`;
+    const val = da[key];
+    if (!val) continue;
+    if (typeof val === 'object' && val.rating) {
+      const c  = ratingColor[val.rating] || '#94a3b8';
+      const bg = ratingBg[val.rating]    || 'rgba(255,255,255,.03)';
+      html += `<div class="video-result-card" style="border-color:${c}44;background:${bg}">
+        <h4 style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          ${label}
+          <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;border:1px solid ${c};color:${c};text-transform:uppercase;flex-shrink:0">${val.rating}</span>
+        </h4>
+        <p>${val.detail || ''}</p>
+      </div>`;
+    } else {
+      html += `<div class="video-result-card"><h4>${label}</h4><p>${val}</p></div>`;
+    }
   }
 
   if (diag.red_flags?.length) {

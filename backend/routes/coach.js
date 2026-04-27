@@ -389,26 +389,27 @@ router.post('/biomechanics-video', upload.single('video'), async (req, res) => {
     console.log('[BioVideo] Video listo. Ejecutando análisis dinámico...');
 
     // 3. Prompt de Análisis de Movimiento
-    const prompt = `Eres un Experto Biomecánico de Ciclismo. Analiza el siguiente video del ciclista en movimiento.
-Responde SIEMPRE en español. Devuelve UNICAMENTE un JSON válido con tu análisis detallado en español.
+    const prompt = `Eres un Biomecánico de Ciclismo profesional. Analiza el video del ciclista y devuelve ÚNICAMENTE un JSON válido en español. No añadas texto fuera del JSON.
 
-Evalúa estrictamente:
-1. Estabilidad de la cadera (hip rocking): ¿Hay balanceo excesivo que indique sillín muy alto?
-2. Seguimiento de las rodillas (knee tracking): ¿Se desvían hacia adentro/afuera durante el pedaleo?
-3. Técnica del tobillo (ankling): ¿Mucha caída del talón o pedalea demasiado de puntillas?
-4. Fluidez: ¿Hay puntos muertos o tirones bruscos en la fase de recobro?
+Para cada métrica asigna EXACTAMENTE uno de estos tres valores de "rating": "OK", "Mejorable" o "Problema".
+En "detail" describe en máximo 100 caracteres lo que observas objetivamente.
 
-Todos los textos del JSON deben estar en español. Formato JSON esperado:
-{"dynamic_analysis":{"hip_stability":"...","knee_tracking":"...","ankle_technique":"...","pedaling_smoothness":"..."},"expert_diagnosis":{"summary":"...","red_flags":["..."],"recommended_adjustments":[{"component":"saddle_height","action":"bajar","reason":"..."}]}}`;
+CRITERIOS OBJETIVOS (úsalos como referencia estricta):
+- hip_stability: OK=cadera estable sin balanceo lateral visible; Mejorable=ligero balanceo (<2 cm); Problema=balanceo evidente (>2 cm, indica sillín alto)
+- knee_tracking: OK=rodillas alineadas sobre los pies durante todo el ciclo; Mejorable=ligera desviación ocasional; Problema=colapso varo o valgo constante
+- ankle_technique: OK=tobillo neutro con ligera flexión plantar en PMI; Mejorable=talón muy caído o exceso de puntilla; Problema=movimiento excesivo o muy irregular del tobillo
+- pedaling_smoothness: OK=círculo fluido sin puntos muertos visibles; Mejorable=ligero tirón en la fase de recobro; Problema=movimiento claramente a pistón
 
-    // Usar gemini-2.5-flash (muy rápido y excelente en video) o 1.5-pro
+Formato JSON obligatorio:
+{"dynamic_analysis":{"hip_stability":{"rating":"OK","detail":"..."},"knee_tracking":{"rating":"OK","detail":"..."},"ankle_technique":{"rating":"OK","detail":"..."},"pedaling_smoothness":{"rating":"OK","detail":"..."}},"expert_diagnosis":{"summary":"...","red_flags":["..."],"recommended_adjustments":[{"component":"saddle_height","action":"bajar","reason":"..."}]}}`;
+
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const analyzeRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ fileData: { fileUri, mimeType } }, { text: prompt }] }],
-        generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
+        generationConfig: { temperature: 0, responseMimeType: 'application/json' }
       })
     });
 
