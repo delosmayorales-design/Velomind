@@ -1433,19 +1433,23 @@ function showSessionDetail(idx, showAlt = false) {
                 const p = m[1].split('-').map(Number);
                 return p.length === 2 ? Math.round((p[0] + p[1]) / 2) : (parseInt(m[1], 10) || 1);
               };
+              const isRec = (lbl) => String(lbl || '').toLowerCase().match(/recuperaci|descanso/);
               for (let i = 0; i < intervals.length; i++) {
                 const iv = intervals[i];
                 const reps = getReps(iv.label);
                 const nextIv = intervals[i + 1];
-                const nextReps = nextIv ? getReps(nextIv.label) : 1;
-                const isRec = (lbl) => String(lbl || '').toLowerCase().match(/recuperaci|descanso/);
-                
-                if (reps > 1 && nextIv && nextReps === reps && isRec(nextIv.label)) {
+                const nextReps = nextIv ? getReps(nextIv.label) : 0;
+
+                if (reps > 1 && nextIv && isRec(nextIv.label)) {
+                  // Intercalar trabajo y recuperación: W1,R1,W2,R2,...Wn
+                  // La recuperación puede tener menos reps (ej: 3 trabajo, 2 recuperación)
                   for (let r = 0; r < reps; r++) {
                     expanded.push({ ...iv, _baseIdx: i, _repIdx: r + 1, _repTotal: reps });
-                    expanded.push({ ...nextIv, _baseIdx: i + 1, _repIdx: r + 1, _repTotal: reps });
+                    if (r < nextReps) {
+                      expanded.push({ ...nextIv, _baseIdx: i + 1, _repIdx: r + 1, _repTotal: nextReps });
+                    }
                   }
-                  i++; // Saltamos el intervalo de recuperación ya que lo hemos intercalado
+                  i++; // Saltamos el bloque de recuperación (ya intercalado)
                 } else {
                   for (let r = 0; r < Math.max(1, reps); r++) {
                     expanded.push({ ...iv, _baseIdx: i, _repIdx: r + 1, _repTotal: Math.max(1, reps) });
@@ -1698,7 +1702,7 @@ function runAICoach() {
 const AC = {
   sessIdx: -1, blocks: [], blockIdx: 0,
   blockRemaining: 0, blockTotal: 0, totalRemaining: 0,
-  paused: false, timer: null, warned30: false,
+  paused: false, speaking: false, timer: null, warned30: false,
   motivos: [
     '¡Vamos! ¡Tú puedes!',
     '¡Empuja fuerte! ¡Aguanta!',
@@ -1753,11 +1757,15 @@ function acExpandBlocks(intervals) {
     const nextReps = next ? acGetReps(next.label) : 0;
     const clean = iv.label.split(' (')[0].trim();
 
-    if (reps > 1 && next && nextReps === reps && isRec(next.label)) {
+    if (reps > 1 && next && isRec(next.label)) {
+      // Intercalar trabajo y recuperación: W1,R1,W2,R2,...Wn
+      // La recuperación puede tener menos reps (ej: 3 trabajo, 2 recuperación)
       const recClean = next.label.split(' (')[0].trim();
       for (let r = 0; r < reps; r++) {
         blocks.push({ ...iv, _label: `${clean} ${r+1}/${reps}`, _dur: acParseDur(iv.dur) });
-        blocks.push({ ...next, _label: `${recClean} (${r+1}/${reps})`, _dur: acParseDur(next.dur) });
+        if (r < nextReps) {
+          blocks.push({ ...next, _label: `${recClean} (${r+1}/${nextReps})`, _dur: acParseDur(next.dur) });
+        }
       }
       i += 2;
     } else if (reps > 1) {
@@ -1773,11 +1781,34 @@ function acExpandBlocks(intervals) {
   return blocks;
 }
 
-function acSpeak(text) {
+function acBestVoice() {
+  const voices = speechSynthesis.getVoices();
+  return (
+    voices.find(v => v.lang.startsWith('es') && /google/i.test(v.name) && /female|mujer/i.test(v.name)) ||
+    voices.find(v => v.lang.startsWith('es') && /google/i.test(v.name)) ||
+    voices.find(v => v.lang === 'es-ES') ||
+    voices.find(v => v.lang.startsWith('es')) ||
+    null
+  );
+}
+
+// pauseTimer=true: detiene el tick del cronómetro mientras dura el anuncio
+function acSpeak(text, pauseTimer = false) {
   if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = 'es-ES'; utt.rate = 1.0; utt.pitch = 1.05; utt.volume = 1.0;
+  utt.lang = 'es-ES'; utt.rate = 0.9; utt.pitch = 1.0; utt.volume = 1.0;
+  const voice = acBestVoice();
+  if (voice) utt.voice = voice;
+
+  if (pauseTimer) {
+    AC.speaking = true;
+    const resume = () => { AC.speaking = false; };
+    utt.onend = resume;
+    utt.onerror = resume;
+    // Seguridad: libera el bloqueo tras 12 s máximo
+    setTimeout(resume, 12000);
+  }
   speechSynthesis.speak(utt);
 }
 
@@ -1846,6 +1877,7 @@ function startAudioCoach(sessIdx) {
   AC.blocks = acExpandBlocks(intervals);
   AC.blockIdx = 0;
   AC.paused = false;
+  AC.speaking = false;
   AC.warned30 = false;
 
   const first = AC.blocks[0];
@@ -1866,13 +1898,22 @@ function startAudioCoach(sessIdx) {
 }
 
 function acTick() {
-  if (AC.paused) return;
+  if (AC.paused || AC.speaking) return;
   AC.blockRemaining--;
   AC.totalRemaining = Math.max(0, AC.totalRemaining - 1);
 
-  if (AC.blockRemaining === 30 && !AC.warned30) {
+  const isLastBlock = AC.blockIdx >= AC.blocks.length - 1;
+
+  // Aviso a los 30 s para bloques largos
+  if (AC.blockRemaining === 30 && !AC.warned30 && AC.blockTotal > 50) {
     AC.warned30 = true;
-    acSpeak('30 segundos.');
+    acSpeak('Quedan 30 segundos.');
+  }
+
+  // Cuenta atrás 5-4-3-2-1 antes del cambio de bloque
+  if (!isLastBlock && AC.blockTotal > 10 && AC.blockRemaining >= 1 && AC.blockRemaining <= 5) {
+    const words = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
+    acSpeak(words[AC.blockRemaining - 1]); // 5→'cinco' … 1→'uno'
   }
 
   if (AC.blockRemaining <= 0) {
@@ -1900,10 +1941,10 @@ function acAdvanceBlock(nextIdx) {
   AC.warned30 = false;
 
   const isRecovery = /recuperaci|descanso/i.test(next._label || '');
-  const msg = isRecovery
-    ? `¡Bloque completado! Recuperación. ${acBlockNarration(next, nextIdx, AC.blocks.length)}`
-    : `¡Bien hecho! Siguiente bloque. ${acBlockNarration(next, nextIdx, AC.blocks.length)}`;
-  acSpeak(msg);
+  const intro = isRecovery ? '¡Muy bien! Ahora recuperación.' : '¡Vamos!';
+  const msg = `${intro} ${acBlockNarration(next, nextIdx, AC.blocks.length)}`;
+  // pauseTimer=true: el cronómetro espera a que termine el anuncio
+  acSpeak(msg, true);
   acUpdateUI();
 }
 
