@@ -655,6 +655,7 @@ const API = window.API_URL;
 
 let currentPlan = null;
 let progressionChart = null;
+const _adaptCache = {}; // { [idx]: adaptation data from AI }
 
 // ── Sync Strava ─────────────────────────────────────────────
 async function syncStrava() {
@@ -1059,7 +1060,10 @@ function renderPlan(plan, athlete) {
           <div style="width:1px;height:50px;background:${color}44"></div>
           <div style="font-size:20px">${sess.emoji}</div>
           <div class="session-content">
-            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:${color};margin-bottom:2px">${sess.name || sess.type || 'Sesión'}</div>
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:${color};margin-bottom:2px">
+              ${sess.name || sess.type || 'Sesión'}
+              ${sess._adapted ? `<span style="margin-left:6px;background:rgba(56,189,248,.15);color:#38BDF8;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700;text-transform:none">✏️ Adaptada</span>` : ''}
+            </div>
             <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;opacity:.8;line-height:1.4">${sess.description}</div>
             <div class="session-meta">
               ${tssVal > 0 ? `<span class="meta-tag"><i class="fas fa-star" style="color:${color}"></i> TSS: ${tssVal}</span>` : ''}
@@ -1146,11 +1150,14 @@ async function adaptSession(idx, dayOffset) {
 
 function renderAdaptResult(idx, t) {
   if (!t) return;
+  _adaptCache[idx] = t;
+
   const STYLE = {
     mantener:  { c:'#10b981', icon:'fa-check-circle',    label:'Mantener' },
     reducir:   { c:'#fbbf24', icon:'fa-arrow-down-circle',label:'Reducir' },
     sustituir: { c:'#3b82f6', icon:'fa-shuffle',          label:'Sustituir' },
     descanso:  { c:'#9ca3af', icon:'fa-moon',             label:'Descanso' },
+    adaptado:  { c:'#38BDF8', icon:'fa-wand-magic-sparkles', label:'Adaptado' },
   };
   const s = STYLE[t.recomendacion] || { c:'#C4EF44', icon:'fa-robot', label:'' };
   const meta = [t.intensidad, t.duracion_min > 0 ? `${t.duracion_min} min` : ''].filter(Boolean).join(' · ');
@@ -1173,6 +1180,10 @@ function renderAdaptResult(idx, t) {
       ${t.descripcion ? `<p style="margin:0;font-size:12px;color:var(--text-muted);line-height:1.55">${t.descripcion}</p>` : ''}
       ${t.razon ? `<p style="margin:0;font-size:11px;color:rgba(196,239,68,.7);line-height:1.45;font-style:italic"><i class="fas fa-lightbulb" style="margin-right:4px"></i>${t.razon}</p>` : ''}
       ${t.nutricion ? `<p style="margin:0;font-size:11px;color:rgba(16,185,129,.8);line-height:1.45"><i class="fas fa-utensils" style="margin-right:4px"></i>${t.nutricion}</p>` : ''}
+      <button id="save-adapt-btn-${idx}" onclick="saveAdaptation(${idx})"
+        style="margin-top:4px;padding:8px 14px;background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.4);border-radius:8px;color:#38BDF8;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;width:100%">
+        <i class="fas fa-floppy-disk"></i> Guardar esta adaptación en el plan
+      </button>
     </div>`;
   result.style.display = '';
 }
@@ -1188,6 +1199,98 @@ function resetAdapt(idx) {
   btn.innerHTML        = '<i class="fas fa-sparkles"></i> Adaptar';
   result.style.display = 'none';
   input.focus();
+}
+
+// ── Guardar adaptación en el plan ─────────────────────────────
+function buildAdaptedIntervals(t, durationMin) {
+  const ftp  = AppState.athlete?.ftp || 200;
+  const pct  = r => Math.round(ftp * r);
+  const warm = Math.min(10, Math.max(5, Math.floor(durationMin * 0.15)));
+  const cool = Math.min(10, Math.max(5, Math.floor(durationMin * 0.15)));
+  const main = Math.max(10, durationMin - warm - cool);
+  const intL = (t.intensidad || '').toLowerCase();
+
+  let watts, zone, rpm, desc;
+  if (intL.includes('z1') || intL.includes('recupera')) {
+    watts = `${pct(0.45)}–${pct(0.55)} W`; zone = 'Z1 Recuperación activa'; rpm = '90-100 rpm';
+    desc  = t.descripcion || 'Pedaleo muy suave, sin estrés.';
+  } else if (intL.includes('z2') || intL.includes('aeróbic') || intL.includes('aerobic') || intL.includes('suave') || intL.includes('fond')) {
+    watts = `${pct(0.56)}–${pct(0.75)} W`; zone = 'Z2 Aeróbico'; rpm = '85-92 rpm';
+    desc  = t.descripcion || 'Esfuerzo aeróbico continuo, conversación posible.';
+  } else if (intL.includes('z3') || intL.includes('tempo') || intL.includes('sweetspot')) {
+    watts = `${pct(0.76)}–${pct(0.90)} W`; zone = 'Z3 Tempo / Sweetspot'; rpm = '88-92 rpm';
+    desc  = t.descripcion || '"Comfortably hard". Respiración elevada pero rítmica.';
+  } else if (intL.includes('z4') || intL.includes('umbral') || intL.includes('threshold')) {
+    watts = `${pct(0.91)}–${pct(1.05)} W`; zone = 'Z4 Umbral'; rpm = '85-90 rpm';
+    desc  = t.descripcion || 'Esfuerzo sostenido en el umbral. Mantén la potencia.';
+  } else if (intL.includes('z5') || intL.includes('vo2') || intL.includes('vo₂')) {
+    watts = `${pct(1.06)}–${pct(1.20)} W`; zone = 'Z5 VO₂ Max'; rpm = '90-100 rpm';
+    desc  = t.descripcion || 'Alta intensidad. FC próxima al máximo.';
+  } else {
+    watts = `${pct(0.56)}–${pct(0.75)} W`; zone = 'Z2 Aeróbico'; rpm = '85-92 rpm';
+    desc  = t.descripcion || 'Esfuerzo aeróbico suave. Adaptación por recuperación.';
+  }
+  return [
+    { label: 'Calentamiento',    dur: `${warm} min`, watts: `${pct(0.50)}–${pct(0.60)} W`, rpm: '85-90 rpm', desc: 'Activación suave.' },
+    { label: zone,               dur: `${main} min`, watts, rpm, desc },
+    { label: 'Vuelta a la calma',dur: `${cool} min`, watts: `< ${pct(0.55)} W`,             rpm: 'libre',     desc: 'Reducir gradualmente.' },
+  ];
+}
+
+async function saveAdaptation(idx) {
+  const t = _adaptCache[idx];
+  if (!t || !currentPlan) return;
+
+  const btn = document.getElementById(`save-adapt-btn-${idx}`);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...'; }
+
+  const sess = currentPlan.sessions[idx];
+  const originalDuration = sess.durationMin || 60;
+  const newDuration = t.duracion_min > 0 ? t.duracion_min : originalDuration;
+
+  sess.name        = t.titulo || sess.name;
+  sess.description = t.descripcion || sess.description;
+  sess._adapted    = true;
+
+  if (t.recomendacion === 'descanso') {
+    sess.isRest    = true;
+    sess.durationMin = 0;
+    sess.intervals = [];
+  } else {
+    sess.isRest    = false;
+    sess.durationMin = newDuration;
+    if (t.recomendacion === 'mantener') {
+      // conservar intervalos originales
+    } else {
+      sess.intervals = buildAdaptedIntervals(t, newDuration);
+    }
+  }
+
+  renderPlan(currentPlan);
+  await silentSavePlan();
+  showToast('✅ Sesión adaptada guardada — coach de audio actualizado', 'var(--accent)');
+}
+
+async function silentSavePlan() {
+  if (!currentPlan) return;
+  try {
+    const monday = new Date();
+    monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
+    const planData = {
+      week_start:      monday.toISOString().substring(0, 10),
+      sessions:        currentPlan.sessions,
+      tss_target:      currentPlan.targetTSS || null,
+      phase:           currentPlan.phase     || null,
+      ftp_at_creation: AppState.athlete?.ftp || null,
+      advice:          currentPlan.advice    || null,
+    };
+    localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...planData, savedAt: Date.now() }));
+    await fetch(`${API}/plans/training`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
+      body: JSON.stringify(planData),
+    });
+  } catch(e) { /* fallo silencioso — localStorage ya tiene la copia */ }
 }
 
 // ── Registrar Realidad (Feedback Loop) ───────────────────────
