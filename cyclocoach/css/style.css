@@ -1163,3 +1163,48 @@ html.light-theme #btn-weather-hoy, html.light-theme #btn-weather-manana { color:
 html.light-theme #btn-weather-hoy[style*="background:var(--primary)"],
 html.light-theme #btn-weather-hoy[style*="background: var(--primary)"] { color: #ffffff !important; }
 html.light-theme .card-title, html.light-theme .nav-section-title { color: #111827 !important; }
+
+/* ══════════════════════════════════════════════════════════
+   AJUSTES GLOBALES PARA MODO CLARO (Logo y Contraste Verde)
+   ══════════════════════════════════════════════════════════ */
+
+/* Invertir el logotipo blanco para que sea grafito oscuro elegante en modo claro */
+html.light-theme .sidebar-logo img {
+  filter: invert(1) hue-rotate(180deg);
+  opacity: 0.85;
+}
+
+/* Forzar texto blanco inmaculado en todas las cajas y botones con fondos verdes oscuros
+   Se aplican combinaciones exhaustivas (con/sin espacios) para atrapar clases Tailwind y estilos RGB */
+html.light-theme .btn-success, html.light-theme .btn-success *,
+html.light-theme .bg-success, html.light-theme .bg-success *,
+html.light-theme .btn-primary, html.light-theme .btn-primary *,
+html.light-theme [class*="bg-green-"], html.light-theme [class*="bg-green-"] *,
+html.light-theme [class*="bg-emerald-"], html.light-theme [class*="bg-emerald-"] *,
+html.light-theme [class*="bg-teal-"], html.light-theme [class*="bg-teal-"] *,
+html.light-theme [class*="bg-[#10b981]" i], html.light-theme [class*="bg-[#10b981]" i] *,
+html.light-theme [class*="bg-[#00c882]" i], html.light-theme [class*="bg-[#00c882]" i] *,
+html.light-theme [class*="bg-[#2ecc71]" i], html.light-theme [class*="bg-[#2ecc71]" i] *,
+html.light-theme [class*="bg-[#4d7a00]" i], html.light-theme [class*="bg-[#4d7a00]" i] *,
+html.light-theme [style*="background: #10b981" i], html.light-theme [style*="background: #10b981" i] *,
+html.light-theme [style*="background-color: #10b981" i], html.light-theme [style*="background-color: #10b981" i] *,
+html.light-theme [style*="background:#10b981" i], html.light-theme [style*="background:#10b981" i] *,
+html.light-theme [style*="background-color:#10b981" i], html.light-theme [style*="background-color:#10b981" i] *,
+html.light-theme [style*="background: #00c882" i], html.light-theme [style*="background: #00c882" i] *,
+html.light-theme [style*="background-color: #00c882" i], html.light-theme [style*="background-color: #00c882" i] *,
+html.light-theme [style*="background:#00c882" i], html.light-theme [style*="background:#00c882" i] *,
+html.light-theme [style*="background-color:#00c882" i], html.light-theme [style*="background-color:#00c882" i] *,
+html.light-theme [style*="background: #4d7a00" i], html.light-theme [style*="background: #4d7a00" i] *,
+html.light-theme [style*="background-color: #4d7a00" i], html.light-theme [style*="background-color: #4d7a00" i] *,
+html.light-theme [style*="background:#4d7a00" i], html.light-theme [style*="background:#4d7a00" i] *,
+html.light-theme [style*="background-color:#4d7a00" i], html.light-theme [style*="background-color:#4d7a00" i] *,
+html.light-theme [style*="background: rgb(16, 185, 129)" i], html.light-theme [style*="background: rgb(16, 185, 129)" i] *,
+html.light-theme [style*="background-color: rgb(16, 185, 129)" i], html.light-theme [style*="background-color: rgb(16, 185, 129)" i] *,
+html.light-theme [style*="background:rgb(16,185,129)" i], html.light-theme [style*="background:rgb(16,185,129)" i] *,
+html.light-theme [style*="background-color:rgb(16,185,129)" i], html.light-theme [style*="background-color:rgb(16,185,129)" i] *,
+html.light-theme [style*="background: green" i], html.light-theme [style*="background: green" i] *,
+html.light-theme [style*="background-color: green" i], html.light-theme [style*="background-color: green" i] *,
+html.light-theme [style*="background: darkgreen" i], html.light-theme [style*="background: darkgreen" i] *,
+html.light-theme [style*="background-color: darkgreen" i], html.light-theme [style*="background-color: darkgreen" i] * {
+  color: #ffffff !important;
+}

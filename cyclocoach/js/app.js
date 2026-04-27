@@ -1906,41 +1906,6 @@ document.addEventListener('DOMContentLoaded', () => {
    THEME ADAPTER (Light / Dark Mode)
 ══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  // Inyectar CSS global para forzar texto blanco en fondos verdes oscuros durante el modo claro
-  if (!document.getElementById('light-theme-green-fix')) {
-    const themeFixStyle = document.createElement('style');
-    themeFixStyle.id = 'light-theme-green-fix';
-    themeFixStyle.innerHTML = `
-      html.light-theme .btn-success, html.light-theme .btn-success *,
-      html.light-theme .bg-success, html.light-theme .bg-success *,
-      html.light-theme .btn-primary, html.light-theme .btn-primary *,
-      html.light-theme [class*="bg-green-"], html.light-theme [class*="bg-green-"] *,
-      html.light-theme [class*="bg-emerald-"], html.light-theme [class*="bg-emerald-"] *,
-      html.light-theme [class*="bg-teal-"], html.light-theme [class*="bg-teal-"] *,
-      html.light-theme [style*="#10b981" i], html.light-theme [style*="#10b981" i] *,
-      html.light-theme [style*="#00c882" i], html.light-theme [style*="#00c882" i] *,
-      html.light-theme [style*="#2ecc71" i], html.light-theme [style*="#2ecc71" i] *,
-      html.light-theme [class*="bg-[#10b981]" i], html.light-theme [class*="bg-[#10b981]" i] *,
-      html.light-theme [class*="bg-[#00c882]" i], html.light-theme [class*="bg-[#00c882]" i] *,
-      html.light-theme [class*="bg-[#2ecc71]" i], html.light-theme [class*="bg-[#2ecc71]" i] *,
-      html.light-theme [style*="16, 185, 129"], html.light-theme [style*="16, 185, 129"] *,
-      html.light-theme [style*="16,185,129"], html.light-theme [style*="16,185,129"] *,
-      html.light-theme [style*="0, 200, 130"], html.light-theme [style*="0, 200, 130"] *,
-      html.light-theme [style*="0,200,130"], html.light-theme [style*="0,200,130"] *,
-      html.light-theme [style*="background: green" i], html.light-theme [style*="background: green" i] *,
-      html.light-theme [style*="background-color: green" i], html.light-theme [style*="background-color: green" i] *,
-      html.light-theme [style*="background: darkgreen" i], html.light-theme [style*="background: darkgreen" i] *,
-      html.light-theme [style*="background-color: darkgreen" i], html.light-theme [style*="background-color: darkgreen" i] *,
-      [style*="#4d7a00" i], [style*="#4d7a00" i] *,
-      [class*="bg-[#4d7a00]" i], [class*="bg-[#4d7a00]" i] *,
-      [style*="77, 122, 0"], [style*="77, 122, 0"] *,
-      [style*="77,122,0"], [style*="77,122,0"] * {
-        color: #ffffff !important;
-      }
-    `;
-    document.head.appendChild(themeFixStyle);
-  }
-
   const sidebarNav = document.querySelector('.sidebar-nav');
   if (sidebarNav) {
     const sectionTitle = document.createElement('div');
