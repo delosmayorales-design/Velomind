@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════
-   RideOS — style.css
-   Design System: Apex Dark — Obsidian + Lime + Sky
+   VeloMind — style.css
+   Design System: Apex Dark — Obsidian + Lime + Amber
    ══════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Roboto+Condensed:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -13,10 +13,10 @@
   --primary-light:  #C4EF44;   /* Lime light — text on dark bg       */
   --primary-glow:   rgba(158,214,43,0.18);
 
-  /* ── Secondary — Sky blue (info only) ─────────────────── */
-  --accent:         #38BDF8;   /* Sky — charts secondary, info       */
-  --accent-glow:    rgba(56,189,248,0.12);
-  --accent-blue:    #38BDF8;
+  /* ── Secondary — Amber (logo gradient, brand) ──────────── */
+  --accent:         #F5C83C;   /* Amber — logo speed-line gradient   */
+  --accent-glow:    rgba(245,200,60,0.12);
+  --accent-blue:    #38BDF8;   /* Sky — kept for semantic info/data  */
 
   /* ── Semantic states ───────────────────────────────────── */
   --danger:         #F87171;
@@ -43,7 +43,7 @@
   --bg-card-hover:#0B0E13;
   --bg-input:     #161B24;
   --bg-modal:     rgba(3,5,10,0.95);
-  --bg-sidebar:   #070A0E;
+  --bg-sidebar:   #060C08;   /* obsidian con leve tono verde oscuro del logo */
 
   /* ── Text ────────────────────────────────────────────────── */
   --text-primary:   #EEF2FF;
@@ -825,7 +825,7 @@ select.form-input option {
 
 /* ─── Sync banner ──────────────────────────────────────────── */
 .sync-banner {
-  background: linear-gradient(135deg, rgba(158,214,43,0.06), rgba(56,189,248,0.03));
+  background: linear-gradient(135deg, rgba(158,214,43,0.06), rgba(245,200,60,0.04));
   border: 1px solid rgba(158,214,43,0.14);
   border-radius: var(--radius-lg);
   padding: 16px 20px;
@@ -1090,28 +1090,38 @@ select.form-input option {
    LIGHT THEME OVERRIDES
    ══════════════════════════════════════════════════════════ */
 html.light-theme body {
-  --bg: #f3f4f6;
-  --bg-card: #ffffff;
-  --bg-input: #f9fafb;
-  --border: rgba(0,0,0,0.12);
-  --border-light: rgba(0,0,0,0.05);
-  --text: #111827;
-  --text-primary: #111827;
+  --bg: #F4F8EC;
+  --bg-card: #FAFDF4;
+  --bg-input: #EEF5E0;
+  --bg-sidebar: #1A2E18;
+  --border: rgba(0,0,0,0.10);
+  --border-light: rgba(77,122,0,0.12);
+  --text: #1A2410;
+  --text-primary: #1A2410;
   --text-secondary: #374151;
-  --text-muted: #4b5563;
-  --bg-card-hover: #f3f4f6;
+  --text-muted: #5a6e48;
+  --bg-card-hover: #EEF5E0;
   --primary: #4d7a00;
   --primary-dark: #2f4f00;
-  --primary-glow: rgba(77, 122, 0, 0.1);
+  --primary-glow: rgba(77,122,0,0.1);
   --primary-light: #4d7a00;
-  --accent: #1d4ed8;
+  --accent: #A06800;
+  --accent-blue: #1d4ed8;
   --warning: #b45309;
   --danger: #b91c1c;
   --success: #059669;
 }
 
-html.light-theme .sidebar { background: #ffffff !important; }
-html.light-theme .page-header { background: rgba(255,255,255,0.92) !important; }
+html.light-theme .sidebar { background: #1A2E18 !important; }
+html.light-theme .sidebar .nav-item { color: rgba(255,255,255,0.65) !important; }
+html.light-theme .sidebar .nav-item:hover { background: rgba(158,214,43,0.12) !important; color: #C4EF44 !important; }
+html.light-theme .sidebar .nav-item.active { background: rgba(158,214,43,0.18) !important; color: #C4EF44 !important; }
+html.light-theme .sidebar .nav-section-title { color: rgba(255,255,255,0.35) !important; }
+html.light-theme .sidebar .athlete-info .name { color: rgba(255,255,255,0.85) !important; }
+html.light-theme .sidebar .athlete-info .ftp { color: rgba(255,255,255,0.45) !important; }
+html.light-theme .sidebar-footer { border-top-color: rgba(255,255,255,0.08) !important; }
+html.light-theme .sidebar-logo { border-bottom-color: rgba(255,255,255,0.08) !important; }
+html.light-theme .page-header { background: rgba(244,248,236,0.94) !important; border-bottom-color: rgba(0,0,0,0.08) !important; }
 html.light-theme .card, html.light-theme .mod-card, html.light-theme .session-card-item { box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; }
 html.light-theme .week-card, html.light-theme .ai-section, html.light-theme .weekly-highlight-card, html.light-theme .coach-message { background: #ffffff !important; border-color: rgba(0,0,0,0.1) !important; box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important; color: #111827 !important; }
 html.light-theme .wc-grid { background: rgba(0,0,0,0.05) !important; }
@@ -1137,7 +1147,9 @@ html.light-theme [style*="color: #fff" i], html.light-theme [style*="color:#fff"
 html.light-theme [style*="color: #9ca3af" i], html.light-theme [style*="color:#9ca3af" i], html.light-theme [style*="color: #cbd5e1" i], html.light-theme [style*="color:#cbd5e1" i], html.light-theme [style*="color: var(--text-muted)"], html.light-theme [style*="color:var(--text-muted)"], html.light-theme [style*="color: var(--text-secondary)"], html.light-theme [style*="color:var(--text-secondary)"] { color: #4b5563 !important; }
 html.light-theme [style*="color: #C4EF44" i], html.light-theme [style*="color:#C4EF44" i], html.light-theme [style*="color: #9ED62B" i], html.light-theme [style*="color:#9ED62B" i], html.light-theme [style*="color: #34D399" i], html.light-theme [style*="color:#34D399" i], html.light-theme [style*="color: #10B981" i], html.light-theme [style*="color:#10B981" i], html.light-theme [style*="color: var(--primary)"], html.light-theme [style*="color:var(--primary)"], html.light-theme [style*="color: var(--success)"], html.light-theme [style*="color:var(--success)"] { color: #166534 !important; }
 html.light-theme [style*="color: rgba(196"], html.light-theme [style*="color:rgba(196"], html.light-theme [style*="color: rgba(52"], html.light-theme [style*="color:rgba(52"] { color: #166534 !important; }
-html.light-theme [style*="color: #00D4FF" i], html.light-theme [style*="color:#00D4FF" i], html.light-theme [style*="color: #38BDF8" i], html.light-theme [style*="color:#38BDF8" i], html.light-theme [style*="color: #3B82F6" i], html.light-theme [style*="color:#3B82F6" i], html.light-theme [style*="color: var(--accent)"], html.light-theme [style*="color:var(--accent)"] { color: #1d4ed8 !important; }
+html.light-theme [style*="color: #00D4FF" i], html.light-theme [style*="color:#00D4FF" i], html.light-theme [style*="color: #38BDF8" i], html.light-theme [style*="color:#38BDF8" i], html.light-theme [style*="color: #3B82F6" i], html.light-theme [style*="color:#3B82F6" i] { color: #1d4ed8 !important; }
+html.light-theme [style*="color: var(--accent)"], html.light-theme [style*="color:var(--accent)"] { color: #A06800 !important; }
+html.light-theme [style*="color: #F5C83C" i], html.light-theme [style*="color:#F5C83C" i] { color: #A06800 !important; }
 html.light-theme [style*="color: #FFC800" i], html.light-theme [style*="color:#FFC800" i], html.light-theme [style*="color: #F59E0B" i], html.light-theme [style*="color:#F59E0B" i], html.light-theme [style*="color: #FFD93D" i], html.light-theme [style*="color:#FFD93D" i], html.light-theme [style*="color: #FF6B35" i], html.light-theme [style*="color:#FF6B35" i], html.light-theme [style*="color: var(--warning)"], html.light-theme [style*="color:var(--warning)"] { color: #9a3412 !important; }
 html.light-theme [style*="color: #EF4444" i], html.light-theme [style*="color:#EF4444" i], html.light-theme [style*="color: #ff4757" i], html.light-theme [style*="color:#ff4757" i], html.light-theme [style*="color: var(--danger)"], html.light-theme [style*="color:var(--danger)"] { color: #b91c1c !important; }
 html.light-theme [style*="color: #8B5CF6" i], html.light-theme [style*="color:#8B5CF6" i], html.light-theme [style*="color: #EC4899" i], html.light-theme [style*="color:#EC4899" i] { color: #6d28d9 !important; }
