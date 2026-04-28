@@ -1183,10 +1183,10 @@ html.light-theme .modal-title, html.light-theme .modal-header button { color: #1
    AJUSTES GLOBALES PARA MODO CLARO (Logo y Contraste Verde)
    ══════════════════════════════════════════════════════════ */
 
-/* Invertir el logotipo blanco para que sea grafito oscuro elegante en modo claro */
+/* El sidebar en modo claro es verde oscuro (#1A2E18), el logo ya es para fondo oscuro */
 html.light-theme .sidebar-logo img {
-  filter: invert(1) hue-rotate(180deg);
-  opacity: 0.85;
+  filter: none;
+  opacity: 1;
 }
 
 /* Forzar texto blanco inmaculado en todas las cajas y botones con fondos verdes oscuros
