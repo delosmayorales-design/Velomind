@@ -1186,6 +1186,7 @@ html.light-theme .modal-title, html.light-theme .modal-header button { color: #1
 
 /* El sidebar en modo claro es verde oscuro (#1A2E18), el logo ya es para fondo oscuro */
 html.light-theme .sidebar-logo img {
+  content: url("../logoPerfil.PNG");
   filter: none;
   opacity: 1;
 }
