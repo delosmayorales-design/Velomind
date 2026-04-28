@@ -1162,7 +1162,10 @@ html.light-theme .btn-primary { color: #ffffff !important; }
 html.light-theme #btn-weather-hoy, html.light-theme #btn-weather-manana { color: #111827 !important; }
 html.light-theme #btn-weather-hoy[style*="background:var(--primary)"],
 html.light-theme #btn-weather-hoy[style*="background: var(--primary)"] { color: #ffffff !important; }
-html.light-theme .card-title, html.light-theme .nav-section-title { color: #111827 !important; }
+html.light-theme .card-title, html.light-theme .nav-section-title,
+html.light-theme .modal-header, html.light-theme .modal-header h1,
+html.light-theme .modal-header h2, html.light-theme .modal-header h3,
+html.light-theme .modal-title, html.light-theme .modal-header button { color: #111827 !important; }
 
 /* ══════════════════════════════════════════════════════════
    AJUSTES GLOBALES PARA MODO CLARO (Logo y Contraste Verde)
