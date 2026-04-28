@@ -1116,7 +1116,7 @@ html.light-theme .card, html.light-theme .mod-card, html.light-theme .session-ca
 html.light-theme .week-card, html.light-theme .ai-section, html.light-theme .weekly-highlight-card, html.light-theme .coach-message { background: #ffffff !important; border-color: rgba(0,0,0,0.1) !important; box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important; color: #111827 !important; }
 html.light-theme .wc-grid { background: rgba(0,0,0,0.05) !important; }
 html.light-theme .wc-item, html.light-theme .weekly-stat-item { background: #ffffff !important; border-color: rgba(0,0,0,0.1) !important; }
-html.light-theme .wc-val, html.light-theme .weekly-highlight-card h3, html.light-theme .weekly-highlight-card p, html.light-theme .ai-section p, html.light-theme .ai-section h2, html.light-theme .coach-message p { color: #111827 !important; }
+html.light-theme .wc-val, html.light-theme .weekly-highlight-card h3, html.light-theme .weekly-highlight-card p, html.light-theme .weekly-highlight-card div:not([class]), html.light-theme .ai-section p, html.light-theme .ai-section h2, html.light-theme .coach-message p, html.light-theme .coach-message div:not([class]), html.light-theme .modal-body div:not([class]), html.light-theme .modal-body span:not([class]) { color: #111827 !important; }
 html.light-theme .wc-val.wc-blue { color: #1d4ed8 !important; }
 html.light-theme .wc-val.wc-orange { color: #b45309 !important; }
 html.light-theme .wc-val.wc-red { color: #b91c1c !important; }
@@ -1133,7 +1133,7 @@ html.light-theme .delta-pill.up { color: #166534 !important; border-color: rgba(
 html.light-theme .delta-pill.down { color: #b91c1c !important; border-color: rgba(185,28,28,0.3) !important; background: rgba(185,28,28,0.05) !important; }
 html.light-theme .delta-pill.neu { color: #4b5563 !important; border-color: rgba(75,85,99,0.3) !important; background: rgba(75,85,99,0.05) !important; }
 
-html.light-theme [style*="color: #fff" i], html.light-theme [style*="color:#fff" i], html.light-theme [style*="color: #ffffff" i], html.light-theme [style*="color:#ffffff" i], html.light-theme [style*="color: white" i], html.light-theme [style*="color:white" i], html.light-theme [style*="color: var(--text)"], html.light-theme [style*="color:var(--text)"], html.light-theme [style*="color: var(--text-primary)"], html.light-theme [style*="color:var(--text-primary)"], html.light-theme [style*="color: #EEF2FF" i], html.light-theme [style*="color:#eef2ff" i], html.light-theme [style*="color: #F8FAFC" i], html.light-theme [style*="color:#f8fafc" i], html.light-theme [style*="color: rgb(255" i], html.light-theme [style*="color:rgb(255" i], html.light-theme .text-white { color: #111827 !important; }
+html.light-theme [style*="color: #fff" i], html.light-theme [style*="color:#fff" i], html.light-theme [style*="color: #ffffff" i], html.light-theme [style*="color:#ffffff" i], html.light-theme [style*="color: white" i], html.light-theme [style*="color:white" i], html.light-theme [style*="color: var(--text)"], html.light-theme [style*="color:var(--text)"], html.light-theme [style*="color: var(--text-primary)"], html.light-theme [style*="color:var(--text-primary)"], html.light-theme [style*="color: #EEF2FF" i], html.light-theme [style*="color:#eef2ff" i], html.light-theme [style*="color: #F8FAFC" i], html.light-theme [style*="color:#f8fafc" i], html.light-theme [style*="color: #F0F2F5" i], html.light-theme [style*="color:#f0f2f5" i], html.light-theme [style*="color: #F3F4F6" i], html.light-theme [style*="color:#f3f4f6" i], html.light-theme [style*="color: #E5E7EB" i], html.light-theme [style*="color:#e5e7eb" i], html.light-theme [style*="color: #E2E8F0" i], html.light-theme [style*="color:#e2e8f0" i], html.light-theme [style*="color: #D1D5DB" i], html.light-theme [style*="color:#d1d5db" i], html.light-theme [style*="color: rgb(255" i], html.light-theme [style*="color:rgb(255" i], html.light-theme [style*="color: rgba(255" i], html.light-theme [style*="color:rgba(255" i], html.light-theme [style*="color: rgba(240" i], html.light-theme [style*="color:rgba(240" i], html.light-theme .text-white, html.light-theme .text-gray-100, html.light-theme .text-gray-200, html.light-theme .text-gray-300 { color: #111827 !important; }
 html.light-theme [style*="color: #9ca3af" i], html.light-theme [style*="color:#9ca3af" i], html.light-theme [style*="color: #cbd5e1" i], html.light-theme [style*="color:#cbd5e1" i], html.light-theme [style*="color: var(--text-muted)"], html.light-theme [style*="color:var(--text-muted)"], html.light-theme [style*="color: var(--text-secondary)"], html.light-theme [style*="color:var(--text-secondary)"] { color: #4b5563 !important; }
 html.light-theme [style*="color: #C4EF44" i], html.light-theme [style*="color:#C4EF44" i], html.light-theme [style*="color: #9ED62B" i], html.light-theme [style*="color:#9ED62B" i], html.light-theme [style*="color: #34D399" i], html.light-theme [style*="color:#34D399" i], html.light-theme [style*="color: #10B981" i], html.light-theme [style*="color:#10B981" i], html.light-theme [style*="color: var(--primary)"], html.light-theme [style*="color:var(--primary)"], html.light-theme [style*="color: var(--success)"], html.light-theme [style*="color:var(--success)"] { color: #166534 !important; }
 html.light-theme [style*="color: rgba(196"], html.light-theme [style*="color:rgba(196"], html.light-theme [style*="color: rgba(52"], html.light-theme [style*="color:rgba(52"] { color: #166534 !important; }
@@ -1215,19 +1215,12 @@ html.light-theme [style*="background: green" i], html.light-theme [style*="backg
 html.light-theme [style*="background-color: green" i], html.light-theme [style*="background-color: green" i] *,
 html.light-theme [style*="background: darkgreen" i], html.light-theme [style*="background: darkgreen" i] *,
 html.light-theme [style*="background-color: darkgreen" i], html.light-theme [style*="background-color: darkgreen" i] *,
-html.light-theme [onclick*="analyze" i], html.light-theme [onclick*="analyze" i] *,
-html.light-theme [onclick*="diagnos" i], html.light-theme [onclick*="diagnos" i] *,
-html.light-theme [onclick*="biomec" i], html.light-theme [onclick*="biomec" i] *,
-html.light-theme [onclick*="calcul" i], html.light-theme [onclick*="calcul" i] *,
-html.light-theme [onclick*="calcManual" i], html.light-theme [onclick*="calcManual" i] *,
-html.light-theme .calc-btn, html.light-theme .calc-btn *,
-html.light-theme .btn-checkin, html.light-theme .btn-checkin *,
-html.light-theme [onclick*="calcGear" i], html.light-theme [onclick*="calcGear" i] *,
-html.light-theme [onclick*="calcSag" i], html.light-theme [onclick*="calcSag" i] *,
-html.light-theme [style*="background: var(--primary)" i], html.light-theme [style*="background: var(--primary)" i] *,
-html.light-theme [style*="background:var(--primary)" i], html.light-theme [style*="background:var(--primary)" i] *,
-html.light-theme [style*="background-color: var(--primary)" i], html.light-theme [style*="background-color: var(--primary)" i] *,
-html.light-theme [style*="background-color:var(--primary)" i], html.light-theme [style*="background-color:var(--primary)" i] * {
+html.light-theme .calc-btn,
+html.light-theme .btn-checkin,
+html.light-theme [style*="background: var(--primary)" i],
+html.light-theme [style*="background:var(--primary)" i],
+html.light-theme [style*="background-color: var(--primary)" i],
+html.light-theme [style*="background-color:var(--primary)" i] {
   color: #ffffff !important;
 }
 
