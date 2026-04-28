@@ -556,7 +556,7 @@ function showActivityDetail(actId) {
     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px"><i class="fas fa-chart-bar"></i> Análisis Visual</div>
 
     <div class="chart-wrap" style="margin-bottom:8px">
-      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">Zonas de Potencia (estimado)</div>
+      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">Zonas de Potencia <span style="font-weight:400;text-transform:none">(estimado · basado en NP)</span></div>
       <canvas id="chart-zones" height="90"></canvas>
     </div>
 
@@ -588,13 +588,25 @@ function renderDetailCharts(act, ftp) {
   // ── 1. Zonas de potencia (distribución estimada) ──────────────────
   const zonesCanvas = document.getElementById('chart-zones');
   if (zonesCanvas && act.avg_power) {
-    const ratio = act.avg_power / ftp;
-    const zones = ZONES_COGGAN;
-    // Estimate time in zones using a Gaussian distribution centered at avg ratio
-    const sigma = 0.15;
+    const avgRatio = act.avg_power / ftp;
+    const npRatio  = act.np ? act.np / ftp : avgRatio;
+    const vi       = npRatio / avgRatio; // variability index: >1.05 = intervals
+    const zones    = ZONES_COGGAN;
+
+    // For interval sessions (high VI) use a bimodal distribution:
+    //   - recovery component centered at avg_power (base pace)
+    //   - work component centered at NP (training stimulus)
+    // workWeight increases with variability so intervals show correct zone dominance
+    const workWeight     = Math.min(Math.max((vi - 1) * 6, 0), 0.90);
+    const recoveryWeight = 1 - workWeight;
+    const sigmaWork      = 0.12;
+    const sigmaRecovery  = 0.14;
+
     const raw = zones.map(z => {
       const mid = (z.min + Math.min(z.max, 2.0)) / 2;
-      return Math.max(0, Math.exp(-Math.pow(mid - ratio, 2) / (2 * sigma * sigma)));
+      const gRecovery = Math.exp(-Math.pow(mid - avgRatio, 2) / (2 * sigmaRecovery * sigmaRecovery));
+      const gWork     = Math.exp(-Math.pow(mid - npRatio,  2) / (2 * sigmaWork     * sigmaWork));
+      return Math.max(0, recoveryWeight * gRecovery + workWeight * gWork);
     });
     const sum = raw.reduce((a,b) => a+b, 0);
     const pct = raw.map(v => Math.round(v / sum * 100));
