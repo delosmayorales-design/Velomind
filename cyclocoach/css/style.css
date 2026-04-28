@@ -1093,7 +1093,7 @@ html.light-theme body {
   --bg: #F4F8EC;
   --bg-card: #FAFDF4;
   --bg-input: #EEF5E0;
-  --bg-sidebar: #1A2E18;
+  --bg-sidebar: #2C1800;
   --border: rgba(0,0,0,0.10);
   --border-light: rgba(77,122,0,0.12);
   --text: #1A2410;
@@ -1112,10 +1112,10 @@ html.light-theme body {
   --success: #059669;
 }
 
-html.light-theme .sidebar { background: #1A2E18 !important; }
+html.light-theme .sidebar { background: #2C1800 !important; }
 html.light-theme .sidebar .nav-item { color: rgba(255,255,255,0.65) !important; }
-html.light-theme .sidebar .nav-item:hover { background: rgba(158,214,43,0.12) !important; color: #C4EF44 !important; }
-html.light-theme .sidebar .nav-item.active { background: rgba(158,214,43,0.18) !important; color: #C4EF44 !important; }
+html.light-theme .sidebar .nav-item:hover { background: rgba(245,200,60,0.15) !important; color: #F5C83C !important; }
+html.light-theme .sidebar .nav-item.active { background: rgba(245,200,60,0.22) !important; color: #F5C83C !important; }
 html.light-theme .sidebar .nav-section-title { color: rgba(255,255,255,0.35) !important; }
 html.light-theme .sidebar .athlete-info .name { color: rgba(255,255,255,0.85) !important; }
 html.light-theme .sidebar .athlete-info .ftp { color: rgba(255,255,255,0.45) !important; }
