@@ -130,23 +130,40 @@
         <div>Los archivos <strong>.fit</strong> de Garmin se importan directamente. Para otros dispositivos usa <strong>GPX/TCX</strong>.</div>
       </div>
       <div id="upload-progress-list" style="margin-top:16px"></div>
-      <div style="margin: 16px 0; text-align: center;">
-        <button class="btn btn-ghost btn-sm" onclick="toggleManualEntry()">
-          <i class="fas fa-keyboard"></i> O introduce una actividad manualmente
-        </button>
+
+      <!-- Separador O -->
+      <div style="display:flex;align-items:center;gap:12px;margin:20px 20px 0">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:1px">O</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
       </div>
-      <div id="manual-form" class="hidden manual-entry-form">
-        <div class="manual-entry-title"><i class="fas fa-keyboard"></i> Entrada manual</div>
-        <div class="manual-entry-grid">
-          <div class="form-group"><label class="form-label form-label--xs">Nombre</label><input type="text" id="m-name" class="form-input form-input--sm" placeholder="Rodaje Z2"></div>
-          <div class="form-group"><label class="form-label form-label--xs">Fecha</label><input type="date" id="m-date" class="form-input form-input--sm"></div>
-          <div class="form-group"><label class="form-label form-label--xs">Duración (min)</label><input type="number" id="m-duration" class="form-input form-input--sm" placeholder="90"></div>
-          <div class="form-group"><label class="form-label form-label--xs">Pot. Media (W)</label><input type="number" id="m-power" class="form-input form-input--sm" placeholder="175"></div>
-          <div class="form-group"><label class="form-label form-label--xs">FC Media (bpm)</label><input type="number" id="m-hr" class="form-input form-input--sm" placeholder="138"></div>
-          <div class="form-group"><label class="form-label form-label--xs">Distancia (km)</label><input type="number" id="m-dist" class="form-input form-input--sm" placeholder="50"></div>
+
+      <!-- Entrada manual — siempre visible como opción secundaria -->
+      <div style="margin:12px 20px 20px">
+        <div id="manual-toggle-btn" onclick="toggleManualEntry()" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px dashed var(--border);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s;background:transparent" onmouseenter="this.style.borderColor='var(--primary)';this.style.background='rgba(158,214,43,0.04)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='transparent'">
+          <div style="width:38px;height:38px;border-radius:var(--radius-sm);background:rgba(158,214,43,0.10);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="fas fa-keyboard" style="color:var(--primary);font-size:16px"></i>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--text-primary);line-height:1.3">Introducir actividad manualmente</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Sin archivo — introduce los datos a mano</div>
+          </div>
+          <i id="manual-toggle-arrow" class="fas fa-chevron-down" style="color:var(--text-muted);font-size:12px;transition:transform 0.2s"></i>
         </div>
-        <div class="manual-entry-actions">
-          <button class="btn btn-primary btn-sm" onclick="saveManualActivity()"><i class="fas fa-save"></i> Guardar</button>
+
+        <div id="manual-form" class="hidden" style="margin-top:12px;padding:16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md)">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
+            <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Nombre</label><input type="text" id="m-name" class="form-input form-input--sm" placeholder="Rodaje Z2"></div>
+            <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Fecha</label><input type="date" id="m-date" class="form-input form-input--sm"></div>
+            <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Duración (min)</label><input type="number" id="m-duration" class="form-input form-input--sm" placeholder="90"></div>
+            <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Distancia (km)</label><input type="number" id="m-dist" class="form-input form-input--sm" placeholder="50"></div>
+            <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Pot. Media (W)</label><input type="number" id="m-power" class="form-input form-input--sm" placeholder="175"></div>
+            <div class="form-group" style="margin:0"><label class="form-label form-label--xs">FC Media (bpm)</label><input type="number" id="m-hr" class="form-input form-input--sm" placeholder="138"></div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="toggleManualEntry()">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="saveManualActivity()"><i class="fas fa-save"></i> Guardar actividad</button>
+          </div>
         </div>
       </div>
     </div>
@@ -379,8 +396,11 @@ function updateProgressItem(id, status, type) {
 
 function toggleManualEntry() {
   const form = document.getElementById('manual-form');
+  const arrow = document.getElementById('manual-toggle-arrow');
+  const isOpen = !form.classList.contains('hidden');
   form.classList.toggle('hidden');
-  if (!form.classList.contains('hidden')) { document.getElementById('m-date').value = new Date().toISOString().substring(0, 10); }
+  if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  if (!isOpen) document.getElementById('m-date').value = new Date().toISOString().substring(0, 10);
 }
 
 async function saveManualActivity() {
