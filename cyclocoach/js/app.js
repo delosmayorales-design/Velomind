@@ -2036,7 +2036,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const img = document.createElement('img');
       img.src = logo.src;
       const isLight = document.documentElement.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
-      img.style.cssText = `max-width:85vw;max-height:85vh;object-fit:contain;border-radius:16px;filter:drop-shadow(0 10px 40px rgba(158,214,43,0.15));transform:scale(0.9);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);${isLight ? 'filter:invert(1) hue-rotate(180deg) drop-shadow(0 10px 40px rgba(0,0,0,0.15));' : ''}`;
+      const themeFilter = isLight ? 'invert(1) hue-rotate(180deg) contrast(1.2)' : '';
+      img.style.cssText = `max-width:85vw;max-height:85vh;object-fit:contain;border-radius:16px;filter:drop-shadow(0 10px 40px rgba(158,214,43,0.15)) ${themeFilter};transform:scale(0.9);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);`;
       
       overlay.appendChild(img);
       document.body.appendChild(overlay);

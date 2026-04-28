@@ -1186,7 +1186,8 @@ html.light-theme .modal-title, html.light-theme .modal-header button { color: #1
 
 /* El sidebar en modo claro es verde oscuro (#1A2E18), el logo ya es para fondo oscuro */
 html.light-theme .sidebar-logo img {
-  filter: none;
+  content: url("../logoPerfil.PNG");
+  filter: invert(1) hue-rotate(180deg) contrast(1.2);
   opacity: 1;
 }
 
@@ -1243,4 +1244,7 @@ html.light-theme [style*="background-color:var(--primary)" i] {
 img[src*="logoPerfil" i] {
   width: 280px !important;
   max-width: 90vw !important;
+}
+html.light-theme img[src*="logoPerfil" i] {
+  filter: invert(1) hue-rotate(180deg) contrast(1.2) drop-shadow(0 4px 15px rgba(0,0,0,0.05)) !important;
 }
