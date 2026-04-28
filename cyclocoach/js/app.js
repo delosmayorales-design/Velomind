@@ -901,7 +901,10 @@ const FileParser = {
       }
       const parser = new ParserClass({ force: true, speedUnit: 'm/s', lengthUnit: 'm', mode: 'list' });
       parser.parse(buffer, (err, data) => {
+        try {
         if (err) { reject(new Error('No se pudo leer el archivo FIT: ' + err)); return; }
+
+        console.log('[FIT] claves raíz:', Object.keys(data || {}));
 
         // Soporta easy-fit (data.activity.sessions) y fit-file-parser (data.sessions)
         const session = data.activity?.sessions?.[0]
@@ -911,6 +914,8 @@ const FileParser = {
 
         // Records pueden estar dentro de session o al nivel raíz (fit-file-parser)
         const records = session?.records || data.records || data.activity?.records || [];
+
+        console.log('[FIT] session:', !!session, '| records:', records.length);
 
         if (!session && records.length === 0) {
           reject(new Error('El archivo FIT no contiene datos de sesión.'));
@@ -987,6 +992,10 @@ const FileParser = {
           tss:         0,
           if_value:    0,
         });
+        } catch (cbErr) {
+          console.error('[FIT] error en callback:', cbErr);
+          reject(new Error('Error procesando FIT: ' + cbErr.message));
+        }
       });
     });
   },
