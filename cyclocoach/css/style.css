@@ -3,7 +3,7 @@
    Design System: Apex Dark — Obsidian + Lime + Sky
    ══════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Roboto+Condensed:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
 /* ─── Design Tokens ────────────────────────────────────────── */
 :root {
@@ -86,7 +86,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Roboto Condensed', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text-primary);
   font-size: 14px;
@@ -537,7 +537,7 @@ input, select, textarea, button { font-family: inherit; }
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: 14px;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Roboto Condensed', sans-serif;
   transition: var(--transition);
   outline: none;
 }

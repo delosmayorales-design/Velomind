@@ -932,10 +932,16 @@ const FileParser = {
           avg_heart_rate: null, avg_cadence: null, total_ascent: null,
         };
 
-        const startTime = eff.start_time || records[0]?.timestamp;
-        const date = startTime
-          ? new Date(startTime).toISOString().substring(0, 10)
-          : new Date().toISOString().substring(0, 10);
+        let d = new Date();
+        const startTime = eff.start_time || records[0]?.timestamp || data.session?.start_time;
+        if (startTime) {
+          const rawD = new Date(startTime);
+          if (!isNaN(rawD.getTime())) {
+            // Si el año es menor a 2010, compensamos el Epoch de Garmin (segundos desde 1989)
+            d = rawD.getFullYear() < 2010 ? new Date(rawD.getTime() + 631065600000) : rawD;
+          }
+        }
+        const date = d.toISOString().substring(0, 10);
 
         const duration = eff.total_elapsed_time
           ? Math.round(eff.total_elapsed_time)
@@ -1175,7 +1181,7 @@ const Charts = {
     return {
       color: '#9ca3af',
       borderColor: 'rgba(255,255,255,0.07)',
-      font: { family: 'DM Sans', size: 12 },
+      font: { family: 'Roboto Condensed', size: 12 },
     };
   },
 
@@ -1203,7 +1209,7 @@ const Charts = {
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: { labels: { color: '#9ca3af', font: { family: 'DM Sans', size: 12 }, usePointStyle: true, pointStyleWidth: 12 } },
+          legend: { labels: { color: '#9ca3af', font: { family: 'Roboto Condensed', size: 12 }, usePointStyle: true, pointStyleWidth: 12 } },
           tooltip: {
             backgroundColor: '#1a1d26',
             borderColor: 'rgba(255,255,255,0.1)',
@@ -1563,7 +1569,7 @@ const DashboardUI = {
           position: relative;
           overflow: hidden;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 107, 53, 0.05);
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Roboto Condensed', sans-serif;
         }
         .weekly-highlight-card::before {
           content: '';

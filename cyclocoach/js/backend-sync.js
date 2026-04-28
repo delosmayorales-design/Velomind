@@ -176,7 +176,8 @@ function isLegacyDemoActivity(a) {
         activity.if_value = data.if_value;
       }
       AppState.saveActivity(activity);
-      loadActivities();
+      await loadActivities();
+      if (typeof window.renderActivities === 'function') window.renderActivities();
       return data;
     } catch (e) {
       console.warn('[BackendSync] saveActivity offline:', e.message);
@@ -194,7 +195,9 @@ function isLegacyDemoActivity(a) {
         body: JSON.stringify({ activities }),
       });
       for (const a of activities) AppState.saveActivity(a);
-      loadActivities();
+      await loadActivities();
+      if (typeof window.renderActivities === 'function') window.renderActivities();
+      if (typeof window.loadDashboard === 'function') window.loadDashboard();
       return res;
     } catch (e) {
       console.warn('[BackendSync] batchSave offline:', e.message);

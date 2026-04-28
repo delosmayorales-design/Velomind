@@ -432,7 +432,7 @@ const Auth = (() => {
       position:fixed;inset:0;z-index:9999;
       display:flex;align-items:center;justify-content:center;
       background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);
-      font-family:'DM Sans',sans-serif;
+      font-family:'Roboto Condensed',sans-serif;
     `;
     modal.innerHTML = `
       <div style="background:#13151c;border:1px solid rgba(255,107,53,0.3);border-radius:16px;
@@ -455,7 +455,7 @@ const Auth = (() => {
         <button onclick="document.getElementById('premium-modal').remove()"
           style="width:100%;background:transparent;border:1px solid rgba(255,255,255,0.08);
                  color:#6b7280;padding:11px;border-radius:10px;cursor:pointer;
-                 font-family:'DM Sans',sans-serif;font-size:14px;">
+                   font-family:'Roboto Condensed',sans-serif;font-size:14px;">
           Quizás más tarde
         </button>
       </div>`;
