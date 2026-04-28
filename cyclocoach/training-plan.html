@@ -92,10 +92,12 @@
       border-top: 1px solid rgba(99,102,241,.15);
       background: rgba(99,102,241,.04);
     }
-    html[data-theme="light"] .adapt-trigger {
-      color: #4f46e5;
+    html[data-theme="light"] .adapt-trigger,
+    html.light-theme .adapt-trigger {
+      color: #1e293b !important;
     }
-    html[data-theme="light"] .adapt-trigger:hover { color: #3730a3; }
+    html[data-theme="light"] .adapt-trigger:hover,
+    html.light-theme .adapt-trigger:hover { color: #4f46e5 !important; }
     html[data-theme="light"] .adapt-input {
       background: #ffffff;
       border-color: rgba(99,102,241,.25);
