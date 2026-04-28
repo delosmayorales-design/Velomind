@@ -311,6 +311,12 @@ function filterActivities() {
   renderActivities(filtered);
 }
 
+function estimatedCal(act) {
+  if (act.calories > 0) return act.calories;
+  if (act.avg_power && act.duration) return Math.round(act.avg_power * act.duration / 1000);
+  return 0;
+}
+
 function renderActivities(activities) {
   const container = document.getElementById('activities-list');
   document.getElementById('activity-count').textContent = activities.length + ' actividades';
@@ -324,7 +330,7 @@ function renderActivities(activities) {
     const tssColor = (a.tss > 100) ? 'var(--accent-red)' : (a.tss > 60) ? 'var(--primary)' : 'var(--accent-yellow)';
     const sid = a.strava_id || (a.id?.startsWith('strava_') ? a.id.replace('strava_', '') : null);
     const rowClick = 'onclick="showActivityDetail(\'' + a.id + '\')" style="cursor:pointer"';
-    return '<tr ' + rowClick + '><td><div style="display:flex;align-items:center;gap:6px"><div class="value-bold" style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (a.name || 'Entrenamiento') + '">' + (a.name || 'Entrenamiento') + '</div>' + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.7"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '') + '</div><div style="display:flex;gap:4px;margin-top:2px"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + ';font-size:9px">' + (zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue" style="font-size:9px">' + (a.source || 'CSV') + '</span></div></td><td style="white-space:nowrap">' + Utils.formatDate(a.date) + '</td><td class="value-bold">' + Utils.formatDuration(a.duration) + '</td><td>' + Utils.formatDistance(a.distance) + '</td><td>' + (a.avg_power ? '<span style="color:var(--primary);font-weight:600">' + a.avg_power + 'W</span>' : '--') + '</td><td>' + (a.np ? '<span style="color:var(--primary-light);font-weight:600">' + a.np + 'W</span>' : '--') + '</td><td style="color:var(--text-secondary)">' + (a.if_value ? a.if_value.toFixed(2) : '--') + '</td><td>' + (a.avg_hr ? a.avg_hr + ' bpm' : '--') + '</td><td>' + (a.avg_cadence ? a.avg_cadence + ' rpm' : '--') + '</td><td>' + (a.elevation ? '↑' + a.elevation + 'm' : '--') + '</td><td><span style="font-weight:700;color:' + tssColor + '">' + (a.tss || '--') + '</span></td><td style="color:var(--text-muted)">' + (a.calories ? Math.round(a.calories) + 'kcal' : '--') + '</td><td style="white-space:nowrap"><button onclick="event.stopPropagation();showActivityDetail(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="padding:4px 8px" title="Detalle"><i class="fas fa-info-circle"></i></button><button onclick="event.stopPropagation();deleteActivity(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="color:var(--accent-red);padding:4px 8px" title="Eliminar"><i class="fas fa-trash"></i></button></td></tr>';
+    return '<tr ' + rowClick + '><td><div style="display:flex;align-items:center;gap:6px"><div class="value-bold" style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (a.name || 'Entrenamiento') + '">' + (a.name || 'Entrenamiento') + '</div>' + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.7"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '') + '</div><div style="display:flex;gap:4px;margin-top:2px"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + ';font-size:9px">' + (zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue" style="font-size:9px">' + (a.source || 'CSV') + '</span></div></td><td style="white-space:nowrap">' + Utils.formatDate(a.date) + '</td><td class="value-bold">' + Utils.formatDuration(a.duration) + '</td><td>' + Utils.formatDistance(a.distance) + '</td><td>' + (a.avg_power ? '<span style="color:var(--primary);font-weight:600">' + a.avg_power + 'W</span>' : '--') + '</td><td>' + (a.np ? '<span style="color:var(--primary-light);font-weight:600">' + a.np + 'W</span>' : '--') + '</td><td style="color:var(--text-secondary)">' + (a.if_value ? a.if_value.toFixed(2) : '--') + '</td><td>' + (a.avg_hr ? a.avg_hr + ' bpm' : '--') + '</td><td>' + (a.avg_cadence ? a.avg_cadence + ' rpm' : '--') + '</td><td>' + (a.elevation ? '↑' + a.elevation + 'm' : '--') + '</td><td><span style="font-weight:700;color:' + tssColor + '">' + (a.tss || '--') + '</span></td><td style="color:var(--text-muted)">' + (estimatedCal(a) ? Math.round(estimatedCal(a)) + 'kcal' : '--') + '</td><td style="white-space:nowrap"><button onclick="event.stopPropagation();showActivityDetail(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="padding:4px 8px" title="Detalle"><i class="fas fa-info-circle"></i></button><button onclick="event.stopPropagation();deleteActivity(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="color:var(--accent-red);padding:4px 8px" title="Eliminar"><i class="fas fa-trash"></i></button></td></tr>';
   }).join('') + '</tbody></table></div>';
 }
 
@@ -516,7 +522,7 @@ function showActivityDetail(actId) {
         <div class="detail-metric-mini"><div class="label">FC Media</div><div class="value" style="color:#ef4444;font-size:14px">${act.avg_hr ? act.avg_hr+' <span style="font-size:9px">bpm</span>' : '--'}</div></div>
         <div class="detail-metric-mini"><div class="label">FC Máx</div><div class="value" style="color:#ef4444;font-size:14px">${act.max_hr ? act.max_hr+' <span style="font-size:9px">bpm</span>' : '--'}</div></div>
         <div class="detail-metric-mini"><div class="label">Cadencia</div><div class="value" style="color:var(--text-primary);font-size:14px">${act.avg_cadence ? act.avg_cadence+' <span style="font-size:9px">rpm</span>' : '--'}</div></div>
-        <div class="detail-metric-mini"><div class="label">Calorías</div><div class="value" style="color:var(--text-primary);font-size:14px">${act.calories ? Math.round(act.calories)+' <span style="font-size:9px">kcal</span>' : '--'}</div></div>
+        <div class="detail-metric-mini"><div class="label">Calorías</div><div class="value" style="color:var(--text-primary);font-size:14px">${estimatedCal(act) ? Math.round(estimatedCal(act))+' <span style="font-size:9px">kcal</span>' : '--'}</div></div>
       </div>
     </div>
 
@@ -527,7 +533,7 @@ function showActivityDetail(actId) {
         <div class="detail-metric-mini" style="border-color:${tssColor}44"><div class="label">TSS</div><div class="value" style="color:${tssColor};font-size:18px;font-weight:800">${act.tss || '--'}</div></div>
         <div class="detail-metric-mini"><div class="label">Trabajo</div><div class="value" style="color:var(--text-primary);font-size:14px">${workKJ ? workKJ+' <span style="font-size:9px">kJ</span>' : '--'}</div></div>
         <div class="detail-metric-mini"><div class="label">TRIMP</div><div class="value" style="color:#a78bfa;font-size:14px">${trimp || '--'}</div></div>
-        <div class="detail-metric-mini"><div class="label">Kcal/h</div><div class="value" style="color:var(--text-muted);font-size:14px">${act.calories && act.duration ? Math.round(act.calories / (act.duration/3600)) : '--'}</div></div>
+        <div class="detail-metric-mini"><div class="label">Kcal/h</div><div class="value" style="color:var(--text-muted);font-size:14px">${estimatedCal(act) && act.duration ? Math.round(estimatedCal(act) / (act.duration/3600)) : '--'}</div></div>
       </div>
     </div>
 
