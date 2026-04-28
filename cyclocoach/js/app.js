@@ -880,11 +880,15 @@ const FileParser = {
       if (typeof window.FitParser !== 'undefined' || typeof window.EasyFit !== 'undefined') {
         return resolve();
       }
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/fit-parser/dist/fit-parser.js';
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('No se pudo descargar la librería FIT. Revisa tu conexión a internet.'));
-      document.head.appendChild(script);
+        import('https://cdn.jsdelivr.net/npm/fit-file-parser/+esm')
+          .then(module => {
+            window.FitParser = module.default || module.FitParser || module;
+            resolve();
+          })
+          .catch(err => {
+            console.error("Error descargando librería FIT:", err);
+            reject(new Error('No se pudo descargar la librería FIT. Revisa tu conexión a internet.'));
+          });
     });
   },
 
