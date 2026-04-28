@@ -413,8 +413,112 @@ function showActivityDetail(actId) {
   if (!act) return;
   const ftp = AppState.athlete?.ftp || 200;
   const weight = AppState.athlete?.weight || 70;
+  const weight = AppState.athlete?.weight || 70;
   const zone = Utils.getPowerZone(act.avg_power, ftp);
-  document.getElementById('panel-content').innerHTML = '<div style="margin-bottom:20px"><h3 style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:4px">' + act.name + '</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="badge badge-blue">' + act.source + '</span><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + '">' + (zone?.name || 'Z?') + '</span><span style="font-size:12px;color:var(--text-muted)">' + Utils.formatDate(act.date) + '</span></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px"><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">Duracion</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--text-primary)">' + Utils.formatDuration(act.duration) + '</div></div><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">Distancia</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--text-primary)">' + Utils.formatDistance(act.distance) + '</div></div><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">Desnivel</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--accent-yellow)">' + (act.elevation ? '↑' + act.elevation + 'm' : '--') + '</div></div><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">Pot. Media</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--primary)">' + Utils.formatPower(act.avg_power) + '</div></div><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">NP</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--primary-light)">' + Utils.formatPower(act.np) + '</div></div><div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">TSS</div><div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:700;color:var(--accent-yellow)">' + (act.tss || '--') + '</div></div></div><div style="display:flex;gap:8px;margin-top:4px">' + (act.strava_id ? '<a href="https://www.strava.com/activities/' + act.strava_id + '" target="_blank" class="btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(252,76,2,0.1);color:#FC4C02;border:1px solid rgba(252,76,2,0.3);text-decoration:none">Ver en Strava</a>' : '') + '<button onclick="deleteActivity(\'' + act.id + '\')" class="btn" style="flex:1;background:rgba(255,61,0,0.1);color:var(--accent-red);border:1px solid rgba(255,61,0,0.2)"><i class="fas fa-trash"></i> Eliminar</button></div>';
+  
+  const isLight = document.documentElement.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
+  const divider = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+  const tssColor = act.tss > 100 ? '#ef4444' : act.tss > 60 ? '#f59e0b' : '#10b981';
+
+  document.getElementById('panel-content').innerHTML = `
+    <div style="margin-bottom:24px">
+      <h3 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--text-primary);margin-bottom:8px;line-height:1.2">${act.name}</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="badge badge-blue"><i class="fas fa-file-import"></i> ${act.source}</span>
+        ${zone ? `<span class="badge" style="background:${zone.color}22;color:${zone.color};border:1px solid ${zone.color}44">${zone.name.split(' — ')[0]}</span>` : ''}
+        <span style="font-size:12px;color:var(--text-muted);font-weight:500"><i class="far fa-calendar-alt"></i> ${Utils.formatDate(act.date)}</span>
+      </div>
+    </div>
+
+    <!-- MAIN METRICS (Golden Cheetah Style) -->
+    <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;margin-bottom:20px">
+      <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:0.5px;margin-bottom:4px">Duración</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${Utils.formatDuration(act.duration)}</div>
+      </div>
+      <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:0.5px;margin-bottom:4px">Distancia</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${Utils.formatDistance(act.distance)}</div>
+      </div>
+      <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:0.5px;margin-bottom:4px">Desnivel</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#38BDF8">${act.elevation ? '↑' + act.elevation + 'm' : '--'}</div>
+      </div>
+      <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:0.5px;margin-bottom:4px">Vel. Media</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${act.avg_speed ? act.avg_speed + '<span style="font-size:11px;color:var(--text-muted);margin-left:2px">km/h</span>' : '--'}</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
+      <!-- POWER METRICS -->
+      <div style="background:var(--bg-input);border:1px solid rgba(158,214,43,0.2);border-radius:12px;padding:16px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:60px;height:60px;background:radial-gradient(circle, rgba(158,214,43,0.15) 0%, transparent 70%);border-radius:50%;transform:translate(30%,-30%)"></div>
+        <div style="font-size:11px;font-weight:700;color:#9ED62B;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+          <i class="fas fa-bolt"></i> Potencia
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Potencia Media</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${Utils.formatPower(act.avg_power)}</div>
+            ${act.avg_power && weight ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">${(act.avg_power/weight).toFixed(2)} W/kg</div>` : ''}
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Pot. Normalizada (NP)</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#9ED62B">${Utils.formatPower(act.np)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Potencia Máxima</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${Utils.formatPower(act.max_power)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Intensity Factor (IF)</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${act.if_value ? act.if_value.toFixed(2) : '--'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PHYSIOLOGY METRICS -->
+      <div style="background:var(--bg-input);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:16px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:60px;height:60px;background:radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%);border-radius:50%;transform:translate(30%,-30%)"></div>
+        <div style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+          <i class="fas fa-heartbeat"></i> Fisiología
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">FC Media</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${act.avg_hr ? act.avg_hr + '<span style="font-size:10px;color:var(--text-muted);margin-left:2px">bpm</span>' : '--'}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">FC Máxima</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#ef4444">${act.max_hr ? act.max_hr + '<span style="font-size:10px;color:var(--text-muted);margin-left:2px">bpm</span>' : '--'}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Cadencia Media</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${act.avg_cadence ? act.avg_cadence + '<span style="font-size:10px;color:var(--text-muted);margin-left:2px">rpm</span>' : '--'}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Gasto Calórico</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${act.calories ? Math.round(act.calories) + '<span style="font-size:10px;color:var(--text-muted);margin-left:2px">kcal</span>' : '--'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TSS / LOAD SCORE -->
+    <div style="background:linear-gradient(135deg, ${tssColor}15, transparent);border:1px solid ${tssColor}30;border-radius:12px;padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:${tssColor};margin-bottom:4px">Carga de Entrenamiento (TSS)</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Estrés generado por esta sesión.</div>
+      </div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:800;color:${tssColor};line-height:1">${act.tss || 0}</div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:8px">
+      ${act.strava_id ? '<a href="https://www.strava.com/activities/' + act.strava_id + '" target="_blank" class="btn" style="flex:1;background:rgba(252,76,2,0.1);color:#FC4C02;border:1px solid rgba(252,76,2,0.3);text-decoration:none"><i class="fab fa-strava"></i> Ver en Strava</a>' : ''}
+      <button onclick="deleteActivity(\'' + act.id + '\')" class="btn" style="flex:1;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3)"><i class="fas fa-trash"></i> Eliminar</button>
+    </div>
+  `;
   document.getElementById('detail-panel').classList.add('open');
   document.getElementById('panel-overlay').classList.add('show');
 }
