@@ -177,7 +177,14 @@ function isLegacyDemoActivity(a) {
       }
       AppState.saveActivity(activity);
       await loadActivities();
-      if (typeof window.renderActivities === 'function') window.renderActivities();
+      if (typeof window.renderActivities === 'function') {
+        if (typeof window.allActivities !== 'undefined') {
+          window.allActivities = [...AppState.activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+          window.renderActivities(window.allActivities);
+        } else {
+          window.renderActivities(AppState.activities);
+        }
+      }
       return data;
     } catch (e) {
       console.warn('[BackendSync] saveActivity offline:', e.message);
@@ -196,7 +203,14 @@ function isLegacyDemoActivity(a) {
       });
       for (const a of activities) AppState.saveActivity(a);
       await loadActivities();
-      if (typeof window.renderActivities === 'function') window.renderActivities();
+      if (typeof window.renderActivities === 'function') {
+        if (typeof window.allActivities !== 'undefined') {
+          window.allActivities = [...AppState.activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+          window.renderActivities(window.allActivities);
+        } else {
+          window.renderActivities(AppState.activities);
+        }
+      }
       if (typeof window.loadDashboard === 'function') window.loadDashboard();
       return res;
     } catch (e) {

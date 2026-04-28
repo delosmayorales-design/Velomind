@@ -125,6 +125,8 @@
     .zone-name{flex:1;font-size:12px;color:var(--text-secondary);}
     .zone-watts{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;}
 
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.9); } }
+
     @media(max-width:800px){
       .left-panel{display:none;}
       .right-panel{padding:24px 20px;}
@@ -365,6 +367,15 @@
         <div class="step-title">¡Perfil listo! 🎉</div>
         <div class="step-subtitle">Aquí tienes tu resumen. Puedes volver para editar cualquier dato.</div>
       </div>
+      
+      <div id="ai-insight-box" style="background:linear-gradient(135deg,rgba(158,214,43,0.08),rgba(56,189,248,0.04)); border:1px solid rgba(158,214,43,0.25); border-radius:12px; padding:16px; margin-bottom:20px; display:flex; gap:14px; align-items:flex-start;">
+        <div id="ai-insight-icon" style="font-size:24px; animation: pulse 1.5s infinite;">🧠</div>
+        <div>
+          <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">VeloMind AI</div>
+          <div id="ai-insight-text" style="font-size:13px; color:var(--text-secondary); line-height:1.5;">Procesando tus datos...</div>
+        </div>
+      </div>
+
       <div class="summary-grid" id="summary-stats"></div>
       <label class="form-label" style="margin-bottom:8px">Zonas de potencia Coggan</label>
       <div class="zones-list" id="summary-zones"></div>
@@ -512,6 +523,36 @@ function renderSummary() {
   const ftp = data.ftp || 0;
   const wkg = ftp && data.weight ? (ftp/data.weight).toFixed(2) : '--';
   const goalNames = {resistencia:'Resistencia',ftp:'Subir FTP',vo2max:'VO₂ Max',sprint:'Sprints',gran_fondo:'Gran Fondo',perdida_peso:'Perder peso'};
+
+  const aiText = document.getElementById('ai-insight-text');
+  const aiIcon = document.getElementById('ai-insight-icon');
+  
+  if (aiText && aiIcon) {
+    aiIcon.style.animation = 'pulse 1.5s infinite';
+    aiIcon.innerHTML = '🧠';
+    aiText.innerHTML = 'Analizando tu perfil y calculando proyecciones...';
+    
+    setTimeout(() => {
+      aiIcon.style.animation = 'none';
+      aiIcon.innerHTML = '✨';
+      
+      const hrs = data.weekly_hours || 8;
+      const gName = goalNames[data.goal] || data.goal;
+      const exp = data.experience || 'intermedio';
+      
+      let comment = `Veo que quieres entrenar <strong>${gName.toLowerCase()}</strong> con unas <strong>${hrs}h/semana</strong>. `;
+      
+      if (hrs < 6) comment += `Es un volumen ajustado, así que priorizaremos la calidad e intensidad en cada sesión. `;
+      else if (hrs > 12) comment += `Es un volumen alto, ideal para grandes adaptaciones aeróbicas. Vigilaremos la recuperación. `;
+      else comment += `Es un volumen muy equilibrado para progresar sin quemarte. `;
+      
+      if (exp === 'principiante') comment += `Como estás empezando, nos centraremos en construir una base sólida. ¡A por ello!`;
+      else if (exp === 'avanzado') comment += `Con tu experiencia, los entrenamientos te llevarán al límite para exprimir tu potencial. ¡Vamos!`;
+      else comment += `Ajustaré las cargas a tu nivel para mantener una mejora constante. ¡Vamos a darle!`;
+      
+      aiText.innerHTML = comment;
+    }, 1500);
+  }
 
   document.getElementById('summary-stats').innerHTML = [
     {sv:ftp+'W',      sl:'FTP',        color:'#FF6B35'},

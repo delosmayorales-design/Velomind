@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -18,7 +18,6 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/easy-fit@1.4.3/dist/easy-fit.min.js"></script>
   <style>
     .activity-detail-panel { position: fixed; right: -500px; top: 0; height: 100vh; width: 480px; background: var(--bg-card); border-left: 1px solid var(--border); z-index: 200; transition: right 0.3s ease; overflow-y: auto; padding: 24px; }
     .activity-detail-panel.open { right: 0; }
@@ -195,7 +194,7 @@
 <script src="js/app.js?v=101"></script>
 <script src="js/backend-sync.js?v=102"></script>
 <script>
-let allActivities = [];
+var allActivities = [];
 let zoneChartInst = null;
 
 async function initActivities() {
