@@ -351,7 +351,7 @@ const Auth = (() => {
     const isProfilePage = window.location.pathname.endsWith('index.html') || window.location.pathname.endsWith('/') || window.location.pathname.endsWith('/cyclocoach/');
     const fromLogin = document.referrer.includes('login.html');
     if (isProfilePage && fromLogin && user && user.ftp) {
-      window.location.replace('training-plan.html');
+      window.location.replace('activities.html');
       return user;
     }
 
