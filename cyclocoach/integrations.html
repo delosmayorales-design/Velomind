@@ -630,15 +630,26 @@ app.get('/api/strava/activities', async (req, res) => {
     status.innerHTML = `<i class="fas fa-circle" style="font-size:8px"></i> Conectado`;
 
     const syncDate = localStorage.getItem('velomind_' + provider + '_last_sync');
-    actions.innerHTML = `
-      <button type="button" class="btn-connect btn-sync" id="btn-sync-${provider}" onclick="doSync('${provider}')">
-        <i class="fas fa-sync-alt"></i> Sincronizar ahora
-      </button>
-      ${provider === 'strava' ? `<button type="button" class="btn btn-ghost btn-sm" onclick="debugStrava()" style="margin-top:6px"><i class="fas fa-bug"></i> Ver últimas actividades Strava</button>` : ''}
-      <button type="button" class="btn-connect btn-disconnect" onclick="doDisconnect('${provider}')">
-        <i class="fas fa-unlink"></i> Desconectar
-      </button>
-    `;
+          if (provider === 'strava') {
+            actions.innerHTML = `
+              <button type="button" class="btn-connect btn-strava" id="btn-sync-strava" onclick="doSync('strava')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar Strava
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="debugStrava()" style="margin-top:6px"><i class="fas fa-bug"></i> Ver últimas actividades Strava</button>
+              <button type="button" class="btn-connect btn-disconnect" onclick="doDisconnect('strava')">
+                <i class="fas fa-unlink"></i> Desconectar
+              </button>
+            `;
+          } else {
+            actions.innerHTML = `
+              <button type="button" class="btn-connect btn-sync" id="btn-sync-${provider}" onclick="doSync('${provider}')">
+                <i class="fas fa-sync-alt"></i> Sincronizar ahora
+              </button>
+              <button type="button" class="btn-connect btn-disconnect" onclick="doDisconnect('${provider}')">
+                <i class="fas fa-unlink"></i> Desconectar
+              </button>
+            `;
+          }
     if (syncDate) {
       lastSync.classList.remove('hidden');
       lastSync.querySelector('span').textContent = 'Última sync: ' + new Date(parseInt(syncDate)).toLocaleString('es-ES');
