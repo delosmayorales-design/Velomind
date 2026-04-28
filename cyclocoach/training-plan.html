@@ -2514,12 +2514,12 @@ function renderWeatherDay(day) {
   
   if (btnHoy) {
     btnHoy.style.background = day === 'hoy' ? 'var(--primary)' : 'var(--bg-input)';
-    btnHoy.style.color = '';
+    btnHoy.style.color = day === 'hoy' ? '#111' : '';
     btnHoy.style.borderColor = day === 'hoy' ? 'var(--primary)' : 'var(--border)';
   }
   if (btnManana) {
     btnManana.style.background = day === 'manana' ? 'var(--primary)' : 'var(--bg-input)';
-    btnManana.style.color = '';
+    btnManana.style.color = day === 'manana' ? '#111' : '';
     btnManana.style.borderColor = day === 'manana' ? 'var(--primary)' : 'var(--border)';
   }
 

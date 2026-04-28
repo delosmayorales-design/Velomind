@@ -1,4 +1,4 @@
-﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -345,7 +345,7 @@
           <div class="int-actions" id="strava-actions">
             <button class="btn-connect btn-strava" id="btn-strava-oauth" onclick="connectStrava()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
-              Conectar con Strava
+              Connect with Strava
             </button>
             <div style="margin-top:8px;text-align:center">
               <a href="#" onclick="showStravaTokenInput();return false;" style="font-size:11px;color:var(--text-muted)">Pegar token manualmente (avanzado)</a>
@@ -672,7 +672,7 @@ app.get('/api/strava/activities', async (req, res) => {
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Conectar con Strava';
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Connect with Strava';
       }
     }
   }
@@ -693,7 +693,7 @@ app.get('/api/strava/activities', async (req, res) => {
       const data = await Auth.saveStravaToken(token);
       localStorage.setItem('velomind_strava_connected', '1');
       setConnected('strava');
-      alert('✅ Token guardado. Recuerda que expira en ~6h y necesitarás reconectar. Para sync permanente usa el botón "Conectar con Strava".');
+      alert('✅ Token guardado. Recuerda que expira en ~6h y necesitarás reconectar. Para sync permanente usa el botón "Connect with Strava".');
     } catch (e) {
       alert('Error al guardar: ' + e.message);
       if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
@@ -805,7 +805,7 @@ app.get('/api/strava/activities', async (req, res) => {
     log.classList.remove('show');
 
     if (provider === 'strava') {
-      actions.innerHTML = `<button class="btn-connect btn-strava" onclick="connectStrava()"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Conectar con Strava</button>`;
+      actions.innerHTML = `<button class="btn-connect btn-strava" onclick="connectStrava()"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Connect with Strava</button>`;
     } else {
       actions.innerHTML = `<button class="btn-connect btn-garmin" onclick="connectGarmin()"><i class="fas fa-link"></i> Conectar Garmin</button>`;
     }
