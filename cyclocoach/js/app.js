@@ -903,42 +903,61 @@ const FileParser = {
       parser.parse(buffer, (err, data) => {
         if (err) { reject(new Error('No se pudo leer el archivo FIT: ' + err)); return; }
 
-        const session = data.activity?.sessions?.[0];
-        if (!session) { reject(new Error('El archivo FIT no contiene datos de sesión.')); return; }
+        // Soporta easy-fit (data.activity.sessions) y fit-file-parser (data.sessions)
+        const session = data.activity?.sessions?.[0]
+          || data.sessions?.[0]
+          || data.session
+          || null;
 
-        const records = session.records || [];
+        // Records pueden estar dentro de session o al nivel raíz (fit-file-parser)
+        const records = session?.records || data.records || data.activity?.records || [];
 
-        const startTime = session.start_time || records[0]?.timestamp;
+        if (!session && records.length === 0) {
+          reject(new Error('El archivo FIT no contiene datos de sesión.'));
+          return;
+        }
+
+        // Si no hay session, construir una sintética desde records
+        const eff = session || {
+          start_time:          records[0]?.timestamp ?? null,
+          total_elapsed_time:  records.length > 1
+            ? (new Date(records[records.length-1].timestamp) - new Date(records[0].timestamp)) / 1000
+            : 0,
+          total_distance: null, avg_speed: null, avg_power: null,
+          avg_heart_rate: null, avg_cadence: null, total_ascent: null,
+        };
+
+        const startTime = eff.start_time || records[0]?.timestamp;
         const date = startTime
           ? new Date(startTime).toISOString().substring(0, 10)
           : new Date().toISOString().substring(0, 10);
 
-        const duration = session.total_elapsed_time
-          ? Math.round(session.total_elapsed_time)
+        const duration = eff.total_elapsed_time
+          ? Math.round(eff.total_elapsed_time)
           : records.length > 1
             ? Math.round((new Date(records[records.length - 1].timestamp) - new Date(records[0].timestamp)) / 1000)
             : 0;
 
-        const distance = Math.round(session.total_distance || 0);
+        const distance = Math.round(eff.total_distance || 0);
 
         const maxPCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
         const powers = records.filter(r => r.power > 0 && r.power <= maxPCap).map(r => r.power);
         const avgPower = powers.length
           ? Math.round(powers.reduce((s, p) => s + p, 0) / powers.length)
-          : (session.avg_power || 0);
+          : (eff.avg_power || 0);
 
         const hrs = records.filter(r => r.heart_rate > 0 && r.heart_rate < 250).map(r => r.heart_rate);
         const avgHR = hrs.length
           ? Math.round(hrs.reduce((s, h) => s + h, 0) / hrs.length)
-          : (session.avg_heart_rate || 0);
+          : (eff.avg_heart_rate || 0);
 
         const cads = records.filter(r => r.cadence > 0 && r.cadence < 250).map(r => r.cadence);
         const avgCad = cads.length
           ? Math.round(cads.reduce((s, c) => s + c, 0) / cads.length)
-          : (session.avg_cadence || 0);
+          : (eff.avg_cadence || 0);
 
-        const elevation = session.total_ascent
-          ? Math.round(session.total_ascent)
+        const elevation = eff.total_ascent
+          ? Math.round(eff.total_ascent)
           : (() => {
               const alts = records.map(r => r.altitude ?? r.enhanced_altitude).filter(a => a != null && a > -500);
               return Math.round(alts.reduce((sum, a, i) => {
@@ -948,8 +967,8 @@ const FileParser = {
               }, 0));
             })();
 
-        const avgSpeed = session.avg_speed
-          ? Math.round(session.avg_speed * 3.6 * 10) / 10
+        const avgSpeed = eff.avg_speed
+          ? Math.round(eff.avg_speed * 3.6 * 10) / 10
           : (duration > 0 && distance > 0 ? Math.round((distance / duration) * 3.6 * 10) / 10 : 0);
 
         resolve({
