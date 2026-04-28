@@ -88,6 +88,93 @@
     .adapt-submit:hover { background: rgba(158,214,43,.25); }
     .adapt-submit:disabled { opacity: .5; cursor: not-allowed; }
 
+    html[data-theme="light"] .adapt-zone {
+      border-top: 1px solid rgba(99,102,241,.15);
+      background: rgba(99,102,241,.04);
+    }
+    html[data-theme="light"] .adapt-trigger {
+      color: #4f46e5;
+    }
+    html[data-theme="light"] .adapt-trigger:hover { color: #3730a3; }
+    html[data-theme="light"] .adapt-input {
+      background: #ffffff;
+      border-color: rgba(99,102,241,.25);
+      color: #1e293b;
+    }
+    html[data-theme="light"] .adapt-input:focus { border-color: rgba(99,102,241,.5); }
+    html[data-theme="light"] .adapt-submit {
+      background: rgba(99,102,241,.1);
+      border-color: rgba(99,102,241,.3);
+      color: #4f46e5;
+    }
+    html[data-theme="light"] .adapt-submit:hover { background: rgba(99,102,241,.2); }
+
+    /* ── Post-entreno modal ───── */
+    #post-modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.75); z-index: 9999;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    #post-modal-box {
+      background: var(--bg-card); border-radius: 16px;
+      max-width: 460px; width: 100%; max-height: 85vh;
+      overflow-y: auto; border: 1px solid var(--border);
+      animation: modalIn .2s ease;
+    }
+    @keyframes modalIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    .post-metric-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+    .post-metric-label { width:70px; font-size:11px; color:var(--text-muted); text-align:right; flex-shrink:0; }
+    .post-metric-bar { flex:1; background:var(--border); border-radius:4px; height:7px; overflow:hidden; }
+    .post-metric-fill { height:100%; border-radius:4px; transition:width .5s ease; }
+    .post-metric-val { font-size:12px; white-space:nowrap; min-width:88px; text-align:right; }
+    .post-modal-header  { padding: 20px 24px 16px; }
+    .post-modal-section { padding: 20px 24px; }
+    .post-modal-actions { padding: 0 24px 24px; display:flex; flex-direction:column; gap:8px; }
+
+    /* ── Execution result row ───── */
+    .exec-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 20px; font-size: 11px; gap: 8px; flex-wrap: wrap;
+    }
+    .exec-row-none {
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .exec-detail { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+    /* ── Mobile overrides for today's additions ───── */
+    @media (max-width: 480px) {
+      /* Modal: desliza desde abajo, usa toda la pantalla */
+      #post-modal-overlay { padding: 0; align-items: flex-end; }
+      #post-modal-box {
+        max-height: 92vh; max-width: 100%;
+        border-radius: 16px 16px 0 0;
+      }
+
+      /* Padding interno del modal más estrecho */
+      .post-modal-header  { padding: 16px 16px 12px; }
+      .post-modal-section { padding: 14px 16px; }
+      .post-modal-actions { padding: 0 16px 20px; }
+
+      /* Métrica bars */
+      .post-metric-label { width: 52px; font-size: 10px; }
+      .post-metric-val   { min-width: 72px; font-size: 11px; }
+
+      /* Exec row */
+      .exec-row    { padding: 7px 14px; gap: 4px; }
+      .exec-detail { gap: 3px; font-size: 10px; }
+
+      /* Adapt zone */
+      .adapt-trigger { padding: 8px 14px; font-size: 10px; }
+      .adapt-body    { padding: 0 12px 10px; }
+    }
+
+    @media (max-width: 360px) {
+      .exec-sep          { display: none; }
+      .post-metric-label { width: 44px; }
+      .post-metric-val   { min-width: 60px; }
+    }
+
     .day-badge { min-width: 56px; text-align: center; }
     .day-badge .dn { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); }
     .day-badge .dd { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; color: var(--text-primary); line-height: 1; }
@@ -1014,6 +1101,44 @@ function renderPlan(plan, athlete) {
     const targetWatts = Number.isFinite(sess.targetWatts) ? sess.targetWatts : (sess.ifTarget ? Math.round(ftp * sess.ifTarget) : null);
     const ifVal = sess.ifTarget || 0;
 
+    // ── Execution badge: compara actividad real de ese día vs planificado ──
+    const sessDayKey = sessDate.toISOString().slice(0, 10);
+    const isPast     = i < todayIdx;
+    const dayActs    = (i <= todayIdx) ? (AppState.activities || []).filter(a => a.date && a.date.slice(0, 10) === sessDayKey) : [];
+    let execBadge = '';
+    if (isPast && tssVal > 0) {
+      if (dayActs.length === 0) {
+        execBadge = `<div class="exec-row exec-row-none">
+          <span><i class="fas fa-circle-minus" style="margin-right:5px"></i>Sin actividad registrada</span>
+          <span style="font-size:10px">TSS planificado: ${tssVal}</span>
+        </div>`;
+      } else {
+        const actualTSS    = Math.round(dayActs.reduce((s, a) => s + (Number(a.tss) || 0), 0));
+        const actualDurMin = Math.round(dayActs.reduce((s, a) => s + (Number(a.duration) || 0), 0) / 60);
+        const actName      = dayActs[0]?.name || '';
+        const ratio        = tssVal > 0 ? actualTSS / tssVal : 1;
+        let eIcon, eLabel, eBg, eBorder, eColor;
+        if (ratio >= 0.9) {
+          eIcon = 'fa-circle-check';  eLabel = 'Bien ejecutada';
+          eBg = 'rgba(16,185,129,.08)'; eBorder = 'rgba(16,185,129,.25)'; eColor = '#10b981';
+        } else if (ratio >= 0.65) {
+          eIcon = 'fa-circle-half-stroke'; eLabel = 'Parcial';
+          eBg = 'rgba(251,191,36,.08)'; eBorder = 'rgba(251,191,36,.25)'; eColor = '#f59e0b';
+        } else {
+          eIcon = 'fa-circle-exclamation'; eLabel = 'Por debajo';
+          eBg = 'rgba(239,68,68,.08)'; eBorder = 'rgba(239,68,68,.25)'; eColor = '#ef4444';
+        }
+        execBadge = `<div class="exec-row" style="background:${eBg};border-top:1px solid ${eBorder}">
+          <span style="color:${eColor};font-weight:700"><i class="fas ${eIcon}" style="margin-right:5px"></i>${eLabel}</span>
+          <span class="exec-detail">
+            ${actName ? `<span>${actName}</span><span class="exec-sep">·</span>` : ''}
+            <span>TSS <strong style="color:${eColor}">${actualTSS}</strong><span style="color:var(--text-muted)"> / ${tssVal}</span></span>
+            ${actualDurMin > 0 ? `<span class="exec-sep">·</span><span>${actualDurMin} min</span>` : ''}
+          </span>
+        </div>`;
+      }
+    }
+
     const isToday    = i === todayIdx;
     const isTomorrow = i === todayIdx + 1 && todayIdx + 1 <= 6;
     const canAdapt   = isToday || isTomorrow;
@@ -1041,6 +1166,14 @@ function renderPlan(plan, athlete) {
       </div>
       ${isToday ? `
       <div class="adapt-zone" style="background:rgba(255,107,53,.03);border-top:1px solid rgba(255,107,53,.1)" onclick="event.stopPropagation()">
+        ${dayActs.length > 0 ? `
+        <button onclick="event.stopPropagation();openPostEntrenoModal(${i})"
+          style="display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:8px 20px;cursor:pointer;font-family:inherit;color:#FF6B35;font-size:11px;font-weight:600;text-align:left">
+          <i class="fas fa-chart-bar" style="font-size:10px"></i>
+          <span>Ver análisis del entreno y recalcular semana</span>
+          <i class="fas fa-arrow-right" style="font-size:9px;margin-left:auto;opacity:.7"></i>
+        </button>
+        ` : `
         <div class="adapt-trigger" onclick="toggleRealityForm(${i})" style="color:#FF6B35">
           <i class="fas fa-pen-to-square" style="font-size:10px"></i>
           <span>Registrar lo que realmente hice hoy (Post-entreno)</span>
@@ -1053,6 +1186,7 @@ function renderPlan(plan, athlete) {
           </button>
           <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
         </div>
+        `}
       </div>` : ''}` : '';
 
     return `
@@ -1086,6 +1220,7 @@ function renderPlan(plan, athlete) {
           </div>
           <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
         </div>
+        ${execBadge}
         <div style="display:flex; gap:8px; padding:0 20px 16px 20px; flex-wrap:wrap;">
             <button onclick="event.stopPropagation();startAudioCoach(${i})" title="Coach de audio — narración del entrenamiento"
               style="background:rgba(196,239,68,.12);border:1px solid rgba(196,239,68,.3);color:#C4EF44;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:6px">
@@ -1178,9 +1313,10 @@ function renderAdaptResult(idx, t) {
   document.getElementById(`adapt-btn-${idx}`).style.display = 'none';
   document.getElementById(`adapt-input-${idx}`).style.display = 'none';
 
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
   const result = document.getElementById(`adapt-result-${idx}`);
   result.innerHTML = `
-    <div style="background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px">
+    <div style="background:${isLight ? 'rgba(99,102,241,.06)' : 'rgba(0,0,0,.2)'};border:1px solid ${isLight ? 'rgba(99,102,241,.2)' : 'rgba(255,255,255,.06)'};border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px">
       <div style="display:flex;align-items:center;gap:8px">
         <i class="fas ${s.icon}" style="color:${s.c};font-size:13px;flex-shrink:0"></i>
         <span style="font-size:13px;font-weight:700;color:var(--text-primary);flex:1">${t.titulo || s.label}</span>
@@ -1191,7 +1327,7 @@ function renderAdaptResult(idx, t) {
         </button>
       </div>
       ${t.descripcion ? `<p style="margin:0;font-size:12px;color:var(--text-muted);line-height:1.55">${t.descripcion}</p>` : ''}
-      ${t.razon ? `<p style="margin:0;font-size:11px;color:rgba(196,239,68,.7);line-height:1.45;font-style:italic"><i class="fas fa-lightbulb" style="margin-right:4px"></i>${t.razon}</p>` : ''}
+      ${t.razon ? `<p style="margin:0;font-size:11px;color:${isLight ? '#6366f1' : 'rgba(196,239,68,.7)'};line-height:1.45;font-style:italic"><i class="fas fa-lightbulb" style="margin-right:4px"></i>${t.razon}</p>` : ''}
       ${t.nutricion ? `<p style="margin:0;font-size:11px;color:rgba(16,185,129,.8);line-height:1.45"><i class="fas fa-utensils" style="margin-right:4px"></i>${t.nutricion}</p>` : ''}
       <button id="save-adapt-btn-${idx}" onclick="saveAdaptation(${idx})"
         style="margin-top:4px;padding:8px 14px;background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.4);border-radius:8px;color:#38BDF8;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;width:100%">
@@ -2481,6 +2617,198 @@ function _ftpRenderWind(windDays, tsb) {
   section.innerHTML = msg +
     `<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">${daysHtml}</div>`;
 }
+
+// ── Post-entreno modal ────────────────────────────────────────
+function openPostEntrenoModal(sessIdx) {
+  const sess = currentPlan.sessions[sessIdx];
+  const ftp  = AppState.athlete?.ftp || 200;
+
+  const mondayDate = new Date();
+  mondayDate.setDate(mondayDate.getDate() - (mondayDate.getDay() || 7) + 1);
+  const sessDate = new Date(mondayDate);
+  sessDate.setDate(mondayDate.getDate() + sessIdx);
+  const sessDayKey = sessDate.toISOString().slice(0, 10);
+
+  const acts = (AppState.activities || []).filter(a => a.date && a.date.slice(0, 10) === sessDayKey);
+
+  const tssP   = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare || 0) * currentPlan.targetTSS);
+  const durP   = Number.isFinite(sess.durationMin) ? sess.durationMin : (sess.ifTarget ? Math.round(tssP / Math.pow(sess.ifTarget || 0.65, 2)) : 0);
+  const ifP    = sess.ifTarget || 0;
+
+  const tssA   = Math.round(acts.reduce((s, a) => s + (Number(a.tss) || 0), 0));
+  const durA   = Math.round(acts.reduce((s, a) => s + (Number(a.duration) || 0), 0) / 60);
+  const ifA    = Number(acts[0]?.if_value) || 0;
+  const hrAvg  = Number(acts[0]?.avg_hr)   || 0;
+  const hrMax  = Number(acts[0]?.max_hr)   || 0;
+  const distKm = acts.length ? Math.round(acts.reduce((s, a) => s + (Number(a.distance) || 0), 0) / 100) / 10 : 0;
+  const actName = acts[0]?.name || 'Actividad';
+
+  const ratio = tssP > 0 ? tssA / tssP : 1;
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+
+  let statusIcon, statusLabel, statusColor;
+  if (ratio >= 0.9)       { statusIcon = 'fa-circle-check';        statusLabel = 'Bien ejecutada';      statusColor = '#10b981'; }
+  else if (ratio >= 0.65) { statusIcon = 'fa-circle-half-stroke';  statusLabel = 'Parcial';             statusColor = '#f59e0b'; }
+  else                    { statusIcon = 'fa-circle-exclamation';   statusLabel = 'Por debajo del plan'; statusColor = '#ef4444'; }
+
+  function bar(label, actual, planned, unit) {
+    if (!planned && !actual) return '';
+    const pct      = planned > 0 ? Math.min(actual / planned * 100, 120) : 100;
+    const fill     = Math.min(pct, 100);
+    const barColor = planned > 0
+      ? (pct >= 90 ? '#10b981' : pct >= 65 ? '#f59e0b' : '#ef4444')
+      : '#64748b';
+    const actualFmt = typeof actual === 'number' ? actual : actual;
+    return `<div class="post-metric-row">
+      <div class="post-metric-label">${label}</div>
+      <div class="post-metric-bar"><div class="post-metric-fill" style="width:${fill}%;background:${barColor}"></div></div>
+      <div class="post-metric-val">
+        <strong style="color:${barColor}">${actualFmt}${unit}</strong>
+        ${planned ? `<span style="color:var(--text-muted)"> / ${planned}${unit}</span>` : ''}
+      </div>
+    </div>`;
+  }
+
+  const headerBg = isLight ? 'rgba(0,0,0,.04)' : 'rgba(255,255,255,.04)';
+  const divider  = isLight ? 'rgba(0,0,0,.08)'  : 'rgba(255,255,255,.08)';
+
+  // Store feedback safely — avoids inline string escaping issues
+  window._postModalState = {
+    sessIdx,
+    feedback: _buildAutoFeedback(acts, tssA, tssP, durA, durP, ifA, ifP, hrAvg, ratio)
+  };
+
+  document.getElementById('post-modal-content').innerHTML = `
+    <div class="post-modal-header" style="border-bottom:1px solid ${divider}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:3px">
+            Post-entreno · ${sessDate.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'short'})}
+          </div>
+          <div style="font-size:17px;font-weight:700;color:var(--text-primary);line-height:1.2">${actName}</div>
+          ${distKm > 0 ? `<div style="font-size:12px;color:var(--text-muted);margin-top:3px"><i class="fas fa-route" style="margin-right:4px"></i>${distKm} km</div>` : ''}
+        </div>
+        <button onclick="closePostModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;padding:0;line-height:1;flex-shrink:0">
+          <i class="fas fa-xmark"></i>
+        </button>
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:6px;background:${headerBg};border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:${statusColor};margin-top:12px">
+        <i class="fas ${statusIcon}"></i> ${statusLabel}
+      </div>
+    </div>
+
+    <div class="post-modal-section">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:14px">Planificado vs Real</div>
+      ${bar('TSS', tssA, tssP, '')}
+      ${bar('Duración', durA, durP, ' min')}
+      ${ifP > 0 && ifA > 0 ? bar('IF', ifA.toFixed(2), ifP.toFixed(2), '') : ''}
+      ${hrAvg > 0 ? `<div class="post-metric-row">
+        <div class="post-metric-label">FC media</div>
+        <div class="post-metric-bar" style="background:transparent"></div>
+        <div class="post-metric-val" style="color:var(--text-secondary)"><strong>${hrAvg}</strong> bpm${hrMax ? ` · máx ${hrMax}` : ''}</div>
+      </div>` : ''}
+    </div>
+
+    <div class="post-modal-actions">
+      <button id="post-modal-recalc-btn" onclick="_recalcFromModal()"
+        style="padding:13px;background:rgba(255,107,53,.15);border:1px solid rgba(255,107,53,.3);border-radius:10px;color:#FF6B35;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;transition:background .15s">
+        <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
+      </button>
+      <button onclick="closePostModal()"
+        style="padding:10px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--text-muted);font-size:12px;cursor:pointer;font-family:inherit;width:100%">
+        Cerrar sin recalcular
+      </button>
+    </div>`;
+
+  const overlay = document.getElementById('post-modal-overlay');
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function _buildAutoFeedback(acts, tssA, tssP, durA, durP, ifA, ifP, hrAvg, ratio) {
+  const name = acts[0]?.name || 'Actividad';
+  const pct  = Math.round(ratio * 100);
+  let f = `Actividad realizada: "${name}". TSS real: ${tssA} de ${tssP} planificado (${pct}%).`;
+  if (durA > 0 && durP > 0) f += ` Duración: ${durA} min de ${durP} planificados.`;
+  if (ifA > 0 && ifP > 0)   f += ` IF: ${ifA.toFixed(2)} vs ${ifP.toFixed(2)} planificado.`;
+  if (hrAvg > 0)             f += ` FC media: ${hrAvg} bpm.`;
+  f += ratio >= 0.9  ? ' Sesión completada correctamente.'
+     : ratio >= 0.65 ? ' Sesión completada parcialmente.'
+     :                 ' Sesión por debajo de lo planificado.';
+  // Escape single quotes so it's safe inside the onclick attr
+  return f.replace(/'/g, "\\'");
+}
+
+async function _recalcFromModal() {
+  const { sessIdx, feedback: autoFeedback } = window._postModalState || {};
+  if (sessIdx == null) return;
+  const btn = document.getElementById('post-modal-recalc-btn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recalculando semana…';
+
+  try {
+    const res = await fetch(`${API}/coach/recalculate-week`, {
+      method: 'POST', headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: currentPlan, todayIdx: sessIdx, feedback: autoFeedback })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al recalcular');
+
+    const ftp = AppState.athlete?.ftp || 200;
+    data.newPlan.sessions.forEach(s => {
+      if (s.isRest) {
+        s.intervals = []; s.alt_intervals = [];
+        s.description = 'Descanso.'; s.alt_description = '';
+      } else if (window.TrainingPlanGenerator) {
+        const ifT = s.ifTarget || 0.75;
+        s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'main');
+        s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'alt');
+        const buildDesc = ivs => {
+          const parts = [];
+          for (let k = 0; k < ivs.length; k++) {
+            const iv = ivs[k];
+            const repsMatch = iv.label.match(/\(×(\d+)/);
+            const base = iv.label.split(' (')[0].trim();
+            const dur  = iv.dur.replace(' c/u', '').trim();
+            if (repsMatch) {
+              const nxt = ivs[k + 1];
+              if (nxt && nxt.label.toLowerCase().match(/recuperación|descanso/) && nxt.label.includes('(×')) {
+                parts.push(`${repsMatch[1]}×${dur} ${base} (rec: ${nxt.dur.replace(' c/u','').trim()})`); k++;
+              } else { parts.push(`${repsMatch[1]}×${dur} ${base}`); }
+            } else { parts.push(`${dur} ${base}`); }
+          }
+          return parts.join(' + ');
+        };
+        s.description     = buildDesc(s.intervals);
+        s.alt_description = buildDesc(s.alt_intervals);
+      }
+    });
+
+    currentPlan.sessions = data.newPlan.sessions;
+    await savePlan();
+    closePostModal();
+    renderPlan(currentPlan, AppState.athlete);
+    showToast('✅ Semana recalculada. ' + (data.newPlan.mensaje_coach || ''), 'var(--primary)');
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sync-alt"></i> Recalcular resto de la semana';
+    showToast('❌ ' + e.message, '#ef4444');
+  }
+}
+
+function closePostModal() {
+  const overlay = document.getElementById('post-modal-overlay');
+  if (overlay) overlay.style.display = 'none';
+  document.body.style.overflow = '';
+}
 </script>
+
+<!-- Post-entreno modal -->
+<div id="post-modal-overlay" onclick="closePostModal()">
+  <div id="post-modal-box" onclick="event.stopPropagation()">
+    <div id="post-modal-content"></div>
+  </div>
+</div>
 </body>
 </html>
