@@ -1149,8 +1149,8 @@ function buildMealPlan(carbsG, proteinG, fatG) {
     { time: '07:00', meal: 'Desayuno', description: `Avena (80g) + leche/bebida vegetal + plátano + 2 huevos. ~${Math.round(carbsG * 0.25)}g carbos.` },
     { time: '10:00', meal: 'Media mañana', description: `Fruta + yogur griego + nueces. ~${Math.round(carbsG * 0.10)}g carbos.` },
     { time: '13:00', meal: 'Almuerzo', description: `Arroz/pasta (100g seco) + pollo/pescado (150g) + verduras + AOVE. ~${Math.round(carbsG * 0.35)}g carbos.` },
-    { time: '17:00', meal: 'Pre-entrenamiento', description: `Pan integral + mermelada/miel + café. 1.5-2h antes del entrenamiento. ~${Math.round(carbsG * 0.15)}g carbos.` },
-    { time: '20:30', meal: 'Cena post-entrenamiento', description: `Proteína (130g pescado/carne) + boniato/patata + ensalada. ~${Math.round(carbsG * 0.15)}g carbos, ${Math.round(proteinG * 0.35)}g proteína.` },
+    { time: '18:30', meal: 'Merienda / Pre-entrenamiento', description: `Pan integral + mermelada/miel + café. 1.5-2h antes del entrenamiento. ~${Math.round(carbsG * 0.15)}g carbos.` },
+    { time: '21:30', meal: 'Cena post-entrenamiento', description: `Proteína (130g pescado/carne) + boniato/patata + ensalada. ~${Math.round(carbsG * 0.15)}g carbos, ${Math.round(proteinG * 0.35)}g proteína.` },
   ];
 }
 
