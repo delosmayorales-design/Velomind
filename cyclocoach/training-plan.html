@@ -829,6 +829,43 @@ let currentPlan = null;
 let progressionChart = null;
 const _adaptCache = {}; // { [idx]: adaptation data from AI }
 
+// ── Ampliar Logo (Efecto Lightbox) ──────────────────────────────────────────
+(function setupLogoZoom() {
+  const initZoom = () => {
+    const logo = document.querySelector('.sidebar-logo img');
+    if (!logo) return;
+    
+    logo.style.cursor = 'zoom-in';
+    logo.title = 'Ampliar logo';
+    
+    logo.addEventListener('click', () => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(5px);z-index:99999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;opacity:0;transition:opacity 0.3s;';
+      
+      const img = document.createElement('img');
+      img.src = logo.src;
+      const isLight = document.documentElement.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
+      img.style.cssText = `max-width:85vw;max-height:85vh;object-fit:contain;border-radius:16px;filter:drop-shadow(0 10px 40px rgba(158,214,43,0.15));transform:scale(0.9);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);${isLight ? 'filter:invert(1) hue-rotate(180deg) drop-shadow(0 10px 40px rgba(0,0,0,0.15));' : ''}`;
+      
+      overlay.appendChild(img);
+      document.body.appendChild(overlay);
+      
+      requestAnimationFrame(() => {
+        overlay.style.opacity = '1';
+        img.style.transform = 'scale(1)';
+      });
+      
+      overlay.addEventListener('click', () => {
+        overlay.style.opacity = '0';
+        img.style.transform = 'scale(0.9)';
+        setTimeout(() => overlay.remove(), 300);
+      });
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initZoom);
+  else initZoom();
+})();
+
 // ── Sync Strava ─────────────────────────────────────────────
 async function syncStrava() {
   const btn = document.getElementById('sync-strava-btn');
