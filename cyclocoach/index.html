@@ -213,7 +213,7 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Edad</label>
-          <input type="number" id="ob-age" class="form-input" placeholder="32" min="16" max="80">
+          <input type="number" id="ob-age" class="form-input" placeholder="32" min="16" max="80" inputmode="numeric">
           <div class="field-error" id="err-age">Edad inválida (16–80)</div>
         </div>
         <div class="form-group">
@@ -227,12 +227,12 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Peso (kg)</label>
-          <input type="number" id="ob-weight" class="form-input" placeholder="72" min="40" max="150" step="0.1">
+          <input type="number" id="ob-weight" class="form-input" placeholder="72" min="40" max="150" step="0.1" inputmode="decimal">
           <div class="field-error" id="err-weight">Peso inválido (40–150 kg)</div>
         </div>
         <div class="form-group">
           <label class="form-label">Altura (cm)</label>
-          <input type="number" id="ob-height" class="form-input" placeholder="175" min="140" max="220">
+          <input type="number" id="ob-height" class="form-input" placeholder="175" min="140" max="220" inputmode="numeric">
         </div>
       </div>
       <div class="btn-row">
@@ -254,19 +254,19 @@
       </div>
       <div class="form-group">
         <label class="form-label">FTP — Umbral Funcional de Potencia (W)</label>
-        <input type="number" id="ob-ftp" class="form-input" placeholder="235" min="80" max="550" oninput="previewWkg()">
+        <input type="number" id="ob-ftp" class="form-input" placeholder="235" min="80" max="550" inputmode="numeric" oninput="previewWkg()">
         <div class="field-error" id="err-ftp">FTP inválido. Introduce entre 80 y 550 W.</div>
         <div class="form-hint" id="ftp-hint" style="color:var(--primary);font-weight:600"></div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">FC Máxima (bpm)</label>
-          <input type="number" id="ob-maxhr" class="form-input" placeholder="188" min="140" max="220" oninput="autoLthr()">
+          <input type="number" id="ob-maxhr" class="form-input" placeholder="188" min="140" max="220" inputmode="numeric" oninput="autoLthr()">
           <div class="form-hint" id="maxhr-hint">Si no la sabes: 220 − tu edad</div>
         </div>
         <div class="form-group">
           <label class="form-label">FC Umbral (bpm)</label>
-          <input type="number" id="ob-lthr" class="form-input" placeholder="165" min="100" max="210">
+          <input type="number" id="ob-lthr" class="form-input" placeholder="165" min="100" max="210" inputmode="numeric">
           <div class="form-hint">≈ 88% de tu FC máxima</div>
         </div>
       </div>
