@@ -2812,10 +2812,10 @@ function openPostEntrenoModal(sessIdx) {
       </div>
 
       <div style="margin-top:14px;padding:12px 14px;background:${statusColor}18;border-radius:12px;border-left:3px solid ${statusColor}">
-        <div style="font-size:15px;font-weight:700;color:${statusColor}">
-          <i class="fas ${statusIcon}" style="margin-right:6px"></i>${statusLabel}
+        <div style="font-size:15px;font-weight:700;color:${isLight ? '#111827' : statusColor}">
+          <i class="fas ${statusIcon}" style="color:${statusColor}; margin-right:6px"></i>${statusLabel}
         </div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:3px">
+        <div style="font-size:12px;color:${isLight ? '#4b5563' : 'var(--text-muted)'};margin-top:3px">
           Completaste el <strong style="color:${statusColor}">${pct}%</strong> del TSS planificado
         </div>
       </div>
