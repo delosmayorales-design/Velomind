@@ -88,28 +88,107 @@
     .adapt-submit:hover { background: rgba(158,214,43,.25); }
     .adapt-submit:disabled { opacity: .5; cursor: not-allowed; }
 
-    html[data-theme="light"] .adapt-zone {
-      border-top: 1px solid rgba(99,102,241,.15);
-      background: rgba(99,102,241,.04);
+    /* ══ LIGHT MODE — overrides completos ══════════════════════ */
+    html[data-theme="light"],
+    html.light-theme {
+
+      /* Separadores y fondos que usan rgba blanco — los invertimos */
+      --divider: rgba(0,0,0,.08);
+
+      /* Stat rows */
+      .stat-row        { border-bottom-color: rgba(0,0,0,.07); }
+      .stat-val        { color: #0f172a; }
+
+      /* Zone bars */
+      .zone-bar-track  { background: rgba(0,0,0,.08); }
+
+      /* Section divider */
+      .section-divider hr { border-top-color: rgba(0,0,0,.1); }
+
+      /* Estado de forma */
+      .fs-vdiv         { background: rgba(0,0,0,.08); }
+      .fs-bar-track    { background: rgba(0,0,0,.08); }
+      .fs-secondary    { border-top-color: rgba(0,0,0,.08); }
+
+      /* AI cards */
+      .ai-card         { background: rgba(0,0,0,.02); border-color: rgba(0,0,0,.08); }
+      .ai-section      { border-color: rgba(99,102,241,.2);
+                         background: linear-gradient(135deg,rgba(99,102,241,.04),rgba(59,130,246,.03)); }
+      .ai-section-header { background: rgba(99,102,241,.04); border-bottom-color: rgba(99,102,241,.1); }
+      .ai-badge        { background: rgba(99,102,241,.1); border-color: rgba(99,102,241,.25); color: #4f46e5; }
+      .ai-spinner      { border-color: rgba(99,102,241,.2); border-top-color: #4f46e5; }
+      .btn-ai          { background: linear-gradient(135deg,rgba(99,102,241,.1),rgba(59,130,246,.1));
+                         border-color: rgba(99,102,241,.3); color: #4f46e5 !important; }
+      .btn-ai:hover    { background: linear-gradient(135deg,rgba(99,102,241,.18),rgba(59,130,246,.18)); }
+
+      /* AI loading text */
+      .ai-loading      { color: var(--text-muted); }
+
+      /* Step numbers */
+      .step-num        { background: rgba(99,102,241,.1); border-color: rgba(99,102,241,.25); color: #4f46e5 !important; }
+
+      /* Plan label */
+      .plan-label      { background: rgba(2,132,199,.08); border-color: rgba(2,132,199,.2); color: #0369a1; }
+
+      /* Phase badges */
+      .phase-base      { background: rgba(2,132,199,.1);  color: #0369a1; border-color: rgba(2,132,199,.2); }
+      .phase-build     { background: rgba(234,88,12,.1);  color: #c2410c; border-color: rgba(234,88,12,.2); }
+      .phase-peak      { background: rgba(202,138,4,.1);  color: #a16207; border-color: rgba(202,138,4,.2); }
+      .phase-recovery  { background: rgba(4,120,87,.1);   color: #065f46; border-color: rgba(4,120,87,.2);  }
+      .phase-race      { background: rgba(157,23,77,.1);  color: #9d174d; border-color: rgba(157,23,77,.2); }
+
+      /* Alert / coach cards */
+      .alert-warning   { background: rgba(202,138,4,.08); border-color: rgba(202,138,4,.25); color: #a16207; }
+      .alert-info      { background: rgba(2,132,199,.08); border-color: rgba(2,132,199,.25); color: #0369a1; }
+      .alert-success   { background: rgba(4,120,87,.08);  border-color: rgba(4,120,87,.25);  color: #065f46; }
+      .alert-danger    { background: rgba(185,28,28,.08); border-color: rgba(185,28,28,.25); color: #b91c1c; }
+
+      /* Form pills */
+      .form-blue   { background: rgba(29,78,216,.1);  color: #1d4ed8; }
+      .form-green  { background: rgba(4,120,87,.1);   color: #065f46; }
+      .form-lime   { background: rgba(77,124,15,.1);  color: #4d7c0f; }
+      .form-yellow { background: rgba(161,98,7,.1);   color: #a16207; }
+      .form-orange { background: rgba(194,65,12,.1);  color: #c2410c; }
+      .form-red    { background: rgba(185,28,28,.1);  color: #b91c1c; }
+
+      /* Estado chips */
+      .estado-chip.active { background: rgba(99,102,241,.12); border-color: rgba(99,102,241,.4); color: #4f46e5; }
+
+      /* Priority */
+      .priority-alta  { color: #b91c1c; }
+      .priority-media { color: #a16207; }
+      .priority-baja  { color: #065f46; }
+
+      /* Plan params */
+      .params-apply-btn { background: rgba(99,102,241,.1); border-color: rgba(99,102,241,.3); color: #4f46e5; }
+      .params-apply-btn:hover { background: rgba(99,102,241,.18); }
+      .params-input     { color-scheme: light; }
+
+      /* Audio coach panel */
+      .ac-panel         { border-color: rgba(99,102,241,.3); box-shadow: 0 0 40px rgba(99,102,241,.08); }
+      .ac-badge         { background: rgba(99,102,241,.1); border-color: rgba(99,102,241,.25); color: #4f46e5; }
+      .ac-block-card    { border-color: rgba(99,102,241,.15); }
+      .ac-block-name    { color: #4f46e5; }
+      .ac-countdown     { color: #4f46e5; }
+      .ac-progress-bar  { background: rgba(0,0,0,.08); }
+      .ac-block-dot     { background: rgba(0,0,0,.1); }
+      .ac-block-dot.done   { background: rgba(99,102,241,.35); }
+      .ac-block-dot.active { background: #4f46e5; }
+      .ac-btn-main      { background: rgba(99,102,241,.1); border-color: rgba(99,102,241,.3); color: #4f46e5; }
+      .ac-btn-main:hover { background: rgba(99,102,241,.2); }
+
+      /* Adapt zone */
+      .adapt-zone      { border-top-color: rgba(99,102,241,.15); background: rgba(99,102,241,.03); }
+      .adapt-trigger   { color: #1e293b !important; }
+      .adapt-trigger:hover { color: #4f46e5 !important; }
+      .adapt-input     { background: #ffffff; border-color: rgba(99,102,241,.25); color: #1e293b; }
+      .adapt-input:focus { border-color: rgba(99,102,241,.5); }
+      .adapt-submit    { background: rgba(99,102,241,.1); border-color: rgba(99,102,241,.3); color: #4f46e5 !important; }
+      .adapt-submit:hover { background: rgba(99,102,241,.2); }
+
+      /* Exec row */
+      .exec-row-none   { background: #f8fafc; }
     }
-    html[data-theme="light"] .adapt-trigger,
-    html.light-theme .adapt-trigger {
-      color: #1e293b !important;
-    }
-    html[data-theme="light"] .adapt-trigger:hover,
-    html.light-theme .adapt-trigger:hover { color: #4f46e5 !important; }
-    html[data-theme="light"] .adapt-input {
-      background: #ffffff;
-      border-color: rgba(99,102,241,.25);
-      color: #1e293b;
-    }
-    html[data-theme="light"] .adapt-input:focus { border-color: rgba(99,102,241,.5); }
-    html[data-theme="light"] .adapt-submit {
-      background: rgba(99,102,241,.1);
-      border-color: rgba(99,102,241,.3);
-      color: #4f46e5;
-    }
-    html[data-theme="light"] .adapt-submit:hover { background: rgba(99,102,241,.2); }
 
     /* ── Post-entreno modal ───── */
     #post-modal-overlay {
