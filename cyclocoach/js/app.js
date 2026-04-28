@@ -642,7 +642,7 @@ const TrainingPlanGenerator = {
     { name: 'El Angel',    km: 1.0, grad: 5,   minThresh: 3.5, minVO2: 2.5 },
     { name: 'Siles',       km: 1.5, grad: 4,   minThresh: 5,   minVO2: 4   },
     { name: 'La Garganta', km: 2.3, grad: 4.5, minThresh: 8,   minVO2: 6   },
-    { name: 'Los Chozos',  km: 2.5, grad: 4,   minThresh: 9,   minVO2: 6.5 },
+    { name: 'Los Chozos',  km: 3.9, grad: 4,   minThresh: 9,   minVO2: 6.5 },
   ],
 
   /** Devuelve el segmento cuya duración estimada más se acerca a targetMin */

@@ -1104,10 +1104,11 @@ function renderPlan(plan, athlete) {
     // ── Execution badge: compara actividad real de ese día vs planificado ──
     const sessDayKey = sessDate.toISOString().slice(0, 10);
     const isPast     = i < todayIdx;
+    const isToday_ex = i === todayIdx;
     const dayActs    = (i <= todayIdx) ? (AppState.activities || []).filter(a => a.date && a.date.slice(0, 10) === sessDayKey) : [];
     let execBadge = '';
-    if (isPast && tssVal > 0) {
-      if (dayActs.length === 0) {
+    if ((isPast || (isToday_ex && dayActs.length > 0)) && tssVal > 0) {
+      if (dayActs.length === 0 && isPast) {
         execBadge = `<div class="exec-row exec-row-none">
           <span><i class="fas fa-circle-minus" style="margin-right:5px"></i>Sin actividad registrada</span>
           <span style="font-size:10px">TSS planificado: ${tssVal}</span>
