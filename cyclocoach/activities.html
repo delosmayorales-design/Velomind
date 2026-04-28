@@ -413,7 +413,6 @@ function showActivityDetail(actId) {
   if (!act) return;
   const ftp = AppState.athlete?.ftp || 200;
   const weight = AppState.athlete?.weight || 70;
-  const weight = AppState.athlete?.weight || 70;
   const zone = Utils.getPowerZone(act.avg_power, ftp);
   
   const isLight = document.documentElement.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
