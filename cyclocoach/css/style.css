@@ -1093,7 +1093,7 @@ html.light-theme body {
   --bg: #F4F8EC;
   --bg-card: #FAFDF4;
   --bg-input: #EEF5E0;
-  --bg-sidebar: #2C1800;
+  --bg-sidebar: #F5C83C;
   --border: rgba(0,0,0,0.10);
   --border-light: rgba(77,122,0,0.12);
   --text: #1A2410;
@@ -1112,15 +1112,15 @@ html.light-theme body {
   --success: #059669;
 }
 
-html.light-theme .sidebar { background: #2C1800 !important; }
-html.light-theme .sidebar .nav-item { color: rgba(255,255,255,0.65) !important; }
-html.light-theme .sidebar .nav-item:hover { background: rgba(245,200,60,0.15) !important; color: #F5C83C !important; }
-html.light-theme .sidebar .nav-item.active { background: rgba(245,200,60,0.22) !important; color: #F5C83C !important; }
-html.light-theme .sidebar .nav-section-title { color: rgba(255,255,255,0.35) !important; }
-html.light-theme .sidebar .athlete-info .name { color: rgba(255,255,255,0.85) !important; }
-html.light-theme .sidebar .athlete-info .ftp { color: rgba(255,255,255,0.45) !important; }
-html.light-theme .sidebar-footer { border-top-color: rgba(255,255,255,0.08) !important; }
-html.light-theme .sidebar-logo { border-bottom-color: rgba(255,255,255,0.08) !important; }
+html.light-theme .sidebar { background: #F5C83C !important; }
+html.light-theme .sidebar .nav-item { color: rgba(40,20,0,0.65) !important; }
+html.light-theme .sidebar .nav-item:hover { background: rgba(0,0,0,0.10) !important; color: #1A0A00 !important; }
+html.light-theme .sidebar .nav-item.active { background: rgba(0,0,0,0.15) !important; color: #1A0A00 !important; font-weight: 700 !important; }
+html.light-theme .sidebar .nav-section-title { color: rgba(40,20,0,0.45) !important; }
+html.light-theme .sidebar .athlete-info .name { color: rgba(40,20,0,0.90) !important; }
+html.light-theme .sidebar .athlete-info .ftp { color: rgba(40,20,0,0.55) !important; }
+html.light-theme .sidebar-footer { border-top-color: rgba(0,0,0,0.12) !important; }
+html.light-theme .sidebar-logo { border-bottom-color: rgba(0,0,0,0.12) !important; }
 html.light-theme .page-header { background: rgba(244,248,236,0.94) !important; border-bottom-color: rgba(0,0,0,0.08) !important; }
 html.light-theme .card, html.light-theme .mod-card, html.light-theme .session-card-item { box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; }
 html.light-theme .week-card, html.light-theme .ai-section, html.light-theme .weekly-highlight-card, html.light-theme .coach-message { background: #ffffff !important; border-color: rgba(0,0,0,0.1) !important; box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important; color: #111827 !important; }
