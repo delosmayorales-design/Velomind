@@ -352,6 +352,7 @@ rowsToInsert.push({
     }
 
     // Eliminar del DB actividades de Strava más antiguas que la ventana de 1 año
+    const oneYearAgoDate = new Date(oneYearAgo * 1000).toISOString().substring(0, 10);
     const { error: delErr } = await supabase
       .from('activities')
       .delete()
