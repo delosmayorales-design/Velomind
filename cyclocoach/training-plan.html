@@ -922,6 +922,7 @@ async function initTrainingPlan() {
       const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan'));
       if (local?.sessions) currentPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {} };
     } catch(_) {}
+    _patchSegmentDistances(currentPlan);
 
     renderAthleteSidebar();
     renderWeekDates();
@@ -952,6 +953,7 @@ async function initTrainingPlan() {
       .then(savedPlan => {
         if (savedPlan?.sessions) {
           currentPlan = { sessions: savedPlan.sessions, phase: savedPlan.phase, targetTSS: savedPlan.tss_target, advice: savedPlan.advice || {} };
+          _patchSegmentDistances(currentPlan);
           localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...savedPlan, savedAt: Date.now() }));
           if (AppState.athlete) renderPlan(currentPlan, AppState.athlete); // Refresca si hay datos más nuevos en la nube
         }
@@ -999,6 +1001,33 @@ function generatePlan() {
   const plan = TrainingPlanGenerator.generate(athlete, AppState.activities);
   currentPlan = plan;
   renderPlan(plan, athlete);
+}
+
+// Corrige distancias de segmentos locales en planes guardados en caché
+function _patchSegmentDistances(plan) {
+  if (!plan?.sessions) return;
+  const fixes = { 'Los Chozos': 3.9, 'La Garganta': 2.3, 'Siles': 1.5, 'El Angel': 1.0 };
+  plan.sessions.forEach(s => {
+    if (!s) return;
+    ['terrain', 'description', 'advice', 'alt_description'].forEach(field => {
+      if (typeof s[field] !== 'string') return;
+      Object.entries(fixes).forEach(([name, km]) => {
+        s[field] = s[field].replace(
+          new RegExp(`(${name}\\s*\\()([\\d.]+)(\\s*km)`, 'g'),
+          `$1${km}$3`
+        );
+      });
+    });
+    (s.intervals || []).concat(s.alt_intervals || []).forEach(iv => {
+      if (typeof iv?.desc !== 'string') return;
+      Object.entries(fixes).forEach(([name, km]) => {
+        iv.desc = iv.desc.replace(
+          new RegExp(`(${name}\\s*\\()([\\d.]+)(\\s*km)`, 'g'),
+          `$1${km}$3`
+        );
+      });
+    });
+  });
 }
 
 function getDefaultAthlete() {
