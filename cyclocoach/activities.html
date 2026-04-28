@@ -215,21 +215,25 @@ function renderAthleteSidebar() {
 }
 
 async function loadActivities() {
+  // Snapshot de actividades actuales antes de la carga del backend
+  // (protege actividades recién subidas que el backend aún no tiene)
+  const preload = [...allActivities];
+
   if (typeof BackendSync !== 'undefined') {
     await BackendSync.loadActivities();
   }
 
-  const activities = Array.isArray(AppState.activities) ? AppState.activities : [];
+  const backendActivities = Array.isArray(AppState.activities) ? AppState.activities : [];
+  const backendIds = new Set(backendActivities.map(a => String(a.id)));
 
-  // Ordenar para la UI: las más nuevas primero
-  allActivities = [...activities].sort((a, b) => {
+  // Incluir actividades que ya estaban en la lista pero no están en el backend todavía
+  const pendingLocal = preload.filter(a => !backendIds.has(String(a.id)));
+
+  allActivities = [...backendActivities, ...pendingLocal].sort((a, b) => {
     const dA = a.date || '1970-01-01';
     const dB = b.date || '1970-01-01';
     return dA > dB ? -1 : (dA < dB ? 1 : 0);
   });
-
-  console.log('[UI] Actividades en frontend:', allActivities.length);
-  console.log('[UI] Datos:', allActivities.slice(0, 5)); // 👈 DEBUG CLAVE
 
   renderActivities(allActivities);
 
@@ -239,7 +243,7 @@ async function loadActivities() {
     document.getElementById('clear-btn').style.display = 'flex';
   }
 
-renderMonthFilter()
+  renderMonthFilter();
 }
 
 function renderMonthFilter() {
@@ -323,7 +327,10 @@ async function processFiles(files) {
       const saved = saveActivity(activity);
       if (saved) {
         updateProgressItem(progressId, saved.name + ' - TSS: ' + (saved.tss || '?') + ', Potencia: ' + (saved.avg_power || '?') + 'W', 'success');
-        allActivities = [...AppState.activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+        // Insertar directamente en allActivities (no depender del timing de AppState/backend)
+        if (!allActivities.find(a => a.id === saved.id)) {
+          allActivities = [saved, ...allActivities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+        }
         renderActivities(allActivities);
         document.getElementById('total-count').textContent = allActivities.length + ' actividades';
         document.getElementById('clear-btn').style.display = 'flex';
@@ -392,7 +399,9 @@ async function saveManualActivity() {
   };
   const saved = saveActivity(activity);
   if (saved) {
-    allActivities = [...AppState.activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    if (!allActivities.find(a => a.id === saved.id)) {
+      allActivities = [saved, ...allActivities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    }
     renderActivities(allActivities);
     document.getElementById('manual-form').classList.add('hidden');
     showToast('Actividad "' + saved.name + '" guardada - TSS: ' + saved.tss, 'success');
