@@ -175,6 +175,8 @@ function isLegacyDemoActivity(a) {
         activity.tss = data.tss;
         activity.if_value = data.if_value;
       }
+      AppState.saveActivity(activity);
+      loadActivities();
       return data;
     } catch (e) {
       console.warn('[BackendSync] saveActivity offline:', e.message);
@@ -187,10 +189,13 @@ function isLegacyDemoActivity(a) {
   /** Sube múltiples actividades en batch */
   async function batchSaveActivities(activities) {
     try {
-      return await apiFetch('/activities/batch', {
+      const res = await apiFetch('/activities/batch', {
         method: 'POST',
         body: JSON.stringify({ activities }),
       });
+      for (const a of activities) AppState.saveActivity(a);
+      loadActivities();
+      return res;
     } catch (e) {
       console.warn('[BackendSync] batchSave offline:', e.message);
       for (const a of activities) AppState.saveActivity(a);
