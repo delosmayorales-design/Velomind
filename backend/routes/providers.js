@@ -442,4 +442,41 @@ router.get('/status', requireAuth, async (req, res) => {
   }
 });
 
+router.get('/strava/debug-activities', requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const { data: user } = await supabase
+      .from('users')
+      .select('strava_token')
+      .eq('id', uid)
+      .single();
+
+    if (!user?.strava_token) {
+      return res.status(400).json({ error: 'Strava no conectado' });
+    }
+
+    const r = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=10', {
+      headers: { Authorization: `Bearer ${user.strava_token}` }
+    });
+
+    if (!r.ok) {
+      return res.status(400).json({ error: 'Error al consultar Strava (HTTP ' + r.status + ')' });
+    }
+
+    const rawActs = await r.json();
+    const formatted = rawActs.map(a => ({
+      name: a.name,
+      date: String(a.start_date_local || a.start_date).substring(0, 10),
+      type: a.type,
+      sport_type: a.sport_type,
+      manual: a.manual,
+      distance_km: Math.round((a.distance || 0) / 100) / 10
+    }));
+
+    res.json(formatted);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
