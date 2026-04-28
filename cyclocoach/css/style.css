@@ -1120,8 +1120,8 @@ html.light-theme .sidebar .nav-section-title { color: rgba(45,80,22,0.45) !impor
 html.light-theme .sidebar .athlete-info .name { color: #1A3A0A !important; }
 html.light-theme .sidebar .athlete-info .ftp { color: #2D5016 !important; }
 html.light-theme .sidebar-footer { border-top-color: rgba(45,80,22,0.15) !important; }
-html.light-theme .sidebar-logo { border-bottom-color: rgba(45,80,22,0.15) !important; }
-html.light-theme .sidebar-logo img { filter: drop-shadow(0 1px 4px rgba(0,0,0,0.30)); }
+html.light-theme .sidebar-logo { background: #E8E8E4 !important; border-bottom-color: rgba(45,80,22,0.10) !important; }
+html.light-theme .sidebar-logo img { filter: none; }
 html.light-theme .page-header { background: rgba(244,248,236,0.94) !important; border-bottom-color: rgba(0,0,0,0.08) !important; }
 html.light-theme .card, html.light-theme .mod-card, html.light-theme .session-card-item { box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; }
 html.light-theme .week-card, html.light-theme .ai-section, html.light-theme .weekly-highlight-card, html.light-theme .coach-message { background: #ffffff !important; border-color: rgba(0,0,0,0.1) !important; box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important; color: #111827 !important; }
