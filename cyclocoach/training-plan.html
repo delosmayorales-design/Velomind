@@ -65,11 +65,11 @@
     .adapt-trigger {
       display: flex; align-items: center; gap: 8px;
       padding: 8px 20px; cursor: pointer;
-      font-size: 11px; color: rgba(196,239,68,.7);
+      font-size: 11px; color: var(--text-secondary);
       transition: color .15s;
       user-select: none;
     }
-    .adapt-trigger:hover { color: #C4EF44; }
+    .adapt-trigger:hover { color: var(--primary); }
     .adapt-body { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 8px; }
     .adapt-input-row { display: flex; gap: 8px; align-items: center; }
     .adapt-input {
@@ -179,8 +179,6 @@
 
       /* Adapt zone */
       .adapt-zone      { border-top-color: rgba(99,102,241,.15); background: rgba(99,102,241,.03); }
-      .adapt-trigger   { color: #1e293b !important; }
-      .adapt-trigger:hover { color: #4f46e5 !important; }
       .adapt-input     { background: #ffffff; border-color: rgba(99,102,241,.25); color: #1e293b; }
       .adapt-input:focus { border-color: rgba(99,102,241,.5); }
       .adapt-submit    { background: rgba(99,102,241,.1); border-color: rgba(99,102,241,.3); color: #4f46e5 !important; }
@@ -188,16 +186,6 @@
 
       /* Exec row */
       .exec-row-none   { background: #f8fafc; }
-    }
-
-    /* ── Light mode flat overrides (bypass CSS-nesting compatibility) ── */
-    html[data-theme="light"] .adapt-trigger,
-    html.light-theme .adapt-trigger {
-      color: #1e293b !important;
-    }
-    html[data-theme="light"] .adapt-trigger:hover,
-    html.light-theme .adapt-trigger:hover {
-      color: #4f46e5 !important;
     }
 
     /* ── Post-entreno modal ───── */
