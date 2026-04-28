@@ -315,7 +315,7 @@ rowsToInsert.push({
         avg_hr:      Math.min(Math.round(Number(a.average_heartrate) || 0), 250),
         max_hr:      Math.min(Math.round(Number(a.max_heartrate) || 0), 250),
         avg_cadence: Math.round(Number(a.average_cadence) || 0),
-        calories:    Math.round(Number(a.calories) || 0),
+        calories:    Math.round(Number(a.calories) || Number(a.kilojoules) || 0),
         tss:         Math.round(Number(tss) || 0),
         if_value:    Number(ifValue) || 0,
         strava_id: a.id ? String(a.id) : null,
