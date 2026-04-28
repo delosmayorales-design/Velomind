@@ -175,7 +175,7 @@
         <tr>
           <td>Terceros</td>
           <td>Actividades importadas de Strava</td>
-          <td>Sincronización de datos de entrenamiento</td>
+          <td>Sincronización de datos de entrenamiento mediante autorización del usuario vía OAuth</td>
         </tr>
       </tbody>
     </table>
@@ -188,10 +188,13 @@
     </ul>
 
     <h2>4. Almacenamiento</h2>
-    <p>Los datos se almacenan en servidores seguros gestionados por <strong>Supabase</strong> con cifrado en tránsito (TLS) y en reposo. No vendemos ni cedemos tus datos a terceros con fines publicitarios.</p>
+    <p>Los datos se almacenan en servidores seguros gestionados por <strong>Supabase</strong> con cifrado en tránsito (TLS) y en reposo.</p>
+    <p>También almacenamos de forma segura los <code>access_token</code> y <code>refresh_token</code> de Strava asociados a cada usuario, necesarios para mantener la sincronización automática de actividades. Estos tokens no se utilizan para ningún otro propósito.</p>
+    <p>No vendemos ni cedemos tus datos a terceros con fines publicitarios.</p>
 
     <h2>5. Retención de datos</h2>
     <p>Conservamos tus datos mientras mantengas una cuenta activa. Al eliminar tu cuenta, los datos se borran de forma permanente en un plazo máximo de 30 días.</p>
+    <p>Cuando el usuario desconecta su cuenta de Strava, se eliminan los tokens asociados y se detiene inmediatamente la sincronización de datos.</p>
 
     <h2>6. Compartición de datos</h2>
     <p>Solo compartimos datos con:</p>
