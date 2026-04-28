@@ -68,14 +68,15 @@
     .int-tagline { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 
     .int-status {
-      margin-left: auto;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 8px;
       font-size: 13px;
       font-weight: 600;
       padding: 6px 14px;
-      border-radius: 20px;
+      border-radius: 8px;
+      margin-top: 8px;
+      white-space: nowrap;
     }
     .int-status.connected {
       background: rgba(52,211,153,0.1);
@@ -328,9 +329,9 @@
             <div>
               <div class="int-name">Strava</div>
               <div class="int-tagline">Importa actividades automáticamente</div>
-            </div>
-            <div class="int-status disconnected" id="strava-status">
-              <i class="fas fa-circle" style="font-size:8px"></i> No conectado
+              <div class="int-status disconnected" id="strava-status">
+                <i class="fas fa-circle" style="font-size:8px"></i> No conectado
+              </div>
             </div>
           </div>
 
@@ -377,9 +378,9 @@
             <div>
               <div class="int-name">Garmin Connect</div>
               <div class="int-tagline">Dispositivos Garmin y métricas avanzadas</div>
-            </div>
-            <div class="int-status disconnected" id="garmin-status">
-              <i class="fas fa-circle" style="font-size:8px"></i> No conectado
+              <div class="int-status disconnected" id="garmin-status">
+                <i class="fas fa-circle" style="font-size:8px"></i> No conectado
+              </div>
             </div>
           </div>
 
@@ -414,9 +415,9 @@
             <div>
               <div class="int-name">Wahoo ELEMNT</div>
               <div class="int-tagline">Ciclocomputadores Wahoo</div>
-            </div>
-            <div class="int-status disconnected">
-              <i class="fas fa-clock" style="font-size:8px"></i> Próximamente
+              <div class="int-status disconnected">
+                <i class="fas fa-clock" style="font-size:8px"></i> Próximamente
+              </div>
             </div>
           </div>
           <div class="int-features">
@@ -439,9 +440,9 @@
             <div>
               <div class="int-name">Polar Flow</div>
               <div class="int-tagline">Relojes y sensores Polar</div>
-            </div>
-            <div class="int-status disconnected">
-              <i class="fas fa-clock" style="font-size:8px"></i> Próximamente
+              <div class="int-status disconnected">
+                <i class="fas fa-clock" style="font-size:8px"></i> Próximamente
+              </div>
             </div>
           </div>
           <div class="int-features">
