@@ -875,13 +875,6 @@ function buildBiomechanicsFallback(rider, photos, userPoints = {}) {
 function buildTrainingRecommendation({ tsb, ctl, ftp, weight, goal, phase, form,
   zonePct, lowPct, midPct, hiPct, tssGrowth, avgTSS, avgDurMin, acts }) {
 
-  // Detectar desequilibrios de polarización
-  const polarizationIssue = midPct > 40
-    ? 'Estás entrenando demasiado en Z3/Z4 (zona gris). Esto genera fatiga sin el estímulo óptimo.'
-    : lowPct < 50
-    ? 'Falta volumen en Z1/Z2. La base aeróbica es la base de todo rendimiento.'
-    : null;
-
   // Semana objetivo según estado de forma + fase
   let weekTarget, sessions, focus, alerts = [];
 
@@ -913,8 +906,6 @@ function buildTrainingRecommendation({ tsb, ctl, ftp, weight, goal, phase, form,
     focus = 'Bloque base — ' + goalLabel(goal);
     sessions = buildBaseWeek(ftp, goal, weight);
   }
-
-  if (polarizationIssue) alerts.push('💡 ' + polarizationIssue);
 
   const keySession = sessions.find(s => s.key);
 

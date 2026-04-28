@@ -2757,7 +2757,7 @@ function openPostEntrenoModal(sessIdx) {
   const actName = acts[0]?.name || 'Actividad';
 
   const ratio = tssP > 0 ? tssA / tssP : 1;
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const isLight = document.documentElement.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
 
   const _firstName = (AppState.athlete?.name || '').split(' ')[0];
   let statusIcon, statusLabel, statusColor;
@@ -2816,7 +2816,7 @@ function openPostEntrenoModal(sessIdx) {
           <i class="fas ${statusIcon}" style="color:${statusColor}; margin-right:6px"></i>${statusLabel}
         </div>
         <div style="font-size:12px;color:${isLight ? '#4b5563' : 'var(--text-muted)'};margin-top:3px">
-          Completaste el <strong style="color:${statusColor}">${pct}%</strong> del TSS planificado
+          Completaste el <strong style="color:${isLight ? '#111827' : statusColor}">${pct}%</strong> del TSS planificado
         </div>
       </div>
     </div>
