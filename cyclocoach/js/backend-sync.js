@@ -117,15 +117,20 @@ function isLegacyDemoActivity(a) {
   try {
     const data = await apiFetch(`/activities?limit=5000&_t=${Date.now()}`);
 
-    console.log('[BackendSync] /activities response:', JSON.stringify(data).substring(0, 300));
-    console.log('[BackendSync] Actividades recibidas:', data.activities?.length || 0);
-
     let { cleaned: activities, removed } = sanitizeActivities(data.activities || []);
-
-    console.log('[BackendSync] Actividades tras filtro:', activities.length);
 
     if (removed > 0) {
       console.warn(`[BackendSync] Eliminadas ${removed} actividades legacy/demo`);
+    }
+
+    // Preservar actividades subidas localmente que aún no están confirmadas en el backend
+    // (evita race condition al subir archivo mientras el backend está cargando)
+    const backendIds = new Set(activities.map(a => String(a.id)));
+    const localOnly = (AppState.activities || []).filter(a =>
+      !backendIds.has(String(a.id)) && !isLegacyDemoActivity(a)
+    );
+    if (localOnly.length > 0) {
+      activities = [...activities, ...localOnly];
     }
 
     // Guardar en localStorage
@@ -141,11 +146,9 @@ function isLegacyDemoActivity(a) {
     // Recalcular PMC
     AppState.pmcData = PMC.compute(AppState.activities, 120);
 
-    console.log('[BackendSync] AppState.activities después de cargar:', AppState.activities.length);
     return activities;
 
   } catch (e) {
-    alert('🚨 ERROR DE CONEXIÓN CON SUPABASE: ' + e.message);
     console.warn('[BackendSync] loadActivities offline:', e.message);
 
     const { cleaned, removed } = sanitizeActivities(AppState.activities);
