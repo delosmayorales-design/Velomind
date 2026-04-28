@@ -19,13 +19,18 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <style>
-    .activity-detail-panel { position: fixed; right: -500px; top: 0; height: 100vh; width: 480px; background: var(--bg-card); border-left: 1px solid var(--border); z-index: 200; transition: right 0.3s ease; overflow-y: auto; padding: 24px; }
+    .activity-detail-panel { position: fixed; right: -560px; top: 0; height: 100vh; width: 540px; background: var(--bg-card); border-left: 1px solid var(--border); z-index: 200; transition: right 0.3s ease; overflow-y: auto; padding: 24px; }
     .activity-detail-panel.open { right: 0; }
     .panel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 199; }
     .panel-overlay.show { display: block; }
     .upload-progress { background: var(--bg-input); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
     .file-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
     .drag-active .upload-zone { border-color: var(--primary); background: rgba(255,107,53,0.08); }
+    .detail-metric-mini { background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center; }
+    .detail-metric-mini .label { font-size:9px;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:0.5px;margin-bottom:3px; }
+    .detail-metric-mini .value { font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;line-height:1; }
+    .detail-section-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:18px 0 10px; }
+    .chart-wrap { background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px 16px; }
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
@@ -413,15 +418,27 @@ function showActivityDetail(actId) {
   if (!act) return;
   const ftp = AppState.athlete?.ftp || 200;
   const weight = AppState.athlete?.weight || 70;
+  const lthr = AppState.athlete?.lthr || AppState.athlete?.threshold_hr || 175;
   const zone = Utils.getPowerZone(act.avg_power, ftp);
-  
-  const isLight = document.documentElement.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
-  const divider = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
   const tssColor = act.tss > 100 ? '#ef4444' : act.tss > 60 ? '#f59e0b' : '#10b981';
 
+  // PMC snapshot on activity date
+  const pmcSnap = (AppState.pmcData || []).find(d => d.date === act.date) ||
+                  (AppState.pmcData?.length ? AppState.pmcData[AppState.pmcData.length - 1] : null);
+  const ctl = pmcSnap?.ctl ?? '--';
+  const atl = pmcSnap?.atl ?? '--';
+  const tsb = pmcSnap?.tsb ?? '--';
+  const tsbColor = (typeof tsb === 'number') ? (tsb > 5 ? '#10b981' : tsb > -10 ? '#9ED62B' : tsb > -20 ? '#f59e0b' : '#ef4444') : '#64748b';
+
+  // Derived metrics
+  const workKJ = act.avg_power && act.duration ? Math.round(act.avg_power * act.duration / 1000) : (act.calories ? Math.round(act.calories * 4.184 / 4) : null);
+  const avgWkg = act.avg_power && weight ? (act.avg_power / weight).toFixed(2) : null;
+  const npWkg  = act.np && weight ? (act.np / weight).toFixed(2) : null;
+  const trimp  = act.avg_hr && act.duration ? Math.round((act.duration / 60) * (act.avg_hr / lthr) * 0.64 * Math.exp(1.92 * act.avg_hr / lthr)) : null;
+
   document.getElementById('panel-content').innerHTML = `
-    <div style="margin-bottom:24px">
-      <h3 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--text-primary);margin-bottom:8px;line-height:1.2">${act.name}</h3>
+    <div style="margin-bottom:20px">
+      <h3 style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:var(--text-primary);margin-bottom:8px;line-height:1.2">${act.name}</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <span class="badge badge-blue"><i class="fas fa-file-import"></i> ${act.source}</span>
         ${zone ? `<span class="badge" style="background:${zone.color}22;color:${zone.color};border:1px solid ${zone.color}44">${zone.name.split(' — ')[0]}</span>` : ''}
@@ -429,97 +446,176 @@ function showActivityDetail(actId) {
       </div>
     </div>
 
-    <!-- MAIN METRICS (Golden Cheetah Style) -->
-    <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;margin-bottom:20px">
-      <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:0.5px;margin-bottom:4px">Duración</div>
-        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${Utils.formatDuration(act.duration)}</div>
+    <!-- ROW 1: básicos -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
+      <div class="detail-metric-mini"><div class="label">Duración</div><div class="value" style="color:var(--text-primary)">${Utils.formatDuration(act.duration)}</div></div>
+      <div class="detail-metric-mini"><div class="label">Distancia</div><div class="value" style="color:var(--text-primary)">${Utils.formatDistance(act.distance)}</div></div>
+      <div class="detail-metric-mini"><div class="label">Desnivel</div><div class="value" style="color:#38BDF8">${act.elevation ? '↑'+act.elevation+'m' : '--'}</div></div>
+      <div class="detail-metric-mini"><div class="label">Vel. Media</div><div class="value" style="color:var(--text-primary)">${act.avg_speed ? act.avg_speed+' <span style="font-size:9px">km/h</span>' : '--'}</div></div>
+    </div>
+
+    <!-- ROW 2: potencia -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
+      <div class="detail-metric-mini"><div class="label">Pot. Media</div><div class="value" style="color:#9ED62B">${act.avg_power ? act.avg_power+'W' : '--'}</div>${avgWkg ? `<div style="font-size:9px;color:var(--text-muted);margin-top:2px">${avgWkg} W/kg</div>` : ''}</div>
+      <div class="detail-metric-mini"><div class="label">NP</div><div class="value" style="color:#9ED62B">${act.np ? act.np+'W' : '--'}</div>${npWkg ? `<div style="font-size:9px;color:var(--text-muted);margin-top:2px">${npWkg} W/kg</div>` : ''}</div>
+      <div class="detail-metric-mini"><div class="label">Pot. Max</div><div class="value" style="color:var(--text-primary)">${act.max_power ? act.max_power+'W' : '--'}</div></div>
+      <div class="detail-metric-mini"><div class="label">IF</div><div class="value" style="color:var(--text-primary)">${act.if_value ? act.if_value.toFixed(2) : '--'}</div></div>
+    </div>
+
+    <!-- ROW 3: fisiología -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
+      <div class="detail-metric-mini"><div class="label">FC Media</div><div class="value" style="color:#ef4444">${act.avg_hr ? act.avg_hr+' <span style="font-size:9px">bpm</span>' : '--'}</div></div>
+      <div class="detail-metric-mini"><div class="label">FC Máx</div><div class="value" style="color:#ef4444">${act.max_hr ? act.max_hr+' <span style="font-size:9px">bpm</span>' : '--'}</div></div>
+      <div class="detail-metric-mini"><div class="label">Cadencia</div><div class="value" style="color:var(--text-primary)">${act.avg_cadence ? act.avg_cadence+' <span style="font-size:9px">rpm</span>' : '--'}</div></div>
+      <div class="detail-metric-mini"><div class="label">Calorías</div><div class="value" style="color:var(--text-primary)">${act.calories ? Math.round(act.calories)+' <span style="font-size:9px">kcal</span>' : '--'}</div></div>
+    </div>
+
+    <!-- ROW 4: carga -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
+      <div class="detail-metric-mini" style="border-color:${tssColor}44"><div class="label">TSS</div><div class="value" style="color:${tssColor};font-size:20px">${act.tss || '--'}</div></div>
+      <div class="detail-metric-mini"><div class="label">Trabajo</div><div class="value" style="color:var(--text-primary)">${workKJ ? workKJ+' <span style="font-size:9px">kJ</span>' : '--'}</div></div>
+      <div class="detail-metric-mini"><div class="label">TRIMP</div><div class="value" style="color:#a78bfa">${trimp || '--'}</div></div>
+      <div class="detail-metric-mini"><div class="label">Kcal/h</div><div class="value" style="color:var(--text-muted)">${act.calories && act.duration ? Math.round(act.calories / (act.duration/3600)) : '--'}</div></div>
+    </div>
+
+    <!-- ROW 5: PMC snapshot -->
+    <div class="detail-section-title"><i class="fas fa-chart-line" style="color:var(--text-muted)"></i> Estado de Forma — ${Utils.formatDate(act.date)}</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      <div class="detail-metric-mini" style="border-color:#3B82F644"><div class="label">CTL (Fitness)</div><div class="value" style="color:#38BDF8">${ctl}</div></div>
+      <div class="detail-metric-mini" style="border-color:#EF444444"><div class="label">ATL (Fatiga)</div><div class="value" style="color:#ef4444">${atl}</div></div>
+      <div class="detail-metric-mini" style="border-color:${tsbColor}44"><div class="label">TSB (Forma)</div><div class="value" style="color:${tsbColor}">${tsb}</div></div>
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div class="detail-section-title"><i class="fas fa-chart-bar" style="color:var(--text-muted)"></i> Análisis Visual</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="chart-wrap">
+        <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:8px">Zonas de Potencia</div>
+        <canvas id="chart-zones" height="160"></canvas>
       </div>
-      <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:0.5px;margin-bottom:4px">Distancia</div>
-        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${Utils.formatDistance(act.distance)}</div>
-      </div>
-      <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:0.5px;margin-bottom:4px">Desnivel</div>
-        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#38BDF8">${act.elevation ? '↑' + act.elevation + 'm' : '--'}</div>
-      </div>
-      <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:0.5px;margin-bottom:4px">Vel. Media</div>
-        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${act.avg_speed ? act.avg_speed + '<span style="font-size:11px;color:var(--text-muted);margin-left:2px">km/h</span>' : '--'}</div>
+      <div class="chart-wrap">
+        <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:8px">Últimas 10 Sesiones — TSS</div>
+        <canvas id="chart-tss-hist" height="160"></canvas>
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
-      <!-- POWER METRICS -->
-      <div style="background:var(--bg-input);border:1px solid rgba(158,214,43,0.2);border-radius:12px;padding:16px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;right:0;width:60px;height:60px;background:radial-gradient(circle, rgba(158,214,43,0.15) 0%, transparent 70%);border-radius:50%;transform:translate(30%,-30%)"></div>
-        <div style="font-size:11px;font-weight:700;color:#9ED62B;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;display:flex;align-items:center;gap:6px">
-          <i class="fas fa-bolt"></i> Potencia
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Potencia Media</div>
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${Utils.formatPower(act.avg_power)}</div>
-            ${act.avg_power && weight ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">${(act.avg_power/weight).toFixed(2)} W/kg</div>` : ''}
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Pot. Normalizada (NP)</div>
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#9ED62B">${Utils.formatPower(act.np)}</div>
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Potencia Máxima</div>
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${Utils.formatPower(act.max_power)}</div>
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Intensity Factor (IF)</div>
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${act.if_value ? act.if_value.toFixed(2) : '--'}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PHYSIOLOGY METRICS -->
-      <div style="background:var(--bg-input);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:16px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;right:0;width:60px;height:60px;background:radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%);border-radius:50%;transform:translate(30%,-30%)"></div>
-        <div style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;display:flex;align-items:center;gap:6px">
-          <i class="fas fa-heartbeat"></i> Fisiología
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">FC Media</div>
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${act.avg_hr ? act.avg_hr + '<span style="font-size:10px;color:var(--text-muted);margin-left:2px">bpm</span>' : '--'}</div>
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">FC Máxima</div>
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#ef4444">${act.max_hr ? act.max_hr + '<span style="font-size:10px;color:var(--text-muted);margin-left:2px">bpm</span>' : '--'}</div>
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Cadencia Media</div>
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${act.avg_cadence ? act.avg_cadence + '<span style="font-size:10px;color:var(--text-muted);margin-left:2px">rpm</span>' : '--'}</div>
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">Gasto Calórico</div>
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">${act.calories ? Math.round(act.calories) + '<span style="font-size:10px;color:var(--text-muted);margin-left:2px">kcal</span>' : '--'}</div>
-          </div>
-        </div>
-      </div>
+    <div class="chart-wrap" style="margin-bottom:16px">
+      <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:8px">PMC — Forma / Fatiga / Fitness (30 días)</div>
+      <canvas id="chart-pmc-mini" height="110"></canvas>
     </div>
 
-    <!-- TSS / LOAD SCORE -->
-    <div style="background:linear-gradient(135deg, ${tssColor}15, transparent);border:1px solid ${tssColor}30;border-radius:12px;padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:${tssColor};margin-bottom:4px">Carga de Entrenamiento (TSS)</div>
-        <div style="font-size:12px;color:var(--text-secondary)">Estrés generado por esta sesión.</div>
-      </div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:800;color:${tssColor};line-height:1">${act.tss || 0}</div>
-    </div>
-
-    <div style="display:flex;gap:10px;margin-top:8px">
-      ${act.strava_id ? '<a href="https://www.strava.com/activities/' + act.strava_id + '" target="_blank" class="btn" style="flex:1;background:rgba(252,76,2,0.1);color:#FC4C02;border:1px solid rgba(252,76,2,0.3);text-decoration:none"><i class="fab fa-strava"></i> Ver en Strava</a>' : ''}
-      <button onclick="deleteActivity(\'' + act.id + '\')" class="btn" style="flex:1;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3)"><i class="fas fa-trash"></i> Eliminar</button>
+    <div style="display:flex;gap:10px">
+      ${act.strava_id ? `<a href="https://www.strava.com/activities/${act.strava_id}" target="_blank" class="btn" style="flex:1;background:rgba(252,76,2,0.1);color:#FC4C02;border:1px solid rgba(252,76,2,0.3);text-decoration:none"><i class="fab fa-strava"></i> Ver en Strava</a>` : ''}
+      <button onclick="deleteActivity('${act.id}')" class="btn" style="flex:1;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3)"><i class="fas fa-trash"></i> Eliminar</button>
     </div>
   `;
+
   document.getElementById('detail-panel').classList.add('open');
   document.getElementById('panel-overlay').classList.add('show');
+
+  // Render charts after DOM is ready
+  requestAnimationFrame(() => renderDetailCharts(act, ftp));
+}
+
+function renderDetailCharts(act, ftp) {
+  // ── 1. Zonas de potencia (distribución estimada) ──────────────────
+  const zonesCanvas = document.getElementById('chart-zones');
+  if (zonesCanvas && act.avg_power) {
+    const ratio = act.avg_power / ftp;
+    const zones = ZONES_COGGAN;
+    // Estimate time in zones using a Gaussian distribution centered at avg ratio
+    const sigma = 0.15;
+    const raw = zones.map(z => {
+      const mid = (z.min + Math.min(z.max, 2.0)) / 2;
+      return Math.max(0, Math.exp(-Math.pow(mid - ratio, 2) / (2 * sigma * sigma)));
+    });
+    const sum = raw.reduce((a,b) => a+b, 0);
+    const pct = raw.map(v => Math.round(v / sum * 100));
+    new Chart(zonesCanvas, {
+      type: 'doughnut',
+      data: {
+        labels: zones.map(z => z.name.split(' — ')[0]),
+        datasets: [{ data: pct, backgroundColor: zones.map(z => z.color + 'cc'), borderColor: zones.map(z => z.color), borderWidth: 1 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 9 }, boxWidth: 10, padding: 6 } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } }
+        },
+        cutout: '60%'
+      }
+    });
+  }
+
+  // ── 2. Historial TSS (últimas 10 actividades) ─────────────────────
+  const tssCanvas = document.getElementById('chart-tss-hist');
+  if (tssCanvas) {
+    const recent = [...allActivities]
+      .filter(a => a.tss > 0)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+      .slice(-10);
+    const labels = recent.map(a => {
+      const d = new Date(a.date + 'T12:00:00');
+      return d.toLocaleDateString('es-ES', { day:'2-digit', month:'short' });
+    });
+    const tssValues = recent.map(a => a.tss || 0);
+    const bgColors = recent.map(a => {
+      const c = a.tss > 100 ? '#ef4444' : a.tss > 60 ? '#f59e0b' : '#10b981';
+      return a.id === act.id ? c : c + '88';
+    });
+    new Chart(tssCanvas, {
+      type: 'bar',
+      data: { labels, datasets: [{ data: tssValues, backgroundColor: bgColors, borderRadius: 4, borderSkipped: false }] },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` TSS: ${ctx.parsed.y}` } } },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 8 } }, grid: { display: false } },
+          y: { ticks: { color: '#64748b', font: { size: 8 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        }
+      }
+    });
+  }
+
+  // ── 3. PMC mini sparkline (30 días alrededor de la actividad) ─────
+  const pmcCanvas = document.getElementById('chart-pmc-mini');
+  if (pmcCanvas && AppState.pmcData?.length) {
+    const actDate = act.date;
+    const allDates = AppState.pmcData.map(d => d.date).sort();
+    const idx = allDates.findIndex(d => d >= actDate);
+    const center = idx >= 0 ? idx : allDates.length - 1;
+    const start = Math.max(0, center - 20);
+    const end   = Math.min(AppState.pmcData.length, center + 10);
+    const slice = AppState.pmcData.slice(start, end);
+    const labels = slice.map(d => {
+      const dt = new Date(d.date + 'T12:00:00');
+      return dt.toLocaleDateString('es-ES', { day:'2-digit', month:'short' });
+    });
+    new Chart(pmcCanvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'CTL', data: slice.map(d => d.ctl), borderColor: '#38BDF8', backgroundColor: 'rgba(56,189,248,0.1)', tension: 0.4, pointRadius: 0, borderWidth: 2, fill: true },
+          { label: 'ATL', data: slice.map(d => d.atl), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.4, pointRadius: 0, borderWidth: 2, fill: true },
+          { label: 'TSB', data: slice.map(d => d.tsb), borderColor: '#9ED62B', backgroundColor: 'transparent', tension: 0.4, pointRadius: 0, borderWidth: 1.5, fill: false, borderDash: [4,3] }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: {
+          legend: { labels: { color: '#94a3b8', font: { size: 9 }, boxWidth: 10, padding: 8 } },
+          annotation: {}
+        },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 8 }, maxTicksLimit: 8 }, grid: { display: false } },
+          y: { ticks: { color: '#64748b', font: { size: 8 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        }
+      }
+    });
+  }
 }
 
 function closePanel() { document.getElementById('detail-panel').classList.remove('open'); document.getElementById('panel-overlay').classList.remove('show'); }
