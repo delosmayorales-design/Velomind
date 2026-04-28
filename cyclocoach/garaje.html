@@ -819,44 +819,13 @@ const G = (() => {
         return;
       }
 
-      // Fusionar bicis de Strava en el estado local
-      // Tipo Strava → tipo garage: 'road','gravel','mtb_full','mtb_hardtail'
-      const typeMap = { road: 'road', gravel: 'gravel', mtb_full: 'mtb_full', mtb_hardtail: 'mtb_hardtail' };
-
-      data.bikes.forEach(sb => {
-        const bikeType = typeMap[sb.type] || 'road';
-
-        // Buscar bici existente por gear_id o por tipo
-        let existing = st.bikes.find(b => b.strava_gear_id === sb.strava_gear_id)
-                    || st.bikes.find(b => b.type === bikeType && !b.strava_gear_id);
-
-        if (existing) {
-          // Actualizar datos con los de Strava
-          existing.name           = sb.name;
-          existing.brand          = sb.brand  || existing.brand;
-          existing.model          = sb.model  || existing.model;
-          existing.total_km       = sb.total_km;
-          existing.strava_gear_id = sb.strava_gear_id;
-        } else {
-          // Crear nueva bici en el estado local
-          const id = 'bike_strava_' + sb.strava_gear_id;
-          st.bikes.push({
-            id, type: bikeType,
-            name:           sb.name,
-            brand:          sb.brand  || '',
-            model:          sb.model  || '',
-            year:           new Date().getFullYear(),
-            strava_gear_id: sb.strava_gear_id,
-            total_km:       sb.total_km,
-            components:     mkComps(id, bikeType),
-          });
-        }
-      });
-
-      save();
+      // Recargar desde backend para obtener UUIDs reales y km correctos
+      await BackendSync.loadGarage();
+      try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) { st = null; }
+      if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
       recalc();
       render();
-      toast('green', '✅ Bicis importadas', data.message);
+      toast('green', '✅ Bicis importadas', data.message || `${data.bikes?.length || 0} bici(s) importadas de Strava`);
     } catch(e) {
       toast('red', 'Error', 'Sin conexión con el servidor');
     } finally {
@@ -1385,6 +1354,9 @@ const G = (() => {
         headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: bike.name, type: bike.type, brand: bike.brand, model: bike.model, year: bike.year, total_km: bike.total_km, strava_gear_id: bike.strava_gear_id }),
       }).catch(() => {});
+    } else if (bike.id && typeof BackendSync !== 'undefined') {
+      // ID no UUID (ej. bike_strava_*) — intentar persistir odómetro igualmente
+      BackendSync.updateBikeOdometer(bike.id, bike.total_km, bike.total_hours || 0).catch(() => {});
     }
     closeModal('m-edit-bike');
     toast('green','✅ Guardado', `${bike.name} configurada.`);
