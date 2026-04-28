@@ -881,7 +881,7 @@ const FileParser = {
         return resolve();
       }
       const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/fit-file-parser@1.9.0/dist/fit-file-parser.js';
+      script.src = 'https://cdn.jsdelivr.net/npm/fit-file-parser/dist/fit-parser.js';
       script.onload = () => resolve();
       script.onerror = () => reject(new Error('No se pudo descargar la librería FIT. Revisa tu conexión a internet.'));
       document.head.appendChild(script);
