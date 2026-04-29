@@ -23,6 +23,9 @@
     .activity-detail-panel.open { right: 0; }
     .panel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 199; }
     .panel-overlay.show { display: block; }
+    @media (max-width: 600px) {
+      .activity-detail-panel { width: 100vw; right: -100vw; padding: 16px; }
+    }
     .upload-progress { background: var(--bg-input); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
     .file-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
     .drag-active .upload-zone { border-color: var(--primary); background: rgba(255,107,53,0.08); }
