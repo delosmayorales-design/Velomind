@@ -23,8 +23,10 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 28px;
-      max-width: 580px;
+      padding: 32px;
+      max-width: 700px;
+      width: 100%;
+      margin: 0 auto;
       position: relative;
       overflow: hidden;
     }
@@ -229,6 +231,18 @@
     .log-line.ok { color: #34d399; }
     .log-line.err { color: #f87171; }
     .log-line.info { color: #38bdf8; }
+
+    /* ── Responsive ─────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .integration-card { padding: 20px 16px; border-radius: var(--radius-md); }
+      .int-features { grid-template-columns: 1fr; gap: 8px; }
+      .btn-strava-connect,
+      .btn-strava-sync,
+      .btn-disconnect { width: 100%; justify-content: center; }
+      .token-row { flex-direction: column; }
+      .token-row input { font-size: 16px; }
+      .btn-save-token { width: 100%; padding: 11px; }
+    }
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
