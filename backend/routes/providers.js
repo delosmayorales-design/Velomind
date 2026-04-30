@@ -436,6 +436,33 @@ rowsToInsert.push({
   }
 });
 
+// ─── SAVE MANUAL STRAVA TOKEN ───────────────────────────
+
+router.post('/strava/save-token', requireAuth, async (req, res) => {
+  const { access_token } = req.body;
+  if (!access_token || access_token.length < 20) {
+    return res.status(400).json({ error: 'Token inválido' });
+  }
+  try {
+    // Verificar el token consultando el perfil del atleta en Strava
+    const r = await fetch('https://www.strava.com/api/v3/athlete', {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+    if (!r.ok) return res.status(401).json({ error: 'El token de Strava no es válido o ha expirado' });
+
+    const athlete = await r.json();
+
+    await supabase.from('users').update({
+      strava_token: access_token,
+      strava_athlete_id: String(athlete?.id || ''),
+    }).eq('id', req.user.id);
+
+    res.json({ message: 'Token guardado', athlete });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── IMPORT SINGLE ACTIVITY BY ID OR URL ────────────────
 
 router.post('/strava/import-activity', requireAuth, async (req, res) => {
