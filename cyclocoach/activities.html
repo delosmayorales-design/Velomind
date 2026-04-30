@@ -489,9 +489,10 @@ function generateCoachComment(act, pmcSnap, allActs) {
 
     } else {
       // Día de entrenamiento — comparar TSS
-      const tssDiff = plannedTSS ? Math.round(((tss - plannedTSS) / plannedTSS) * 100) : null;
-      const wDiff   = (act.avg_power && plannedW) ? act.avg_power - plannedW : null;
-      const durDiff = (durMin && plannedDur) ? durMin - plannedDur : null;
+      const tssDiff  = plannedTSS ? Math.round(((tss - plannedTSS) / plannedTSS) * 100) : null;
+      const actPower = act.np || act.avg_power; // NP refleja mejor la intensidad real vs objetivo IF
+      const wDiff    = (actPower && plannedW) ? actPower - plannedW : null;
+      const durDiff  = (durMin && plannedDur) ? durMin - plannedDur : null;
       const sessName = planSess.name || planSess.type || 'la sesión';
 
       // Frase 1 — ejecución general vs plan
@@ -512,9 +513,9 @@ function generateCoachComment(act, pmcSnap, allActs) {
       // Frase 2 — potencia / duración
       if (wDiff !== null && Math.abs(wDiff) >= 10) {
         if (wDiff > 0) {
-          parts.push(`Has promediado ${act.avg_power}W, ${wDiff}W por encima de los ${plannedW}W objetivo — buena señal de forma si fue sostenido, pero vigila no hipotecar los próximos días.`);
+          parts.push(`Has promediado ${actPower}W NP, ${wDiff}W por encima de los ${plannedW}W objetivo — buena señal de forma si fue sostenido, pero vigila no hipotecar los próximos días.`);
         } else {
-          parts.push(`Te has quedado ${Math.abs(wDiff)}W por debajo de los ${plannedW}W previstos (${act.avg_power}W reales) — puede ser fatiga acumulada, calor o terreno; analiza el porqué.`);
+          parts.push(`Te has quedado ${Math.abs(wDiff)}W por debajo de los ${plannedW}W previstos (${actPower}W NP reales) — puede ser fatiga acumulada, calor o terreno; analiza el porqué.`);
         }
       } else if (durDiff !== null && Math.abs(durDiff) >= 10) {
         if (durDiff > 0) {
@@ -523,7 +524,7 @@ function generateCoachComment(act, pmcSnap, allActs) {
           parts.push(`Has recortado ${Math.abs(durDiff)} minutos de los ${plannedDur}' programados — si fue por cansancio real, es la decisión correcta.`);
         }
       } else if (wDiff !== null) {
-        parts.push(`Potencia ajustada al objetivo: ${act.avg_power}W vs ${plannedW}W previstos — buena ejecución técnica.`);
+        parts.push(`Potencia ajustada al objetivo: ${actPower}W NP vs ${plannedW}W previstos — buena ejecución técnica.`);
       }
 
       // Frase 3 — impacto en el resto de la semana
