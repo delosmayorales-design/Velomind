@@ -348,9 +348,14 @@ const Auth = (() => {
     let user = await requireAuth();
 
     // ─── Redirección Inteligente (Omitir Onboarding) ─────────────
-    const isProfilePage = window.location.pathname.endsWith('index.html') || window.location.pathname.endsWith('/') || window.location.pathname.endsWith('/cyclocoach/');
-    const fromLogin = document.referrer.includes('login.html');
-    if (isProfilePage && fromLogin && user && user.ftp) {
+    const isProfilePage = window.location.pathname.endsWith('index.html') ||
+                          window.location.pathname.endsWith('/') ||
+                          window.location.pathname.endsWith('/cyclocoach/');
+    // Saltar perfil si el usuario ya tiene datos: vino desde login O navega directamente
+    // (solo mostrar el perfil si viene desde el sidebar con referrer interno de la app)
+    const fromSidebar = document.referrer.includes(window.location.hostname) &&
+                        !document.referrer.includes('login.html');
+    if (isProfilePage && !fromSidebar && user && user.ftp && user.weight) {
       window.location.replace('activities.html');
       return user;
     }
