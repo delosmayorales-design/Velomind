@@ -1463,42 +1463,6 @@ function resetAdapt(idx) {
   input.focus();
 }
 
-// ── Guardar adaptación en el plan ─────────────────────────────
-function buildAdaptedIntervals(t, durationMin) {
-  const ftp  = AppState.athlete?.ftp || 200;
-  const pct  = r => Math.round(ftp * r);
-  const warm = Math.min(10, Math.max(5, Math.floor(durationMin * 0.15)));
-  const cool = Math.min(10, Math.max(5, Math.floor(durationMin * 0.15)));
-  const main = Math.max(10, durationMin - warm - cool);
-  const intL = (t.intensidad || '').toLowerCase();
-
-  let watts, zone, rpm, desc;
-  if (intL.includes('z1') || intL.includes('recupera')) {
-    watts = `${pct(0.45)}–${pct(0.55)} W`; zone = 'Z1 Recuperación activa'; rpm = '90-100 rpm';
-    desc  = t.descripcion || 'Pedaleo muy suave, sin estrés.';
-  } else if (intL.includes('z2') || intL.includes('aeróbic') || intL.includes('aerobic') || intL.includes('suave') || intL.includes('fond')) {
-    watts = `${pct(0.56)}–${pct(0.75)} W`; zone = 'Z2 Aeróbico'; rpm = '85-92 rpm';
-    desc  = t.descripcion || 'Esfuerzo aeróbico continuo, conversación posible.';
-  } else if (intL.includes('z3') || intL.includes('tempo') || intL.includes('sweetspot')) {
-    watts = `${pct(0.76)}–${pct(0.90)} W`; zone = 'Z3 Tempo / Sweetspot'; rpm = '88-92 rpm';
-    desc  = t.descripcion || '"Comfortably hard". Respiración elevada pero rítmica.';
-  } else if (intL.includes('z4') || intL.includes('umbral') || intL.includes('threshold')) {
-    watts = `${pct(0.91)}–${pct(1.05)} W`; zone = 'Z4 Umbral'; rpm = '85-90 rpm';
-    desc  = t.descripcion || 'Esfuerzo sostenido en el umbral. Mantén la potencia.';
-  } else if (intL.includes('z5') || intL.includes('vo2') || intL.includes('vo₂')) {
-    watts = `${pct(1.06)}–${pct(1.20)} W`; zone = 'Z5 VO₂ Max'; rpm = '90-100 rpm';
-    desc  = t.descripcion || 'Alta intensidad. FC próxima al máximo.';
-  } else {
-    watts = `${pct(0.56)}–${pct(0.75)} W`; zone = 'Z2 Aeróbico'; rpm = '85-92 rpm';
-    desc  = t.descripcion || 'Esfuerzo aeróbico suave. Adaptación por recuperación.';
-  }
-  return [
-    { label: 'Calentamiento',    dur: `${warm} min`, watts: `${pct(0.50)}–${pct(0.60)} W`, rpm: '85-90 rpm', desc: 'Activación suave.' },
-    { label: zone,               dur: `${main} min`, watts, rpm, desc },
-    { label: 'Vuelta a la calma',dur: `${cool} min`, watts: `< ${pct(0.55)} W`,             rpm: 'libre',     desc: 'Reducir gradualmente.' },
-  ];
-}
-
 async function saveAdaptation(idx) {
   const t = _adaptCache[idx];
   if (!t || !currentPlan) return;
@@ -1511,7 +1475,6 @@ async function saveAdaptation(idx) {
 
   // --- Actualización completa de la sesión ---
   sess.name        = t.titulo || sess.name;
-  sess.description = t.descripcion || sess.description;
   sess.advice      = t.razon || sess.advice;
   sess._adapted    = true;
 
@@ -1524,9 +1487,12 @@ async function saveAdaptation(idx) {
     sess.isRest      = true;
     sess.durationMin = 0;
     sess.intervals   = [];
+    sess.alt_intervals = [];
     sess.name        = 'Descanso';
     sess.type        = 'recovery';
     sess.advice      = t.razon || 'Día de descanso. Escucha a tu cuerpo y prioriza la recuperación.';
+    sess.description = 'Descanso.';
+    sess.alt_description = '';
     sess.tss         = 0;
     sess.ifTarget    = 0;
   } else {
@@ -1543,8 +1509,30 @@ async function saveAdaptation(idx) {
     else if (intL.includes('fuerza')) sess.type = 'strength';
 
     // Reconstruir intervalos si la sesión fue modificada
-    if (t.recomendacion !== 'mantener') {
-      sess.intervals = buildAdaptedIntervals(t, sess.durationMin);
+    if (t.recomendacion !== 'mantener' && window.TrainingPlanGenerator) {
+      sess.intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'main');
+      sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'alt');
+      
+      const buildDesc = (ivs) => {
+        let parts = [];
+        for (let idx = 0; idx < ivs.length; idx++) {
+          let i = ivs[idx];
+          let repsMatch = i.label.match(/\(×(\d+)/);
+          let baseLabel = i.label.split(' (')[0].trim();
+          let durVal = i.dur.replace(' c/u', '').trim();
+          if (repsMatch) {
+            let next = ivs[idx + 1];
+            if (next && next.label.toLowerCase().match(/recuperación|descanso/) && next.label.includes('(×')) {
+               parts.push(`${repsMatch[1]}×${durVal} ${baseLabel} (rec: ${next.dur.replace(' c/u', '').trim()})`); idx++;
+            } else { parts.push(`${repsMatch[1]}×${durVal} ${baseLabel}`); }
+          } else { parts.push(`${durVal} ${baseLabel}`); }
+        }
+        return parts.join(' + ');
+      };
+      sess.description = buildDesc(sess.intervals);
+      sess.alt_description = buildDesc(sess.alt_intervals);
+    } else if (t.recomendacion === 'mantener') {
+      sess.description = t.descripcion || sess.description;
     }
   }
 
