@@ -435,11 +435,12 @@ function setStatus(msg) {
 }
 
 function getFormStatus(tsb) {
-  if (tsb > 25)  return { text: 'Pico de Forma',   color: '#10B981' };
-  if (tsb > 10)  return { text: 'Fresco',          color: '#3B82F6' };
-  if (tsb > -10) return { text: 'Mantenimiento',   color: '#F59E0B' };
-  if (tsb > -20) return { text: 'Cargado',         color: '#EF4444' };
-  return           { text: 'Sobreentrenado',       color: '#DC2626' };
+  if (tsb > 25)  return { text: '🚀 Muy fresco',        color: '#64a0ff' };
+  if (tsb > 5)   return { text: '✅ Fresco',            color: '#00C882' };
+  if (tsb > -10) return { text: '💪 En forma',          color: '#b4e600' };
+  if (tsb > -20) return { text: '⚖️ Carga alta',        color: '#FFC800' };
+  if (tsb > -30) return { text: '🔥 Fatiga acumulada',  color: '#FF9632' };
+  return           { text: '🛑 Sobreentrenado',         color: '#ff4757' };
 }
 
 function powerZoneIdx(power, ftp) {

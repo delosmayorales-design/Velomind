@@ -891,11 +891,12 @@ function renderFormState(s, training) {
   const tsbSign = tsb > 0 ? '+' : '';
 
   function tsbState(v) {
-    if (v <= -30) return { label:'Agotado',    emoji:'😢', color:'#ff4757', bg:'rgba(255,71,87,.14)' };
-    if (v <= -10) return { label:'Fatigado',   emoji:'😓', color:'#F97316', bg:'rgba(249,115,22,.14)' };
-    if (v <=   5) return { label:'Neutro',     emoji:'😐', color:'#94a3b8', bg:'rgba(148,163,184,.12)' };
-    if (v <=  25) return { label:'Fresco',     emoji:'💪', color:'#00C882', bg:'rgba(0,200,130,.14)' };
-    return              { label:'Muy fresco',  emoji:'🚀', color:'#38BDF8', bg:'rgba(56,189,248,.14)' };
+    if (v > 25)  return { label:'Muy fresco',       emoji:'🚀', color:'#64a0ff', bg:'rgba(100,160,255,.14)' };
+    if (v > 5)   return { label:'Fresco',           emoji:'✅', color:'#00C882', bg:'rgba(0,200,130,.14)'   };
+    if (v > -10) return { label:'En forma',         emoji:'💪', color:'#b4e600', bg:'rgba(180,230,0,.14)'   };
+    if (v > -20) return { label:'Carga alta',       emoji:'⚖️', color:'#FFC800', bg:'rgba(255,200,0,.14)'   };
+    if (v > -30) return { label:'Fatiga acumulada', emoji:'🔥', color:'#FF9632', bg:'rgba(255,150,50,.14)'  };
+    return             { label:'Sobreentrenado',    emoji:'🛑', color:'#ff4757', bg:'rgba(255,71,87,.14)'   };
   }
   const tsbs = tsbState(tsb);
 
@@ -2639,12 +2640,12 @@ function renderWeatherDay(day) {
 let _ftpWindCache = null; // { windDays, lat, lon }
 
 function _ftpFormLabel(tsb) {
-  if (tsb > 30)  return { t:'Muy descansado', c:'#38BDF8', tip:'Haz 1-2 días de activación antes del test.' };
-  if (tsb >= 10) return { t:'Forma pico ✓',   c:'#10b981', tip:'Condición óptima para un test ahora.' };
-  if (tsb >= 5)  return { t:'Buena forma',     c:'#C4EF44', tip:'Aceptable. Un día más de descarga sería ideal.' };
-  if (tsb >= -5) return { t:'Neutro',          c:'#94a3b8', tip:'Necesitas 2-3 días de descarga antes del test.' };
-  if (tsb >= -20)return { t:'Fatigado',        c:'#F97316', tip:'Descansa esta semana antes de testear.' };
-  return               { t:'Muy fatigado',     c:'#ff4757', tip:'Espera al menos una semana de descarga.' };
+  if (tsb > 25)  return { t:'Muy fresco',        c:'#64a0ff', tip:'Haz 1-2 días de activación antes del test.' };
+  if (tsb > 5)   return { t:'Fresco ✓',          c:'#00C882', tip:'Condición óptima para un test ahora.' };
+  if (tsb > -10) return { t:'En forma',          c:'#b4e600', tip:'Aceptable. Un día más de descarga sería ideal.' };
+  if (tsb > -20) return { t:'Carga alta',        c:'#FFC800', tip:'Necesitas 2-3 días de descarga antes del test.' };
+  if (tsb > -30) return { t:'Fatiga acumulada',  c:'#FF9632', tip:'Descansa esta semana antes de testear.' };
+  return               { t:'Sobreentrenado',     c:'#ff4757', tip:'Espera al menos una semana de descarga.' };
 }
 
 function _ftpProtocolHtml() {
