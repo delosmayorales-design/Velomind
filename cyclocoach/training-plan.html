@@ -49,6 +49,9 @@
     }
     .session-card-item:hover { border-color: var(--border-light); }
     .session-card-item.rest { opacity: 0.6; }
+    .session-card-item.completed { border-color: rgba(16,185,129,.35); background: rgba(16,185,129,.025); }
+    .session-card-item.completed .session-row { opacity: 0.82; }
+    .done-badge { display:inline-flex;align-items:center;gap:4px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#10b981;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:8px;vertical-align:middle; }
 
     .session-row {
       display: flex; gap: 16px; align-items: center;
@@ -1302,8 +1305,11 @@ function renderPlan(plan, athlete) {
         `}
       </div>` : ''}` : '';
 
+    const isPastOrToday = i <= todayIdx;
+    const showDoneBtn   = !sess.isRest && isPastOrToday;
+
     return `
-      <div class="session-card-item">
+      <div class="session-card-item${sess.completed ? ' completed' : ''}">
         <div class="session-row" onclick="showSessionDetail(${i})">
           <div class="day-badge">
             <div class="dn">${sess.day.substring(0, 3)}</div>
@@ -1315,6 +1321,7 @@ function renderPlan(plan, athlete) {
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:${color};margin-bottom:2px">
               ${sess.name || sess.type || 'Sesión'}
               ${sess._adapted ? `<span style="margin-left:6px;background:rgba(56,189,248,.15);color:#38BDF8;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700;text-transform:none">✏️ Adaptada</span>` : ''}
+              ${sess.completed ? `<span class="done-badge"><i class="fas fa-check"></i> Hecha</span>` : ''}
             </div>
             <div style="font-size:12px;color:var(--text-muted);margin-bottom:${sess.terrain ? '4px' : '8px'};opacity:.8;line-height:1.4">${sess.description}</div>
             ${sess.terrain ? `<div style="font-size:11px;color:${color};margin-bottom:8px;font-weight:600;opacity:.9">${sess.terrain}</div>` : ''}
@@ -1334,7 +1341,7 @@ function renderPlan(plan, athlete) {
           <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
         </div>
         ${execBadge}
-        <div style="display:flex; gap:8px; padding:0 20px 16px 20px; flex-wrap:wrap;">
+        <div style="display:flex; gap:8px; padding:0 20px 16px 20px; flex-wrap:wrap; align-items:center;">
             <button onclick="event.stopPropagation();startAudioCoach(${i})" title="Coach de audio — narración del entrenamiento"
               style="background:rgba(196,239,68,.12);border:1px solid rgba(196,239,68,.3);color:#C4EF44;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:6px">
               <i class="fas fa-headphones"></i> Coach Audio
@@ -1347,6 +1354,11 @@ function renderPlan(plan, athlete) {
               style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.35);color:#818cf8;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:6px">
               <i class="fas fa-bolt"></i> Zwift .zwo
             </button>
+            ${showDoneBtn ? `
+            <button onclick="event.stopPropagation();markSessionDone(${i})"
+              style="margin-left:auto;background:${sess.completed ? 'rgba(16,185,129,.15)' : 'transparent'};border:1px solid ${sess.completed ? 'rgba(16,185,129,.4)' : 'var(--border)'};color:${sess.completed ? '#10b981' : 'var(--text-muted)'};border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:6px;transition:all .2s">
+              <i class="fas ${sess.completed ? 'fa-circle-check' : 'fa-circle'}"></i> ${sess.completed ? 'Hecha' : 'Marcar como hecha'}
+            </button>` : ''}
         </div>
         ${adaptZone}
       </div>`;
@@ -1355,6 +1367,15 @@ function renderPlan(plan, athlete) {
   renderPrinciples(plan.phase);
   renderProgressionChart(metrics.ctl || 40, plan.targetTSS, plan.phase);
   renderFTPAdvisor();
+}
+
+// ── Marcar sesión como completada ────────────────────────────
+function markSessionDone(idx) {
+  if (!currentPlan?.sessions?.[idx]) return;
+  const sess = currentPlan.sessions[idx];
+  sess.completed = !sess.completed;
+  savePlan();
+  renderPlan(currentPlan, AppState.athlete);
 }
 
 // ── Adapt inline ─────────────────────────────────────────────
