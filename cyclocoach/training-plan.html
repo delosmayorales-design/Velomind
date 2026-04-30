@@ -1528,7 +1528,7 @@ async function saveAdaptation(idx) {
     }
   }
 
-  renderPlan(currentPlan);
+  renderPlan(currentPlan, AppState.athlete);
   await silentSavePlan();
   showToast('✅ Sesión adaptada guardada — coach de audio actualizado', 'var(--accent)');
 }
