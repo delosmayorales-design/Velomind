@@ -457,7 +457,8 @@ async function saveManualActivity() {
   }
 }
 
-function generateCoachComment(act, pmcSnap, allActs) {
+function generateCoachComment() { return null; }
+function _generateCoachComment_disabled(act, pmcSnap, allActs) {
   const ftp    = AppState.athlete?.ftp || 200;
   const tss    = act.tss || 0;
   const ifVal  = act.if_value || (act.np && ftp ? +(act.np / ftp).toFixed(2) : null);
@@ -649,11 +650,6 @@ function showActivityDetail(actId) {
       </div>
     </div>
 
-    ${coachComment ? `
-    <div style="background:linear-gradient(135deg,rgba(158,214,43,0.08),rgba(158,214,43,0.03));border:1px solid rgba(158,214,43,0.22);border-radius:12px;padding:14px 16px;margin-bottom:16px">
-      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#9ED62B;margin-bottom:8px"><i class="fas fa-comment-dots" style="margin-right:5px"></i>Nota del entrenador</div>
-      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin:0">${coachComment}</p>
-    </div>` : ''}
 
     <!-- GRUPO 1: ACTIVIDAD -->
     <div style="border-left:3px solid #38BDF8;padding-left:10px;margin-bottom:12px">
