@@ -209,22 +209,36 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
 
     const ftp = Math.max(1, user.ftp || 200);
 
-    // OBTENER DETALLE de las 5 actividades más recientes para asegurar potencia, cadencia y
-    // calorías completos (Strava a veces los omite en el resumen de lista).
-    // Strava devuelve las actividades más recientes primero, así que acts[0..4] = las 5 últimas.
-    const detailLimit = Math.min(acts.length, 5);
-    for (let i = 0; i < detailLimit; i++) {
-      if (!acts[i]?.id) continue;
-      try {
-        const detRes = await fetch(`https://www.strava.com/api/v3/activities/${acts[i].id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (detRes.ok) {
-          const detail = await detRes.json();
-          Object.assign(acts[i], detail); // Fusiona los datos completos sobre el resumen
+    // OBTENER DETALLE para actividades con potenciómetro pero sin NP en el resumen.
+    // Strava a veces omite `weighted_average_watts` en la lista.
+    // Limitamos a 15 peticiones de detalle para no agotar el rate limit (100 req / 15 min).
+    let detailRequests = 0;
+    const DETAIL_REQUEST_LIMIT = 15;
+
+    // acts está ordenado de más antiguo a más reciente, pero para obtener detalle
+    // priorizamos las más nuevas, que son las que el usuario mira primero.
+    const actsToDetail = [...acts].reverse();
+
+    for (const act of actsToDetail) {
+      if (detailRequests >= DETAIL_REQUEST_LIMIT) break;
+
+      // Condición: tiene potenciómetro, pero el NP no vino en el resumen de la lista.
+      const needsDetail = act.device_watts && !act.weighted_average_watts;
+      
+      if (needsDetail) {
+        try {
+          const detRes = await fetch(`https://www.strava.com/api/v3/activities/${act.id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (detRes.ok) {
+            const detail = await detRes.json();
+            Object.assign(act, detail); // Fusiona los datos completos
+            detailRequests++;
+            console.log(`[Strava Sync] ✨ Detalle obtenido para act ${act.id} (faltaba NP)`);
+          }
+        } catch (e) {
+          console.error(`[Strava Sync] Error obteniendo detalle para ${act.id}:`, e.message);
         }
-      } catch (e) {
-        console.error('[Strava Sync] Error obteniendo detalle:', e.message);
       }
     }
 

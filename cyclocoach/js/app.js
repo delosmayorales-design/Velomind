@@ -1711,8 +1711,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const mobileStyle = document.createElement('style');
   mobileStyle.innerHTML = `
     @media (max-width: 768px) {
-      /* Prevenir desbordamiento de pantalla (scroll horizontal accidental) */
-      html, body { overflow-x: hidden !important; width: 100vw !important; }
+      /* Prevenir desbordamiento de pantalla (scroll horizontal accidental). Evitamos 100vw que puede dar problemas. */
+      html, body { overflow-x: hidden; }
       * { box-sizing: border-box !important; }
 
       /* Menú Lateral (Sidebar) Off-Canvas */
@@ -1843,6 +1843,25 @@ document.addEventListener('DOMContentLoaded', () => {
         width: 100% !important;
         max-width: 100% !important;
       }
+
+      /* --- Manejo de Modales (Ventanas emergentes como la de datos de actividad) --- */
+      /* Clase que se añade al <body> con JS al abrir un modal */
+      body.modal-open {
+        overflow: hidden;
+        /* En iOS, a veces se necesita position:fixed para bloquear el scroll del fondo.
+           Descomentar si 'overflow:hidden' no es suficiente. */
+        /* position: fixed; */
+        /* width: 100%; */
+      }
+
+      /* Contenedor del modal que permite scroll interno */
+      .modal-scroll-content {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
+        max-height: 85vh; /* Altura máxima antes de que aparezca el scroll */
+        padding: 1px; /* Evita colapso de márgenes */
+      }
+      /* --- Fin de manejo de Modales --- */
       
       /* Ajustar notificaciones flotantes (Toasts) para no chocar con el menú */
       .toast-wrap { bottom: 80px !important; right: 16px !important; }
