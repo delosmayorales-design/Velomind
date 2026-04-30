@@ -13,7 +13,7 @@
     html[data-theme="light"] { color-scheme: light; background-color: #f3f4f6; }
   </style>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Actividades — VeloMind</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
   <link rel="stylesheet" href="css/style.css">
@@ -24,7 +24,7 @@
     .panel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 199; }
     .panel-overlay.show { display: block; }
     @media (max-width: 600px) {
-      .activity-detail-panel { width: 100vw; right: -100vw; padding: 16px; }
+      .activity-detail-panel { width: 100vw; right: -100vw; padding: 16px; padding-bottom: max(80px, calc(env(safe-area-inset-bottom) + 70px)); height: 100vh; height: 100dvh; }
     }
     .upload-progress { background: var(--bg-input); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
     .file-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
