@@ -1476,14 +1476,14 @@ Responde con este JSON exacto:
   "intensidad": "string (ej: Z2 130-145W, Umbral 260W, recuperación activa)",
   "descripcion": "string (2-3 frases concretas: qué hacer, cómo, con vatios reales)",
   "razon": "string (1 frase: por qué esta adaptación dado el estado del atleta)",
-  "nutricion": "string (1 frase: qué comer/beber ${diaRef.toLowerCase()}"
+  "nutricion": "string (1 frase: qué comer/beber ${diaRef.toLowerCase()})"
 }`;
     
     const result = await callAI(systemPrompt, userMsg, { max_tokens: 700, temperature: 0.4 });
 
     // La IA puede devolver el objeto anidado, lo extraemos si es necesario.
-    if (!result.recomendacion) {
-      const nested = Object.values(result).find(v => v && typeof v === 'object' && v.recomendacion);
+    if (!result || !result.recomendacion) {
+      const nested = result ? Object.values(result).find(v => v && typeof v === 'object' && v.recomendacion) : null;
       if (nested) {
         console.log('[Today Adaptation] result:', JSON.stringify(nested));
         return res.json({ ok: true, today: nested });
@@ -1751,13 +1751,14 @@ Devuelve EXACTAMENTE este JSON:
 NOTA: 'modifications' DEBE contener las alteraciones exactas para los índices reportados. Asegúrate de que los dayIndex devueltos estén entre 0 y 6.`;
 
     const result = await callAI(systemPrompt, userMsg, { max_tokens: 1500, temperature: 0.3 });
-    if (!result || !result.modifications) return res.status(500).json({ error: 'La IA no devolvió un plan válido.' });
+    if (!result || !Array.isArray(result.modifications)) return res.status(500).json({ error: 'La IA no devolvió un plan válido.' });
 
     // Aplicar modificaciones al plan original preservando la estructura compleja (intervalos, etc)
     const newSessions = [...plan.sessions];
     for (const mod of result.modifications) {
-      if (mod.dayIndex >= 0 && mod.dayIndex < 7 && mod.changes) {
-        newSessions[mod.dayIndex] = { ...newSessions[mod.dayIndex], ...mod.changes };
+      const idx = Number(mod.dayIndex);
+      if (idx >= 0 && idx < 7 && mod.changes) {
+        newSessions[idx] = { ...newSessions[idx], ...mod.changes };
       }
     }
 
