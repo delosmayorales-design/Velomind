@@ -509,6 +509,11 @@ router.post('/strava/import-activity', requireAuth, async (req, res) => {
 
     const a = await r.json();
 
+    // Verificar que la actividad pertenece al usuario autenticado
+    if (user.strava_athlete_id && a.athlete?.id && String(a.athlete.id) !== String(user.strava_athlete_id)) {
+      return res.status(403).json({ error: 'Esta actividad pertenece a otro atleta. Solo puedes importar tus propias rutas.' });
+    }
+
     const typeStr = a.sport_type || a.type || '';
     const validCyclingTypes = ['Ride', 'VirtualRide', 'EBikeRide', 'MountainBikeRide', 'GravelRide'];
     if (!validCyclingTypes.includes(typeStr)) {
