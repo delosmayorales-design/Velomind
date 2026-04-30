@@ -510,17 +510,11 @@
     ? "http://localhost:3000/api"
     : "https://velomind-backend.onrender.com/api";
 
-  // Si ya hay sesión activa, saltar directamente a actividades
+  // Si ya hay sesión activa, ir siempre a actividades (el perfil se accede desde el sidebar)
   (function() {
     const token = localStorage.getItem('velomind_token');
     if (token && token !== 'null' && token !== 'undefined' && token.split('.').length === 3) {
-      try {
-        const user = JSON.parse(localStorage.getItem('velomind_user') || 'null');
-        const dest = (user?.ftp && user?.weight) ? 'activities.html' : 'index.html';
-        window.location.replace(dest);
-      } catch(_) {
-        window.location.replace('activities.html');
-      }
+      window.location.replace('activities.html');
     }
   })();
 </script>

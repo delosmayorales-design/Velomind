@@ -11,8 +11,11 @@
     }
   ],
   "routes": [
+    { "src": "^/$", "dest": "/cyclocoach/login.html" },
+    { "src": "^/index\\.html$", "dest": "/cyclocoach/login.html" },
     { "src": "/api/(.*)", "dest": "backend/server.js" },
     { "src": "/app/(.*)", "dest": "/cyclocoach/$1" },
+    { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/cyclocoach/login.html" }
   ]
 }
