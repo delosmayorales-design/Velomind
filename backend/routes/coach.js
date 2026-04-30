@@ -1730,6 +1730,7 @@ Tu tarea:
    - 🛑 ¡CRÍTICO!: Si el atleta dice que AYER no entrenó, DEBES establecer "isRest": true, "durationMin": 0 y "tss": 0 EXCLUSIVAMENTE para el índice de AYER (${ayerIdx}). ¡NUNCA modifiques HOY (${todayIdx}) como descanso si el reporte era sobre ayer!
    - 🚴 Si avisa que HOY o MAÑANA hará una salida distinta (o que entrenará en su día de descanso), reemplaza la sesión de ESE ÍNDICE EXACTO (poniendo "isRest": false si era descanso) con una ruta acorde, dándole consejos en la "description" y calculando "durationMin" y "tss" previstos.
    - IMPORTANTE: Si programas una sesión activa ("isRest": false), el "type" DEBE ser exactamente uno de: "recovery", "endurance", "tempo", "threshold", "vo2max", "sprint", "long", "race", "strength". Además, incluye obligatoriamente un "name" y un "emoji" (ej: "🔵", "🚴").
+   - ⚠️ ¡TÍTULOS OBLIGATORIOS!: Siempre que modifiques una sesión, DEBES enviar el campo "name" con el nuevo título descriptivo de la sesión. Si la cambias a descanso, pon "name": "Descanso". Si la cambias a rodaje suave, pon "name": "Rodaje Z2", etc.
 3. RECALCULA EL RESTO DE LA SEMANA (días futuros):
    - ⚠️ REASIGNACIÓN: Si el atleta no pudo hacer una sesión dura, muévela a un día futuro disponible.
    - 📉 COMPENSACIÓN: Si hará muchas horas de grupeta, asegúrate de que el día siguiente sea suave o descanso.
@@ -1740,7 +1741,7 @@ Devuelve EXACTAMENTE este JSON:
   "modifications": [
     {
       "dayIndex": 0,
-      "changes": { "isRest": true, "type": "recovery", "durationMin": 0, "tss": 0, "advice": "Descanso registrado." }
+      "changes": { "isRest": true, "name": "Descanso", "type": "recovery", "durationMin": 0, "tss": 0, "advice": "Descanso registrado." }
     },
     {
       "dayIndex": 3,

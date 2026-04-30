@@ -1518,6 +1518,7 @@ async function saveAdaptation(idx) {
     sess.isRest    = true;
     sess.durationMin = 0;
     sess.intervals = [];
+            sess.name      = 'Descanso';
   } else {
     sess.isRest    = false;
     sess.durationMin = newDuration;
@@ -1591,8 +1592,10 @@ async function recalculateWeek(idx) {
           if (s.isRest) {
             s.intervals = []; s.alt_intervals = [];
             s.description = 'Descanso.'; s.alt_description = '';
+            s.name = 'Descanso';
           } else if (window.TrainingPlanGenerator) {
             const ifT = s.ifTarget || 0.75;
+            if (!s.name || s.name.includes('Descanso')) s.name = (window.WORKOUT_TYPES && window.WORKOUT_TYPES[s.type]?.label) || s.type;
             s.intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'main');
             s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'alt');
             
