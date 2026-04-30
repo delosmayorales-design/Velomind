@@ -1217,7 +1217,7 @@ function renderPlan(plan, athlete) {
     const ifVal = sess.ifTarget || 0;
 
     // ── Execution badge: compara actividad real de ese día vs planificado ──
-    const sessDayKey = sessDate.toISOString().slice(0, 10);
+    const sessDayKey = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
     const isPast     = i < todayIdx;
     const isToday_ex = i === todayIdx;
     const dayActs    = (i <= todayIdx) ? (AppState.activities || []).filter(a => a.date && a.date.slice(0, 10) === sessDayKey) : [];
@@ -2800,7 +2800,7 @@ function openPostEntrenoModal(sessIdx) {
   mondayDate.setDate(mondayDate.getDate() - (mondayDate.getDay() || 7) + 1);
   const sessDate = new Date(mondayDate);
   sessDate.setDate(mondayDate.getDate() + sessIdx);
-  const sessDayKey = sessDate.toISOString().slice(0, 10);
+  const sessDayKey = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
 
   const acts = (AppState.activities || []).filter(a => a.date && a.date.slice(0, 10) === sessDayKey);
 
