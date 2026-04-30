@@ -221,11 +221,23 @@
 <script>
 var allActivities = [];
 let zoneChartInst = null;
+let trainingPlan   = null;
 
 async function initActivities() {
   await AppState.init();
   renderAthleteSidebar();
   await loadActivities();
+  // Cargar plan de entrenamiento para comparar con actividades
+  try {
+    const r = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() });
+    if (r.ok) { const d = await r.json(); if (d?.sessions) trainingPlan = d; }
+  } catch(_) {}
+  if (!trainingPlan) {
+    try {
+      const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan') || 'null');
+      if (local?.sessions) trainingPlan = local;
+    } catch(_) {}
+  }
 }
 
 function renderAthleteSidebar() {
@@ -443,64 +455,143 @@ async function saveManualActivity() {
 }
 
 function generateCoachComment(act, pmcSnap, allActs) {
-  const ftp       = AppState.athlete?.ftp || 200;
-  const tss       = act.tss || 0;
-  const ifVal     = act.if_value || (act.np && ftp ? +(act.np / ftp).toFixed(2) : null);
-  const durMin    = Math.round((act.duration || 0) / 60);
-  const vi        = (act.np && act.avg_power) ? act.np / act.avg_power : null;
-  const ctl       = typeof pmcSnap?.ctl === 'number' ? Math.round(pmcSnap.ctl) : null;
-  const tsb       = typeof pmcSnap?.tsb === 'number' ? Math.round(pmcSnap.tsb) : null;
+  const ftp    = AppState.athlete?.ftp || 200;
+  const tss    = act.tss || 0;
+  const ifVal  = act.if_value || (act.np && ftp ? +(act.np / ftp).toFixed(2) : null);
+  const durMin = Math.round((act.duration || 0) / 60);
+  const vi     = (act.np && act.avg_power) ? act.np / act.avg_power : null;
+  const ctl    = typeof pmcSnap?.ctl === 'number' ? Math.round(pmcSnap.ctl) : null;
+  const tsb    = typeof pmcSnap?.tsb === 'number' ? Math.round(pmcSnap.tsb) : null;
 
-  const prevActs  = [...allActs]
-    .filter(a => a.id !== act.id && a.date < act.date)
-    .sort((a, b) => b.date.localeCompare(a.date));
-  const daysSince = prevActs.length
-    ? Math.round((new Date(act.date + 'T12:00:00') - new Date(prevActs[0].date + 'T12:00:00')) / 86400000)
-    : null;
-  const avgPrevTSS = prevActs.length
-    ? Math.round(prevActs.slice(0, 5).reduce((s, a) => s + (a.tss || 0), 0) / Math.min(prevActs.length, 5))
-    : null;
+  // ── Buscar sesión planificada para el día de la actividad ─────
+  const actDOW     = (new Date(act.date + 'T12:00:00').getDay() + 6) % 7; // 0=Lun … 6=Dom
+  const planSess   = trainingPlan?.sessions?.[actDOW] || null;
+  const weekTSS    = trainingPlan?.tss_target || trainingPlan?.targetTSS || 400;
+  const plannedTSS = planSess && !planSess.isRest
+    ? Math.round((planSess.tssShare || 0) * weekTSS) : null;
+  const plannedIF  = planSess?.ifTarget || null;
+  const plannedW   = planSess?.targetWatts || (plannedIF ? Math.round(ftp * plannedIF) : null);
+  const plannedDur = planSess?.durationMin || (plannedTSS && plannedIF
+    ? Math.round((plannedTSS / (Math.pow(plannedIF, 2) * 100)) * 60) : null);
 
   const parts = [];
 
-  // — Frase 1: contexto de la sesión —
-  if (!prevActs.length) {
-    parts.push(`Primera actividad registrada en VeloMind — ya tienes algo con lo que construir.`);
-  } else if (daysSince !== null && daysSince >= 4) {
-    if (ifVal && ifVal >= 0.70) {
-      parts.push(`Vuelta al trabajo después de ${daysSince} días, y has metido calidad directamente (IF ${ifVal.toFixed(2)}) — el cuerpo estaba listo.`);
+  // ══ RAMA A: hay plan → comparar plan vs realidad ══════════════
+  if (planSess) {
+
+    if (planSess.isRest) {
+      // Día de descanso en el plan
+      if (tss <= 30) {
+        parts.push(`Día de descanso en el plan y has rodado suave (${tss} TSS) — bien jugado, mueves las piernas sin acumular fatiga.`);
+      } else {
+        parts.push(`El plan pedía descanso hoy pero has entrenado con ${tss} TSS. Si el cuerpo lo pedía, vale — pero mañana asegúrate de recuperar de verdad.`);
+      }
+
     } else {
-      parts.push(`Primer día de vuelta tras ${daysSince} días de descanso: ${durMin} minutos controlados sin forzar, exactamente lo que toca al volver.`);
+      // Día de entrenamiento — comparar TSS
+      const tssDiff = plannedTSS ? Math.round(((tss - plannedTSS) / plannedTSS) * 100) : null;
+      const wDiff   = (act.avg_power && plannedW) ? act.avg_power - plannedW : null;
+      const durDiff = (durMin && plannedDur) ? durMin - plannedDur : null;
+      const sessName = planSess.name || planSess.type || 'la sesión';
+
+      // Frase 1 — ejecución general vs plan
+      if (tssDiff === null) {
+        parts.push(`El plan tenía programado "${sessName}" para hoy.`);
+      } else if (Math.abs(tssDiff) <= 10) {
+        parts.push(`El plan pedía "${sessName}" (${plannedTSS} TSS previstos) y lo has clavado: ${tss} TSS — ejecución limpia, exactamente lo que tocaba.`);
+      } else if (tssDiff > 30) {
+        parts.push(`El plan pedía "${sessName}" con ${plannedTSS} TSS y te has ido a ${tss} — un ${tssDiff}% por encima de lo programado. Revisa si ha sido terreno/calor o si te has pasado de intensidad.`);
+      } else if (tssDiff > 10) {
+        parts.push(`El plan pedía "${sessName}" (${plannedTSS} TSS) y has llegado a ${tss} — algo más de lo previsto, pero dentro de lo asumible si las sensaciones fueron buenas.`);
+      } else if (tssDiff < -30) {
+        parts.push(`El plan pedía "${sessName}" con ${plannedTSS} TSS y solo has llegado a ${tss} — te has quedado bastante corto. Si no era por las piernas, intenta compensarlo en la próxima sesión disponible.`);
+      } else {
+        parts.push(`El plan pedía "${sessName}" (${plannedTSS} TSS) y has hecho ${tss} TSS — ligero déficit respecto al objetivo, pero nada que no se compense.`);
+      }
+
+      // Frase 2 — potencia / duración
+      if (wDiff !== null && Math.abs(wDiff) >= 10) {
+        if (wDiff > 0) {
+          parts.push(`Has promediado ${act.avg_power}W, ${wDiff}W por encima de los ${plannedW}W objetivo — buena señal de forma si fue sostenido, pero vigila no hipotecar los próximos días.`);
+        } else {
+          parts.push(`Te has quedado ${Math.abs(wDiff)}W por debajo de los ${plannedW}W previstos (${act.avg_power}W reales) — puede ser fatiga acumulada, calor o terreno; analiza el porqué.`);
+        }
+      } else if (durDiff !== null && Math.abs(durDiff) >= 10) {
+        if (durDiff > 0) {
+          parts.push(`Has alargado ${durDiff} minutos sobre los ${plannedDur}' programados — extra de volumen que suma, siempre que la intensidad fuera suave en ese tramo.`);
+        } else {
+          parts.push(`Has recortado ${Math.abs(durDiff)} minutos de los ${plannedDur}' programados — si fue por cansancio real, es la decisión correcta.`);
+        }
+      } else if (wDiff !== null) {
+        parts.push(`Potencia ajustada al objetivo: ${act.avg_power}W vs ${plannedW}W previstos — buena ejecución técnica.`);
+      }
+
+      // Frase 3 — impacto en el resto de la semana
+      if (tssDiff !== null) {
+        if (tssDiff > 20 && tsb !== null) {
+          parts.push(`Con esta carga extra, si mañana hay sesión dura considera bajar la intensidad un escalón o añadir recuperación activa para no llegar saturado.`);
+        } else if (tssDiff < -20) {
+          const nextDays = (trainingPlan?.sessions || [])
+            .slice(actDOW + 1)
+            .filter(s => !s.isRest)
+            .map(s => s.name || s.type);
+          if (nextDays.length) {
+            parts.push(`Tienes ${nextDays[0]} por delante — aprovecha ese día para recuperar la carga que ha faltado hoy.`);
+          } else {
+            parts.push(`La semana sigue — aprovecha la siguiente sesión para recuperar la carga que ha faltado hoy.`);
+          }
+        } else {
+          parts.push(`La semana sigue en buen ritmo — ejecuta el plan del resto de días tal como está y acumularás una semana bien construida.`);
+        }
+      }
     }
-  } else if (tsb !== null && tsb < -20) {
-    parts.push(`Sesión con fatiga acumulada alta (TSB ${tsb}) — esto es construir de verdad, aunque el cuerpo lo note.`);
-  } else if (tss >= 100) {
-    parts.push(`Día grande con ${tss} TSS en ${durMin} minutos — una de las cargas más altas del registro.`);
-  } else if (ifVal && ifVal >= 0.78) {
-    parts.push(`Trabajo de calidad con IF ${ifVal.toFixed(2)} durante ${durMin} minutos — zona de umbral, el tipo de estímulo que mueve el FTP.`);
-  } else if (ifVal && ifVal >= 0.65) {
-    parts.push(`Sesión sólida de ${durMin} minutos con IF ${ifVal.toFixed(2)} — fondo-tempo dentro del rango óptimo de construcción.`);
-  } else if (durMin > 0) {
-    parts.push(`Rodaje de ${durMin} minutos de recuperación o Z2 — el trabajo invisible que permite aguantar los días duros.`);
-  }
 
-  // — Frase 2: calidad de ejecución —
-  if (vi !== null && vi >= 1.10 && tss >= 40) {
-    parts.push(`El VI de ${vi.toFixed(2)} refleja esfuerzos bien marcados — trabajo a intervalos o con desnivel notable.`);
-  } else if (vi !== null && vi < 1.06 && tss >= 50) {
-    parts.push(`Potencia muy constante (VI ${vi.toFixed(2)}) — señal de buen control del ritmo de principio a fin.`);
-  } else if (avgPrevTSS !== null && tss > avgPrevTSS * 1.2) {
-    parts.push(`Este TSS supera tu media reciente de ${avgPrevTSS} — has subido el listón respecto a los últimos entrenamientos.`);
-  }
+  // ══ RAMA B: sin plan → comentario contextual (anterior) ══════
+  } else {
+    const prevActs = [...allActs]
+      .filter(a => a.id !== act.id && a.date < act.date)
+      .sort((a, b) => b.date.localeCompare(a.date));
+    const daysSince = prevActs.length
+      ? Math.round((new Date(act.date + 'T12:00:00') - new Date(prevActs[0].date + 'T12:00:00')) / 86400000)
+      : null;
+    const avgPrevTSS = prevActs.length
+      ? Math.round(prevActs.slice(0, 5).reduce((s, a) => s + (a.tss || 0), 0) / Math.min(prevActs.length, 5))
+      : null;
 
-  // — Frase 3: tendencia y lo que viene —
-  if (ctl !== null && tsb !== null) {
-    if (tsb > 5 && tss >= 60) {
-      parts.push(`Estabas fresco (TSB +${tsb}) y lo has aprovechado — el fitness sigue creciendo en la dirección correcta.`);
-    } else if (tsb <= -25) {
-      parts.push(`Con TSB en ${tsb}, mañana es día de asimilar: 45' suaves o descanso, y en 48h estarás más fuerte que hoy.`);
-    } else if (ctl > 0) {
-      parts.push(`Tu fitness (CTL ${ctl}) sigue la tendencia adecuada — cada sesión así es un ladrillo más en la base.`);
+    if (!prevActs.length) {
+      parts.push(`Primera actividad registrada en VeloMind — ya tienes algo con lo que construir.`);
+    } else if (daysSince !== null && daysSince >= 4) {
+      parts.push(ifVal && ifVal >= 0.70
+        ? `Vuelta al trabajo después de ${daysSince} días, y has metido calidad directamente (IF ${ifVal.toFixed(2)}) — el cuerpo estaba listo.`
+        : `Primer día de vuelta tras ${daysSince} días de descanso: ${durMin} minutos controlados, exactamente lo que toca al volver.`);
+    } else if (tsb !== null && tsb < -20) {
+      parts.push(`Sesión con fatiga acumulada alta (TSB ${tsb}) — esto es construir de verdad, aunque el cuerpo lo note.`);
+    } else if (tss >= 100) {
+      parts.push(`Día grande con ${tss} TSS en ${durMin} minutos — una de las cargas más altas del registro.`);
+    } else if (ifVal && ifVal >= 0.78) {
+      parts.push(`Trabajo de calidad con IF ${ifVal.toFixed(2)} durante ${durMin} minutos — zona de umbral, el tipo de estímulo que mueve el FTP.`);
+    } else if (ifVal && ifVal >= 0.65) {
+      parts.push(`Sesión sólida de ${durMin} minutos con IF ${ifVal.toFixed(2)} — fondo-tempo bien dentro del rango de construcción.`);
+    } else if (durMin > 0) {
+      parts.push(`Rodaje de ${durMin} minutos de recuperación o Z2 — el trabajo invisible que permite aguantar los días duros.`);
+    }
+
+    if (vi !== null && vi >= 1.10 && tss >= 40) {
+      parts.push(`El VI de ${vi.toFixed(2)} refleja esfuerzos bien marcados — trabajo a intervalos o con desnivel notable.`);
+    } else if (vi !== null && vi < 1.06 && tss >= 50) {
+      parts.push(`Potencia muy constante (VI ${vi.toFixed(2)}) — señal de buen control del ritmo de principio a fin.`);
+    } else if (avgPrevTSS !== null && tss > avgPrevTSS * 1.2) {
+      parts.push(`Este TSS supera tu media reciente de ${avgPrevTSS} — has subido el listón respecto a los últimos entrenamientos.`);
+    }
+
+    if (ctl !== null && tsb !== null) {
+      if (tsb > 5 && tss >= 60) {
+        parts.push(`Estabas fresco (TSB +${tsb}) y lo has aprovechado — el fitness sigue creciendo.`);
+      } else if (tsb <= -25) {
+        parts.push(`Con TSB en ${tsb}, mañana es día de asimilar: 45' suaves o descanso, y en 48h estarás más fuerte que hoy.`);
+      } else if (ctl > 0) {
+        parts.push(`Tu fitness (CTL ${ctl}) sigue la tendencia adecuada — cada sesión así es un ladrillo más.`);
+      }
     }
   }
 
