@@ -18,6 +18,13 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <style>
+    @media (max-width: 840px) {
+      #stats-row        { grid-template-columns: repeat(2, 1fr) !important; }
+      #bw-main-grid     { grid-template-columns: 1fr !important; }
+      #bw-analysis-grid { grid-template-columns: 1fr !important; }
+    }
+  </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
 </head>
@@ -90,7 +97,7 @@
     </div>
 
     <!-- MAIN GRID: chart + form + log -->
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px">
+    <div id="bw-main-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px">
 
       <!-- CHART -->
       <div class="card">
@@ -155,7 +162,7 @@
     </div>
 
     <!-- WEIGHT vs W/KG ANALYSIS -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:20px">
+    <div id="bw-analysis-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:20px">
 
       <!-- W/kg calculator -->
       <div class="card">

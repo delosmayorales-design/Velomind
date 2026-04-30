@@ -109,6 +109,11 @@
     .spinner-dot:nth-child(2) { animation-delay:.15s; }
     .spinner-dot:nth-child(3) { animation-delay:.3s; }
     @keyframes spinBounce { 0%,80%,100%{transform:scale(.4);opacity:.4} 40%{transform:scale(1);opacity:1} }
+
+    @media (max-width: 840px) {
+      #nutr-period-grid   { grid-template-columns: 1fr !important; }
+      #common-errors-grid { grid-template-columns: 1fr !important; }
+    }
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
@@ -367,7 +372,7 @@
         </div>
         <div class="card mb-6">
           <div class="card-header"><div class="card-title">🧠 Periodización Nutricional</div></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+          <div id="nutr-period-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
             <div style="background:var(--bg-input);padding:16px;border-radius:var(--radius-md);border-left:3px solid var(--accent)">
               <div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:8px">🏗️ Fase Base</div>
               <div style="font-size:13px;color:var(--text-muted);line-height:1.6">CH moderados en días Z2. Fasted training para oxidación de grasas.<br><br><span style="color:var(--text-secondary)">CH: 4-5g/kg · Prot: 1.6g/kg</span></div>

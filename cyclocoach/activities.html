@@ -442,6 +442,71 @@ async function saveManualActivity() {
   }
 }
 
+function generateCoachComment(act, pmcSnap, allActs) {
+  const ftp       = AppState.athlete?.ftp || 200;
+  const tss       = act.tss || 0;
+  const ifVal     = act.if_value || (act.np && ftp ? +(act.np / ftp).toFixed(2) : null);
+  const durMin    = Math.round((act.duration || 0) / 60);
+  const vi        = (act.np && act.avg_power) ? act.np / act.avg_power : null;
+  const ctl       = typeof pmcSnap?.ctl === 'number' ? Math.round(pmcSnap.ctl) : null;
+  const tsb       = typeof pmcSnap?.tsb === 'number' ? Math.round(pmcSnap.tsb) : null;
+
+  const prevActs  = [...allActs]
+    .filter(a => a.id !== act.id && a.date < act.date)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const daysSince = prevActs.length
+    ? Math.round((new Date(act.date + 'T12:00:00') - new Date(prevActs[0].date + 'T12:00:00')) / 86400000)
+    : null;
+  const avgPrevTSS = prevActs.length
+    ? Math.round(prevActs.slice(0, 5).reduce((s, a) => s + (a.tss || 0), 0) / Math.min(prevActs.length, 5))
+    : null;
+
+  const parts = [];
+
+  // — Frase 1: contexto de la sesión —
+  if (!prevActs.length) {
+    parts.push(`Primera actividad registrada en VeloMind — ya tienes algo con lo que construir.`);
+  } else if (daysSince !== null && daysSince >= 4) {
+    if (ifVal && ifVal >= 0.70) {
+      parts.push(`Vuelta al trabajo después de ${daysSince} días, y has metido calidad directamente (IF ${ifVal.toFixed(2)}) — el cuerpo estaba listo.`);
+    } else {
+      parts.push(`Primer día de vuelta tras ${daysSince} días de descanso: ${durMin} minutos controlados sin forzar, exactamente lo que toca al volver.`);
+    }
+  } else if (tsb !== null && tsb < -20) {
+    parts.push(`Sesión con fatiga acumulada alta (TSB ${tsb}) — esto es construir de verdad, aunque el cuerpo lo note.`);
+  } else if (tss >= 100) {
+    parts.push(`Día grande con ${tss} TSS en ${durMin} minutos — una de las cargas más altas del registro.`);
+  } else if (ifVal && ifVal >= 0.78) {
+    parts.push(`Trabajo de calidad con IF ${ifVal.toFixed(2)} durante ${durMin} minutos — zona de umbral, el tipo de estímulo que mueve el FTP.`);
+  } else if (ifVal && ifVal >= 0.65) {
+    parts.push(`Sesión sólida de ${durMin} minutos con IF ${ifVal.toFixed(2)} — fondo-tempo dentro del rango óptimo de construcción.`);
+  } else if (durMin > 0) {
+    parts.push(`Rodaje de ${durMin} minutos de recuperación o Z2 — el trabajo invisible que permite aguantar los días duros.`);
+  }
+
+  // — Frase 2: calidad de ejecución —
+  if (vi !== null && vi >= 1.10 && tss >= 40) {
+    parts.push(`El VI de ${vi.toFixed(2)} refleja esfuerzos bien marcados — trabajo a intervalos o con desnivel notable.`);
+  } else if (vi !== null && vi < 1.06 && tss >= 50) {
+    parts.push(`Potencia muy constante (VI ${vi.toFixed(2)}) — señal de buen control del ritmo de principio a fin.`);
+  } else if (avgPrevTSS !== null && tss > avgPrevTSS * 1.2) {
+    parts.push(`Este TSS supera tu media reciente de ${avgPrevTSS} — has subido el listón respecto a los últimos entrenamientos.`);
+  }
+
+  // — Frase 3: tendencia y lo que viene —
+  if (ctl !== null && tsb !== null) {
+    if (tsb > 5 && tss >= 60) {
+      parts.push(`Estabas fresco (TSB +${tsb}) y lo has aprovechado — el fitness sigue creciendo en la dirección correcta.`);
+    } else if (tsb <= -25) {
+      parts.push(`Con TSB en ${tsb}, mañana es día de asimilar: 45' suaves o descanso, y en 48h estarás más fuerte que hoy.`);
+    } else if (ctl > 0) {
+      parts.push(`Tu fitness (CTL ${ctl}) sigue la tendencia adecuada — cada sesión así es un ladrillo más en la base.`);
+    }
+  }
+
+  return parts.slice(0, 3).join(' ') || null;
+}
+
 function showActivityDetail(actId) {
   const act = allActivities.find(a => a.id === actId);
   if (!act) return;
@@ -476,6 +541,7 @@ function showActivityDetail(actId) {
   const trimp  = act.avg_hr && act.duration ? Math.round((act.duration / 60) * (act.avg_hr / lthr) * 0.64 * Math.exp(1.92 * act.avg_hr / lthr)) : null;
 
   const sid = act.strava_id || (act.id?.startsWith('strava_') ? act.id.replace('strava_', '') : null);
+  const coachComment = generateCoachComment(act, pmcSnap, allActivities);
 
   document.getElementById('panel-content').innerHTML = `
     <!-- CABECERA -->
@@ -487,6 +553,12 @@ function showActivityDetail(actId) {
         <span style="font-size:11px;color:var(--text-muted)"><i class="far fa-calendar-alt"></i> ${Utils.formatDate(act.date)}</span>
       </div>
     </div>
+
+    ${coachComment ? `
+    <div style="background:linear-gradient(135deg,rgba(158,214,43,0.08),rgba(158,214,43,0.03));border:1px solid rgba(158,214,43,0.22);border-radius:12px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#9ED62B;margin-bottom:8px"><i class="fas fa-comment-dots" style="margin-right:5px"></i>Nota del entrenador</div>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin:0">${coachComment}</p>
+    </div>` : ''}
 
     <!-- GRUPO 1: ACTIVIDAD -->
     <div style="border-left:3px solid #38BDF8;padding-left:10px;margin-bottom:12px">
