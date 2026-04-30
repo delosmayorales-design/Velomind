@@ -1689,6 +1689,90 @@ const DashboardUI = {
   }
 };
 
+/* ══════════════════════════════════════════════════════════════
+   UI COMPONENTS — Modales y elementos reusables
+══════════════════════════════════════════════════════════════ */
+const UIComponents = {
+  /**
+   * Muestra un modal con los detalles de una actividad.
+   * Implementa el scroll interno para móvil y gestiona el estado del body.
+   * @param {object} activity - El objeto de la actividad a mostrar.
+   */
+  showActivityDetailsModal(activity) {
+    // Prevenir múltiples modales
+    const existingModal = document.querySelector('.activity-modal-overlay');
+    if (existingModal) existingModal.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'activity-modal-overlay';
+    overlay.style.cssText = `
+      position: fixed; inset: 0; z-index: 1001;
+      background: rgba(10, 11, 15, 0.8);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.2s ease-in-out;
+    `;
+
+    const close = () => {
+      overlay.style.opacity = '0';
+      setTimeout(() => {
+        overlay.remove();
+        document.body.classList.remove('modal-open');
+      }, 200);
+    };
+
+    overlay.onclick = (e) => {
+      if (e.target === overlay) close();
+    };
+    
+    // Aquí aplicamos la clase `modal-scroll-content` que definimos en el CSS
+    const modalHTML = `
+      <div class="card" style="width: 90%; max-width: 550px; margin: 0; transform: scale(0.95); transition: transform 0.2s ease-in-out;">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin:0; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;">
+            ${activity.name || 'Detalles de la actividad'}
+          </h3>
+          <button id="modal-close-btn" class="btn-icon" style="background:none; border:none; color: #9ca3af; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        <div class="card-body modal-scroll-content">
+          <div class="metrics-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px 12px;">
+            <div><strong>Fecha:</strong> ${Utils.formatDate(activity.date)}</div>
+            <div><strong>Fuente:</strong> ${activity.source || 'Manual'}</div>
+            <div><strong>Distancia:</strong> ${Utils.formatDistance(activity.distance)}</div>
+            <div><strong>Duración:</strong> ${Utils.formatDuration(activity.duration)}</div>
+            <div><strong>Potencia Media:</strong> ${Utils.formatPower(activity.avg_power)}</div>
+            <div><strong>Potencia Normalizada:</strong> ${Utils.formatPower(activity.np)}</div>
+            <div><strong>TSS:</strong> ${activity.tss ? Math.round(activity.tss) : '--'}</div>
+            <div><strong>IF:</strong> ${activity.if_value ? activity.if_value.toFixed(2) : '--'}</div>
+            <div><strong>FC Media:</strong> ${activity.avg_hr ? activity.avg_hr + ' bpm' : '--'}</div>
+            <div><strong>Elevación:</strong> ${activity.elevation ? Math.round(activity.elevation) + ' m' : '--'}</div>
+            <div><strong>Calorías:</strong> ${activity.calories ? Math.round(activity.calories) : '--'}</div>
+            <div><strong>Velocidad Media:</strong> ${activity.avg_speed ? activity.avg_speed.toFixed(1) + ' km/h' : '--'}</div>
+          </div>
+          ${activity.strava_id ? `
+            <a href="https://strava.com/activities/${activity.strava_id}" target="_blank" class="btn btn-secondary" style="width: 100%; margin-top: 20px; justify-content: center;">
+              <i class="fab fa-strava"></i> Ver en Strava
+            </a>` : ''}
+        </div>
+      </div>
+    `;
+
+    overlay.innerHTML = modalHTML;
+    document.body.appendChild(overlay);
+    document.body.classList.add('modal-open');
+
+    const modalCard = overlay.querySelector('.card');
+    
+    // Animar la entrada
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+      if (modalCard) modalCard.style.transform = 'scale(1)';
+    });
+
+    overlay.querySelector('#modal-close-btn').onclick = close;
+  }
+};
+
 /* Exportar al ámbito global */
 window.AppState       = AppState;
 window.PMC            = PMC;
@@ -1697,6 +1781,7 @@ window.Charts         = Charts;
 window.FileParser     = FileParser;
 window.ProviderSync   = ProviderSync;
 window.DashboardUI    = DashboardUI;
+window.UIComponents   = UIComponents;
 window.ZONES_COGGAN   = ZONES_COGGAN;
 window.WORKOUT_TYPES  = WORKOUT_TYPES;
 window.GoalUtils      = GoalUtils;
