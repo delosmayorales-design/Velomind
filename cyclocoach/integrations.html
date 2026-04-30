@@ -222,13 +222,6 @@
       gap: 24px;
     }
     @media (max-width: 900px) { .integrations-grid, .setup-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 600px) {
-      .int-header { gap: 12px; }
-      .int-features { grid-template-columns: 1fr; }
-      .btn-connect { width: 100%; justify-content: center; }
-      #strava-url-input { font-size: 16px; } /* evita zoom en iOS */
-      #btn-import-url { width: 100%; justify-content: center; }
-    }
 
     .tab-row {
       display: flex;
@@ -354,7 +347,7 @@
           <div class="int-actions" id="strava-actions">
             <button class="btn-connect btn-strava" id="btn-strava-oauth" onclick="connectStrava()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
-              Analizar mis rutas con Strava
+              Connect with Strava
             </button>
             <div style="margin-top:8px;text-align:center">
               <a href="#" onclick="showStravaTokenInput();return false;" style="font-size:11px;color:var(--text-muted)">Pegar token manualmente (avanzado)</a>
@@ -643,24 +636,12 @@ app.get('/api/strava/activities', async (req, res) => {
           if (provider === 'strava') {
             actions.innerHTML = `
               <button type="button" class="btn-connect btn-strava" id="btn-sync-strava" onclick="doSync('strava')">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar actividades
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar Strava
               </button>
               <button type="button" class="btn btn-ghost btn-sm" onclick="debugStrava()" style="margin-top:6px"><i class="fas fa-bug"></i> Ver últimas actividades Strava</button>
               <button type="button" class="btn-connect btn-disconnect" onclick="doDisconnect('strava')">
                 <i class="fas fa-unlink"></i> Desconectar
               </button>
-              <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);width:100%">
-                <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px">
-                  <i class="fas fa-link" style="color:var(--primary)"></i> Analizar ruta por URL
-                </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <input type="text" id="strava-url-input" placeholder="strava.com/activities/123456" style="flex:1;min-width:160px;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none;font-family:inherit;-webkit-appearance:none" onfocus="this.style.borderColor='rgba(252,76,2,0.5)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter')importStravaUrl()">
-                  <button type="button" onclick="importStravaUrl()" style="padding:10px 18px;background:#FC4C02;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;touch-action:manipulation" id="btn-import-url">
-                    <i class="fas fa-arrow-right"></i> Analizar
-                  </button>
-                </div>
-                <div id="import-url-result" style="margin-top:8px;font-size:12px;display:none"></div>
-              </div>
             `;
           } else {
             actions.innerHTML = `
@@ -815,7 +796,7 @@ app.get('/api/strava/activities', async (req, res) => {
           btn.disabled = false;
           btn.style.cssText = '';
               if (provider === 'strava') {
-                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar actividades';
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar Strava';
               } else {
                 btn.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar ahora';
               }
@@ -842,7 +823,7 @@ app.get('/api/strava/activities', async (req, res) => {
     log.classList.remove('show');
 
     if (provider === 'strava') {
-      actions.innerHTML = `<button class="btn-connect btn-strava" onclick="connectStrava()"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Analizar mis rutas con Strava</button>`;
+      actions.innerHTML = `<button class="btn-connect btn-strava" onclick="connectStrava()"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Connect with Strava</button>`;
     } else {
       actions.innerHTML = `<button class="btn-connect btn-garmin" onclick="connectGarmin()"><i class="fas fa-link"></i> Conectar Garmin</button>`;
     }
@@ -902,48 +883,6 @@ app.get('/api/strava/activities', async (req, res) => {
         setConnected('garmin');
       }
     }).catch(()=>{});
-  }
-
-  async function importStravaUrl() {
-    const input = document.getElementById('strava-url-input');
-    const btn = document.getElementById('btn-import-url');
-    const result = document.getElementById('import-url-result');
-    const val = (input?.value || '').trim();
-
-    if (!val) { input?.focus(); return; }
-
-    result.style.display = 'block';
-    result.style.color = 'var(--text-muted)';
-    result.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando actividad...';
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-
-    try {
-      const res = await fetch(`${window.API_URL}/providers/strava/import-activity`, {
-        method: 'POST',
-        headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: val }),
-      });
-      const d = await res.json();
-      if (!res.ok) {
-        result.style.color = 'var(--danger, #F87171)';
-        result.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${d.error || 'Error al importar'}`;
-        return;
-      }
-      const a = d.activity;
-      const km = a.distance ? (a.distance / 1000).toFixed(1) + ' km' : '';
-      const tss = a.tss ? `TSS: ${a.tss}` : '';
-      const np = a.np ? `NP: ${a.np}W` : '';
-      result.style.color = 'var(--success, #34D399)';
-      result.innerHTML = `<i class="fas fa-check-circle"></i> <strong>${a.name}</strong> importada — ${[km, np, tss].filter(Boolean).join(' · ')}`;
-      if (input) input.value = '';
-      // Recargar actividades si AppState está disponible
-      if (typeof AppState !== 'undefined') AppState.init().catch(() => {});
-    } catch(e) {
-      result.style.color = 'var(--danger, #F87171)';
-      result.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${e.message}`;
-    } finally {
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-arrow-right"></i> Analizar'; }
-    }
   }
 
   async function debugStrava() {
