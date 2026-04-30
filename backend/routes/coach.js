@@ -1728,13 +1728,12 @@ El atleta reporta el siguiente feedback: "${feedback}"
 
 Tu tarea:
 1. MAPEO EXACTO DE DÍAS (dayIndex): Determina de qué días habla el atleta usando la referencia de índices de arriba.
-2. APLICA LOS CAMBIOS ÚNICAMENTE EN SU DÍA CORRESPONDIENTE:
-   - 🛑 ¡CRÍTICO!: Si el atleta dice que AYER no entrenó, DEBES establecer "isRest": true, "durationMin": 0 y "tss": 0 EXCLUSIVAMENTE para el índice de AYER (${ayerIdx}). ¡NUNCA modifiques HOY (${todayIdx}) como descanso si el reporte era sobre ayer!
-   - 🚴 Si avisa que HOY o MAÑANA hará una salida distinta (o que entrenará en su día de descanso), reemplaza la sesión de ESE ÍNDICE EXACTO (poniendo "isRest": false si era descanso) con una ruta acorde, dándole consejos en la "description" y calculando "durationMin" y "tss" previstos.
+2. 🛑 REGLA ABSOLUTA — DÍAS BLOQUEADOS: NUNCA modifiques HOY (índice ${todayIdx}) ni ningún día anterior. HOY ya ha ocurrido o está en curso. Solo puedes modificar días FUTUROS (índice > ${todayIdx}).
+3. APLICA LOS CAMBIOS ÚNICAMENTE EN DÍAS FUTUROS (dayIndex > ${todayIdx}):
    - IMPORTANTE: Si programas una sesión activa ("isRest": false), el "type" DEBE ser exactamente uno de: "recovery", "endurance", "tempo", "threshold", "vo2max", "sprint", "long", "race", "strength". Además, incluye obligatoriamente un "name" y un "emoji" (ej: "🔵", "🚴").
    - ⚠️ ¡TÍTULOS OBLIGATORIOS!: Siempre que modifiques una sesión, DEBES enviar el campo "name" con el nuevo título descriptivo de la sesión. Si la cambias a descanso, pon "name": "Descanso". Si la cambias a rodaje suave, pon "name": "Rodaje Z2", etc.
-3. RECALCULA EL RESTO DE LA SEMANA (días futuros):
-   - ⚠️ REASIGNACIÓN: Si el atleta no pudo hacer una sesión dura, muévela a un día futuro disponible.
+4. RECALCULA EL RESTO DE LA SEMANA (solo días futuros):
+   - ⚠️ REASIGNACIÓN: Si el atleta no pudo hacer una sesión dura, muévela a un día futuro disponible (índice > ${todayIdx}).
    - 📉 COMPENSACIÓN: Si hará muchas horas de grupeta, asegúrate de que el día siguiente sea suave o descanso.
 
 Devuelve EXACTAMENTE este JSON:
@@ -1756,11 +1755,11 @@ NOTA: 'modifications' DEBE contener las alteraciones exactas para los índices r
     const result = await callAI(systemPrompt, userMsg, { max_tokens: 1500, temperature: 0.3 });
     if (!result || !Array.isArray(result.modifications)) return res.status(500).json({ error: 'La IA no devolvió un plan válido.' });
 
-    // Aplicar modificaciones al plan original preservando la estructura compleja (intervalos, etc)
+    // Aplicar modificaciones solo a días futuros (hoy y anteriores están bloqueados)
     const newSessions = [...plan.sessions];
     for (const mod of result.modifications) {
       const idx = Number(mod.dayIndex);
-      if (idx >= 0 && idx < 7 && mod.changes) {
+      if (idx > todayIdx && idx < 7 && mod.changes) {
         newSessions[idx] = { ...newSessions[idx], ...mod.changes };
       }
     }
