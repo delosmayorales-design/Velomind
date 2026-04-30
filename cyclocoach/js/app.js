@@ -952,7 +952,7 @@ const FileParser = {
         const distance = Math.round(eff.total_distance || 0);
 
         const maxPCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
-        const powers = records.filter(r => r.power > 0 && r.power <= maxPCap).map(r => r.power);
+        const powers = records.filter(r => r.power != null && r.power >= 0 && r.power <= maxPCap).map(r => r.power);
         const avgPower = powers.length
           ? Math.round(powers.reduce((s, p) => s + p, 0) / powers.length)
           : (eff.avg_power || 0);
@@ -1017,22 +1017,26 @@ const FileParser = {
 
     if (!trkpts.length) throw new Error('No se encontraron puntos GPS en el GPX.');
 
-    const points = trkpts.map(pt => ({
-      lat: parseFloat(pt.getAttribute('lat')),
-      lon: parseFloat(pt.getAttribute('lon')),
-      ele: parseFloat(pt.querySelector('ele')?.textContent || 0),
-      time: new Date(pt.querySelector('time')?.textContent || 0),
-      power: parseFloat(pt.querySelector('power')?.textContent || 0) || null,
-      hr: parseFloat(pt.querySelector('hr')?.textContent || 0) || null,
-      cad: parseFloat(pt.querySelector('cadence')?.textContent || 0) || null,
-    }));
+    const points = trkpts.map(pt => {
+      const pwrNode = pt.querySelector('power');
+      return {
+        lat: parseFloat(pt.getAttribute('lat')),
+        lon: parseFloat(pt.getAttribute('lon')),
+        ele: parseFloat(pt.querySelector('ele')?.textContent || 0),
+        time: new Date(pt.querySelector('time')?.textContent || 0),
+        power: pwrNode ? parseFloat(pwrNode.textContent) : null,
+        hr: parseFloat(pt.querySelector('hr')?.textContent || 0) || null,
+        cad: parseFloat(pt.querySelector('cadence')?.textContent || 0) || null,
+      };
+    });
 
     const date = points[0].time.toISOString().substring(0, 10);
     const durationSec = (points[points.length - 1].time - points[0].time) / 1000;
     const distance = this._calcDistance(points);
     const maxPowerCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
-    const avgPower = points.filter(p => p.power > 0 && p.power <= maxPowerCap).length
-      ? Math.round(points.filter(p => p.power > 0 && p.power <= maxPowerCap).reduce((s, p) => s + p.power, 0) / points.filter(p => p.power > 0 && p.power <= maxPowerCap).length)
+    const validPowers = points.filter(p => p.power != null && p.power >= 0 && p.power <= maxPowerCap);
+    const avgPower = validPowers.length
+      ? Math.round(validPowers.reduce((s, p) => s + p.power, 0) / validPowers.length)
       : 0;
     const avgHR = points.filter(p => p.hr > 0).length
       ? Math.round(points.reduce((s, p) => s + (p.hr || 0), 0) / points.filter(p => p.hr > 0).length)
@@ -1071,11 +1075,12 @@ const FileParser = {
     const powers = [], hrs = [], times = [];
     for (const tp of trackpoints) {
       const time = new Date(tp.querySelector('Time')?.textContent || 0);
-      const power = parseFloat(tp.querySelector('Watts')?.textContent || 0);
+      const pwrNode = tp.querySelector('Watts');
+      const power = pwrNode ? parseFloat(pwrNode.textContent) : null;
       const hr = parseFloat(tp.querySelector('Value')?.textContent || 0);
       if (!isNaN(time)) times.push(time);
       const maxPCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
-      if (power > 0 && power <= maxPCap) powers.push(power);
+      if (power != null && power >= 0 && power <= maxPCap) powers.push(power);
       if (hr > 0 && hr < 250) hrs.push(hr);
     }
 

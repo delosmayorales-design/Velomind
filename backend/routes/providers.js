@@ -301,13 +301,11 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         ifValue = Math.round(hrIF * 100) / 100;
         tss = Math.round((duration * a.average_heartrate * hrIF) / (lthr * 3600) * 100);
         finalNp = Math.round(ifValue * ftp);
-        finalAvgPower = finalNp;
       } else if (duration > 0) {
         // Fallback básico: asume rodaje aeróbico si no hay pulso ni potencia
         ifValue = 0.65;
         tss = Math.round((duration * 0.65 * 0.65) / 3600 * 100);
         finalNp = Math.round(ifValue * ftp);
-        finalAvgPower = finalNp;
       }
 
       // Traducir el código de bici de Strava a nuestro UUID
