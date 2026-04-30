@@ -1456,7 +1456,6 @@ Sesión planificada para ${diaRef}:
 ` : `Sin sesión específica planificada para ${diaRef}.`;
 
     const systemPrompt = 'Eres un coach de ciclismo experto. Responde SOLO con JSON válido, sin markdown, sin texto extra.';
-
     const userMsg = `Atleta: FTP ${ftp}W, peso ${user.weight || 70}kg, objetivo: ${user.goal || 'resistencia'}.
 CTL ${Math.round(latestPMC.ctl)} / ATL ${Math.round(latestPMC.atl)} / TSB ${Math.round(latestPMC.tsb)}.
 Hoy es ${hoy}.
@@ -1465,7 +1464,8 @@ Comentario / Intención del atleta: "${contexto || 'no especificado'}".
 Carga real en los últimos 7 días: ${recentHours.toFixed(1)} horas, ${recentTSS} TSS en ${recentActs.length} sesiones.
 Historial de últimas actividades registradas: ${JSON.stringify(actsCompact)}.
 
-Analiza si el atleta debe mantener, reducir, sustituir o descansar la sesión de ${diaRef}.
+Analiza si el atleta debe mantener, reducir, sustituir o descansar la sesión de ${diaRef}. REGLAS DE DECISIÓN:
+- Si el atleta está cansado, con poco sueño o estresado, prioriza 'reducir' la sesión (menos repeticiones o duración) antes que 'sustituir' por una sesión completamente diferente, a menos que la fatiga sea extrema (ej: "estoy muerto", "no puedo ni moverme"). En ese caso, 'descanso' o 'sustituir' por Z1 es correcto.
 ¡MUY IMPORTANTE!: Si el atleta indica que hará una salida en grupo (grupeta), ruta larga libre o carrera, IGNORA los intervalos estructurados. Evalúa su fatiga y dale consejos tácticos para esa salida (ej: "ve a rueda", "escóndete en el grupo", "haz relevos cortos" si está muy cansado, o "prueba a atacar" si está fresco).
 Sé específico: usa los vatios reales del FTP (${ftp}W) si propones una alternativa.
 Responde con este JSON exacto:
@@ -1473,6 +1473,8 @@ Responde con este JSON exacto:
   "recomendacion": "mantener" | "reducir" | "sustituir" | "descanso" | "adaptado",
   "titulo": "string corto (ej: Intervalos reducidos 60 min)",
   "duracion_min": number,
+  "tss_estimado": number,
+  "if_estimado": number,
   "intensidad": "string (ej: Z2 130-145W, Umbral 260W, recuperación activa)",
   "descripcion": "string (2-3 frases concretas: qué hacer, cómo, con vatios reales)",
   "razon": "string (1 frase: por qué esta adaptación dado el estado del atleta)",

@@ -1507,26 +1507,63 @@ async function saveAdaptation(idx) {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...'; }
 
   const sess = currentPlan.sessions[idx];
-  const originalDuration = sess.durationMin || 60;
-  const newDuration = t.duracion_min > 0 ? t.duracion_min : originalDuration;
+  const ftp = AppState.athlete?.ftp || 200;
 
+  // --- Actualización completa de la sesión ---
   sess.name        = t.titulo || sess.name;
   sess.description = t.descripcion || sess.description;
+  sess.advice      = t.razon || sess.advice;
   sess._adapted    = true;
 
+  // Actualizar métricas clave desde la IA
+  sess.durationMin = t.duracion_min > 0 ? t.duracion_min : sess.durationMin;
+  sess.tss         = t.tss_estimado || sess.tss;
+  sess.ifTarget    = t.if_estimado  || sess.ifTarget;
+
   if (t.recomendacion === 'descanso') {
-    sess.isRest    = true;
+    sess.isRest      = true;
     sess.durationMin = 0;
-    sess.intervals = [];
-            sess.name      = 'Descanso';
+    sess.intervals   = [];
+    sess.name        = 'Descanso';
+    sess.type        = 'recovery';
+    sess.advice      = t.razon || 'Día de descanso. Escucha a tu cuerpo y prioriza la recuperación.';
+    sess.tss         = 0;
+    sess.ifTarget    = 0;
   } else {
-    sess.isRest    = false;
-    sess.durationMin = newDuration;
-    if (t.recomendacion === 'mantener') {
-      // conservar intervalos originales
-    } else {
-      sess.intervals = buildAdaptedIntervals(t, newDuration);
+    sess.isRest = false;
+    
+    // Inferir el nuevo TIPO de sesión para actualizar colores, emojis y consejos
+    const intL = (t.intensidad || '').toLowerCase();
+    if (intL.includes('z1') || intL.includes('recupera')) sess.type = 'recovery';
+    else if (intL.includes('z2') || intL.includes('aeróbic') || intL.includes('suave') || intL.includes('fond')) sess.type = 'endurance';
+    else if (intL.includes('z3') || intL.includes('tempo') || intL.includes('sweetspot')) sess.type = 'tempo';
+    else if (intL.includes('z4') || intL.includes('umbral') || intL.includes('threshold')) sess.type = 'threshold';
+    else if (intL.includes('z5') || intL.includes('vo2')) sess.type = 'vo2max';
+    else if (intL.includes('sprint')) sess.type = 'sprint';
+    else if (intL.includes('fuerza')) sess.type = 'strength';
+
+    // Reconstruir intervalos si la sesión fue modificada
+    if (t.recomendacion !== 'mantener') {
+      sess.intervals = buildAdaptedIntervals(t, sess.durationMin);
     }
+  }
+
+  // Actualizar emoji y vatios objetivo basados en el nuevo tipo/IF
+  if (window.WORKOUT_TYPES && window.WORKOUT_TYPES[sess.type]) {
+    sess.emoji = window.WORKOUT_TYPES[sess.type].emoji;
+  } else {
+    sess.emoji = sess.isRest ? '😴' : '🚴';
+  }
+  
+  if (sess.ifTarget && !sess.isRest) {
+    sess.targetWatts = Math.round(ftp * sess.ifTarget);
+  } else {
+    sess.targetWatts = null;
+  }
+
+  // Recalcular TSS si la IA no lo proveyó pero sí dio IF y duración
+  if (!t.tss_estimado && sess.ifTarget && sess.durationMin) {
+    sess.tss = Math.round((sess.durationMin / 60) * Math.pow(sess.ifTarget, 2) * 100);
   }
 
   renderPlan(currentPlan, AppState.athlete);
@@ -1593,9 +1630,16 @@ async function recalculateWeek(idx) {
             s.intervals = []; s.alt_intervals = [];
             s.description = 'Descanso.'; s.alt_description = '';
             s.name = 'Descanso';
+            s.emoji = '😴';
+            s.advice = s.advice || 'Día de descanso. Escucha a tu cuerpo y prioriza la recuperación.';
           } else if (window.TrainingPlanGenerator) {
             const ifT = s.ifTarget || 0.75;
             if (!s.name || s.name.includes('Descanso')) s.name = (window.WORKOUT_TYPES && window.WORKOUT_TYPES[s.type]?.label) || s.type;
+            if (window.WORKOUT_TYPES && window.WORKOUT_TYPES[s.type]) {
+              s.emoji = window.WORKOUT_TYPES[s.type].emoji;
+            } else {
+              s.emoji = '🚴';
+            }
             s.intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'main');
             s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'alt');
             
@@ -2889,6 +2933,8 @@ async function _recalcFromModal() {
       if (s.isRest) {
         s.intervals = []; s.alt_intervals = [];
         s.description = 'Descanso.'; s.alt_description = '';
+        s.name = 'Descanso';
+        s.advice = s.advice || 'Día de descanso. Escucha a tu cuerpo y prioriza la recuperación.';
       } else if (window.TrainingPlanGenerator) {
         const ifT = s.ifTarget || 0.75;
         s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'main');
