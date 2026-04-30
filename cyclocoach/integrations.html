@@ -211,45 +211,7 @@
       color: var(--accent);
     }
 
-    .integrations-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-    .setup-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-    }
-    @media (max-width: 900px) { .integrations-grid, .setup-grid { grid-template-columns: 1fr; } }
-
-    .tab-row {
-      display: flex;
-      gap: 4px;
-      background: var(--bg-input);
-      border-radius: 10px;
-      padding: 4px;
-      margin-bottom: 28px;
-      width: 100%;
-      max-width: fit-content;
-      flex-wrap: wrap;
-    }
-    .tab-btn {
-      padding: 8px 18px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      background: none;
-      color: var(--text-muted);
-      transition: all 0.2s;
-      font-family: inherit;
-    }
-    .tab-btn.active { background: var(--primary); color: #111; }
-
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+    .strava-card-wrap { max-width: 600px; }
   </style>
 </head>
 <body>
@@ -302,295 +264,66 @@
   </div>
 </nav>
 
-<main class="main-content">
-  <header class="page-header">
-    <div class="page-title">
-      <h1>Integraciones</h1>
-      <p>Conecta tus plataformas de entrenamiento para sincronizar actividades automáticamente</p>
+<main class=”main-content”>
+  <header class=”page-header”>
+    <div class=”page-title”>
+      <h1><i class=”fas fa-plug” style=”color:var(--primary)”></i> Integraciones</h1>
+      <p>Conecta Strava para sincronizar tus actividades automáticamente</p>
     </div>
   </header>
 
-  <div class="page-body">
+  <div class=”page-body”>
+    <div class=”strava-card-wrap”>
 
-    <div class="tab-row">
-      <button class="tab-btn active" onclick="switchTab('platforms')">Plataformas</button>
-      <button class="tab-btn" onclick="switchTab('setup')">Guía de configuración</button>
-    </div>
-
-    <!-- TAB: PLATFORMS -->
-    <div class="tab-panel active" id="tab-platforms">
-      <div class="integrations-grid">
-
-        <!-- STRAVA -->
-        <div class="integration-card" id="card-strava">
-          <div class="int-header">
-            <div class="int-logo strava">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
-            </div>
-            <div>
-              <div class="int-name">Strava</div>
-              <div class="int-tagline">Importa actividades automáticamente</div>
-              <div class="int-status disconnected" id="strava-status">
-                <i class="fas fa-circle" style="font-size:8px"></i> No conectado
-              </div>
-            </div>
+      <!-- STRAVA -->
+      <div class=”integration-card” id=”card-strava”>
+        <div class=”int-header”>
+          <div class=”int-logo strava”>
+            <svg width=”26” height=”26” viewBox=”0 0 24 24” fill=”#FC4C02”><path d=”M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172”/></svg>
           </div>
-
-          <div class="int-features">
-            <div class="int-feature"><i class="fas fa-check"></i> Sincronización de actividades</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Potencia, FC y cadencia</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Tiempo, distancia y desnivel</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Actividades históricas</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Cálculo automático de TSS</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Actualiza tu estado de forma</div>
-          </div>
-
-          <div class="int-actions" id="strava-actions">
-            <button class="btn-connect btn-strava" id="btn-strava-oauth" onclick="connectStrava()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
-              Connect with Strava
-            </button>
-            <div style="margin-top:8px;text-align:center">
-              <a href="#" onclick="showStravaTokenInput();return false;" style="font-size:11px;color:var(--text-muted)">Pegar token manualmente (avanzado)</a>
-            </div>
-            <div id="strava-token-input" style="display:none;margin-top:12px;padding:12px;background:var(--bg-input);border-radius:8px">
-              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">⚠️ Los tokens manuales expiran en 6h y no permiten sync automático.</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Usa el botón de arriba para una conexión permanente. Solo pega el token si sabes lo que haces.</div>
-              <div style="display:flex;gap:8px">
-                <input type="password" id="strava-access-token" class="form-input" placeholder="access_token de Strava..." style="flex:1">
-                <button class="btn btn-primary btn-sm" id="btn-save-token" onclick="saveStravaToken()">Guardar</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="last-sync hidden" id="strava-last-sync">
-            <i class="fas fa-clock"></i> <span></span>
-          </div>
-
-          <div class="sync-log" id="strava-log"></div>
-        </div>
-
-        <!-- GARMIN CONNECT -->
-        <div class="integration-card" id="card-garmin">
-          <div class="int-header">
-            <div class="int-logo garmin">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="#007AC7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
-            </div>
-            <div>
-              <div class="int-name">Garmin Connect</div>
-              <div class="int-tagline">Dispositivos Garmin y métricas avanzadas</div>
-              <div class="int-status disconnected" id="garmin-status">
-                <i class="fas fa-circle" style="font-size:8px"></i> No conectado
-              </div>
-            </div>
-          </div>
-
-          <div class="int-features">
-            <div class="int-feature"><i class="fas fa-check"></i> Archivos .FIT nativos</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Métricas de salud (VO2max)</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Variabilidad FC (HRV)</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Training Status Garmin</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Body Battery y sueño</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Historial completo</div>
-          </div>
-
-          <div class="int-actions" id="garmin-actions">
-            <button class="btn-connect btn-garmin" onclick="connectGarmin()">
-              <i class="fas fa-link"></i> Conectar Garmin
-            </button>
-          </div>
-
-          <div class="last-sync hidden" id="garmin-last-sync">
-            <i class="fas fa-clock"></i> <span></span>
-          </div>
-
-          <div class="sync-log" id="garmin-log"></div>
-        </div>
-
-        <!-- WAHOO (coming soon) -->
-        <div class="integration-card" style="opacity:0.6">
-          <div class="int-header">
-            <div class="int-logo wahoo">
-              <i class="fas fa-satellite-dish" style="color:#00B4FF;font-size:22px"></i>
-            </div>
-            <div>
-              <div class="int-name">Wahoo ELEMNT</div>
-              <div class="int-tagline">Ciclocomputadores Wahoo</div>
-              <div class="int-status disconnected">
-                <i class="fas fa-clock" style="font-size:8px"></i> Próximamente
-              </div>
-            </div>
-          </div>
-          <div class="int-features">
-            <div class="int-feature"><i class="fas fa-check"></i> Actividades desde ELEMNT</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Intervalos estructurados</div>
-          </div>
-          <div class="int-actions">
-            <button class="btn-connect" style="background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border);cursor:not-allowed" disabled>
-              <i class="fas fa-clock"></i> Próximamente
-            </button>
-          </div>
-        </div>
-
-        <!-- POLAR -->
-        <div class="integration-card" style="opacity:0.6">
-          <div class="int-header">
-            <div class="int-logo" style="background:rgba(192,0,0,0.12)">
-              <i class="fas fa-heartbeat" style="color:#C00000;font-size:22px"></i>
-            </div>
-            <div>
-              <div class="int-name">Polar Flow</div>
-              <div class="int-tagline">Relojes y sensores Polar</div>
-              <div class="int-status disconnected">
-                <i class="fas fa-clock" style="font-size:8px"></i> Próximamente
-              </div>
-            </div>
-          </div>
-          <div class="int-features">
-            <div class="int-feature"><i class="fas fa-check"></i> Actividades Polar</div>
-            <div class="int-feature"><i class="fas fa-check"></i> Nightly Recharge</div>
-          </div>
-          <div class="int-actions">
-            <button class="btn-connect" style="background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border);cursor:not-allowed" disabled>
-              <i class="fas fa-clock"></i> Próximamente
-            </button>
-          </div>
-        </div>
-
-      </div><!-- /integrations-grid -->
-    </div><!-- /tab-platforms -->
-
-    <!-- TAB: SETUP GUIDE -->
-    <div class="tab-panel" id="tab-setup">
-      <div class="setup-grid">
-
-        <!-- Strava Setup -->
-        <div class="card">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
-            <h3 style="font-size:18px;font-weight:700">Configurar Strava OAuth</h3>
-          </div>
-
-          <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px">
-            Strava usa OAuth 2.0. Solo necesitas crear una aplicación gratuita en su portal de desarrolladores.
-          </p>
-
-          <div class="setup-steps">
-            <div class="setup-step">
-              <div class="step-num">1</div>
-              <div class="step-text">Ve a <a href="https://www.strava.com/settings/api" target="_blank">strava.com/settings/api</a> e inicia sesión</div>
-            </div>
-            <div class="setup-step">
-              <div class="step-num">2</div>
-              <div class="step-text">Crea una nueva aplicación. En "Authorization Callback Domain" pon tu dominio (o localhost para desarrollo)</div>
-            </div>
-            <div class="setup-step">
-              <div class="step-num">3</div>
-              <div class="step-text">Copia tu <strong>Client ID</strong> y <strong>Client Secret</strong></div>
-            </div>
-            <div class="setup-step">
-              <div class="step-num">4</div>
-              <div class="step-text">Configura en backend: <code>STRAVA_CLIENT_ID</code>, <code>STRAVA_CLIENT_SECRET</code> y <code>STRAVA_REDIRECT_URI</code> en <code>backend/.env</code></div>
-            </div>
-            <div class="setup-step">
-              <div class="step-num">5</div>
-              <div class="step-text">Usa los endpoints backend ya disponibles: <code>/api/providers/strava/connect</code> y <code>/api/providers/strava/callback</code></div>
-            </div>
-          </div>
-
-          <div style="background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-secondary)">
-            <strong style="color:var(--primary)">Scopes necesarios:</strong><br>
-<div class="scope-list">
-              <div class="scope-item"><div class="dot"></div> read - Perfil publico del atleta</div>
-              <div class="scope-item"><div class="dot"></div> activity:read_all - Todas las actividades</div>
+          <div>
+            <div class=”int-name”>Strava</div>
+            <div class=”int-tagline”>Importa actividades automáticamente</div>
+            <div class=”int-status disconnected” id=”strava-status”>
+              <i class=”fas fa-circle” style=”font-size:8px”></i> No conectado
             </div>
           </div>
         </div>
 
-        <!-- Garmin Setup -->
-        <div class="card">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="#007AC7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
-            <h3 style="font-size:18px;font-weight:700">Configurar Garmin Connect</h3>
+        <div class=”int-features”>
+          <div class=”int-feature”><i class=”fas fa-check”></i> Sincronización de actividades</div>
+          <div class=”int-feature”><i class=”fas fa-check”></i> Potencia, FC y cadencia</div>
+          <div class=”int-feature”><i class=”fas fa-check”></i> Tiempo, distancia y desnivel</div>
+          <div class=”int-feature”><i class=”fas fa-check”></i> Actividades históricas</div>
+          <div class=”int-feature”><i class=”fas fa-check”></i> Cálculo automático de TSS</div>
+          <div class=”int-feature”><i class=”fas fa-check”></i> Actualiza tu estado de forma</div>
+        </div>
+
+        <div class=”int-actions” id=”strava-actions”>
+          <button class=”btn-connect btn-strava” id=”btn-strava-oauth” onclick=”connectStrava()”>
+            <svg width=”16” height=”16” viewBox=”0 0 24 24” fill=”white”><path d=”M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172”/></svg>
+            Conectar con Strava
+          </button>
+          <div style=”margin-top:8px”>
+            <a href=”#” onclick=”showStravaTokenInput();return false;” style=”font-size:11px;color:var(--text-muted)”>Pegar token manualmente (avanzado)</a>
           </div>
-
-          <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px">
-            Garmin usa OAuth 1.0a y requiere aprobación de su Developer Program. El proceso es más complejo pero da acceso a datos muy ricos.
-          </p>
-
-          <div class="setup-steps">
-            <div class="setup-step">
-              <div class="step-num">1</div>
-              <div class="step-text">Regístrate en <a href="https://developer.garmin.com/gc-developer-program/overview/" target="_blank">Garmin Developer Program</a> (puede tardar unos días en aprobarse)</div>
-            </div>
-            <div class="setup-step">
-              <div class="step-num">2</div>
-              <div class="step-text">Crea una aplicación y obtén tu Consumer Key y Consumer Secret</div>
-            </div>
-            <div class="setup-step">
-              <div class="step-num">3</div>
-              <div class="step-text">Instala el paquete npm: <code>npm install garmin-connect</code> en tu backend Node.js</div>
-            </div>
-            <div class="setup-step">
-              <div class="step-num">4</div>
-              <div class="step-text">Crea rutas backend: <code>/api/auth/garmin/start</code> y <code>/api/auth/garmin/callback</code></div>
-            </div>
-            <div class="setup-step">
-              <div class="step-num">5</div>
-              <div class="step-text">Alternativamente, usa la <a href="https://developer.garmin.com/gc-developer-program/health-api/" target="_blank">Garmin Health API</a> para acceso simplificado a datos de salud</div>
-            </div>
-          </div>
-
-          <div style="background:rgba(0,122,199,0.08);border:1px solid rgba(0,122,199,0.2);border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-secondary)">
-            <strong style="color:#007AC7">Datos disponibles:</strong><br>
-            <div class="scope-list">
-              <div class="scope-item"><div class="dot" style="background:#007AC7"></div> Actividades con archivos .FIT completos</div>
-              <div class="scope-item"><div class="dot" style="background:#007AC7"></div> VO2max, Training Status, HRV</div>
-              <div class="scope-item"><div class="dot" style="background:#007AC7"></div> Body Battery, sueño, estrés diario</div>
+          <div id=”strava-token-input” style=”display:none;margin-top:12px;padding:12px;background:var(--bg-input);border-radius:8px”>
+            <div style=”font-size:12px;color:var(--text-muted);margin-bottom:4px”>⚠️ Los tokens manuales expiran en 6h y no permiten sync automático.</div>
+            <div style=”display:flex;gap:8px;margin-top:8px”>
+              <input type=”password” id=”strava-access-token” class=”form-input” placeholder=”access_token de Strava...” style=”flex:1;font-size:16px”>
+              <button class=”btn btn-primary btn-sm” id=”btn-save-token” onclick=”saveStravaToken()”>Guardar</button>
             </div>
           </div>
         </div>
 
-        <!-- Backend example -->
-        <div class="card" style="grid-column:1/-1">
-          <h3 style="font-size:16px;font-weight:700;margin-bottom:16px"><i class="fas fa-code" style="color:var(--primary)"></i> Ejemplo de backend (Node.js / Express)</h3>
-          <pre style="background:var(--bg-input);border-radius:8px;padding:16px;overflow-x:auto;font-size:12px;color:var(--text-secondary);line-height:1.8"><code>// server.js â€” Backend para OAuth Strava
-const express = require('express');
-const axios = require('axios');
-const app = express();
-
-const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID;
-const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
-const REDIRECT_URI = 'https://tudominio.com/oauth-callback.html';
-
-// Intercambio de código por tokens
-app.get(window.API_URL + '/auth/strava/callback', async (req, res) => {
-  const { code } = req.query;
-  const response = await axios.post('https://www.strava.com/oauth/token', {
-    client_id: STRAVA_CLIENT_ID,
-    client_secret: STRAVA_CLIENT_SECRET,
-    code,
-    grant_type: 'authorization_code'
-  });
-  const { access_token, refresh_token, expires_at, athlete } = response.data;
-  // Guardar tokens en DB, crear sesión JWT...
-  res.json({ access_token, athlete });
-});
-
-// Sincronizar actividades
-app.get('/api/strava/activities', async (req, res) => {
-  const { access_token } = req.user; // from JWT middleware
-  const activities = await axios.get('https://www.strava.com/api/v3/athlete/activities', {
-    headers: { Authorization: `Bearer ${access_token}` },
-    params: { per_page: 50, after: req.query.after }
-  });
-  res.json(activities.data);
-});</code></pre>
+        <div class=”last-sync hidden” id=”strava-last-sync”>
+          <i class=”fas fa-clock”></i> <span></span>
         </div>
 
+        <div class=”sync-log” id=”strava-log”></div>
       </div>
-    </div><!-- /tab-setup -->
 
+    </div>
   </div><!-- /page-body -->
 </main>
 
@@ -620,7 +353,6 @@ app.get('/api/strava/activities', async (req, res) => {
   // Check connection status
   function checkConnections() {
     if (localStorage.getItem('velomind_strava_connected') === '1') setConnected('strava');
-    if (localStorage.getItem('velomind_garmin_connected') === '1') setConnected('garmin');
   }
 
   function setConnected(provider) {
@@ -641,15 +373,6 @@ app.get('/api/strava/activities', async (req, res) => {
               </button>
               <button type="button" class="btn btn-ghost btn-sm" onclick="debugStrava()" style="margin-top:6px"><i class="fas fa-bug"></i> Ver últimas actividades Strava</button>
               <button type="button" class="btn-connect btn-disconnect" onclick="doDisconnect('strava')">
-                <i class="fas fa-unlink"></i> Desconectar
-              </button>
-            `;
-          } else {
-            actions.innerHTML = `
-              <button type="button" class="btn-connect btn-sync" id="btn-sync-${provider}" onclick="doSync('${provider}')">
-                <i class="fas fa-sync-alt"></i> Sincronizar ahora
-              </button>
-              <button type="button" class="btn-connect btn-disconnect" onclick="doDisconnect('${provider}')">
                 <i class="fas fa-unlink"></i> Desconectar
               </button>
             `;
@@ -687,7 +410,7 @@ app.get('/api/strava/activities', async (req, res) => {
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Connect with Strava';
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Conectar con Strava';
       }
     }
   }
@@ -713,10 +436,6 @@ app.get('/api/strava/activities', async (req, res) => {
       alert('Error al guardar: ' + e.message);
       if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
     }
-  }
-
-  function connectGarmin() {
-    alert('La conexión Garmin real está pendiente de backend OAuth. De momento usa Strava o carga manual GPX/TCX/CSV.');
   }
 
   async function doSync(provider) {
@@ -878,10 +597,6 @@ app.get('/api/strava/activities', async (req, res) => {
       if (status?.strava?.connected) {
         localStorage.setItem('velomind_strava_connected', '1');
         setConnected('strava');
-      }
-      if (status?.garmin?.connected) {
-        localStorage.setItem('velomind_garmin_connected', '1');
-        setConnected('garmin');
       }
     }).catch(()=>{});
   }
