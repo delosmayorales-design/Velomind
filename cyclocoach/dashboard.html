@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('velomind_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'light') document.documentElement.classList.add('light-theme');
+    })();
+  </script>
+  <style>
+    html { color-scheme: dark; background-color: #05070a; }
+    html[data-theme="light"] { color-scheme: light; background-color: #f3f4f6; }
+  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Dashboard — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <style>
+    /* ── Dashboard cards ──────────────────────────────── */
+    .dash-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .dash-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .dash-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+    }
+    .dash-card-full { grid-column: 1 / -1; }
+    .dash-card-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .dash-card-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+    .dash-card-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ── Greeting ──────────────────────────────────────── */
+    .greeting-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .greeting-text h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .greeting-text p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .greeting-date {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: right;
+    }
+
+    /* ── Today session ─────────────────────────────────── */
+    .today-session-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    .today-session-card.is-done {
+      border-color: rgba(16,185,129,.3);
+      background: rgba(16,185,129,.025);
+    }
+    .today-session-card.is-rest {
+      opacity: 0.75;
+    }
+    .session-type-dot {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .session-info { flex: 1; min-width: 0; }
+    .session-info .label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+    .session-info .name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .session-info .meta {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .session-info .meta span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .done-badge-dash {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(16,185,129,.12);
+      border: 1px solid rgba(16,185,129,.3);
+      color: #10b981;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 99px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .btn-mark-done {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 10px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-mark-done.done {
+      background: rgba(16,185,129,.12);
+      border-color: rgba(16,185,129,.35);
+      color: #10b981;
+    }
+    .btn-mark-done:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-mark-done.done:hover { border-color: rgba(16,185,129,.6); }
+
+    /* ── PMC form card ─────────────────────────────────── */
+    .form-state-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+    }
+    .form-state-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .pmc-metrics {
+      display: flex;
+      gap: 24px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .pmc-metric { text-align: center; }
+    .pmc-metric .val {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .pmc-metric .lbl {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+    }
+
+    /* ── Weekly compliance ─────────────────────────────── */
+    .week-bar-wrap {
+      margin-top: 12px;
+    }
+    .week-days {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .week-day-dot {
+      flex: 1;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--bg-input);
+      transition: all .3s;
+    }
+    .week-day-dot.done { background: #10b981; }
+    .week-day-dot.today { box-shadow: 0 0 0 2px var(--primary); }
+    .week-day-dot.rest { background: var(--bg-input); opacity: 0.4; }
+    .week-compliance-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .week-compliance-pct {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── Last activity ─────────────────────────────────── */
+    .last-act-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .last-act-metric {
+      background: var(--bg-input);
+      border-radius: 10px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .last-act-metric .val {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .last-act-metric .lbl {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Quick links ───────────────────────────────────── */
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .quick-link {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px 12px;
+      text-align: center;
+      text-decoration: none;
+      color: var(--text);
+      transition: all .2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .quick-link:hover {
+      border-color: var(--primary);
+      background: rgba(158,214,43,0.05);
+      color: var(--primary);
+      transform: translateY(-1px);
+    }
+    .quick-link i { font-size: 20px; color: var(--primary); }
+    .quick-link span { font-size: 12px; font-weight: 600; }
+
+    /* ── Empty states ──────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 24px 0;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .empty-state i { font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.4; }
+
+    /* ── Responsive ────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .dash-grid { grid-template-columns: 1fr; }
+      .dash-grid-3 { grid-template-columns: 1fr 1fr; }
+      .quick-links { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .dash-grid-3 { grid-template-columns: 1fr; }
+      .quick-links { grid-template-columns: repeat(2, 1fr); }
+      .pmc-metrics { gap: 14px; }
+      .last-act-metrics { grid-template-columns: repeat(3, 1fr); }
+      .today-session-card { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+  <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo2.png" alt="VeloMind" style="width:100%; max-width:165px; height:auto; display:block; margin:0 auto">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="dashboard.html" class="nav-item active">
+      <i class="fas fa-home"></i> Inicio
+    </a>
+    <a href="activities.html" class="nav-item">
+      <i class="fas fa-history"></i> Actividades
+    </a>
+    <a href="analytics.html" class="nav-item">
+      <i class="fas fa-chart-bar"></i> Métricas
+    </a>
+
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item">
+      <i class="fas fa-calendar-check"></i> Mi Plan
+    </a>
+    <a href="nutrition.html" class="nav-item">
+      <i class="fas fa-apple-alt"></i> Nutrición
+    </a>
+    <a href="body-weight.html" class="nav-item">
+      <i class="fas fa-weight"></i> Peso y W/Kg
+    </a>
+
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="rutas.html" class="nav-item"><i class="fas fa-map-marked-alt"></i> Rutas</a>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="mecanica-general.html" class="nav-item"><i class="fas fa-wrench"></i> Mecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
+
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item">
+      <i class="fas fa-plug"></i> Integraciones
+    </a>
+    <a href="index.html" class="nav-item">
+      <i class="fas fa-user-cog"></i> Mi Perfil
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-name">Cargando...</div>
+        <div class="ftp" id="athlete-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1><i class="fas fa-home" style="color:var(--primary)"></i> Inicio</h1>
+      <p>Tu entrenamiento de hoy de un vistazo</p>
+    </div>
+    <div class="header-actions">
+      <a href="training-plan.html" class="btn btn-secondary" style="text-decoration:none">
+        <i class="fas fa-calendar-check"></i> Ver plan completo
+      </a>
+    </div>
+  </header>
+
+  <div class="page-body">
+
+    <!-- Greeting -->
+    <div class="greeting-wrap">
+      <div class="greeting-text">
+        <h2 id="greeting-text">Buenas, ciclista 👋</h2>
+        <p id="greeting-sub">Cargando tu resumen...</p>
+      </div>
+      <div class="greeting-date" id="greeting-date"></div>
+    </div>
+
+    <!-- Quick links -->
+    <div class="quick-links">
+      <a href="activities.html" class="quick-link">
+        <i class="fas fa-history"></i>
+        <span>Actividades</span>
+      </a>
+      <a href="analytics.html" class="quick-link">
+        <i class="fas fa-chart-bar"></i>
+        <span>Métricas PMC</span>
+      </a>
+      <a href="training-plan.html" class="quick-link">
+        <i class="fas fa-calendar-check"></i>
+        <span>Mi Plan</span>
+      </a>
+      <a href="nutrition.html" class="quick-link">
+        <i class="fas fa-apple-alt"></i>
+        <span>Nutrición</span>
+      </a>
+    </div>
+
+    <!-- Today's session -->
+    <div id="today-session-wrap"></div>
+
+    <!-- Main grid -->
+    <div class="dash-grid">
+
+      <!-- Weekly compliance -->
+      <div class="dash-card">
+        <div class="dash-card-label"><i class="fas fa-calendar-week"></i> Cumplimiento semanal</div>
+        <div id="week-compliance-content">
+          <div class="empty-state"><i class="fas fa-calendar"></i> Sin plan activo</div>
+        </div>
+      </div>
+
+      <!-- PMC Form state -->
+      <div class="dash-card" id="pmc-card">
+        <div class="dash-card-label"><i class="fas fa-heartbeat"></i> Tu forma actual</div>
+        <div id="pmc-content">
+          <div class="empty-state"><i class="fas fa-chart-line"></i> Sin actividades registradas</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Last activity -->
+    <div class="dash-card" style="margin-bottom:24px">
+      <div class="dash-card-label"><i class="fas fa-bicycle"></i> Última actividad</div>
+      <div id="last-activity-content">
+        <div class="empty-state"><i class="fas fa-upload"></i> Importa tu primera actividad para verla aquí</div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+<script src="js/backend-sync.js"></script>
+<script>
+const DAY_NAMES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const DAY_NAMES_FULL = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+const MONTH_NAMES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+// todayIdx: 0=Mon … 6=Sun (same convention as training-plan.html)
+const todayIdx = (new Date().getDay() + 6) % 7;
+
+let dashPlan = null;
+
+/* ── Greeting ───────────────────────────────────────────── */
+function renderGreeting(athlete) {
+  const hour = new Date().getHours();
+  const greet = hour < 13 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches';
+  const name  = athlete?.name?.split(' ')[0] || 'ciclista';
+  document.getElementById('greeting-text').textContent = `${greet}, ${name} 👋`;
+
+  const now  = new Date();
+  const dayName  = DAY_NAMES_FULL[todayIdx];
+  const dateStr  = `${now.getDate()} de ${MONTH_NAMES[now.getMonth()]} de ${now.getFullYear()}`;
+  document.getElementById('greeting-sub').textContent = `Hoy es ${dayName}, ${dateStr}`;
+  document.getElementById('greeting-date').textContent = dateStr.replace(/^\d/, c => c.toUpperCase());
+}
+
+/* ── Today's session ────────────────────────────────────── */
+function renderTodaySession(plan, athlete) {
+  const wrap = document.getElementById('today-session-wrap');
+  if (!plan?.sessions) {
+    wrap.innerHTML = `
+      <div class="dash-card" style="margin-bottom:16px;text-align:center;padding:28px">
+        <p style="color:var(--text-muted);margin-bottom:12px"><i class="fas fa-calendar-plus" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4"></i> No tienes un plan activo</p>
+        <a href="training-plan.html" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px"><i class="fas fa-magic"></i> Crear mi plan</a>
+      </div>`;
+    return;
+  }
+
+  const sess = plan.sessions[todayIdx];
+  if (!sess) return;
+
+  if (sess.isRest) {
+    wrap.innerHTML = `
+      <div class="today-session-card is-rest" style="margin-bottom:16px">
+        <div class="session-type-dot" style="background:rgba(107,114,128,.15)">😴</div>
+        <div class="session-info">
+          <div class="label">Hoy · ${DAY_NAMES[todayIdx]}</div>
+          <div class="name">Día de descanso</div>
+          <div class="meta"><span>Recuperación y recarga</span></div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const wt    = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || { label: sess.type, color: '#9ED62B', emoji: '🚴' };
+  const emoji = sess.emoji || wt.emoji || '🚴';
+  const color = wt.color || '#9ED62B';
+  const tss   = Math.round((sess.tssShare || 0) * (plan.targetTSS || 0)) || sess.tss || 0;
+  const dur   = sess.durationMin ? `${sess.durationMin} min` : '';
+  const isDone = !!sess.completed;
+
+  wrap.innerHTML = `
+    <div class="today-session-card${isDone ? ' is-done' : ''}" style="margin-bottom:16px" id="today-card">
+      <div class="session-type-dot" style="background:${color}22">${emoji}</div>
+      <div class="session-info">
+        <div class="label">Hoy · ${DAY_NAMES[todayIdx]}</div>
+        <div class="name">
+          ${sess.name || wt.label}
+          ${isDone ? '<span class="done-badge-dash"><i class="fas fa-check"></i> Hecha</span>' : ''}
+        </div>
+        <div class="meta">
+          ${dur ? `<span><i class="fas fa-clock" style="color:${color}"></i> ${dur}</span>` : ''}
+          ${tss ? `<span><i class="fas fa-bolt" style="color:${color}"></i> ${tss} TSS</span>` : ''}
+          ${wt.label ? `<span style="color:${color}">${wt.label}</span>` : ''}
+        </div>
+      </div>
+      <button class="btn-mark-done${isDone ? ' done' : ''}" onclick="toggleTodayDone()">
+        <i class="fas ${isDone ? 'fa-circle-check' : 'fa-circle'}"></i>
+        ${isDone ? 'Hecha' : 'Marcar como hecha'}
+      </button>
+    </div>`;
+}
+
+function toggleTodayDone() {
+  if (!dashPlan?.sessions?.[todayIdx]) return;
+  const sess = dashPlan.sessions[todayIdx];
+  sess.completed = !sess.completed;
+  saveDashPlan();
+  renderTodaySession(dashPlan, AppState.athlete);
+}
+
+function saveDashPlan() {
+  if (!dashPlan) return;
+  const local = JSON.parse(localStorage.getItem('velomind_training_plan') || '{}');
+  local.sessions = dashPlan.sessions;
+  localStorage.setItem('velomind_training_plan', JSON.stringify(local));
+
+  fetch(`${window.API_URL}/plans/training`, {
+    method: 'POST',
+    headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessions: dashPlan.sessions,
+      phase: dashPlan.phase,
+      tss_target: dashPlan.targetTSS,
+      advice: dashPlan.advice || {},
+    }),
+  }).catch(() => {});
+}
+
+/* ── Weekly compliance ──────────────────────────────────── */
+function renderWeekCompliance(plan) {
+  const el = document.getElementById('week-compliance-content');
+  if (!plan?.sessions) return;
+
+  const sessions  = plan.sessions; // 7 items Mon–Sun
+  const nonRest   = sessions.filter(s => !s.isRest);
+  const done      = sessions.filter(s => !s.isRest && s.completed);
+  const pct       = nonRest.length ? Math.round((done.length / nonRest.length) * 100) : 0;
+
+  const dots = sessions.map((s, i) => {
+    if (s.isRest) return `<div class="week-day-dot rest" title="${DAY_NAMES[i]} — Descanso"></div>`;
+    const cls  = s.completed ? 'done' : (i === todayIdx ? 'today' : '');
+    return `<div class="week-day-dot ${cls}" title="${DAY_NAMES[i]}${s.completed ? ' ✓' : ''}"></div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px">
+      <div>
+        <div class="week-compliance-pct">${done.length}<span style="font-size:14px;font-weight:400;color:var(--text-muted)"> / ${nonRest.length}</span></div>
+        <div style="font-size:12px;color:var(--text-muted)">sesiones completadas</div>
+      </div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:${pct >= 80 ? '#10b981' : pct >= 50 ? 'var(--primary)' : 'var(--text-muted)'}">${pct}%</div>
+    </div>
+    <div class="week-days">${dots}</div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:2px">
+      ${DAY_NAMES.map(d => `<span>${d}</span>`).join('')}
+    </div>`;
+}
+
+/* ── PMC form state ─────────────────────────────────────── */
+function renderPMCCard() {
+  const el = document.getElementById('pmc-content');
+  if (!AppState.pmcData?.length) return;
+
+  const { ctl, atl, tsb } = AppState.getCurrentMetrics();
+  const status = Utils.getTSBStatus(tsb);
+
+  const tsbDesc = tsb > 25  ? 'Estás muy descansado. Buen momento para competir o hacer un test de FTP.'
+                : tsb > 5   ? 'Te encuentras fresco. Puedes apretar un poco más hoy.'
+                : tsb > -10 ? 'Carga óptima. Tu rendimiento está en el punto ideal.'
+                : tsb > -20 ? 'Carga alta acumulada. Mantén la intensidad con cuidado.'
+                : tsb > -30 ? 'Fatiga notable. Considera reducir la carga esta semana.'
+                :             'Posible sobreentrenamiento. Prioriza el descanso y la recuperación.';
+
+  el.innerHTML = `
+    <div class="form-state-badge" style="background:${status.color}18;border:1px solid ${status.color}40;color:${status.color}">
+      ${status.icon} ${status.label}
+    </div>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:14px">${tsbDesc}</div>
+    <div class="pmc-metrics">
+      <div class="pmc-metric">
+        <div class="val" style="color:#3B82F6">${ctl.toFixed(1)}</div>
+        <div class="lbl">CTL (fitness)</div>
+      </div>
+      <div class="pmc-metric">
+        <div class="val" style="color:#EF4444">${atl.toFixed(1)}</div>
+        <div class="lbl">ATL (fatiga)</div>
+      </div>
+      <div class="pmc-metric">
+        <div class="val" style="color:${status.color}">${tsb > 0 ? '+' : ''}${tsb.toFixed(1)}</div>
+        <div class="lbl">TSB (forma)</div>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <a href="analytics.html" style="font-size:12px;color:var(--primary);text-decoration:none;font-weight:600">
+        Ver PMC completo <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>`;
+}
+
+/* ── Last activity ──────────────────────────────────────── */
+function renderLastActivity() {
+  const el = document.getElementById('last-activity-content');
+  if (!AppState.activities?.length) return;
+
+  // Activities are sorted ascending — last is most recent
+  const sorted = [...AppState.activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const act    = sorted[0];
+  if (!act) return;
+
+  const daysAgo = Utils.daysAgo(act.date?.substring(0, 10));
+  const daysStr = daysAgo === 0 ? 'Hoy' : daysAgo === 1 ? 'Ayer' : `Hace ${daysAgo} días`;
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">${act.name || 'Actividad'}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${daysStr} · ${Utils.formatDate(act.date?.substring(0,10))}</div>
+      </div>
+      <a href="activities.html" style="font-size:12px;color:var(--primary);text-decoration:none;font-weight:600">
+        Ver todas <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
+    <div class="last-act-metrics">
+      <div class="last-act-metric">
+        <div class="val">${Utils.formatDistance(act.distance)}</div>
+        <div class="lbl">Distancia</div>
+      </div>
+      <div class="last-act-metric">
+        <div class="val">${Utils.formatDuration(act.duration)}</div>
+        <div class="lbl">Duración</div>
+      </div>
+      <div class="last-act-metric">
+        <div class="val">${act.tss ? Math.round(act.tss) : '--'}</div>
+        <div class="lbl">TSS</div>
+      </div>
+    </div>`;
+}
+
+/* ── Load training plan ─────────────────────────────────── */
+async function loadDashPlan() {
+  // Try localStorage first for instant render
+  try {
+    const local = JSON.parse(localStorage.getItem('velomind_training_plan') || '{}');
+    if (local?.sessions) {
+      dashPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {} };
+      renderTodaySession(dashPlan, AppState.athlete);
+      renderWeekCompliance(dashPlan);
+    }
+  } catch {}
+
+  // Then fetch from backend
+  try {
+    const res  = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() });
+    const data = await res.json();
+    if (data?.sessions) {
+      dashPlan = { sessions: data.sessions, phase: data.phase, targetTSS: data.tss_target, advice: data.advice || {} };
+      renderTodaySession(dashPlan, AppState.athlete);
+      renderWeekCompliance(dashPlan);
+    }
+  } catch {}
+}
+
+/* ── Init ───────────────────────────────────────────────── */
+(async function init() {
+  await AppState.init();
+
+  renderGreeting(AppState.athlete);
+  renderPMCCard();
+  renderLastActivity();
+  renderTodaySession(null, AppState.athlete); // placeholder while plan loads
+
+  // Auth UI
+  if (AppState.athlete) {
+    const a = AppState.athlete;
+    const avatarEl = document.getElementById('athlete-avatar');
+    const nameEl   = document.getElementById('athlete-name');
+    const ftpEl    = document.getElementById('athlete-ftp');
+    if (avatarEl) avatarEl.textContent = (a.name || '?')[0].toUpperCase();
+    if (nameEl)   nameEl.textContent   = a.name || 'Atleta';
+    if (ftpEl)    ftpEl.textContent    = `FTP: ${a.ftp || '--'} W`;
+  }
+
+  // Load plan (fast local + backend refresh)
+  await loadDashPlan();
+
+  // Load fresh activities + PMC in background
+  BackendSync.loadActivities().then(() => {
+    renderPMCCard();
+    renderLastActivity();
+  });
+
+  BackendSync.loadProfile().then(profile => {
+    if (profile) {
+      renderGreeting(AppState.athlete);
+      const a = AppState.athlete;
+      const avatarEl = document.getElementById('athlete-avatar');
+      const nameEl   = document.getElementById('athlete-name');
+      const ftpEl    = document.getElementById('athlete-ftp');
+      if (avatarEl) avatarEl.textContent = (a?.name || '?')[0].toUpperCase();
+      if (nameEl)   nameEl.textContent   = a?.name || 'Atleta';
+      if (ftpEl)    ftpEl.textContent    = `FTP: ${a?.ftp || '--'} W`;
+    }
+  });
+})();
+</script>
+</body>
+</html>

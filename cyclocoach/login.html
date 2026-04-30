@@ -514,7 +514,7 @@
   (function() {
     const token = localStorage.getItem('velomind_token');
     if (token && token !== 'null' && token !== 'undefined' && token.split('.').length === 3) {
-      window.location.replace('activities.html');
+      window.location.replace('dashboard.html');
     }
   })();
 </script>
@@ -569,7 +569,7 @@
         return;
       }
       const hasProfile = result.user?.ftp && result.user?.weight;
-      setTimeout(() => window.location.href = hasProfile ? 'activities.html' : 'index.html', 700);
+      setTimeout(() => window.location.href = hasProfile ? 'dashboard.html' : 'index.html', 700);
     } catch(e) {
       setLoading('spinner-login', 'login-label', 'btn-login', false);
       showAlert(e.message || 'Email o contraseña incorrectos.');
@@ -692,7 +692,7 @@
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       if (payload.exp && payload.exp * 1000 > Date.now()) {
-        window.location.href = 'activities.html';
+        window.location.href = 'dashboard.html';
         return;
       }
     } catch {}
@@ -715,7 +715,7 @@
     try {
       // Intentar login demo con backend (ahora usa Supabase)
       await Auth.demoLogin();
-      window.location.href = 'activities.html';
+      window.location.href = 'dashboard.html';
     } catch(e) {
       // Fallback offline: demo sin backend
       const demoUser = { id:'demo_'+Date.now(), name:'Demo Ciclista', email:'demo@cyclocoach.local', loginAt:Date.now() };
@@ -726,7 +726,7 @@
           ftp:235, max_hr:188, lthr:165, experience:'intermedio', weekly_hours:9, goal:'resistencia'
         }));
       }
-      window.location.href = 'activities.html';
+      window.location.href = 'dashboard.html';
     }
   }
 
