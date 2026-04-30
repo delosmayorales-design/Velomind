@@ -194,6 +194,7 @@
     .wind-dir      { font-size:12px;color:var(--text-muted);margin-bottom:10px; }
     .wind-advice   { font-size:12px;color:var(--text-primary);line-height:1.6; }
     .wind-note     { font-size:11px;color:var(--text-muted);margin-top:7px; }
+    .leaflet-wind-ctrl { background:rgba(13,17,23,0.92);border:1px solid rgba(0,212,255,0.35);border-radius:50%;width:62px;height:62px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.5);cursor:default; }
 
     /* Waypoint markers arrastrables */
     .wp-dot {
@@ -581,7 +582,7 @@
 const API_BASE = window.API_URL;
 
 // ── Estado ───────────────────────────────────────────────────────
-let map, baseOSM, elevChart, cycleOverlayLayer, cycleOverlayOn = false;
+let map, baseOSM, elevChart, cycleOverlayLayer, cycleOverlayOn = false, mapWindControl = null;
 let waypoints = [], waypointMarkers = [];
 let routeLayer = null, routeGeoJSON = null;
 let allRoutes = [], activeFilter = 'all';
@@ -603,6 +604,18 @@ document.addEventListener('DOMContentLoaded', () => {
   );
 
   map.on('click', onMapClick);
+
+  const WindCtrl = L.Control.extend({
+    options: { position: 'bottomleft' },
+    onAdd() {
+      const div = L.DomUtil.create('div', 'leaflet-wind-ctrl');
+      div.id = 'map-wind-ctrl';
+      div.style.display = 'none';
+      L.DomEvent.disableClickPropagation(div);
+      return div;
+    }
+  });
+  mapWindControl = new WindCtrl().addTo(map);
 
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
@@ -1195,9 +1208,30 @@ async function showWindSuggestion() {
                  : spd < 30 ? { c:'#F59E0B', txt:'Moderado'  }
                  : spd < 50 ? { c:'#EF4444', txt:'Fuerte'    }
                  :             { c:'#8B5CF6', txt:'Muy fuerte'};
+      const compassSVG = (size, color) => `
+        <svg width="${size}" height="${size}" viewBox="0 0 72 72" style="flex-shrink:0">
+          <circle cx="36" cy="36" r="33" fill="rgba(0,212,255,0.05)" stroke="rgba(0,212,255,0.18)" stroke-width="1"/>
+          <text x="36" y="9"  text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="8" font-weight="700" font-family="sans-serif">N</text>
+          <text x="64" y="40" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="8" font-family="sans-serif">E</text>
+          <text x="36" y="68" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="8" font-family="sans-serif">S</text>
+          <text x="8"  y="40" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="8" font-family="sans-serif">O</text>
+          <g transform="rotate(${deg},36,36)">
+            <polygon points="36,5 31,16 41,16" fill="${color}"/>
+            <line x1="36" y1="14" x2="36" y2="36" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="36" y1="36" x2="36" y2="56" stroke="${color}" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>
+            <circle cx="36" cy="36" r="3.5" fill="${color}"/>
+          </g>
+        </svg>`;
+
       document.getElementById('wind-body').innerHTML = `
-        <div class="wind-speed" style="color:${lvl.c}">${spd}<span style="font-size:13px;font-weight:500"> km/h</span></div>
-        <div class="wind-dir">Desde el <strong>${from}</strong> · Ráfagas ${gust} km/h · <span style="color:${lvl.c};font-weight:700">${lvl.txt}</span></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          ${compassSVG(72, lvl.c)}
+          <div>
+            <div class="wind-speed" style="color:${lvl.c}">${spd}<span style="font-size:13px;font-weight:500"> km/h</span></div>
+            <div style="font-size:11px;color:${lvl.c};font-weight:700;margin-top:2px">${lvl.txt} · Ráf. ${gust} km/h</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:3px">Desde el <strong style="color:var(--text-primary)">${from}</strong></div>
+          </div>
+        </div>
         <div class="wind-advice">
           Sal hacia el <strong>${from}</strong> (contra el viento).<br>
           Vuelve desde el <strong>${degToCompass((deg+180)%360)}</strong> con el viento a favor.
@@ -1208,6 +1242,13 @@ async function showWindSuggestion() {
         : spd < 50 ? '🔴 Ruta corta. Evita exposición lateral al viento.'
         :             '⛔ Viento extremo — considera el rodillo hoy.'
         }</div>`;
+
+      const mapCtrl = document.getElementById('map-wind-ctrl');
+      if (mapCtrl) {
+        mapCtrl.style.display = 'flex';
+        mapCtrl.innerHTML = compassSVG(50, lvl.c);
+        mapCtrl.title = `Viento desde el ${from} · ${spd} km/h`;
+      }
     } catch(e) {
       document.getElementById('wind-body').innerHTML = `<div style="color:#ff4757;font-size:12px">Error: ${e.message}</div>`;
     }
