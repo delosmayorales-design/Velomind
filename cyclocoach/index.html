@@ -131,6 +131,13 @@
       .left-panel{display:none;}
       .right-panel{padding:24px 20px;}
     }
+    @media(max-width:480px){
+      .right-panel{padding:20px 16px;}
+      .summary-grid{grid-template-columns:repeat(2,1fr);}
+      .goal-grid{grid-template-columns:1fr 1fr;}
+      .form-row{grid-template-columns:1fr;}
+      #step-5 .step-title{font-size:20px;}
+    }
   </style>
 </head>
 <body>
@@ -171,6 +178,13 @@
         <div class="step-info">
           <div class="step-name">Resumen y zonas</div>
           <div class="step-sub">Tu perfil listo</div>
+        </div>
+      </div>
+      <div class="progress-step" id="ps-5">
+        <div class="step-circle" id="sc-5">5</div>
+        <div class="step-info">
+          <div class="step-name">Conecta Strava</div>
+          <div class="step-sub">Analiza tus rutas al instante</div>
         </div>
       </div>
     </div>
@@ -363,7 +377,7 @@
     <!-- STEP 4 -->
     <div class="step-content" id="step-4">
       <div class="step-header">
-        <div class="step-num">Paso 4 de 4</div>
+        <div class="step-num">Paso 4 de 5</div>
         <div class="step-title">¡Perfil listo! 🎉</div>
         <div class="step-subtitle">Aquí tienes tu resumen. Puedes volver para editar cualquier dato.</div>
       </div>
@@ -390,6 +404,48 @@
       </p>
     </div>
 
+    <!-- STEP 5: Strava CTA -->
+    <div class="step-content" id="step-5">
+      <div class="step-header">
+        <div class="step-num">Paso 5 de 5</div>
+        <div class="step-title">Analiza tu última ruta</div>
+        <div class="step-subtitle">Conecta Strava y tus rutas aparecen al instante — con TSS, potencia y zonas calculadas.</div>
+      </div>
+
+      <div style="background:linear-gradient(135deg,rgba(252,76,2,0.08),rgba(252,76,2,0.03));border:1px solid rgba(252,76,2,0.2);border-radius:14px;padding:20px;margin-bottom:20px;text-align:center">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="#FC4C02" style="margin-bottom:12px"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;margin-bottom:6px">Conectar con Strava</div>
+        <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:16px">
+          Importa hasta 1 año de historial. Tus zonas de potencia, TSS y PMC se calculan solos.
+        </div>
+        <button class="btn btn-primary" id="btn-strava-onboarding" onclick="connectStravaOnboarding()" style="width:100%;justify-content:center;font-size:15px;padding:13px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#05070a" style="flex-shrink:0"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+          Analizar mis rutas con Strava
+        </button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-secondary)">
+          <div style="width:28px;height:28px;border-radius:50%;background:rgba(158,214,43,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-bolt" style="color:var(--primary);font-size:11px"></i></div>
+          Potencia, FC y cadencia por actividad
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-secondary)">
+          <div style="width:28px;height:28px;border-radius:50%;background:rgba(158,214,43,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-chart-line" style="color:var(--primary);font-size:11px"></i></div>
+          PMC automático: CTL, ATL y TSB en tiempo real
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-secondary)">
+          <div style="width:28px;height:28px;border-radius:50%;background:rgba(158,214,43,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-history" style="color:var(--primary);font-size:11px"></i></div>
+          Hasta 1 año de historial importado automáticamente
+        </div>
+      </div>
+
+      <div style="text-align:center">
+        <a href="activities.html" style="font-size:12px;color:var(--text-muted);text-decoration:none;border-bottom:1px solid var(--border)">
+          Saltar por ahora — entrar sin Strava
+        </a>
+      </div>
+    </div>
+
   </div>
 </div>
 <div style="position:fixed;bottom:24px;left:0;right:0;display:flex;justify-content:center;pointer-events:none;z-index:50;">
@@ -405,10 +461,11 @@ let currentStep = 1;
 let data = { goal: 'resistencia' };
 
 const LEFT_META = {
-  1: { badge:'Paso 1 de 4', title:'Crea tu perfil<br>de <span class="accent">atleta</span>', desc:'En 4 pasos rápidos configuramos tu plan completamente personalizado basado en tu FTP y objetivos.' },
-  2: { badge:'Paso 2 de 4', title:'Configura tu<br><span class="accent">rendimiento</span>', desc:'El FTP es el número más importante en ciclismo de potencia. Todo el plan se calcula desde él.' },
-  3: { badge:'Paso 3 de 4', title:'Define tus<br><span class="accent">objetivos</span>', desc:'El plan semanal real se genera en función de tu meta, horas disponibles y nivel de experiencia.' },
-  4: { badge:'Paso 4 de 4', title:'Tu perfil está<br><span class="accent">listo</span>', desc:'Aquí tienes tu resumen con zonas de potencia reales. ¡Empieza a entrenar con datos!' },
+  1: { badge:'Paso 1 de 5', title:'Crea tu perfil<br>de <span class="accent">atleta</span>', desc:'En 5 pasos rápidos configuramos tu plan completamente personalizado basado en tu FTP y objetivos.' },
+  2: { badge:'Paso 2 de 5', title:'Configura tu<br><span class="accent">rendimiento</span>', desc:'El FTP es el número más importante en ciclismo de potencia. Todo el plan se calcula desde él.' },
+  3: { badge:'Paso 3 de 5', title:'Define tus<br><span class="accent">objetivos</span>', desc:'El plan semanal real se genera en función de tu meta, horas disponibles y nivel de experiencia.' },
+  4: { badge:'Paso 4 de 5', title:'Tu perfil está<br><span class="accent">listo</span>', desc:'Aquí tienes tu resumen con zonas de potencia reales. ¡Un paso más y podrás analizar tus rutas!' },
+  5: { badge:'Paso 5 de 5', title:'Analiza tu<br><span class="accent">última ruta</span>', desc:'Conecta Strava para importar tu historial al instante. TSS, PMC y zonas de potencia calculados solos.' },
 };
 
 const ZONES_DEF = [
@@ -445,7 +502,7 @@ function updateLeft() {
   document.getElementById('left-badge').innerHTML = '<i class="fas fa-circle" style="font-size:7px"></i> '+m.badge;
   document.getElementById('left-title').innerHTML = m.title;
   document.getElementById('left-desc').textContent = m.desc;
-  for (let i=1;i<=4;i++) {
+  for (let i=1;i<=5;i++) {
     const ps = document.getElementById('ps-'+i);
     const sc = document.getElementById('sc-'+i);
     ps.classList.remove('active','done');
@@ -616,7 +673,37 @@ async function saveAndGo() {
     }
   } catch(e) { console.warn('Backend no disponible, guardado localmente'); }
 
-  window.location.href='activities.html';
+  // Si Strava ya está conectado, ir directo a actividades
+  const stravaConnected = localStorage.getItem('velomind_strava_connected') === '1';
+  if (stravaConnected) {
+    window.location.href = 'activities.html';
+    return;
+  }
+
+  // Ir al paso 5 (CTA de Strava)
+  document.getElementById('step-4').classList.remove('active');
+  currentStep = 5;
+  document.getElementById('step-5').classList.add('active');
+  updateLeft();
+  window.scrollTo(0,0);
+}
+
+async function connectStravaOnboarding() {
+  const btn = document.getElementById('btn-strava-onboarding');
+  if (!window.Auth || !Auth.getToken()) {
+    window.location.href = 'login.html';
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...'; }
+  try {
+    const res = await fetch(`${window.API_URL}/providers/strava/connect`, { headers: Auth.getHeaders() });
+    const d = await res.json();
+    if (!res.ok || !d.url) throw new Error(d.error || 'No se pudo iniciar conexión con Strava');
+    window.location.href = d.url;
+  } catch(e) {
+    alert(e.message);
+    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#05070a" style="flex-shrink:0"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Analizar mis rutas con Strava'; }
+  }
 }
 
 // Auto-suggest FC max when age is entered

@@ -436,6 +436,114 @@ rowsToInsert.push({
   }
 });
 
+// ─── IMPORT SINGLE ACTIVITY BY ID OR URL ────────────────
+
+router.post('/strava/import-activity', requireAuth, async (req, res) => {
+  const { activity_id, url } = req.body;
+
+  let actId = activity_id;
+  if (!actId && url) {
+    const match = String(url).match(/strava\.com\/activities\/(\d+)/i);
+    if (!match) return res.status(400).json({ error: 'URL inválida. Formato: strava.com/activities/123456' });
+    actId = match[1];
+  }
+  if (!actId) return res.status(400).json({ error: 'Proporciona un ID o URL de actividad Strava' });
+
+  const uid = req.user.id;
+
+  try {
+    const { data: user } = await supabase.from('users').select('*').eq('id', uid).single();
+    if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
+
+    let token = user.strava_token;
+    const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
+    if (user.strava_refresh && isExpired) {
+      const re = await fetch('https://www.strava.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: STRAVA_ID, client_secret: STRAVA_SECRET, grant_type: 'refresh_token', refresh_token: user.strava_refresh }),
+      });
+      const d = await re.json();
+      if (re.ok && d.access_token) {
+        token = d.access_token;
+        await supabase.from('users').update({ strava_token: d.access_token, strava_refresh: d.refresh_token, strava_expires_at: d.expires_at }).eq('id', uid);
+      } else {
+        return res.status(401).json({ error: 'Token de Strava expirado. Ve a Integraciones y vuelve a conectarlo.' });
+      }
+    }
+
+    const r = await fetch(`https://www.strava.com/api/v3/activities/${actId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (r.status === 404) return res.status(404).json({ error: 'Actividad no encontrada. ¿Es privada o de otro usuario?' });
+    if (r.status === 401) return res.status(401).json({ error: 'Token de Strava inválido. Ve a Integraciones y reconecta.' });
+    if (!r.ok) return res.status(400).json({ error: `Error de Strava: HTTP ${r.status}` });
+
+    const a = await r.json();
+
+    const typeStr = a.sport_type || a.type || '';
+    const validCyclingTypes = ['Ride', 'VirtualRide', 'EBikeRide', 'MountainBikeRide', 'GravelRide'];
+    if (!validCyclingTypes.includes(typeStr)) {
+      return res.status(400).json({ error: `Esta actividad es "${typeStr}", no es ciclismo. Solo se importan actividades de bici.` });
+    }
+
+    const ftp = Math.max(1, user.ftp || 200);
+    const np = a.weighted_average_watts || a.average_watts || 0;
+    const duration = a.moving_time || a.elapsed_time || 0;
+    let tss = 0, ifValue = 0, finalNp = np;
+
+    if (np && duration && ftp > 0) {
+      ifValue = Math.round((np / ftp) * 100) / 100;
+      tss = Math.round((duration * np * ifValue) / (ftp * 3600) * 100);
+    } else if (a.average_heartrate > 0 && duration > 0) {
+      const lthr = user.lthr || (user.max_hr ? Math.round(user.max_hr * 0.88) : 160);
+      const hrIF = a.average_heartrate / lthr;
+      ifValue = Math.round(hrIF * 100) / 100;
+      tss = Math.round((duration * a.average_heartrate * hrIF) / (lthr * 3600) * 100);
+      finalNp = Math.round(ifValue * ftp);
+    } else if (duration > 0) {
+      ifValue = 0.65;
+      tss = Math.round((duration * 0.65 * 0.65) / 3600 * 100);
+      finalNp = Math.round(ifValue * ftp);
+    }
+
+    const row = {
+      id: `strava_${a.id}`,
+      user_id: uid,
+      name: String(a.name || 'Actividad Strava').substring(0, 250),
+      type: 'cycling',
+      date: String(a.start_date_local || a.start_date || new Date().toISOString()).substring(0, 10),
+      duration: Math.round(Number(duration) || 0),
+      distance: Math.round(Number(a.distance) || 0),
+      elevation: Math.round(Number(a.total_elevation_gain) || 0),
+      avg_speed: Math.round(Number(a.average_speed ? (a.average_speed * 3.6) : 0) * 10) / 10,
+      avg_power: Math.min(Math.round(Number(a.average_watts) || 0), 2500),
+      max_power: Math.min(Math.round(Number(a.max_watts) || 0), 3500),
+      np: Math.min(Math.round(Number(finalNp) || 0), 2500),
+      avg_hr: Math.min(Math.round(Number(a.average_heartrate) || 0), 250),
+      max_hr: Math.min(Math.round(Number(a.max_heartrate) || 0), 250),
+      avg_cadence: Math.round(Number(a.average_cadence) || 0),
+      calories: Math.round(Number(a.calories) || Number(a.kilojoules) || 0),
+      tss: Math.round(Number(tss) || 0),
+      if_value: Number(ifValue) || 0,
+      strava_id: a.id ? String(a.id) : null,
+      source: 'Strava',
+    };
+
+    const { error } = await supabase.from('activities').upsert(row, { onConflict: 'id' });
+    if (error) return res.status(500).json({ error: 'Error al guardar: ' + error.message });
+
+    setImmediate(async () => {
+      try { await recalculatePMC(uid); } catch(e) {}
+    });
+
+    res.json({ message: 'Actividad importada', activity: row });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── STATUS ─────────────────────────────────────────────
 
 router.get('/status', requireAuth, async (req, res) => {

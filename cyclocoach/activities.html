@@ -103,10 +103,35 @@
   </header>
 
   <div class="page-body">
-    <div class="alert alert-info" style="margin-bottom:20px">
-      <i class="fas fa-info-circle"></i>
-      <div>
-        <strong>No ves tus actividades?</strong> Importa tus archivos GPX/TCX desde Garmin Connect, Wahoo o Polar, o <a href="integrations.html" style="color:inherit;font-weight:700">conecta Strava</a> para sincronizar automaticamente. Si aparecen datos de prueba que no son tuyos, usa el boton <strong>Limpiar todo</strong>.
+    <!-- Banner Strava — solo visible si no está conectado -->
+    <style>
+      #strava-cta-banner { border-radius:14px; border:1px solid rgba(252,76,2,0.25); background:linear-gradient(135deg,rgba(252,76,2,0.08),rgba(252,76,2,0.03)); margin-bottom:20px; align-items:center; gap:16px; flex-wrap:wrap; padding:18px 20px; }
+      #strava-cta-banner .banner-icon { flex-shrink:0; }
+      #strava-cta-banner .banner-text { flex:1; min-width:160px; }
+      #strava-cta-banner .banner-text h3 { font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:700; margin:0 0 3px; }
+      #strava-cta-banner .banner-text p { font-size:13px; color:var(--text-secondary); margin:0; line-height:1.45; }
+      #strava-cta-banner .banner-actions { display:flex; gap:10px; align-items:center; }
+      #btn-strava-banner { display:flex; align-items:center; gap:8px; padding:10px 18px; background:#FC4C02; color:white; border:none; border-radius:9px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
+      @media(max-width:640px){
+        #strava-cta-banner { padding:14px 16px; gap:12px; }
+        #strava-cta-banner .banner-icon { display:none; }
+        #strava-cta-banner .banner-text h3 { font-size:14px; }
+        #strava-cta-banner .banner-actions { width:100%; }
+        #btn-strava-banner { flex:1; justify-content:center; }
+      }
+    </style>
+    <div id="strava-cta-banner" style="display:none">
+      <svg class="banner-icon" width="36" height="36" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+      <div class="banner-text">
+        <h3>Analiza tu última ruta en segundos</h3>
+        <p>Conecta Strava y tu historial aparece aquí con TSS, potencia y PMC calculados solos.</p>
+      </div>
+      <div class="banner-actions">
+        <button onclick="connectStravaFromActivities()" id="btn-strava-banner">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+          Conectar Strava
+        </button>
+        <button onclick="document.getElementById('strava-cta-banner').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;padding:4px;white-space:nowrap">Saltar</button>
       </div>
     </div>
 
@@ -223,10 +248,32 @@ var allActivities = [];
 let zoneChartInst = null;
 let trainingPlan   = null;
 
+async function connectStravaFromActivities() {
+  const btn = document.getElementById('btn-strava-banner');
+  if (!window.Auth || !Auth.getToken()) { window.location.href = 'login.html'; return; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...'; }
+  try {
+    const res = await fetch(`${window.API_URL}/providers/strava/connect`, { headers: Auth.getHeaders() });
+    const d = await res.json();
+    if (!res.ok || !d.url) throw new Error(d.error || 'Error');
+    window.location.href = d.url;
+  } catch(e) {
+    alert(e.message);
+    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Conectar Strava'; }
+  }
+}
+
 async function initActivities() {
   await AppState.init();
   renderAthleteSidebar();
   await loadActivities();
+
+  // Mostrar banner Strava solo si no está conectado
+  const stravaConnected = localStorage.getItem('velomind_strava_connected') === '1';
+  if (!stravaConnected) {
+    const banner = document.getElementById('strava-cta-banner');
+    if (banner) banner.style.display = 'flex';
+  }
   // Cargar plan de entrenamiento para comparar con actividades
   try {
     const r = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() });
