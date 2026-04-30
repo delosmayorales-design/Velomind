@@ -1237,15 +1237,15 @@ function renderPlan(plan, athlete) {
         let eIcon, eLabel, eBg, eBorder, eColor;
         if (ratio >= 0.9) {
           eIcon = 'fa-circle-check';
-          eLabel = _fn ? `¡Máquina, ${_fn}!` : '¡Sesión completada!';
+          eLabel = '¡Completada!';
           eBg = 'rgba(16,185,129,.08)'; eBorder = 'rgba(16,185,129,.25)'; eColor = '#10b981';
         } else if (ratio >= 0.65) {
           eIcon = 'fa-circle-half-stroke';
-          eLabel = _fn ? `Buen intento, ${_fn}` : 'Buen intento';
+          eLabel = 'Sesión parcial';
           eBg = 'rgba(251,191,36,.08)'; eBorder = 'rgba(251,191,36,.25)'; eColor = '#f59e0b';
         } else {
           eIcon = 'fa-circle-exclamation';
-          eLabel = _fn ? `La próxima más, ${_fn}` : 'Por debajo del plan';
+          eLabel = 'Por debajo del plan';
           eBg = 'rgba(239,68,68,.08)'; eBorder = 'rgba(239,68,68,.25)'; eColor = '#ef4444';
         }
         execBadge = `<div class="exec-row" style="background:${eBg};border-top:1px solid ${eBorder}">
@@ -2823,13 +2823,13 @@ function openPostEntrenoModal(sessIdx) {
   let statusIcon, statusLabel, statusColor;
   if (ratio >= 0.9) {
     statusIcon = 'fa-circle-check'; statusColor = '#10b981';
-    statusLabel = _firstName ? `¡Máquina, ${_firstName}!` : '¡Sesión completada!';
+    statusLabel = '¡Completada!';
   } else if (ratio >= 0.65) {
     statusIcon = 'fa-circle-half-stroke'; statusColor = '#f59e0b';
-    statusLabel = _firstName ? `Buen intento, ${_firstName}` : 'Buen intento';
+    statusLabel = 'Sesión parcial';
   } else {
     statusIcon = 'fa-circle-exclamation'; statusColor = '#ef4444';
-    statusLabel = _firstName ? `La próxima más, ${_firstName}` : 'Por debajo del plan';
+    statusLabel = 'Por debajo del plan';
   }
 
   const pct      = Math.round(ratio * 100);
