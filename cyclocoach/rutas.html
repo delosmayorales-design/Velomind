@@ -797,6 +797,7 @@ async function calcRoute(type) {
       document.getElementById('stat-elev').textContent = elevGain;
       if (elevs?.length) renderElevChart(elevs);
     } else {
+      fetchElevation(latLngs, type, distKm);
       fetchElevation(latLngs);
     }
   } catch (e) {
@@ -1189,6 +1190,11 @@ function exportGPX(id) {
 async function showWindSuggestion() {
   const card = document.getElementById('wind-card');
   if (card.classList.contains('visible')) { card.classList.remove('visible'); return; }
+  if (card.classList.contains('visible')) { 
+    card.classList.remove('visible'); 
+    stopWindAnimation();
+    return; 
+  }
   card.classList.add('visible');
   document.getElementById('wind-body').innerHTML =
     '<div style="color:var(--text-muted);font-size:13px"><i class="fas fa-circle-notch fa-spin"></i> Obteniendo datos...</div>';
@@ -1253,6 +1259,8 @@ async function showWindSuggestion() {
         mapCtrl.innerHTML = compassSVG(50, lvl.c);
         mapCtrl.title = `Viento desde el ${from} · ${spd} km/h`;
       }
+      
+      startWindAnimation(deg, spd, lvl.c);
     } catch(e) {
       document.getElementById('wind-body').innerHTML = `<div style="color:#ff4757;font-size:12px">Error: ${e.message}</div>`;
     }
@@ -1575,6 +1583,7 @@ async function generateWindRoute() {
       if (elevs?.length) renderElevChart(elevs);
     } else {
       fetchElevation(latLngs);
+      fetchElevation(latLngs, type, distKm);
     }
     closeWindRouteModal();
     showToast(`Ruta generada: ${distKm.toFixed(1)} km · ${degToCompass(windDeg)} → ${degToCompass((windDeg+180)%360)} a favor`, 'info');
