@@ -616,8 +616,8 @@ function renderWeeklyGrid() {
     const color   = isRest ? 'var(--text-muted)' : (typeColors[sess.type] || '#88D8B0');
 
     return `
-      <div class="session-card-item ${isRest ? 'rest' : ''}" id="nutr-card-${i}" style="${isPast ? 'opacity:0.6; filter:grayscale(40%);' : ''}">
-        <div class="session-row" onclick="openMenusModal(${i})">
+      <div class="session-card-item ${isRest ? 'rest' : ''}" id="nutr-card-${i}" style="${isPast ? 'opacity:0.6; filter:grayscale(40%); pointer-events: none;' : ''}">
+        <div class="session-row" ${isPast ? '' : `onclick="openMenusModal(${i})"`}>
           <div class="day-badge">
             <div class="dn">${daysShort[i]}</div>
             <div class="dd" style="color:${isToday ? '#C4EF44' : color}">${dayNum}</div>
