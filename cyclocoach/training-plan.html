@@ -98,26 +98,31 @@
     .checkin-zone {
       border-top: 1px solid rgba(196,239,68,.08);
       padding: 7px 20px 8px;
-      display: flex; align-items: center; gap: 10px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     }
     .checkin-label {
       font-size: 10px; font-weight: 700; text-transform: uppercase;
       letter-spacing: .5px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0;
     }
-    .checkin-btns { display: flex; gap: 6px; flex: 1; }
+    .checkin-btns { display: flex; gap: 6px; flex: 1; min-width: 0; }
     .checkin-btn {
-      flex: 1; padding: 10px 14px;
+      flex: 1; min-width: 0; padding: 10px 8px;
       background: var(--bg-input, rgba(255,255,255,0.05)); border: 1px solid var(--border, rgba(255,255,255,0.1));
       border-radius: var(--radius-md, 8px); cursor: pointer; font-family: inherit;
-      font-size: 13px; font-weight: 600; color: var(--text-secondary, #cbd5e1);
-      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-      transition: all 0.2s ease;
+      font-size: 12px; font-weight: 600; color: var(--text-secondary, #cbd5e1);
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      transition: all 0.2s ease; white-space: nowrap; overflow: hidden;
     }
     .checkin-btn:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); border-color: var(--primary); color: var(--text-primary, #fff); transform: translateY(-1px); }
     .checkin-btn.ci-mal.selected     { border-color: rgba(251,191,36,.6); background: rgba(251,191,36,.08); color: #fbbf24; }
     .checkin-btn.ci-normal.selected  { border-color: rgba(196,239,68,.6); background: rgba(196,239,68,.08); color: var(--primary); }
     .checkin-btn.ci-fuerte.selected  { border-color: rgba(239,68,68,.5);  background: rgba(239,68,68,.08);  color: #f87171; }
-    .checkin-btn .ci-emoji { font-size: 14px; line-height: 1; }
+    .checkin-btn .ci-emoji { font-size: 14px; line-height: 1; flex-shrink: 0; }
+    @media (max-width: 400px) {
+      .checkin-zone { padding: 10px 14px; gap: 6px; }
+      .checkin-label { width: 100%; }
+      .checkin-btns { width: 100%; }
+    }
 
     /* ══ LIGHT MODE — overrides completos ══════════════════════ */
     html[data-theme="light"],
@@ -1073,8 +1078,10 @@ async function initTrainingPlan() {
       if (BackendSync.loadProfile) BackendSync.loadProfile().then(() => { renderAthleteSidebar(); fillAdjustmentForm(); });
       if (BackendSync.loadActivities) BackendSync.loadActivities().then(() => {
         checkMissedYesterday(); // Revisar si ayer se perdió una sesión, tras cargar actividades reales
+        autoMarkCompletedFromActivities();
       }).catch(() => {
         checkMissedYesterday(); // También intentar con actividades locales si falla el backend
+        autoMarkCompletedFromActivities();
       });
     } else {
       checkMissedYesterday();
@@ -2084,6 +2091,32 @@ async function markTodayAsRest(idx, userNote) {
     ? `carga redistribuida en ${remaining.length} sesión${remaining.length > 1 ? 'es' : ''} restante${remaining.length > 1 ? 's' : ''}`
     : 'sin sesiones restantes esta semana';
   showToast(`🧠 ${dayName} → descanso · ${redistMsg}`, 'var(--primary)');
+}
+
+// ── Auto-mark sessions as done when there's an activity for that day ──
+function autoMarkCompletedFromActivities() {
+  if (!currentPlan?.sessions || !AppState.activities?.length) return;
+
+  const mondayDate = new Date();
+  mondayDate.setDate(mondayDate.getDate() - (mondayDate.getDay() || 7) + 1);
+
+  let changed = false;
+  currentPlan.sessions.forEach((sess, i) => {
+    if (sess.isRest || sess.completed) return;
+    const sessDate = new Date(mondayDate);
+    sessDate.setDate(mondayDate.getDate() + i);
+    const sessDayKey = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
+    const acts = AppState.activities.filter(a => a.date?.slice(0, 10) === sessDayKey);
+    if (acts.length > 0) {
+      sess.completed = true;
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    silentSavePlan();
+    renderPlan(currentPlan, AppState.athlete);
+  }
 }
 
 async function recalculateWeek(idx) {
@@ -3317,7 +3350,10 @@ function openPostEntrenoModal(sessIdx) {
 
   const _firstName = (AppState.athlete?.name || '').split(' ')[0];
   let statusIcon, statusLabel, statusColor;
-  if (ratio >= 0.9) {
+  if (ratio >= 1.15) {
+    statusIcon = 'fa-fire'; statusColor = '#f87171';
+    statusLabel = '¡Te has excedido!';
+  } else if (ratio >= 0.9) {
     statusIcon = 'fa-circle-check'; statusColor = '#10b981';
     statusLabel = '¡Completada!';
   } else if (ratio >= 0.65) {
@@ -3414,9 +3450,15 @@ function _buildAutoFeedback(acts, tssA, tssP, durA, durP, ifA, ifP, hrAvg, ratio
   if (durA > 0 && durP > 0) f += ` Duración: ${durA} min de ${durP} planificados.`;
   if (ifA > 0 && ifP > 0)   f += ` IF: ${ifA.toFixed(2)} vs ${ifP.toFixed(2)} planificado.`;
   if (hrAvg > 0)             f += ` FC media: ${hrAvg} bpm.`;
-  f += ratio >= 0.9  ? ' Sesión completada correctamente.'
-     : ratio >= 0.65 ? ' Sesión completada parcialmente.'
-     :                 ' Sesión por debajo de lo planificado.';
+  if (ratio >= 1.15) {
+    f += ` Me he EXCEDIDO del plan (${pct}% del TSS objetivo). REDUCE el TSS de los días restantes de la semana para compensar el exceso de carga acumulada y evitar sobreentrenamiento.`;
+  } else if (ratio >= 0.9) {
+    f += ' Sesión completada correctamente según el plan.';
+  } else if (ratio >= 0.65) {
+    f += ' Sesión completada parcialmente. Ajusta los días restantes si es necesario.';
+  } else {
+    f += ' Sesión por debajo de lo planificado. Considera si los días siguientes deben aumentarse ligeramente.';
+  }
   // Escape single quotes so it's safe inside the onclick attr
   return f.replace(/'/g, "\\'");
 }

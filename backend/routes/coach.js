@@ -1805,6 +1805,7 @@ REGLAS:
 3. "type" debe ser uno de: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength". Incluye siempre "name" y "emoji".
 4. No pongas dos sesiones de alta intensidad consecutivas.
 5. Variación TSS por sesión: máximo ±30%.
+6. Si el feedback indica que el atleta se EXCEDIÓ del TSS planificado (>115%), REDUCE el TSS de los días futuros pendientes para compensar el exceso de carga acumulada y prevenir sobreentrenamiento.
 
 Devuelve EXACTAMENTE este JSON:
 {

@@ -286,6 +286,14 @@ async function loadActivities() {
   }
 
   renderMonthFilter();
+
+  // Si venimos desde el dashboard con ?id=xxx, abrir esa actividad directamente
+  const urlParams = new URLSearchParams(location.search);
+  const targetId  = urlParams.get('id');
+  if (targetId) {
+    const found = allActivities.find(a => a.id === targetId || String(a.strava_id) === targetId);
+    if (found) setTimeout(() => showActivityDetail(found.id), 200);
+  }
 }
 
 function renderMonthFilter() {

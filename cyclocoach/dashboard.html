@@ -437,6 +437,9 @@
     <!-- Today's session -->
     <div id="today-session-wrap"></div>
 
+    <!-- Coach note -->
+    <div id="coach-note-wrap"></div>
+
     <!-- Main grid -->
     <div class="dash-grid">
 
@@ -578,6 +581,72 @@ function saveDashPlan() {
   }).catch(() => {});
 }
 
+/* ── Coach note ─────────────────────────────────────────────── */
+function renderCoachNote(plan) {
+  const wrap = document.getElementById('coach-note-wrap');
+  if (!wrap) return;
+
+  if (!plan?.sessions || !AppState.activities?.length) {
+    wrap.innerHTML = '';
+    return;
+  }
+
+  const sess = plan.sessions[todayIdx];
+  if (!sess || sess.isRest) { wrap.innerHTML = ''; return; }
+
+  const todayDate = new Date();
+  const todayKey  = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
+  const todayActs = AppState.activities.filter(a => a.date?.slice(0, 10) === todayKey);
+  if (!todayActs.length) { wrap.innerHTML = ''; return; }
+
+  const tssP  = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare || 0) * (plan.targetTSS || 400));
+  const tssA  = Math.round(todayActs.reduce((s, a) => s + (Number(a.tss) || 0), 0));
+  const ratio = tssP > 0 ? tssA / tssP : 1;
+  const pct   = Math.round(ratio * 100);
+
+  let icon, color, msg;
+  if (ratio >= 1.15) {
+    icon = '🔥'; color = '#f87171';
+    msg = `Te has excedido del plan hoy (${pct}% del TSS objetivo). Considera reducir la intensidad en los próximos días para evitar acumular demasiada fatiga. Usa "Ver análisis del entreno y recalcular" en el plan.`;
+  } else if (ratio >= 0.9) {
+    icon = '✅'; color = '#10b981';
+    msg = `Excelente trabajo hoy. Completaste el ${pct}% del TSS planificado. La consistencia es la clave del progreso.`;
+  } else if (ratio >= 0.65) {
+    icon = '👍'; color = '#f59e0b';
+    msg = `Sesión parcial hoy (${pct}% del TSS). No pasa nada, mañana con energía renovada. ¡Descansa bien esta noche!`;
+  } else {
+    icon = '📉'; color = '#6366f1';
+    msg = `Hoy fue un día difícil (${pct}% del TSS). Escucha a tu cuerpo y asegúrate de recuperar bien antes de la próxima sesión.`;
+  }
+
+  wrap.innerHTML = `
+    <div class="dash-card" style="margin-bottom:16px;border-left:3px solid ${color}">
+      <div class="dash-card-label"><i class="fas fa-comment" style="color:${color}"></i> Nota del entrenador</div>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:22px;flex-shrink:0">${icon}</span>
+        <div style="font-size:14px;color:var(--text-secondary);line-height:1.6">${msg}</div>
+      </div>
+    </div>`;
+}
+
+/* ── Auto-mark today from activities ────────────────────────── */
+function autoMarkTodayFromActivities() {
+  if (!dashPlan?.sessions?.[todayIdx]) return;
+  const sess = dashPlan.sessions[todayIdx];
+  if (sess.isRest || sess.completed) return;
+
+  const todayDate = new Date();
+  const todayKey  = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
+  const todayActs = AppState.activities.filter(a => a.date?.slice(0, 10) === todayKey);
+
+  if (todayActs.length > 0) {
+    sess.completed = true;
+    saveDashPlan();
+    renderTodaySession(dashPlan, AppState.athlete);
+    renderWeekCompliance(dashPlan);
+  }
+}
+
 /* ── Weekly compliance ──────────────────────────────────── */
 function renderWeekCompliance(plan) {
   const el = document.getElementById('week-compliance-content');
@@ -661,31 +730,35 @@ function renderLastActivity() {
 
   const daysAgo = Utils.daysAgo(act.date?.substring(0, 10));
   const daysStr = daysAgo === 0 ? 'Hoy' : daysAgo === 1 ? 'Ayer' : `Hace ${daysAgo} días`;
+  const actId   = act.id || act.strava_id || '';
+  const actUrl  = actId ? `activities.html?id=${actId}` : 'activities.html';
 
   el.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-      <div>
-        <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">${act.name || 'Actividad'}</div>
-        <div style="font-size:12px;color:var(--text-muted)">${daysStr} · ${Utils.formatDate(act.date?.substring(0,10))}</div>
+    <a href="${actUrl}" style="display:block;text-decoration:none;color:inherit" title="Ver actividad">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">${act.name || 'Actividad'}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${daysStr} · ${Utils.formatDate(act.date?.substring(0,10))}</div>
+        </div>
+        <span style="font-size:12px;color:var(--primary);font-weight:600">
+          Ver actividad <i class="fas fa-arrow-right"></i>
+        </span>
       </div>
-      <a href="activities.html" style="font-size:12px;color:var(--primary);text-decoration:none;font-weight:600">
-        Ver todas <i class="fas fa-arrow-right"></i>
-      </a>
-    </div>
-    <div class="last-act-metrics">
-      <div class="last-act-metric">
-        <div class="val">${Utils.formatDistance(act.distance)}</div>
-        <div class="lbl">Distancia</div>
+      <div class="last-act-metrics">
+        <div class="last-act-metric">
+          <div class="val">${Utils.formatDistance(act.distance)}</div>
+          <div class="lbl">Distancia</div>
+        </div>
+        <div class="last-act-metric">
+          <div class="val">${Utils.formatDuration(act.duration)}</div>
+          <div class="lbl">Duración</div>
+        </div>
+        <div class="last-act-metric">
+          <div class="val">${act.tss ? Math.round(act.tss) : '--'}</div>
+          <div class="lbl">TSS</div>
+        </div>
       </div>
-      <div class="last-act-metric">
-        <div class="val">${Utils.formatDuration(act.duration)}</div>
-        <div class="lbl">Duración</div>
-      </div>
-      <div class="last-act-metric">
-        <div class="val">${act.tss ? Math.round(act.tss) : '--'}</div>
-        <div class="lbl">TSS</div>
-      </div>
-    </div>`;
+    </a>`;
 }
 
 /* ── Load training plan ─────────────────────────────────── */
@@ -708,6 +781,7 @@ async function loadDashPlan() {
       dashPlan = { sessions: data.sessions, phase: data.phase, targetTSS: data.tss_target, advice: data.advice || {} };
       renderTodaySession(dashPlan, AppState.athlete);
       renderWeekCompliance(dashPlan);
+      renderCoachNote(dashPlan);
     }
   } catch {}
 }
@@ -739,6 +813,8 @@ async function loadDashPlan() {
   BackendSync.loadActivities().then(() => {
     renderPMCCard();
     renderLastActivity();
+    autoMarkTodayFromActivities();
+    renderCoachNote(dashPlan);
   });
 
   BackendSync.loadProfile().then(profile => {
