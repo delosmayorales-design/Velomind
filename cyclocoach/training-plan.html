@@ -834,6 +834,7 @@ const API = window.API_URL;
 let currentPlan = null;
 let progressionChart = null;
 const _adaptCache = {}; // { [idx]: adaptation data from AI }
+let _bgSyncToken = 0; // se incrementa al guardar localmente para invalidar GETs en vuelo
 
 // ── Sync Strava ─────────────────────────────────────────────
 async function syncStrava() {
@@ -1032,14 +1033,16 @@ async function initTrainingPlan() {
       if (BackendSync.loadActivities) BackendSync.loadActivities(); // Descarga de base de datos sin congelar pantalla
     }
     
+    const _fetchToken = ++_bgSyncToken;
     fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(savedPlan => {
+        if (_fetchToken !== _bgSyncToken) return; // El usuario ya guardó localmente — ignorar respuesta antigua
         if (savedPlan?.sessions) {
           currentPlan = { sessions: savedPlan.sessions, phase: savedPlan.phase, targetTSS: savedPlan.tss_target, advice: savedPlan.advice || {} };
           _patchSegmentDistances(currentPlan);
           localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...savedPlan, savedAt: Date.now() }));
-          if (AppState.athlete) renderPlan(currentPlan, AppState.athlete); // Refresca si hay datos más nuevos en la nube
+          if (AppState.athlete) renderPlan(currentPlan, AppState.athlete);
         }
       }).catch(e => console.log('[TP] Usando caché local'));
 
@@ -1683,6 +1686,7 @@ async function saveAdaptation(idx) {
 
 async function silentSavePlan() {
   if (!currentPlan) return;
+  _bgSyncToken++; // invalida cualquier GET en vuelo — el plan local es ahora la fuente de verdad
   try {
     const monday = new Date();
     monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
