@@ -838,37 +838,35 @@ const G = (() => {
 
   // ─── Strava Sync ──────────────────────────────────────────
 
-  // Acumula km de actividades locales no procesadas y guarda en backend
-  async function _autoSyncLocalActivities(silent = true) {
-    let acts;
-    try { acts = JSON.parse(localStorage.getItem('velomind_activities') || '[]'); } catch(e) { acts = []; }
-    if (!acts.length || !st?.bikes?.length) return 0;
-    const done = new Set(st.processed_ids || []);
-    let n = 0;
-    acts.forEach(a => {
-      const sid = a.strava_id || (a.id?.startsWith('strava_') ? a.id.replace('strava_', '') : null);
-      if (!a.gear_id || !sid || done.has(sid)) return;
-      const bike = st.bikes.find(b => b.strava_gear_id === a.gear_id);
-      if (!bike) return;
-      const km = a.distance || 0;
-      const h = (a.duration || 0) / 3600;
+  // Reconstruye km/horas de cada componente leyendo TODAS las actividades locales.
+  // Filtra por installed_date para no contar km de antes de instalar el componente.
+  // No depende de processed_ids ni del backend — siempre da el resultado correcto.
+  function rebuildFromLocalActivities() {
+    let acts = [];
+    try { acts = JSON.parse(localStorage.getItem('velomind_activities') || '[]'); } catch(e) {}
+    if (!acts.length || !st?.bikes?.length) return false;
+    const now = new Date();
+    let anyMatched = false;
+    st.bikes.forEach(bike => {
+      if (!bike.strava_gear_id) return;
+      const bikeActs = acts.filter(a => a.gear_id === bike.strava_gear_id);
+      if (!bikeActs.length) return;
+      anyMatched = true;
       bike.components.forEach(c => {
-        if (c.threshold_hours) c.current_hours = (c.current_hours || 0) + h;
-        else if (!c.threshold_days) c.current_km = (c.current_km || 0) + km;
+        const installDate = c.installed_date ? new Date(c.installed_date) : new Date('2000-01-01');
+        if (c.installed_date) c.installed_days_ago = Math.floor((now - installDate) / 86400000);
+        let km = 0, h = 0;
+        bikeActs.forEach(a => {
+          if (a.date && new Date(a.date) < installDate) return;
+          km += a.distance || 0;
+          h += (a.duration || 0) / 3600;
+        });
+        if (c.threshold_hours) c.current_hours = Math.round(h * 10) / 10;
+        else if (!c.threshold_days) c.current_km = Math.round(km);
         c.status = calcStatus(c);
       });
-      done.add(sid); n++;
     });
-    if (n > 0) {
-      st.processed_ids = [...done];
-      save();
-      if (typeof BackendSync !== 'undefined') BackendSync.saveGarage(st, hist).catch(() => {});
-      recalc(); render(); checkAlerts();
-      if (!silent) toast('green', '✅ Sincronizado', `${n} actividad(es) procesadas.`);
-    } else if (!silent) {
-      toast('info', 'Sin novedades', 'No hay actividades nuevas con Gear ID vinculado.');
-    }
-    return n;
+    return anyMatched;
   }
 
   async function syncActivities() {
@@ -879,18 +877,17 @@ const G = (() => {
         if (data?.garage?.bikes?.length) {
           try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) {}
           try { hist = JSON.parse(localStorage.getItem(HK) || '[]'); } catch(e) { hist = []; }
-          if (st?.bikes?.length) { recalc(); render(); }
         }
       } catch(e) {
         toast('red', 'Error', 'No se pudo conectar con el servidor.');
         return;
       }
     }
-    // 2. Acumular actividades locales no procesadas (con toast visible)
-    const n = await _autoSyncLocalActivities(false);
-    if (n === 0 && typeof BackendSync !== 'undefined') {
-      toast('green', '✅ Actualizado', 'Datos de componentes actualizados desde el servidor.');
-    }
+    // 2. Reconstruir km desde actividades locales y renderizar
+    const matched = rebuildFromLocalActivities();
+    recalc(); render(); save();
+    if (matched) { checkAlerts(); toast('green', '✅ Actualizado', 'Km de componentes recalculados desde tus actividades Strava.'); }
+    else toast('info', 'Sin novedades', 'No hay actividades Strava vinculadas a tus bicis (comprueba el Gear ID en Strava).');
   }
 
   // ─── Alerts ───────────────────────────────────────────────
@@ -1605,24 +1602,22 @@ const G = (() => {
     try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) { st = null; }
     try { hist = JSON.parse(localStorage.getItem(HK) || '[]'); } catch(e) { hist = []; }
     if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
+    rebuildFromLocalActivities(); // Recalcular km desde actividades locales sobre datos cacheados
     recalc();
     showOverview();
 
-    // Refresh desde backend en background y auto-sincronizar actividades locales
+    // Refresh desde backend en background (sin bloquear UI)
     if (typeof BackendSync !== 'undefined') {
-      BackendSync.loadGarage().then(async data => {
+      BackendSync.loadGarage().then(data => {
         if (data?.garage?.bikes?.length) {
           try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) {}
           try { hist = JSON.parse(localStorage.getItem(HK) || '[]'); } catch(e) { hist = []; }
-          if (st?.bikes?.length) { recalc(); render(); }
+          if (st?.bikes?.length) {
+            rebuildFromLocalActivities(); // Recalcular sobre datos frescos del servidor
+            recalc(); render(); save();
+          }
         }
-        await _autoSyncLocalActivities(true);
-      }).catch(() => {
-        // Backend dormido — intentar sync local igualmente
-        _autoSyncLocalActivities(true);
-      });
-    } else {
-      _autoSyncLocalActivities(true);
+      }).catch(() => {}); // Backend dormido — ya se mostró la versión local
     }
   }
 

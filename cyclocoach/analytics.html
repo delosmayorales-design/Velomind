@@ -1546,6 +1546,21 @@ function renderRiderProfile(acts, athlete, curve) {
 }
 
 // ─── BOOT ─────────────────────────────────────────────────────
+// Mostrar datos cacheados inmediatamente sin esperar al backend
+(function() {
+  try { state.athlete = JSON.parse(localStorage.getItem('velomind_athlete') || 'null'); } catch(e) {}
+  try { state.activities = JSON.parse(localStorage.getItem('velomind_activities') || '[]'); } catch(e) {}
+  if (!state.activities.length) setStatus('Sin actividades — Conecta Strava para empezar');
+  if (state.activities.length > 0) {
+    var hasRecent = state.activities.some(function(a){ return new Date(a.date) >= new Date(Date.now() - 90*86400000); });
+    if (!hasRecent) { var p = document.getElementById('period'); if (p) p.value = '9999'; }
+  }
+  state.pmc = calculatePMC(state.activities);
+  render(); renderZones(); loadPowerCurve();
+  requestAnimationFrame(function(){ document.documentElement.style.removeProperty('opacity'); });
+})();
+
+// Refresh desde backend en background
 init()
   .then(function() {
     if (typeof BackendSync !== 'undefined') BackendSync.autoSyncIfNeeded();
@@ -1553,6 +1568,7 @@ init()
   .catch(function(e) {
     console.error('[Métricas] Error:', e);
     setStatus('Error cargando datos');
+    document.documentElement.style.removeProperty('opacity');
   });
 
 // ─── AYUDA ───────────────────────────────────────────────────
