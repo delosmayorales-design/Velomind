@@ -1459,6 +1459,41 @@ Sesión planificada para ${diaRef}:
     const tssMax  = Math.round(tssOrig * 1.25);
     const tssMin  = Math.round(tssOrig * 0.75);
     const tipoSesion = sesionOriginal?.type || 'endurance';
+    const ctxLow = contexto.toLowerCase();
+
+    // ── Detección determinista antes de llamar a la IA ─────────────────
+    const KW_IMPEDIMENTO = [
+      'no puedo salir', 'no podré salir', 'no podre salir', 'no saldré', 'no saldre',
+      'tengo evento', 'hay evento', 'un evento', 'tengo un compromiso', 'tengo compromiso',
+      'tengo viaje', 'estoy de viaje', 'viajo', 'me voy de viaje',
+      'no puedo entrenar', 'no entreno', 'no puedo ir', 'no voy a poder',
+      'trabajo hoy', 'tengo trabajo', 'no tengo tiempo', 'sin tiempo',
+      'día libre forzado', 'dia libre forzado'
+    ];
+    const KW_FATIGA_EXTREMA = [
+      'estoy muerto', 'estoy muy mal', 'no puedo moverme', 'no me puedo mover',
+      'fiebre', 'estoy enfermo', 'me encuentro muy mal', 'lesionado', 'lesión grave'
+    ];
+
+    if (KW_IMPEDIMENTO.some(k => ctxLow.includes(k))) {
+      return res.json({ ok: true, today: {
+        recomendacion: 'descanso', titulo: 'Descanso',
+        duracion_min: 0, tss_estimado: 0, if_estimado: 0, intensidad: '',
+        descripcion: 'Día de descanso por imposibilidad de entrenar.',
+        razon: 'El atleta no puede salir a entrenar.',
+        nutricion: 'Mantén la hidratación y una dieta equilibrada en el día de descanso.'
+      }});
+    }
+    if (KW_FATIGA_EXTREMA.some(k => ctxLow.includes(k))) {
+      return res.json({ ok: true, today: {
+        recomendacion: 'descanso', titulo: 'Descanso por fatiga extrema',
+        duracion_min: 0, tss_estimado: 0, if_estimado: 0, intensidad: '',
+        descripcion: 'Descanso total. El cuerpo necesita recuperación completa.',
+        razon: 'Fatiga o malestar extremo reportado. Prioridad: recuperación.',
+        nutricion: 'Prioriza alimentos antiinflamatorios e hidratación.'
+      }});
+    }
+    // ───────────────────────────────────────────────────────────────────
 
     const systemPrompt = 'Eres un coach de ciclismo experto. Responde SOLO con JSON válido, sin markdown, sin texto extra.';
     const userMsg = `Atleta: FTP ${ftp}W, objetivo: ${user.goal || 'resistencia'}.
