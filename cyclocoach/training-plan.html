@@ -1425,12 +1425,15 @@ async function adaptSession(idx, dayOffset) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+    if (!data.today) throw new Error('El coach no devolvió recomendación. Inténtalo de nuevo.');
     renderAdaptResult(idx, data.today);
   } catch(e) {
+    console.error('[adaptSession]', e);
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-sparkles"></i> Adaptar';
-    result.innerHTML = `<div style="padding:4px 0;font-size:11px;color:#f87171"><i class="fas fa-exclamation-circle"></i> ${e.message}</div>`;
+    result.innerHTML = `<div style="padding:4px 0;font-size:12px;color:#f87171"><i class="fas fa-exclamation-circle"></i> ${e.message}</div>`;
     result.style.display = '';
+    showToast('⚠️ ' + e.message, '#f87171');
   }
 }
 
@@ -1490,7 +1493,11 @@ function resetAdapt(idx) {
 
 async function saveAdaptation(idx) {
   const t = _adaptCache[idx];
-  if (!t || !currentPlan) return;
+  console.log('[saveAdaptation] idx=', idx, 'cache=', t, 'plan=', !!currentPlan);
+  if (!t || !currentPlan) {
+    showToast('⚠️ No hay recomendación guardada. Pulsa Adaptar primero.', '#f87171');
+    return;
+  }
 
   const btn = document.getElementById(`save-adapt-btn-${idx}`);
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...'; }
@@ -1656,7 +1663,14 @@ async function saveAdaptation(idx) {
   }
 
   // ── Render único al final + guardar ──────────────────────────
-  renderPlan(currentPlan, AppState.athlete);
+  console.log('[saveAdaptation] renderPlan sessions[idx]=', currentPlan.sessions[idx]);
+  try {
+    renderPlan(currentPlan, AppState.athlete);
+  } catch(renderErr) {
+    console.error('[saveAdaptation] renderPlan falló:', renderErr);
+    showToast('⚠️ Error al renderizar el plan: ' + renderErr.message, '#f87171');
+    return;
+  }
   await silentSavePlan();
   showToast(toastMsg, 'var(--primary)');
 
