@@ -197,6 +197,10 @@
     .wind-note     { font-size:11px;color:var(--text-muted);margin-top:7px; }
     .leaflet-wind-ctrl { background:rgba(13,17,23,0.92);border:1px solid rgba(0,212,255,0.35);border-radius:50%;width:62px;height:62px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.5);cursor:default; }
 
+    /* Wind arrows toggle button */
+    #btn-wind-arrows.active { background:rgba(0,212,255,0.15)!important; border-color:rgba(0,212,255,0.5)!important; color:#00D4FF!important; }
+    #btn-wind-arrows.loading { opacity:.55; pointer-events:none; }
+
     /* Waypoint markers arrastrables */
     .wp-dot {
       width: 14px; height: 14px;
@@ -392,6 +396,9 @@
       <input id="gpx-input" type="file" accept=".gpx,.tcx" style="display:none" onchange="importGPX(this)">
       <button class="btn btn-secondary btn-sm" id="btn-wind" onclick="showWindSuggestion()">
         <i class="fas fa-wind"></i><span class="btn-label"> Viento</span>
+      </button>
+      <button class="btn btn-secondary btn-sm" id="btn-wind-arrows" onclick="toggleWindArrows()" title="Flechas de viento animadas en el mapa">
+        <i class="fas fa-location-arrow"></i><span class="btn-label"> Flechas viento</span>
       </button>
       <button class="btn btn-secondary btn-sm" onclick="openWindRouteModal()" style="background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.35);color:#00D4FF;">
         <i class="fas fa-wind"></i><span class="btn-label"> Ruta por viento</span>
@@ -608,6 +615,12 @@ document.addEventListener('DOMContentLoaded', () => {
   );
 
   map.on('click', onMapClick);
+
+  // Crear canvas overlay para flechas de viento (screen-space, encima de todas las capas)
+  const _wac = document.createElement('canvas');
+  _wac.id = 'wind-map-canvas';
+  _wac.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:650;display:none;';
+  map.getContainer().appendChild(_wac);
 
   const WindCtrl = L.Control.extend({
     options: { position: 'bottomleft' },
@@ -1266,6 +1279,146 @@ async function showWindSuggestion() {
   }, () => {
     document.getElementById('wind-body').innerHTML = '<div style="color:#ff4757;font-size:12px">Activa la ubicación en el navegador.</div>';
   });
+}
+
+// ── Wind Map Arrows Overlay (estilo Windfinder) ──────────────────
+let windArrowsActive = false;
+let windArrowsFrame  = null;
+let windArrowsData   = null; // { deg, spd, color }
+let windArrowsGrid   = [];
+
+async function toggleWindArrows() {
+  const btn = document.getElementById('btn-wind-arrows');
+
+  if (windArrowsActive) {
+    windArrowsActive = false;
+    if (windArrowsFrame) { cancelAnimationFrame(windArrowsFrame); windArrowsFrame = null; }
+    const c = document.getElementById('wind-map-canvas');
+    if (c) { c.getContext('2d').clearRect(0, 0, c.width, c.height); c.style.display = 'none'; }
+    btn?.classList.remove('active');
+    return;
+  }
+
+  if (!navigator.geolocation) { alert('Geolocalización no disponible.'); return; }
+  btn?.classList.add('loading');
+
+  try {
+    const pos = await new Promise((res, rej) =>
+      navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
+    );
+    const { latitude: lat, longitude: lon } = pos.coords;
+    const resp = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+      `&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=auto`
+    );
+    const data = await resp.json();
+    const spd   = Math.round(data.current.wind_speed_10m);
+    const deg   = data.current.wind_direction_10m;
+    const color = spd < 15 ? '#10B981' : spd < 30 ? '#F59E0B' : spd < 50 ? '#EF4444' : '#8B5CF6';
+
+    windArrowsData = { deg, spd, color };
+    windArrowsActive = true;
+    btn?.classList.remove('loading');
+    btn?.classList.add('active');
+
+    const canvas = document.getElementById('wind-map-canvas');
+    const size   = map.getSize();
+    canvas.width  = size.x;
+    canvas.height = size.y;
+    canvas.style.display = 'block';
+
+    windArrowsGrid = _buildArrowGrid(size.x, size.y);
+    _animateWindArrows(canvas);
+  } catch (e) {
+    btn?.classList.remove('loading');
+    alert('No se pudieron obtener datos de viento: ' + (e.message || e));
+  }
+}
+
+function _buildArrowGrid(w, h) {
+  const GRID = 68;
+  const offX = (w % GRID) / 2;
+  const offY = (h % GRID) / 2;
+  const pts  = [];
+  for (let y = offY - GRID; y < h + GRID; y += GRID)
+    for (let x = offX - GRID; x < w + GRID; x += GRID)
+      pts.push({ hx: x, hy: y, phase: Math.random() });
+  return pts;
+}
+
+function _animateWindArrows(canvas) {
+  const ctx          = canvas.getContext('2d');
+  const { deg, spd, color } = windArrowsData;
+
+  // Dirección: hacia dónde sopla el viento
+  const rad        = deg * Math.PI / 180;
+  const vx         = Math.sin(rad);
+  const vy         = -Math.cos(rad);
+  const arrowAngle = Math.atan2(vx, -vy);
+
+  const TRAVEL = 30;   // px que recorre una flecha por ciclo
+  const SPEED  = Math.max(0.35, spd / 28); // unidades de ciclo por frame a 60fps
+
+  let lastTime = performance.now();
+
+  function draw(now) {
+    if (!windArrowsActive) return;
+
+    const dt = Math.min((now - lastTime) / 16.67, 3);
+    lastTime = now;
+
+    // Redimensionar si el mapa cambió de tamaño
+    const size = map.getSize();
+    if (canvas.width !== size.x || canvas.height !== size.y) {
+      canvas.width  = size.x;
+      canvas.height = size.y;
+      windArrowsGrid = _buildArrowGrid(size.x, size.y);
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    windArrowsGrid.forEach(pt => {
+      pt.phase = (pt.phase + SPEED * dt / TRAVEL) % 1;
+      const t = pt.phase;
+
+      // Fade: sube 0→0.2, plano 0.2→0.8, baja 0.8→1
+      const alpha = t < 0.2 ? t / 0.2 : (t < 0.8 ? 1 : (1 - t) / 0.2);
+      if (alpha < 0.01) return;
+
+      const offset = t * TRAVEL;
+      const x = pt.hx + vx * offset;
+      const y = pt.hy + vy * offset;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(arrowAngle);
+      ctx.globalAlpha = alpha * 0.72;
+
+      // Tallo
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 1.8;
+      ctx.lineCap     = 'round';
+      ctx.beginPath();
+      ctx.moveTo(0, 8);
+      ctx.lineTo(0, -3);
+      ctx.stroke();
+
+      // Cabeza tipo chevron (↑)
+      ctx.lineWidth   = 1.8;
+      ctx.lineJoin    = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-5.5, 2);
+      ctx.lineTo(0, -8);
+      ctx.lineTo(5.5, 2);
+      ctx.stroke();
+
+      ctx.restore();
+    });
+
+    windArrowsFrame = requestAnimationFrame(draw);
+  }
+
+  windArrowsFrame = requestAnimationFrame(draw);
 }
 
 // ── Animación de Viento ──────────────────────────────────────────
