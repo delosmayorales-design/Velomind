@@ -1018,15 +1018,19 @@ const FileParser = {
     if (!trkpts.length) throw new Error('No se encontraron puntos GPS en el GPX.');
 
     const points = trkpts.map(pt => {
-      const pwrNode = pt.querySelector('power');
+      // Garmin/Strava GPX usan namespace gpxtpx:, fallback a querySelector simple
+      const pwrNode = pt.querySelector('power')    || pt.getElementsByTagNameNS('*', 'power')[0];
+      const hrNode  = pt.querySelector('hr')       || pt.getElementsByTagNameNS('*', 'hr')[0];
+      const cadNode = pt.querySelector('cad')      || pt.getElementsByTagNameNS('*', 'cad')[0]
+                   || pt.querySelector('cadence')  || pt.getElementsByTagNameNS('*', 'cadence')[0];
       return {
         lat: parseFloat(pt.getAttribute('lat')),
         lon: parseFloat(pt.getAttribute('lon')),
         ele: parseFloat(pt.querySelector('ele')?.textContent || 0),
         time: new Date(pt.querySelector('time')?.textContent || 0),
         power: pwrNode ? parseFloat(pwrNode.textContent) : null,
-        hr: parseFloat(pt.querySelector('hr')?.textContent || 0) || null,
-        cad: parseFloat(pt.querySelector('cadence')?.textContent || 0) || null,
+        hr:   hrNode  ? (parseFloat(hrNode.textContent)  || null) : null,
+        cad:  cadNode ? (parseFloat(cadNode.textContent) || null) : null,
       };
     });
 
@@ -1038,9 +1042,18 @@ const FileParser = {
     const avgPower = validPowers.length
       ? Math.round(validPowers.reduce((s, p) => s + p.power, 0) / validPowers.length)
       : 0;
-    const avgHR = points.filter(p => p.hr > 0).length
-      ? Math.round(points.reduce((s, p) => s + (p.hr || 0), 0) / points.filter(p => p.hr > 0).length)
+    const maxPower = validPowers.length ? Math.max(...validPowers.map(p => p.power)) : null;
+
+    const validHRs = points.filter(p => p.hr && p.hr > 0 && p.hr < 250);
+    const avgHR = validHRs.length
+      ? Math.round(validHRs.reduce((s, p) => s + p.hr, 0) / validHRs.length)
       : 0;
+    const maxHR = validHRs.length ? Math.max(...validHRs.map(p => p.hr)) : null;
+
+    const validCads = points.filter(p => p.cad && p.cad > 0 && p.cad < 200);
+    const avgCad = validCads.length
+      ? Math.round(validCads.reduce((s, p) => s + p.cad, 0) / validCads.length)
+      : null;
 
     const activity = {
       id: 'gpx_' + Date.now(),
@@ -1051,9 +1064,12 @@ const FileParser = {
       duration: Math.round(durationSec),
       distance: Math.round(distance),
       avg_power: avgPower || null,
+      max_power: maxPower || null,
       np: avgPower ? Math.round(avgPower * 1.05) : null,
       avg_hr: avgHR || null,
-      avg_speed: durationSec > 0 ? Math.round((distance / durationSec) * 36) / 10 : null, // km/h
+      max_hr: maxHR || null,
+      avg_cadence: avgCad,
+      avg_speed: durationSec > 0 ? Math.round((distance / durationSec) * 36) / 10 : null,
       elevation: this._calcElevation(points),
       tss: 0,
       if_value: 0,
@@ -1072,16 +1088,20 @@ const FileParser = {
     const date = doc.querySelector('Id')?.textContent?.substring(0, 10) ||
                  trackpoints[0].querySelector('Time')?.textContent?.substring(0, 10) || '';
 
-    const powers = [], hrs = [], times = [];
+    const powers = [], hrs = [], cads = [], times = [];
+    const maxPCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
     for (const tp of trackpoints) {
       const time = new Date(tp.querySelector('Time')?.textContent || 0);
-      const pwrNode = tp.querySelector('Watts');
+      const pwrNode = tp.querySelector('Watts') || tp.getElementsByTagNameNS('*', 'Watts')[0];
       const power = pwrNode ? parseFloat(pwrNode.textContent) : null;
       const hr = parseFloat(tp.querySelector('Value')?.textContent || 0);
-      if (!isNaN(time)) times.push(time);
-      const maxPCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
+      const cadNode = tp.querySelector('Cadence') || tp.getElementsByTagNameNS('*', 'RunCadence')[0]
+                   || tp.getElementsByTagNameNS('*', 'Cadence')[0];
+      const cad = cadNode ? parseFloat(cadNode.textContent) : null;
+      if (!isNaN(time.getTime())) times.push(time);
       if (power != null && power >= 0 && power <= maxPCap) powers.push(power);
       if (hr > 0 && hr < 250) hrs.push(hr);
+      if (cad != null && cad > 0 && cad < 200) cads.push(cad);
     }
 
     const durationSec = times.length >= 2
@@ -1090,7 +1110,10 @@ const FileParser = {
     const totalDistEl = doc.querySelector('DistanceMeters');
     const distance = parseFloat(totalDistEl?.textContent || 0);
     const avgPower = powers.length ? Math.round(powers.reduce((a, b) => a + b, 0) / powers.length) : 0;
+    const maxPower = powers.length ? Math.max(...powers) : null;
     const avgHR = hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
+    const maxHR = hrs.length ? Math.max(...hrs) : null;
+    const avgCad = cads.length ? Math.round(cads.reduce((a, b) => a + b, 0) / cads.length) : null;
 
     return {
       id: 'tcx_' + Date.now(),
@@ -1101,8 +1124,11 @@ const FileParser = {
       duration: durationSec,
       distance: Math.round(distance),
       avg_power: avgPower || null,
+      max_power: maxPower || null,
       np: avgPower ? Math.round(avgPower * 1.05) : null,
       avg_hr: avgHR || null,
+      max_hr: maxHR || null,
+      avg_cadence: avgCad,
       tss: 0,
       if_value: 0,
     };
