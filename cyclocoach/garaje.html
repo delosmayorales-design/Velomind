@@ -837,21 +837,12 @@ const G = (() => {
   }
 
   // ─── Strava Sync ──────────────────────────────────────────
-  async function syncActivities() {
-    if (typeof BackendSync !== 'undefined') {
-      try {
-        await BackendSync.loadGarage();
-        try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) {}
-        if (st?.bikes?.length) { render(); toast('green', '✅ Actualizado', 'Datos de componentes actualizados desde el servidor.'); }
-      } catch(e) {
-        toast('red', 'Error', 'No se pudo conectar con el servidor.');
-      }
-      return;
-    }
-    // Fallback sin backend: acumulación local
+
+  // Acumula km de actividades locales no procesadas y guarda en backend
+  async function _autoSyncLocalActivities(silent = true) {
     let acts;
     try { acts = JSON.parse(localStorage.getItem('velomind_activities') || '[]'); } catch(e) { acts = []; }
-    if (!acts.length) { toast('info','Sin actividades','Importa o sincroniza actividades primero.'); return; }
+    if (!acts.length || !st?.bikes?.length) return 0;
     const done = new Set(st.processed_ids || []);
     let n = 0;
     acts.forEach(a => {
@@ -868,10 +859,38 @@ const G = (() => {
       });
       done.add(sid); n++;
     });
-    st.processed_ids = [...done];
-    save();
-    if (n > 0) { toast('green','✅ Sincronizado', `${n} actividad(es) procesadas.`); checkAlerts(); render(); }
-    else toast('info','Sin novedades','No hay actividades nuevas con Gear ID vinculado.');
+    if (n > 0) {
+      st.processed_ids = [...done];
+      save();
+      if (typeof BackendSync !== 'undefined') BackendSync.saveGarage(st, hist).catch(() => {});
+      recalc(); render(); checkAlerts();
+      if (!silent) toast('green', '✅ Sincronizado', `${n} actividad(es) procesadas.`);
+    } else if (!silent) {
+      toast('info', 'Sin novedades', 'No hay actividades nuevas con Gear ID vinculado.');
+    }
+    return n;
+  }
+
+  async function syncActivities() {
+    // 1. Refrescar desde backend si disponible
+    if (typeof BackendSync !== 'undefined') {
+      try {
+        const data = await BackendSync.loadGarage();
+        if (data?.garage?.bikes?.length) {
+          try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) {}
+          try { hist = JSON.parse(localStorage.getItem(HK) || '[]'); } catch(e) { hist = []; }
+          if (st?.bikes?.length) { recalc(); render(); }
+        }
+      } catch(e) {
+        toast('red', 'Error', 'No se pudo conectar con el servidor.');
+        return;
+      }
+    }
+    // 2. Acumular actividades locales no procesadas (con toast visible)
+    const n = await _autoSyncLocalActivities(false);
+    if (n === 0 && typeof BackendSync !== 'undefined') {
+      toast('green', '✅ Actualizado', 'Datos de componentes actualizados desde el servidor.');
+    }
   }
 
   // ─── Alerts ───────────────────────────────────────────────
@@ -1581,8 +1600,30 @@ const G = (() => {
         if (ft) ft.textContent = `FTP: ${a.ftp || '--'} W`;
       }
     }
-    await load();
+
+    // Mostrar datos cacheados inmediatamente (sin esperar al backend)
+    try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) { st = null; }
+    try { hist = JSON.parse(localStorage.getItem(HK) || '[]'); } catch(e) { hist = []; }
+    if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
+    recalc();
     showOverview();
+
+    // Refresh desde backend en background y auto-sincronizar actividades locales
+    if (typeof BackendSync !== 'undefined') {
+      BackendSync.loadGarage().then(async data => {
+        if (data?.garage?.bikes?.length) {
+          try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) {}
+          try { hist = JSON.parse(localStorage.getItem(HK) || '[]'); } catch(e) { hist = []; }
+          if (st?.bikes?.length) { recalc(); render(); }
+        }
+        await _autoSyncLocalActivities(true);
+      }).catch(() => {
+        // Backend dormido — intentar sync local igualmente
+        _autoSyncLocalActivities(true);
+      });
+    } else {
+      _autoSyncLocalActivities(true);
+    }
   }
 
   return { init, showOverview, showBike, openCheckin, confirmCheckin, openEditComp, saveCompEdit, searchPrice, searchInModal, openEditBike, saveBikeConfig, openAddKm, confirmAddKm, openHistory, openModal, closeModal, syncActivities, exportPDF, importFromStrava, openAddBike, saveNewBike, deleteBike };
