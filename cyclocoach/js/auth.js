@@ -502,3 +502,81 @@ window.Auth = Auth;
 if (!window.CYCLOCOACH_PUBLIC) {
   Auth.init();
 }
+
+// ── Navigation UX: barra de progreso + prefetch en hover ─────────
+(function () {
+  let bar, hideTimer;
+
+  function createBar() {
+    if (bar) return bar;
+    bar = document.createElement('div');
+    bar.id = 'nav-progress-bar';
+    Object.assign(bar.style, {
+      position: 'fixed', top: '0', left: '0', zIndex: '999999',
+      width: '0', height: '2px', opacity: '1',
+      background: 'var(--primary, #9ED62B)',
+      boxShadow: '0 0 8px var(--primary, #9ED62B)',
+      transition: 'none', pointerEvents: 'none',
+    });
+    document.body.appendChild(bar);
+    return bar;
+  }
+
+  function startBar() {
+    const b = createBar();
+    clearTimeout(hideTimer);
+    b.style.transition = 'none';
+    b.style.opacity = '1';
+    b.style.width = '0';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        b.style.transition = 'width 1s cubic-bezier(.1,.8,.5,1)';
+        b.style.width = '75%';
+      });
+    });
+  }
+
+  function finishBar() {
+    if (!bar) return;
+    bar.style.transition = 'width .12s ease';
+    bar.style.width = '100%';
+    hideTimer = setTimeout(() => {
+      if (bar) { bar.style.opacity = '0'; bar.style.width = '0'; }
+    }, 320);
+  }
+
+  // Detectar clicks en links internos → iniciar barra y marcar nav activo
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href]');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('mailto') || href.startsWith('javascript')) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+    // Feedback inmediato: marcar item de nav como activo antes de navegar
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    a.classList.add('active');
+
+    // Barra de progreso
+    if (document.readyState !== 'loading') startBar();
+    else document.addEventListener('DOMContentLoaded', startBar, { once: true });
+  }, true);
+
+  // Completar barra cuando la nueva página carga
+  window.addEventListener('pageshow', finishBar);
+  window.addEventListener('load', finishBar);
+
+  // Prefetch en hover: el browser descarga la página siguiente en background
+  const _prefetched = new Set();
+  document.addEventListener('mouseover', (e) => {
+    const a = e.target.closest('a.nav-item[href]');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href || _prefetched.has(href) || href.startsWith('http')) return;
+    _prefetched.add(href);
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = href;
+    document.head.appendChild(link);
+  }, { passive: true });
+})();
