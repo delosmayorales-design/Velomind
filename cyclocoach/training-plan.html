@@ -1506,6 +1506,7 @@ async function saveAdaptation(idx) {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...'; }
 
   const sess = currentPlan.sessions[idx];
+  const originalType = sess.type; // capturar ANTES de modificar
   const ftp = AppState.athlete?.ftp || 200;
 
   // --- Actualización completa de la sesión ---
@@ -1614,7 +1615,7 @@ async function saveAdaptation(idx) {
       const res2 = await fetch(`${API}/coach/recalculate-week`, {
         method: 'POST',
         headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: currentPlan, todayIdx: todayNow, allowToday: true, feedback })
+        body: JSON.stringify({ plan: currentPlan, todayIdx: todayNow, allowToday: true, feedback, cancelledIdx: idx, cancelledType: originalType })
       });
       const data2 = await res2.json();
 

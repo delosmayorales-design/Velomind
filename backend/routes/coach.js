@@ -1455,32 +1455,55 @@ Sesión planificada para ${diaRef}:
 - Descripción: ${sesionOriginal.description}
 ` : `Sin sesión específica planificada para ${diaRef}.`;
 
-    const systemPrompt = 'Eres un coach de ciclismo experto. Responde SOLO con JSON válido, sin markdown, sin texto extra.';
-    const userMsg = `Atleta: FTP ${ftp}W, peso ${user.weight || 70}kg, objetivo: ${user.goal || 'resistencia'}.
-CTL ${Math.round(latestPMC.ctl)} / ATL ${Math.round(latestPMC.atl)} / TSB ${Math.round(latestPMC.tsb)}.
-Hoy es ${hoy}.
-${sesionBlock}
-Comentario / Intención del atleta: "${contexto || 'no especificado'}".
-Carga real en los últimos 7 días: ${recentHours.toFixed(1)} horas, ${recentTSS} TSS en ${recentActs.length} sesiones.
-Historial de últimas actividades registradas: ${JSON.stringify(actsCompact)}.
+    const tssOrig = sesionOriginal?.tss || 50;
+    const tssMax  = Math.round(tssOrig * 1.25);
+    const tssMin  = Math.round(tssOrig * 0.75);
+    const tipoSesion = sesionOriginal?.type || 'endurance';
 
-Analiza si el atleta debe mantener, reducir, sustituir o descansar la sesión de ${diaRef}. REGLAS DE DECISIÓN (por orden de prioridad):
-1. ¡CRÍTICO!: Si el atleta dice que NO PUEDE entrenar (evento personal, viaje, trabajo, compromiso, no puede salir) → recomendacion SIEMPRE debe ser 'descanso', duracion_min: 0, tss_estimado: 0, if_estimado: 0. Nunca propongas ningún entrenamiento en este caso.
-2. ¡CRÍTICO!: Si el atleta especifica un tipo de entrenamiento que QUIERE hacer (ej: "quiero hacer series en Z3", "voy a hacer intervalos", "quiero hacer tempo") → RESPETA ESA PREFERENCIA. Diseña exactamente ese tipo de sesión adaptando duración e intensidad según su TSB actual, pero NO lo sustituyas por otra cosa completamente diferente.
-3. Si el atleta está cansado, con poco sueño o estresado, prioriza 'reducir' la sesión (menos repeticiones o duración) antes que 'sustituir' por una sesión completamente diferente, a menos que la fatiga sea extrema (ej: "estoy muerto", "no puedo ni moverme"). En ese caso, 'descanso' o 'sustituir' por Z1 es correcto.
-4. Si el atleta indica que hará una salida en grupo (grupeta), ruta larga libre o carrera, IGNORA los intervalos estructurados. Evalúa su fatiga y dale consejos tácticos para esa salida.
-Sé específico: usa los vatios reales del FTP (${ftp}W) si propones una alternativa.
-Responde con este JSON exacto:
+    const systemPrompt = 'Eres un coach de ciclismo experto. Responde SOLO con JSON válido, sin markdown, sin texto extra.';
+    const userMsg = `Atleta: FTP ${ftp}W, objetivo: ${user.goal || 'resistencia'}.
+CTL ${Math.round(latestPMC.ctl)} / ATL ${Math.round(latestPMC.atl)} / TSB ${Math.round(latestPMC.tsb)}.
+Sesión planificada para ${diaRef}: tipo="${tipoSesion}", ${sesionOriginal?.durationMin || 0} min, TSS=${tssOrig}, IF=${sesionOriginal?.ifTarget || 0}.
+Input del atleta: "${contexto || 'no especificado'}".
+Carga últimos 7 días: ${recentHours.toFixed(1)}h, ${recentTSS} TSS.
+
+APLICA LA PRIMERA REGLA QUE COINCIDA CON EL INPUT:
+
+❌ IMPEDIMENTO ("no puedo salir", "evento", "viaje", "trabajo", "compromiso", "no entreno"):
+   → recomendacion:"descanso", duracion_min:0, tss_estimado:0, if_estimado:0.
+
+🚫 FATIGA EXTREMA ("estoy muerto", "no puedo", "muy mal", "lesionado", "fiebre"):
+   → recomendacion:"descanso", duracion_min:0, tss_estimado:0, if_estimado:0.
+
+🔴 FATIGA MODERADA ("cansado", "mal dormido", "dolor de cabeza", "piernas pesadas", "no me encuentro bien", "poco sueño"):
+   → tipo vo2max o threshold → sustituir por endurance Z2 (IF 0.68-0.72, misma duración). recomendacion:"sustituir".
+   → tipo tempo o sweet_spot → reducir duración 25% y bajar IF a 0.78-0.82. recomendacion:"reducir".
+   → tipo endurance/Z2 → reducir duración 20-25%. recomendacion:"reducir".
+   → tss_estimado mínimo: ${tssMin} TSS.
+
+🟢 ENERGÍA / QUIERO MÁS ("fuerte", "bien", "con ganas", "fresco", "quiero series", "quiero más carga"):
+   → tipo endurance/Z2 → convertir a tempo/sweet_spot (IF 0.84-0.88, misma duración). NUNCA subir a vo2max directamente. recomendacion:"sustituir".
+   → tipo tempo/sweet_spot/threshold → añadir 10-15% más de duración + bloque sweet_spot 2×12 min a ${Math.round(ftp * 0.90)}-${Math.round(ftp * 0.93)}W. recomendacion:"adaptado".
+   → tipo vo2max → añadir 1 repetición extra (misma duración de intervalo). recomendacion:"adaptado".
+   → tss_estimado máximo: ${tssMax} TSS. No aumentar intensidad y volumen a la vez.
+
+🚴 SALIDA LIBRE ("grupeta", "ruta larga", "salida libre", "carrera"):
+   → Ignora intervalos. Consejos tácticos para esa salida según TSB=${Math.round(latestPMC.tsb)}. recomendacion:"adaptado".
+
+⚙️ ESPECIFICIDAD ("quiero hacer Z3", "quiero series de umbral", "prefiero rodillo"):
+   → Diseña exactamente ese tipo. Respeta FTP=${ftp}W y mantén TSS en rango ${tssMin}-${tssMax}.
+
+Devuelve SOLO este JSON (sin texto adicional):
 {
   "recomendacion": "mantener" | "reducir" | "sustituir" | "descanso" | "adaptado",
-  "titulo": "string corto (ej: Intervalos reducidos 60 min)",
+  "titulo": "string corto descriptivo",
   "duracion_min": number,
   "tss_estimado": number,
   "if_estimado": number,
-  "intensidad": "string (ej: Z2 130-145W, Umbral 260W, recuperación activa)",
-  "descripcion": "string (2-3 frases concretas: qué hacer, cómo, con vatios reales)",
-  "razon": "string (1 frase: por qué esta adaptación dado el estado del atleta)",
-  "nutricion": "string (1 frase: qué comer/beber ${diaRef.toLowerCase()})"
+  "intensidad": "ej: Z2 ${Math.round(ftp*0.65)}-${Math.round(ftp*0.75)}W o Umbral ${Math.round(ftp*0.95)}W",
+  "descripcion": "2-3 frases concretas con vatios reales (FTP=${ftp}W)",
+  "razon": "1 frase explicando el cambio según el estado del atleta",
+  "nutricion": "1 frase sobre qué comer/beber ${diaRef.toLowerCase()}"
 }`;
     
     const result = await callAI(systemPrompt, userMsg, { max_tokens: 700, temperature: 0.4 });
@@ -1495,6 +1518,11 @@ Responde con este JSON exacto:
       return res.status(500).json({ error: 'La IA no devolvió una recomendación válida.' });
     }
     
+    // Capping determinista ±25% TSS — la IA no puede sobrepasar este límite
+    if (result.recomendacion !== 'descanso') {
+      if (result.tss_estimado > tssMax) result.tss_estimado = tssMax;
+      if (result.tss_estimado > 0 && result.tss_estimado < tssMin) result.tss_estimado = tssMin;
+    }
     console.log('[Today Adaptation] result:', JSON.stringify(result));
     return res.json({ ok: true, today: result });
 
@@ -1702,51 +1730,55 @@ router.post('/recalculate-week', async (req, res) => {
     if (!anthropicKey && !openaiKey && !googleKey && !groqKey)
       return res.status(503).json({ error: 'No hay API Keys configuradas.' });
 
-    const { plan, todayIdx, feedback, allowToday = false } = req.body;
+    const { plan, todayIdx, feedback, allowToday = false, cancelledIdx = -1, cancelledType = '' } = req.body;
 
-    // Resumimos el plan para no saturar los tokens de la IA (quitamos intervals y descripciones largas)
+    // Resumimos el plan (sin intervals ni descripciones largas)
     const planResumido = plan.sessions.map((s, i) => ({
-      dayIndex: i,
-      day: s.day,
-      type: s.type,
-      isRest: s.isRest || false,
-      durationMin: s.durationMin,
-      targetWatts: s.targetWatts,
-      tss: s.tss,
-      advice: s.advice
+      dayIndex: i, day: s.day, type: s.type,
+      isRest: s.isRest || false, durationMin: s.durationMin,
+      tss: s.tss
     }));
 
-    const ayerIdx = todayIdx === 0 ? 'anterior (fuera de esta semana)' : todayIdx - 1;
-    const mananaIdx = todayIdx === 6 ? 'siguiente (fuera de esta semana)' : todayIdx + 1;
+    // ── Escenario 1: sesión tempo/threshold cancelada + siguiente día = long ──────
+    const INTENSAS = ['tempo', 'threshold', 'sweet_spot'];
+    const nextDayIdx = cancelledIdx + 1;
+    const scenario1 = cancelledIdx >= 0
+      && INTENSAS.includes(cancelledType)
+      && nextDayIdx < 7
+      && !plan.sessions[nextDayIdx]?.isRest
+      && plan.sessions[nextDayIdx]?.type === 'long';
+
+    const cancelledTSS = cancelledIdx >= 0 ? (plan.sessions[cancelledIdx]?.tss || 0) : 0;
+    const scenario1Hint = scenario1
+      ? `\n⚠️ ESCENARIO ESPECIAL: la sesión cancelada (dayIndex ${cancelledIdx}) era "${cancelledType}" con ${cancelledTSS} TSS, y el día siguiente (dayIndex ${nextDayIdx}) es un FONDO LARGO. En este caso: NO sustituyas el fondo largo por intervalos FTP. En su lugar, amplía el fondo largo añadiendo 2×15 min de bloques Sweet Spot (0.88-0.92 FTP) y aumenta su TSS en ${Math.round(cancelledTSS * 0.6)} TSS. Pon name="Fondo largo + bloques Sweet Spot".`
+      : '';
+
     const hoyRegla = allowToday
-      ? `HOY (índice ${todayIdx}) PUEDE ser modificado si el contexto lo justifica. NO modifiques días anteriores a ${todayIdx}.`
-      : `🛑 NUNCA modifiques HOY (índice ${todayIdx}) ni días anteriores. Solo puedes modificar días FUTUROS (índice > ${todayIdx}).`;
+      ? `HOY (índice ${todayIdx}) PUEDE ser modificado. NO modifiques índices anteriores a ${todayIdx}.`
+      : `🛑 NUNCA modifiques HOY (índice ${todayIdx}) ni días anteriores. Solo días FUTUROS (índice > ${todayIdx}).`;
 
     const systemPrompt = 'Eres un coach ciclista experto. Responde SOLO con JSON válido, sin markdown ni texto extra.';
-    const userMsg = `El atleta tiene esta planificación para la semana:
+    const userMsg = `Plan semanal:
 ${JSON.stringify(planResumido, null, 2)}
 
-HOY es el índice ${todayIdx} (0=Lunes, 6=Domingo).
-AYER es el índice ${ayerIdx}.
-MAÑANA es el índice ${mananaIdx}.
-
-El atleta reporta: "${feedback}"
+HOY = índice ${todayIdx} (0=Lunes, 6=Domingo).
+${feedback}${scenario1Hint}
 
 REGLAS:
 1. ${hoyRegla}
-2. Los días con "isRest": true que ya estén en el plan son INTOCABLES — no los conviertas en entrenamiento.
-3. Si programas una sesión activa ("isRest": false), el "type" DEBE ser uno de: "recovery", "endurance", "tempo", "threshold", "vo2max", "sprint", "long", "race", "strength". Incluye siempre "name" y "emoji".
-4. Si el atleta no pudo hacer una sesión dura, considérala perdida o reubícala en un día futuro disponible.
-5. No pongas dos sesiones de alta intensidad consecutivas.
+2. Días con "isRest": true son INTOCABLES — no los conviertas en entrenamiento.
+3. "type" debe ser uno de: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength". Incluye siempre "name" y "emoji".
+4. No pongas dos sesiones de alta intensidad consecutivas.
+5. Variación TSS por sesión: máximo ±30%.
 
 Devuelve EXACTAMENTE este JSON:
 {
   "mensaje_coach": "Frase corta explicando los cambios.",
   "modifications": [
-    { "dayIndex": 3, "changes": { "isRest": false, "type": "endurance", "name": "Rodaje Z2 extendido", "emoji": "🔵", "durationMin": 75, "tss": 55, "ifTarget": 0.72, "advice": "Añadida carga extra por el evento de mañana." } }
+    { "dayIndex": 3, "changes": { "isRest": false, "type": "endurance", "name": "Rodaje Z2 extendido", "emoji": "🔵", "durationMin": 75, "tss": 55, "ifTarget": 0.72, "advice": "Carga redistribuida." } }
   ]
 }
-Si no hay cambios que hacer, devuelve "modifications": [].`;
+Si no hay cambios, devuelve "modifications": [].`;
 
     const result = await callAI(systemPrompt, userMsg, { max_tokens: 1500, temperature: 0.3 });
     if (!result || !Array.isArray(result.modifications)) return res.status(500).json({ error: 'La IA no devolvió un plan válido.' });
@@ -1758,6 +1790,24 @@ Si no hay cambios que hacer, devuelve "modifications": [].`;
       const allowed = allowToday ? idx >= todayIdx : idx > todayIdx;
       if (allowed && idx < 7 && mod.changes) {
         newSessions[idx] = { ...newSessions[idx], ...mod.changes };
+      }
+    }
+
+    // ── Fallback determinista escenario 1: si la IA ignoró la regla ──────────────
+    if (scenario1) {
+      const nextSess = newSessions[nextDayIdx];
+      if (nextSess && nextSess.type !== 'long' && nextSess.type !== 'endurance') {
+        // La IA sustituyó el fondo largo — revertimos y añadimos carga manualmente
+        const origLong = plan.sessions[nextDayIdx];
+        const addTSS   = Math.round(cancelledTSS * 0.6);
+        newSessions[nextDayIdx] = {
+          ...origLong,
+          tss: (origLong.tss || 0) + addTSS,
+          durationMin: (origLong.durationMin || 0) + 30,
+          name: 'Fondo largo + bloques Sweet Spot',
+          advice: `Bloques Sweet Spot integrados para compensar la carga del ${plan.sessions[cancelledIdx]?.day || 'día cancelado'}.`,
+          _sweetSpotBlocks: true
+        };
       }
     }
 
