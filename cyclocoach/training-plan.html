@@ -6,10 +6,11 @@
       var theme = localStorage.getItem('velomind_theme') || 'dark';
       document.documentElement.setAttribute('data-theme', theme);
       if (theme === 'light') document.documentElement.classList.add('light-theme');
+      document.documentElement.style.opacity = '0'; // evita flash de contenido sin renderizar
     })();
   </script>
   <style>
-    html { color-scheme: dark; background-color: #0a0b0f; }
+    html { color-scheme: dark; background-color: #0a0b0f; transition: opacity .18s ease; }
     html[data-theme="light"] { color-scheme: light; background-color: #f3f4f6; }
 
     html[data-theme="light"] {
@@ -1057,6 +1058,11 @@ async function initTrainingPlan() {
         generatePlan();
       }
     }
+
+    // Revelar página tras primer render — sin flash de contenido a medias
+    requestAnimationFrame(() => {
+      document.documentElement.style.removeProperty('opacity');
+    });
 
     loadCoachData(); // Llamada asíncrona a la IA, no bloquea UI
 
@@ -2875,7 +2881,9 @@ function stopAudioCoach() {
   document.getElementById('audio-coach-overlay').style.display = 'none';
 }
 
-initTrainingPlan();
+initTrainingPlan().catch(() => {
+  document.documentElement.style.removeProperty('opacity');
+});
 
 function exportSessionToGarmin(index) {
   if (!currentPlan) { alert('El plan aún no está generado.'); return; }
