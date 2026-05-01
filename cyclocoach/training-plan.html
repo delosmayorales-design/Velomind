@@ -92,6 +92,30 @@
     .adapt-submit:hover { background: rgba(158,214,43,.25); }
     .adapt-submit:disabled { opacity: .5; cursor: not-allowed; }
 
+    /* ── Check-in zone (pre-entreno simplificado) ───── */
+    .checkin-zone {
+      border-top: 1px solid rgba(196,239,68,.08);
+      padding: 10px 20px 14px;
+    }
+    .checkin-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--text-muted); margin-bottom: 8px;
+    }
+    .checkin-btns { display: flex; gap: 8px; }
+    .checkin-btn {
+      flex: 1; padding: 9px 6px;
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      border-radius: 10px; cursor: pointer; font-family: inherit;
+      font-size: 11px; font-weight: 700; color: var(--text-secondary);
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      transition: border-color .15s, background .15s, color .15s;
+    }
+    .checkin-btn:hover { border-color: rgba(196,239,68,.4); color: var(--text-primary); }
+    .checkin-btn.ci-mal.selected     { border-color: rgba(251,191,36,.6); background: rgba(251,191,36,.08); color: #fbbf24; }
+    .checkin-btn.ci-normal.selected  { border-color: rgba(196,239,68,.6); background: rgba(196,239,68,.08); color: var(--primary); }
+    .checkin-btn.ci-fuerte.selected  { border-color: rgba(239,68,68,.5);  background: rgba(239,68,68,.08);  color: #f87171; }
+    .checkin-btn .ci-emoji { font-size: 20px; line-height: 1; }
+
     /* ══ LIGHT MODE — overrides completos ══════════════════════ */
     html[data-theme="light"],
     html.light-theme {
@@ -187,6 +211,14 @@
       .adapt-input:focus { border-color: rgba(99,102,241,.5); }
       .adapt-submit    { background: rgba(99,102,241,.1); border-color: rgba(99,102,241,.3); color: #4f46e5 !important; }
       .adapt-submit:hover { background: rgba(99,102,241,.2); }
+
+      /* Check-in zone */
+      .checkin-zone  { border-top-color: rgba(99,102,241,.1); }
+      .checkin-btn   { background: #ffffff; border-color: rgba(0,0,0,.1); color: #475569; }
+      .checkin-btn:hover { border-color: rgba(99,102,241,.4); color: #1e293b; }
+      .checkin-btn.ci-mal.selected    { border-color: rgba(217,119,6,.5); background: rgba(217,119,6,.06); color: #b45309; }
+      .checkin-btn.ci-normal.selected { border-color: rgba(99,102,241,.5); background: rgba(99,102,241,.06); color: #4f46e5; }
+      .checkin-btn.ci-fuerte.selected { border-color: rgba(220,38,38,.4); background: rgba(220,38,38,.06); color: #dc2626; }
 
       /* Exec row */
       .exec-row-none   { background: #f8fafc; }
@@ -1300,32 +1332,24 @@ function renderPlan(plan, athlete) {
       }
     }
 
-    const isToday    = i === todayIdx;
-    const isTomorrow = i === todayIdx + 1 && todayIdx + 1 <= 6;
-    const canAdapt   = isToday || isTomorrow;
-    const adaptLabel = isToday ? '¿Cómo te encuentras hoy?' : '¿Cómo crees que estarás mañana?';
-    const adaptDay   = isToday ? 0 : 1;
+    const isToday = i === todayIdx;
+    const checkinApplied = sess._checkin; // 'fuerte' | 'normal' | 'mal' | undefined
 
-    const adaptZone = canAdapt ? `
-      <div class="adapt-zone" onclick="event.stopPropagation()">
-        <div class="adapt-trigger" onclick="toggleAdaptForm(${i})">
-          <i class="fas fa-robot" style="font-size:10px"></i>
-          <span>${isToday ? 'Adaptar sesión de hoy (Pre-entreno)' : 'Adaptar sesión de mañana'}</span>
-          <i class="fas fa-chevron-down" id="adapt-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
-        </div>
-        <div id="adapt-body-${i}" class="adapt-body" style="display:none">
-          <div class="adapt-input-row">
-            <input class="adapt-input" id="adapt-input-${i}"
-              placeholder="${adaptLabel}"
-              onkeydown="if(event.key==='Enter')adaptSession(${i},${adaptDay})">
-            <button class="adapt-submit" id="adapt-btn-${i}" onclick="adaptSession(${i},${adaptDay})">
-              <i class="fas fa-sparkles"></i> Adaptar
-            </button>
-          </div>
-          <div id="adapt-result-${i}" style="display:none"></div>
+    const adaptZone = isToday && !sess.isRest ? `
+      <div class="checkin-zone" onclick="event.stopPropagation()">
+        <div class="checkin-label">¿Cómo te encuentras hoy?</div>
+        <div class="checkin-btns">
+          <button class="checkin-btn ci-mal${checkinApplied === 'mal' ? ' selected' : ''}" onclick="applyCheckIn(${i}, 'mal')">
+            <span class="ci-emoji">😴</span><span>Mal</span>
+          </button>
+          <button class="checkin-btn ci-normal${checkinApplied === 'normal' ? ' selected' : ''}" onclick="applyCheckIn(${i}, 'normal')">
+            <span class="ci-emoji">😐</span><span>Normal</span>
+          </button>
+          <button class="checkin-btn ci-fuerte${checkinApplied === 'fuerte' ? ' selected' : ''}" onclick="applyCheckIn(${i}, 'fuerte')">
+            <span class="ci-emoji">🔥</span><span>Fuerte</span>
+          </button>
         </div>
       </div>
-      ${isToday ? `
       <div class="adapt-zone" style="background:rgba(255,107,53,.03);border-top:1px solid rgba(255,107,53,.1)" onclick="event.stopPropagation()">
         ${dayActs.length > 0 ? `
         <button onclick="event.stopPropagation();openPostEntrenoModal(${i})"
@@ -1348,7 +1372,7 @@ function renderPlan(plan, athlete) {
           <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
         </div>
         `}
-      </div>` : ''}` : '';
+      </div>` : '';
 
     const isPastOrToday = i <= todayIdx;
     const objective     = SESSION_OBJECTIVES[sess.type] || 'Entrenamiento';
@@ -1562,6 +1586,88 @@ function resetAdapt(idx) {
   input.focus();
 }
 
+// ── Check-in pre-entreno (3 botones: mal / normal / fuerte) ──────
+async function applyCheckIn(idx, feeling) {
+  if (!currentPlan?.sessions?.[idx]) return;
+  const sess = currentPlan.sessions[idx];
+  if (sess.isRest) { showToast('Día de descanso — disfrútalo 😴', 'var(--text-muted)'); return; }
+
+  const ftp     = AppState.athlete?.ftp || 200;
+  const origTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
+  const origDur = sess.durationMin || 60;
+
+  const DOWNGRADE = { vo2max: 'tempo', threshold: 'tempo', tempo: 'endurance', sprint: 'endurance', race: 'endurance' };
+  const UPGRADE   = { recovery: 'endurance', endurance: 'tempo', long: 'tempo' };
+
+  const _buildDesc = (ivs) => {
+    const parts = [];
+    for (let k = 0; k < ivs.length; k++) {
+      const iv = ivs[k], rm = iv.label.match(/\(×(\d+)/);
+      const bl = iv.label.split(' (')[0].trim(), dv = iv.dur.replace(' c/u', '').trim();
+      if (rm) {
+        const nx = ivs[k + 1];
+        if (nx && nx.label.toLowerCase().match(/recuperación|descanso/) && nx.label.includes('(×')) {
+          parts.push(`${rm[1]}×${dv} ${bl} (rec: ${nx.dur.replace(' c/u', '').trim()})`); k++;
+        } else { parts.push(`${rm[1]}×${dv} ${bl}`); }
+      } else { parts.push(`${dv} ${bl}`); }
+    }
+    return parts.join(' + ');
+  };
+
+  if (feeling === 'normal') {
+    sess._checkin = 'normal';
+    renderPlan(currentPlan, AppState.athlete);
+    await silentSavePlan();
+    showToast('👍 Sesión confirmada tal como está', 'var(--primary)');
+    return;
+  }
+
+  let newType = sess.type;
+  let newTSS  = origTSS;
+  let newDur  = origDur;
+  let advice  = '';
+
+  if (feeling === 'fuerte') {
+    newDur  = Math.round(Math.min(origDur * 1.15, origDur + 30));
+    newTSS  = Math.round(Math.min(origTSS * 1.15, origTSS * 1.20));
+    newType = UPGRADE[sess.type] || sess.type;
+    advice  = newType !== sess.type
+      ? `Sesión escalada a ${newType} (+15% vol). ¡Muy bien!`
+      : `+15% de volumen por buena forma. ¡A por ello!`;
+  } else {
+    newDur  = Math.round(origDur * 0.70);
+    newTSS  = Math.round(origTSS * 0.70);
+    newType = DOWNGRADE[sess.type] || sess.type;
+    advice  = `Sesión reducida al 70%${newType !== sess.type ? ` y bajada a ${newType}` : ''} — recuperación prioritaria.`;
+  }
+
+  sess.type        = newType;
+  sess.tss         = newTSS;
+  sess.durationMin = newDur;
+  sess._checkin    = feeling;
+  sess._adapted    = true;
+  sess.advice      = advice;
+
+  if (window.TrainingPlanGenerator) {
+    const ifT = sess.ifTarget || 0.75;
+    sess.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, ifT, 'main');
+    sess.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, ifT, 'alt');
+    sess.description     = _buildDesc(sess.intervals);
+    sess.alt_description = _buildDesc(sess.alt_intervals);
+  }
+
+  if (window.WORKOUT_TYPES?.[newType]) {
+    sess.emoji = WORKOUT_TYPES[newType].emoji;
+    sess.name  = WORKOUT_TYPES[newType].label || sess.name;
+  }
+
+  renderPlan(currentPlan, AppState.athlete);
+  await silentSavePlan();
+
+  if (feeling === 'fuerte') showToast('🔥 Sesión potenciada · +15% volumen', '#C4EF44');
+  else showToast('😴 Sesión aligerada · -30% volumen', '#fbbf24');
+}
+
 async function saveAdaptation(idx) {
   const t = _adaptCache[idx];
   console.log('[saveAdaptation] idx=', idx, 'cache=', t, 'plan=', !!currentPlan);
@@ -1658,117 +1764,88 @@ async function saveAdaptation(idx) {
     sess.tss = Math.round((sess.durationMin / 60) * Math.pow(sess.ifTarget, 2) * 100);
   }
 
-  // ── Si es descanso futuro → redistribuir la semana ANTES de renderizar ──
+  // ── Si es descanso futuro → redistribuir carga de forma determinista ──
   const todayNow = (new Date().getDay() + 6) % 7;
   let toastMsg   = '✅ Sesión adaptada y guardada';
 
   if (t.recomendacion === 'descanso' && idx > todayNow) {
     const descansoSnapshot = JSON.parse(JSON.stringify(sess));
-    showToast('⏳ Calculando redistribución...', 'var(--text-muted)');
-    try {
-      const dayName      = sess.day || `día ${idx + 1}`;
-      const cancelledTSS = Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
+    const cancelledTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
+    const dayName      = sess.day || `día ${idx + 1}`;
 
-      // ── Contexto de ayer (actividad real) ─────────────────────────
-      const HIGH_TYPES = ['threshold', 'vo2max', 'sprint', 'race'];
-      const yesterday  = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-      const ydKey      = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
-      const ydActs     = (AppState.activities || []).filter(a => a.date?.slice(0,10) === ydKey);
-      const ydType     = ydActs[0]?.type || null;
-      const ydTSS      = Math.round(ydActs.reduce((s, a) => s + (a.tss || 0), 0));
-      const ydWasHard  = ydType && HIGH_TYPES.includes(ydType);
-
-      // ── Días disponibles con carga actual ─────────────────────────
-      const mondayDate = new Date();
-      mondayDate.setDate(mondayDate.getDate() - (mondayDate.getDay() || 7) + 1);
-      const availDays  = currentPlan.sessions
-        .map((s, i) => ({ i, s, date: new Date(mondayDate.getTime() + i * 86400000) }))
-        .filter(({ i, s }) => i >= todayNow && i !== idx && !s.isRest)
-        .map(({ i, s }) => `dayIndex ${i} (${s.day}): tipo=${s.type}, ~${s.tss || Math.round((s.tssShare||0)*(currentPlan.targetTSS||400))} TSS`);
-
-      // ── Instrucción sobre hoy según actividad de ayer ─────────────
-      let todayInstruction;
-      if (ydWasHard) {
-        todayInstruction =
-          `⚠️ IMPORTANTE: AYER el atleta ya hizo "${ydType}" (~${ydTSS} TSS). ` +
-          `Por tanto HOY (dayIndex ${todayNow}) NO debe ser de alta intensidad. ` +
-          `Mantén o sube el tipo a "endurance" o "tempo" (Z2-Z3), aumenta duración +20-30 min. ` +
-          `NO asignes "threshold", "vo2max" ni "sprint" para hoy.`;
-      } else if (ydType) {
-        todayInstruction =
-          `Ayer el atleta hizo "${ydType}" (~${ydTSS} TSS). ` +
-          `HOY (dayIndex ${todayNow}) puede absorber algo más de carga moderada.`;
-      } else {
-        todayInstruction =
-          `HOY (dayIndex ${todayNow}) el atleta aún no ha entrenado y puede absorber carga moderada.`;
+    const _rd = ivs => {
+      const parts = [];
+      for (let k = 0; k < ivs.length; k++) {
+        const iv = ivs[k], rm = iv.label.match(/\(×(\d+)/);
+        const bl = iv.label.split(' (')[0].trim(), dv = iv.dur.replace(' c/u', '').trim();
+        if (rm) {
+          const nx = ivs[k + 1];
+          if (nx && nx.label.toLowerCase().match(/recuperación|descanso/) && nx.label.includes('(×')) {
+            parts.push(`${rm[1]}×${dv} ${bl} (rec: ${nx.dur.replace(' c/u', '').trim()})`); k++;
+          } else { parts.push(`${rm[1]}×${dv} ${bl}`); }
+        } else { parts.push(`${dv} ${bl}`); }
       }
+      return parts.join(' + ');
+    };
 
-      // ── Instrucción sobre días futuros (ej. domingo) ──────────────
-      const futureDays = availDays.filter(d => !d.includes(`dayIndex ${todayNow}`));
-      const futureInstruction = futureDays.length
-        ? `Los días siguientes disponibles (${futureDays.map(d => d.split(':')[0]).join(', ')}) pueden y deben absorber el resto de la carga cancelada. ` +
-          `Aumenta su intensidad o duración según corresponda con la periodización.`
-        : '';
+    // Hoy: ¿ayer fue alta intensidad? → se mantiene soft
+    const HIGH_TYPES = ['threshold', 'vo2max', 'sprint', 'race'];
+    const yesterday  = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const ydKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
+    const ydWasHard  = (AppState.activities || []).some(a => a.date?.slice(0,10) === ydKey && HIGH_TYPES.includes(a.type));
+    const DOWNGRADE  = { vo2max: 'tempo', threshold: 'tempo', sprint: 'endurance', race: 'endurance' };
+    const UPGRADE    = { endurance: 'tempo', long: 'tempo', recovery: 'endurance' };
 
-      const feedback =
-        `Atleta con evento el ${dayName} (dayIndex ${idx}): DESCANSO BLOQUEADO — no modificar.\n` +
-        `TSS cancelado: ~${cancelledTSS}. Días disponibles: ${availDays.join(' | ')}\n\n` +
-        `${todayInstruction}\n` +
-        (futureInstruction ? `${futureInstruction}\n` : '') +
-        `Regla: no pongas dos días de alta intensidad consecutivos.`;
-
-      const res2 = await fetch(`${API}/coach/recalculate-week`, {
-        method: 'POST',
-        headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: currentPlan, todayIdx: todayNow, allowToday: true, feedback, cancelledIdx: idx, cancelledType: originalType })
-      });
-      const data2 = await res2.json();
-
-      if (res2.ok && data2.newPlan?.sessions) {
-        const ftp2 = ftp;
-        const _rd = ivs => {
-          const parts = [];
-          for (let k = 0; k < ivs.length; k++) {
-            const iv = ivs[k], rm = iv.label.match(/\(×(\d+)/);
-            const bl = iv.label.split(' (')[0].trim(), dv = iv.dur.replace(' c/u', '').trim();
-            if (rm) {
-              const nx = ivs[k + 1];
-              if (nx && nx.label.toLowerCase().match(/recuperación|descanso/) && nx.label.includes('(×')) {
-                parts.push(`${rm[1]}×${dv} ${bl} (rec: ${nx.dur.replace(' c/u', '').trim()})`); k++;
-              } else { parts.push(`${rm[1]}×${dv} ${bl}`); }
-            } else { parts.push(`${dv} ${bl}`); }
-          }
-          return parts.join(' + ');
-        };
-        data2.newPlan.sessions.forEach(s => {
-          if (s.isRest) {
-            s.intervals = []; s.alt_intervals = [];
-            s.description = 'Descanso.'; s.alt_description = '';
-            s.name = 'Descanso'; s.emoji = '😴';
-            s.advice = s.advice || 'Día de descanso. Escucha a tu cuerpo.';
-          } else if (window.TrainingPlanGenerator) {
-            const ifT = s.ifTarget || 0.75;
-            if (!s.name || s.name === 'Descanso') s.name = window.WORKOUT_TYPES?.[s.type]?.label || s.type;
-            s.emoji = window.WORKOUT_TYPES?.[s.type]?.emoji || '🚴';
-            s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp2, s.durationMin, s.tss, ifT, 'main');
-            s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp2, s.durationMin, s.tss, ifT, 'alt');
-            s.description     = _rd(s.intervals);
-            s.alt_description = _rd(s.alt_intervals);
-          }
-        });
-        // Blindar: el descanso bloqueado y los días pasados no pueden cambiar
-        data2.newPlan.sessions[idx] = descansoSnapshot;
-        for (let d = 0; d < todayNow; d++)
-          data2.newPlan.sessions[d] = JSON.parse(JSON.stringify(currentPlan.sessions[d]));
-
-        currentPlan.sessions = data2.newPlan.sessions;
-        toastMsg = '✅ ' + (data2.newPlan.mensaje_coach || `Descanso el ${dayName} · semana redistribuida`);
-      } else {
-        toastMsg = `✅ Descanso el ${sess.day || 'mañana'} guardado`;
+    // ── Redistribuir a HOY (+22%) ────────────────────────────────
+    const todaySess = currentPlan.sessions[todayNow];
+    if (todaySess && !todaySess.isRest) {
+      const tType  = ydWasHard ? (DOWNGRADE[todaySess.type] || todaySess.type) : todaySess.type;
+      const tDur   = Math.round(Math.min((todaySess.durationMin || 60) * 1.22, (todaySess.durationMin || 60) + 35));
+      const tTSS   = Math.round((todaySess.tss || Math.round((todaySess.tssShare||0)*(currentPlan.targetTSS||400))) * 1.22);
+      todaySess.type        = tType;
+      todaySess.durationMin = tDur;
+      todaySess.tss         = tTSS;
+      todaySess._adapted    = true;
+      todaySess.advice      = `+22% de volumen por redistribución del descanso del ${dayName}.`;
+      if (window.TrainingPlanGenerator) {
+        const ifT = todaySess.ifTarget || 0.75;
+        todaySess.intervals     = TrainingPlanGenerator._buildIntervals(tType, ftp, tDur, tTSS, ifT, 'main');
+        todaySess.alt_intervals = TrainingPlanGenerator._buildIntervals(tType, ftp, tDur, tTSS, ifT, 'alt');
+        todaySess.description     = _rd(todaySess.intervals);
+        todaySess.alt_description = _rd(todaySess.alt_intervals);
       }
-    } catch (_) {
-      toastMsg = '✅ Sesión marcada como descanso';
+      if (window.WORKOUT_TYPES?.[tType]) { todaySess.emoji = WORKOUT_TYPES[tType].emoji; todaySess.name = WORKOUT_TYPES[tType].label; }
     }
+
+    // ── Redistribuir al siguiente día disponible después del descanso (+55% TSS cancelado) ──
+    const nextIdx = currentPlan.sessions.findIndex((s, i) => i > idx && !s.isRest);
+    if (nextIdx >= 0) {
+      const nSess = currentPlan.sessions[nextIdx];
+      const nType = UPGRADE[nSess.type] || nSess.type;
+      const nTSSOrig = nSess.tss || Math.round((nSess.tssShare||0)*(currentPlan.targetTSS||400));
+      const nTSS  = Math.round(nTSSOrig + cancelledTSS * 0.55);
+      const nDur  = Math.round((nSess.durationMin || 60) * 1.15);
+      nSess.type        = nType;
+      nSess.durationMin = nDur;
+      nSess.tss         = nTSS;
+      nSess._adapted    = true;
+      nSess.advice      = `Carga reforzada tras el descanso del ${dayName}: ${Math.round(cancelledTSS * 0.55)} TSS redistribuidos.`;
+      if (window.TrainingPlanGenerator) {
+        const ifT = nSess.ifTarget || 0.80;
+        nSess.intervals     = TrainingPlanGenerator._buildIntervals(nType, ftp, nDur, nTSS, ifT, 'main');
+        nSess.alt_intervals = TrainingPlanGenerator._buildIntervals(nType, ftp, nDur, nTSS, ifT, 'alt');
+        nSess.description     = _rd(nSess.intervals);
+        nSess.alt_description = _rd(nSess.alt_intervals);
+      }
+      if (window.WORKOUT_TYPES?.[nType]) { nSess.emoji = WORKOUT_TYPES[nType].emoji; nSess.name = WORKOUT_TYPES[nType].label; }
+    }
+
+    // Restaurar descanso bloqueado
+    currentPlan.sessions[idx] = descansoSnapshot;
+
+    const todayDay = currentPlan.sessions[todayNow]?.day || 'hoy';
+    const nextDay  = nextIdx >= 0 ? (currentPlan.sessions[nextIdx]?.day || '') : '';
+    toastMsg = `✅ ${dayName} → descanso · redistribuido en ${todayDay} (+22%) ${nextDay ? `y ${nextDay} (+intensidad)` : ''}`;
   }
 
   // ── Render único al final + guardar ──────────────────────────
