@@ -1900,6 +1900,82 @@ function toggleRealityForm(idx) {
   if (open) document.getElementById(`reality-input-${idx}`)?.focus();
 }
 
+// ── Marcar hoy como descanso y redistribuir carga restante ──────
+async function markTodayAsRest(idx, userNote) {
+  if (!currentPlan?.sessions?.[idx]) return;
+  const sess      = currentPlan.sessions[idx];
+  const ftp       = AppState.athlete?.ftp || 200;
+  const cancelTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
+  const dayName   = sess.day || 'hoy';
+
+  const _rd = ivs => {
+    const parts = [];
+    for (let k = 0; k < ivs.length; k++) {
+      const iv = ivs[k], rm = iv.label.match(/\(×(\d+)/);
+      const bl = iv.label.split(' (')[0].trim(), dv = iv.dur.replace(' c/u', '').trim();
+      if (rm) {
+        const nx = ivs[k + 1];
+        if (nx && nx.label.toLowerCase().match(/recuperación|descanso/) && nx.label.includes('(×')) {
+          parts.push(`${rm[1]}×${dv} ${bl} (rec: ${nx.dur.replace(' c/u', '').trim()})`); k++;
+        } else { parts.push(`${rm[1]}×${dv} ${bl}`); }
+      } else { parts.push(`${dv} ${bl}`); }
+    }
+    return parts.join(' + ');
+  };
+
+  // Marcar hoy como descanso
+  sess.isRest        = true;
+  sess.durationMin   = 0;
+  sess.tss           = 0;
+  sess.ifTarget      = 0;
+  sess.name          = 'Descanso';
+  sess.type          = 'recovery';
+  sess.emoji         = '😴';
+  sess.intervals     = [];
+  sess.alt_intervals = [];
+  sess.description   = 'Descanso — sesión no realizada.';
+  sess.alt_description = '';
+  sess.advice        = userNote ? `No salí: "${userNote.slice(0, 80)}"` : 'Sesión no realizada hoy.';
+  sess._missed       = true;
+
+  // Redistribuir entre los días restantes disponibles
+  const UPGRADE = { recovery: 'endurance', endurance: 'tempo', long: 'tempo', tempo: 'threshold' };
+  const remaining = currentPlan.sessions
+    .map((s, i) => ({ s, i }))
+    .filter(({ s, i }) => i > idx && !s.isRest);
+
+  if (remaining.length > 0) {
+    const perDayTSS = Math.round(cancelTSS * 0.6 / remaining.length);
+    remaining.forEach(({ s: rs, i: ri }, pos) => {
+      const origTSS = rs.tss || Math.round((rs.tssShare || 0) * (currentPlan.targetTSS || 400));
+      const newTSS  = origTSS + perDayTSS;
+      const newDur  = Math.round((rs.durationMin || 60) * 1.12);
+      // Último día disponible: sube un escalón de intensidad
+      const newType = (pos === remaining.length - 1) ? (UPGRADE[rs.type] || rs.type) : rs.type;
+      rs.type        = newType;
+      rs.tss         = newTSS;
+      rs.durationMin = newDur;
+      rs._adapted    = true;
+      rs.advice      = `+${perDayTSS} TSS redistribuido de la sesión perdida del ${dayName}.`;
+      if (window.TrainingPlanGenerator) {
+        const ifT = rs.ifTarget || 0.75;
+        rs.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, ifT, 'main');
+        rs.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, ifT, 'alt');
+        rs.description     = _rd(rs.intervals);
+        rs.alt_description = _rd(rs.alt_intervals);
+      }
+      if (window.WORKOUT_TYPES?.[newType]) { rs.emoji = WORKOUT_TYPES[newType].emoji; rs.name = WORKOUT_TYPES[newType].label; }
+    });
+  }
+
+  renderPlan(currentPlan, AppState.athlete);
+  await silentSavePlan();
+  const redistMsg = remaining.length
+    ? `carga redistribuida en ${remaining.length} sesión${remaining.length > 1 ? 'es' : ''} restante${remaining.length > 1 ? 's' : ''}`
+    : 'sin sesiones restantes esta semana';
+  showToast(`🧠 ${dayName} → descanso · ${redistMsg}`, 'var(--primary)');
+}
+
 async function recalculateWeek(idx) {
   const input = document.getElementById(`reality-input-${idx}`);
   const btn = document.getElementById(`reality-btn-${idx}`);
@@ -1907,6 +1983,23 @@ async function recalculateWeek(idx) {
   const feedback = input.value.trim();
 
   if (!feedback) { input.focus(); return; }
+
+  // ── Detección determinista: sesión no realizada ───────────────
+  const KW_NO_SALIR = [
+    'no puedo salir', 'no podré salir', 'no podre salir', 'no saldré', 'no saldre',
+    'no puedo entrenar', 'no puedo ir', 'no voy a poder', 'no entreno', 'no sali',
+    'tengo un evento', 'tengo evento', 'hay evento', 'tengo compromiso',
+    'tengo viaje', 'estoy de viaje', 'me voy de viaje', 'viajo hoy',
+    'sin tiempo', 'no tengo tiempo', 'trabajo hoy', 'tengo trabajo',
+    'al final no', 'finalmente no', 'imposible salir', 'no pude salir',
+    'no pude entrenar', 'no pude ir', 'no salí', 'no entrené',
+    'dia libre forzado', 'día libre forzado', 'sesión perdida', 'sesion perdida'
+  ];
+  const fbNorm = feedback.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (KW_NO_SALIR.some(k => fbNorm.includes(k.normalize('NFD').replace(/[̀-ͯ]/g, '')))) {
+    markTodayAsRest(idx, feedback);
+    return;
+  }
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recalculando semana...';
