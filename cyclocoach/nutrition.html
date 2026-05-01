@@ -1,4 +1,4 @@
-﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -593,6 +593,10 @@ function renderWeeklyGrid() {
   const todayIdx  = (new Date().getDay() + 6) % 7;
   const monday    = new Date();
   monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
+  monday.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const typeColors = {
     recovery:'#A8E6CF', endurance:'#88D8B0', tempo:'#FFD93D',
@@ -607,11 +611,12 @@ function renderWeeklyGrid() {
     sessDate.setDate(monday.getDate() + i);
     const dayNum = sessDate.getDate();
     const isToday = i === todayIdx;
+    const isPast  = sessDate < today;
     const isRest  = sess.isRest;
     const color   = isRest ? 'var(--text-muted)' : (typeColors[sess.type] || '#88D8B0');
 
     return `
-      <div class="session-card-item ${isRest ? 'rest' : ''}" id="nutr-card-${i}">
+      <div class="session-card-item ${isRest ? 'rest' : ''}" id="nutr-card-${i}" style="${isPast ? 'opacity:0.6; filter:grayscale(40%);' : ''}">
         <div class="session-row" onclick="openMenusModal(${i})">
           <div class="day-badge">
             <div class="dn">${daysShort[i]}</div>
@@ -623,6 +628,7 @@ function renderWeeklyGrid() {
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:${color};margin-bottom:2px">
               ${isRest ? 'Descanso' : (sess.name || sess.type || 'Entrenamiento')}
               ${isToday ? '<span style="margin-left:6px;background:rgba(196,239,68,.15);color:#C4EF44;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700">HOY</span>' : ''}
+              ${isPast ? '<span style="margin-left:6px;background:rgba(158,214,43,0.15);color:#9ED62B;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700"><i class="fas fa-check"></i> HECHO</span>' : ''}
             </div>
             <div class="session-meta">
               <span class="meta-tag"><i class="fas fa-fire" style="color:var(--primary)"></i> ${adj ? adj.dailyCalories.toLocaleString() : '--'} kcal</span>

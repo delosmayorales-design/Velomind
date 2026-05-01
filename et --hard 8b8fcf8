@@ -1,0 +1,327 @@
+[33m8b8fcf8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{0}: commit: flechas viento
+[33mb470128[m HEAD@{1}: commit: flechas vintoo
+[33m646e4c1[m HEAD@{2}: commit: flechas vintoo
+[33m86cbf86[m HEAD@{3}: commit: plan
+[33m50ecdd9[m HEAD@{4}: commit: mejora UX viento
+[33m22bce1f[m HEAD@{5}: commit: mejora UX viento
+[33m8a3c286[m HEAD@{6}: commit: mejora UX viento
+[33m53f6fbd[m HEAD@{7}: commit: mejora UX viento
+[33m5650518[m HEAD@{8}: commit: mejora UX botones
+[33mcc3f1b1[m HEAD@{9}: commit: analytics: fix TDZ + reveal robusto de opacidad
+[33m8634529[m HEAD@{10}: commit: mejora UX
+[33ma669141[m HEAD@{11}: commit: analytics: fix pantalla negra + garaje: km siempre correcto desde Strava
+[33m3770739[m HEAD@{12}: commit: garaje: carga inmediata + auto-sync km de actividades locales
+[33m2ca2d3a[m HEAD@{13}: commit: mejora UX
+[33mabe16b6[m HEAD@{14}: commit: detección automática de sesión perdida ayer
+[33ma40bbf2[m HEAD@{15}: commit: check-in: layout compacto horizontal, altura reducida ~50%
+[33m5994f51[m HEAD@{16}: commit: fix gráfica: intercalar recuperación aunque tenga ×1 repetición
+[33mb22e39c[m HEAD@{17}: commit: mejora navegación: barra de progreso + view transitions + prefetch
+[33mbecf54d[m HEAD@{18}: commit: fix check-in: calcula siempre desde valores originales del plan
+[33m2660907[m HEAD@{19}: commit: elimina flash de contenido sin renderizar en la carga inicial
+[33m005f115[m HEAD@{20}: commit: post-entreno: detección determinista de sesión no realizada
+[33mc6ff38c[m HEAD@{21}: commit: simplifica adaptación: check-in 3 botones + redistribución determinista
+[33m1360f87[m HEAD@{22}: commit: fix redistribucion: contexto de ayer + dias futuros explicitos
+[33mba46ecb[m HEAD@{23}: commit: fix: deteccion determinista de impedimento antes de llamar a la IA
+[33m4f31932[m HEAD@{24}: commit: ui: rediseno tarjetas plan semanal + contexto semanal
+[33mb0bedb5[m HEAD@{25}: commit: mejora logica adaptacion dinamica y replanificacion
+[33me6bcc58[m HEAD@{26}: commit: fix: evitar que el GET de inicio sobrescriba la adaptacion guardada
+[33ma5657e5[m HEAD@{27}: commit: debug: logs + error visible en adaptSession/saveAdaptation
+[33m9001736[m HEAD@{28}: commit: adaptar sesión: redistribución coherente + sin doble render
+[33m828f739[m HEAD@{29}: commit: fix redistribucion semana: preservar descanso y dias pasados
+[33m21e8cd3[m HEAD@{30}: commit: fix spinner upload: .spinner es CSS puro, parar animacion al completar
+[33mf94b657[m HEAD@{31}: commit: fix GPX/TCX: añade max_power, max_hr y avg_cadence al parsear archivos
+[33ma31bb62[m HEAD@{32}: commit: auto-redistribuye semana al marcar sesión futura como descanso
+[33m7290464[m HEAD@{33}: commit: fix adaptación sesión, campos manuales y mecánica
+[33m46e6dc1[m HEAD@{34}: commit: corrige bug de zona horaria en matching de actividades del plan semanal
+[33md31e857[m HEAD@{35}: commit: restaura nota del entrenador + elimina nombre personal en etiquetas de sesión
+[33m7fbc93d[m HEAD@{36}: commit: integrations: tarjeta mas grande, centrada y responsive
+[33m3cd9a31[m HEAD@{37}: commit: elimina seccion nota del entrenador en detalle de actividad
+[33m4faac88[m HEAD@{38}: commit: reescribe integraciones limpio — solo Strava
+[33m50b69f8[m HEAD@{39}: commit: unifica estado de forma TSB en todas las pantallas
+[33mf0f608b[m HEAD@{40}: commit: sesiones hechas en gris + integraciones solo strava
+[33m7616990[m HEAD@{41}: commit: añade dashboard de inicio con sesion de hoy, cumplimiento semanal y forma PMC
+[33ma0702fe[m HEAD@{42}: commit: feat: marcar sesiones del plan como completadas
+[33ma5d54f6[m HEAD@{43}: commit: fix: recalcular semana no modifica el dia de hoy ni dias pasados
+[33m962fd1e[m HEAD@{44}: commit: revert: deshacer onboarding Strava + URL import + banners UX
+[33m455c0a5[m HEAD@{45}: commit: fix: bloquear importacion de actividades de otros atletas en Strava
+[33m68c2928[m HEAD@{46}: commit: fix: añadir endpoint POST /api/providers/strava/save-token (token manual)
+[33m249e32b[m HEAD@{47}: commit: feat: onboarding Strava + importar actividad por URL + banners UX
+[33m218bc7e[m HEAD@{48}: commit: guarda adaptacion plan
+[33m4f3d59b[m HEAD@{49}: commit: guarda adaptacion plan
+[33mcccc605[m HEAD@{50}: commit: guarda adaptacion plan
+[33m3a026d5[m HEAD@{51}: commit: guarda adaptacion plan
+[33mfcddf8a[m HEAD@{52}: commit: guarda adaptacion plan
+[33m489b153[m HEAD@{53}: commit: feat: brújula de dirección del viento en wind card y mapa
+[33m9cd85f3[m HEAD@{54}: commit: fix: nota del entrenador compara NP vs objetivo de plan (no avg_power)
+[33mabc240b[m HEAD@{55}: commit: fix: botones de panel tapados por barra de navegación en móvil
+[33m5f23815[m HEAD@{56}: commit: fix: scroll móvil, botón Strava y cálculo de potencia media
+[33m22e244d[m HEAD@{57}: commit: potencia
+[33m430f477[m HEAD@{58}: commit: potencia
+[33m00dabea[m HEAD@{59}: commit: fix: proteger página de perfil con autenticación
+[33m96ba0df[m HEAD@{60}: commit: fix: ruta raíz / va siempre a login, sesión activa va a activities
+[33m0d4e28d[m HEAD@{61}: commit: fix: redirigir a actividades si sesión activa, omitir perfil en usuarios existentes
+[33m42078f7[m HEAD@{62}: commit: feat: comparar actividad real vs plan de entrenamiento en nota del entrenador
+[33m3c0522b[m HEAD@{63}: commit: feat: nota del entrenador en detalle de actividad + tarjetas móvil apiladas
+[33ma7466c7[m HEAD@{64}: commit: feat: redirigir a actividades tras login y perfil
+[33mfe132aa[m HEAD@{65}: commit: fix: panel detalle actividad adaptado a móvil
+[33mbcd9832[m HEAD@{66}: commit: feat: logo claro
+[33mb2a9418[m HEAD@{67}: revert: Revert "feat: logo claro"
+[33ma020438[m HEAD@{68}: commit: feat: logo claro
+[33m053f6f1[m HEAD@{69}: commit: feat: logo claro
+[33mee2d4b1[m HEAD@{70}: commit: fix: light gray background on logo area in light mode
+[33m17c6eb8[m HEAD@{71}: commit: fix: power zone chart uses NP + bimodal gaussian for interval sessions
+[33meb0c7fc[m HEAD@{72}: commit: fix: drop-shadow on logo for light mode visibility, remove dark band
+[33mfdfef7d[m HEAD@{73}: commit: feat: dark branded strip for logo area in light mode sidebar
+[33m89681c3[m HEAD@{74}: commit: feat: light mode sidebar bone white background with dark green text
+[33mce8a601[m HEAD@{75}: commit: fix: white text on btn-full buttons in biomechanics (light mode)
+[33m5c9f891[m HEAD@{76}: commit: feat: elegant deep forest sidebar in light mode with amber accents
+[33m6ad46b6[m HEAD@{77}: commit: feat: egg yolk yellow sidebar in light mode with dark text
+[33m29eb40b[m HEAD@{78}: commit: feat: change light mode sidebar to dark amber-orange matching logo palette
+[33mea83387[m HEAD@{79}: commit: fix: move integration status badge below tagline to prevent text cutoff
+[33mabfe14e[m HEAD@{80}: commit: fix: remove bad invert filter on logo in light mode
+[33m0ce8dcf[m HEAD@{81}: commit: fix: prevent last-sync text from wrapping on Strava card
+[33m2298040[m HEAD@{82}: commit: fix: estimate calories from power for Strava activities when calories=0
+[33m883d4ad[m HEAD@{83}: commit: ux: entrada manual de actividad más visible e intuitiva
+[33mf8839e1[m HEAD@{84}: commit: fix: garaje - bicis y km persisten correctamente tras importar de Strava
+[33m22d2018[m HEAD@{85}: commit: style: paleta de color alineada con logo VeloMind
+[33m161d956[m HEAD@{86}: commit: feat: RR (Ramp Rate) en panel detalle actividad
+[33mdf71672[m HEAD@{87}: commit: fix: calorías Strava usando kilojoules como fallback
+[33m5f3c734[m HEAD@{88}: commit: feat: detalle actividad para todas + panel rediseñado
+[33m4c4c6b3[m HEAD@{89}: commit: feat: redirect post-login a actividades y reorden sidebar
+[33mbd6844a[m HEAD@{90}: commit: feat: panel detalle actividad con métricas extendidas y gráficos
+[33m55b48a2[m HEAD@{91}: commit: feat: archivos fit, pantalla detalle
+[33m7a94d11[m HEAD@{92}: commit: feat: archivos fit, pantalla detalle
+[33m3ac9172[m HEAD@{93}: commit: feat: archivos fit
+[33m157bad7[m HEAD@{94}: commit: feat: archivos fit
+[33m24051f4[m HEAD@{95}: commit: feat: archivos fit
+[33m4084e95[m HEAD@{96}: commit: feat: archivos fit
+[33m9523740[m HEAD@{97}: commit: fix: insertar actividad FIT directamente en allActivities sin depender de AppState
+[33me51fe40[m HEAD@{98}: commit: fix: preservar actividades FIT subidas localmente al cargar backend
+[33md3a7dad[m HEAD@{99}: commit: fix: parseFIT envuelve callback en try/catch para evitar promesa colgada
+[33mae778d7[m HEAD@{100}: commit: fix: ajuste horarios pre/post entrenamiento en plan de comidas
+[33mf3b8f35[m HEAD@{101}: commit: fix: parseFIT soporta formato fit-file-parser y easy-fit + fallback a records
+[33mb75cb08[m HEAD@{102}: commit: feat: archivos fit
+[33m429e844[m HEAD@{103}: commit: feat: archivos fit
+[33m86fd33d[m HEAD@{104}: commit: feat: boton strava
+[33mc774460[m HEAD@{105}: commit: feat: boton strava
+[33mbd6f485[m HEAD@{106}: commit: feat: boton strava
+[33m017db48[m HEAD@{107}: commit: feat: boton strava
+[33m3b5afeb[m HEAD@{108}: commit: feat: boton strava
+[33m6472374[m HEAD@{109}: commit: feat: boton strava
+[33m08caed8[m HEAD@{110}: commit: feat: boton strava
+[33m8e765f7[m HEAD@{111}: commit: feat: zoom logo
+[33mafb063f[m HEAD@{112}: commit: feat: zoom logo
+[33m4aa2b5a[m HEAD@{113}: commit: feat: open modal FC
+[33m538c091[m HEAD@{114}: commit: feat: mejoras tonos claros
+[33m14f802c[m HEAD@{115}: commit: feat: mejoras tonos claros
+[33m03b7c8b[m HEAD@{116}: commit: feat: mejoras tonos claros
+[33m971b058[m HEAD@{117}: commit: feat: mejoras tonos claros
+[33mfc8c23d[m HEAD@{118}: commit: feat: mejoras tonos claros
+[33m1627fdf[m HEAD@{119}: commit: feat: mejoras tonos claros
+[33m98a362f[m HEAD@{120}: commit: feat: mejoras menud nutricion
+[33m2aaa69d[m HEAD@{121}: commit: refactor: calculadora manual biomecánica en un único card unificado
+[33mc716cf8[m HEAD@{122}: commit: fix: SVGs de guías biomecánicas visibles en modo claro
+[33mfedfe27[m HEAD@{123}: commit: fix: adapt-trigger usa var(--text-secondary) en lugar de color neon hardcoded
+[33m41aa8bd[m HEAD@{124}: commit: feat: botones calcular/guardar de biomecánica fuera del card y centrados
+[33m9a2ae66[m HEAD@{125}: commit: fix: texto oscuro en adapt-trigger y títulos de modales en modo claro
+[33m964fe6a[m HEAD@{126}: commit: fix: revisión completa de estilos modo claro y oscuro
+[33m240d378[m HEAD@{127}: commit: feat: rediseño modal post-entreno más claro y elegante
+[33maee5f16[m HEAD@{128}: commit: fix: corrige distancias de segmentos en planes guardados en caché
+[33md121f37[m HEAD@{129}: commit: feat: mensajes ejecución personalizados con nombre del usuario
+[33m1ced479[m HEAD@{130}: commit: fix: adapt-trigger visible en modo claro con color oscuro forzado
+[33mc42744a[m HEAD@{131}: commit: fix: Los Chozos 3.9km y badge ejecución visible también hoy
+[33m9a61159[m HEAD@{132}: commit: feat: mejoras planes - badge ejecución, modal post-entreno y modo claro
+[33meb65d8c[m HEAD@{133}: commit: feat: draggable waypoints with right-click delete on route map
+[33m91ab20c[m HEAD@{134}: commit: feat: use BRouter fastbike for road routes (strict asphalt-only)
+[33m2ddb839[m HEAD@{135}: commit: feat: add BRouter MTB routing to avoid paved roads
+[33m3cc3661[m HEAD@{136}: commit: fix: move LTHR label below HR zones
+[33m2124705[m HEAD@{137}: commit: fix: simplify zone rows to single line for consistent alignment
+[33mfd98ef5[m HEAD@{138}: commit: feat: unify sidebar logo size to 165px across all pages
+[33m5f4e025[m HEAD@{139}: commit: feat: diagnóstico interactivo de ruidos en sección de mecánica
+[33m82a9105[m HEAD@{140}: commit: fix: análisis de video biomecánica más fiable y consistente
+[33m68aae53[m HEAD@{141}: commit: fix: fondo negro en modo claro corregido en todas las páginas
+[33m071a26c[m HEAD@{142}: commit: fix: logo aún más grande — 340px login, 300px perfil
+[33mfff86e6[m HEAD@{143}: commit: fix: logo más grande en login/perfil y quitar form-pill redundante
+[33mee75725[m HEAD@{144}: commit: fix: mejoras UI — botón zonas, gráfico intervalos, etiquetas TSB y semana actual
+[33meb4d85a[m HEAD@{145}: commit: feat: mejoras menud nutricion
+[33mbcc5f47[m HEAD@{146}: commit: feat: mejoras menud nutricion
+[33m2d9c269[m HEAD@{147}: commit: feat: mejoras menud nutricion
+[33m4254d2b[m HEAD@{148}: commit: feat: mejoras menud nutricion
+[33m123406c[m HEAD@{149}: commit: feat: mejoras menud nutricion
+[33mf252d93[m HEAD@{150}: commit: feat: mejoras menud nutricion
+[33m449391d[m HEAD@{151}: commit: feat: mejoras menud nutricion
+[33m9244da9[m HEAD@{152}: commit: feat: mejoras menud nutricion
+[33mf723df7[m HEAD@{153}: commit: feat: mejoras menud nutricion
+[33m37b0b94[m HEAD@{154}: commit: feat: mejoras menud nutricion
+[33m2ec03cb[m HEAD@{155}: commit: feat: mejoras menud nutricion
+[33m7ca84c1[m HEAD@{156}: commit: feat: mejoras menud nutricion
+[33mdd86446[m HEAD@{157}: commit: feat: mejoras menud nutricion
+[33mf9411a7[m HEAD@{158}: commit: feat: generador de menús local sin API, adaptado al tipo de entrenamiento
+[33m8062fa3[m HEAD@{159}: commit: fix: botones Hoy/Mañana legibles en modo claro
+[33mf262dc3[m HEAD@{160}: commit: fix: botones Hoy/Mañana del clima visibles en modo claro
+[33me96d608[m HEAD@{161}: commit: fix: FTP advisor carga viento por botón explícito, no automático
+[33m62f270f[m HEAD@{162}: commit: feat: panel FTP advisor con forma + previsión de viento 7 días
+[33m148982f[m HEAD@{163}: commit: fix: terreno ideal visible directamente en la tarjeta de sesión
+[33m4ee82fd[m HEAD@{164}: commit: fix: terreno ideal usa segmentos locales reales (El Angel, Siles, etc.)
+[33mdbe1df5[m HEAD@{165}: commit: feat: segmentos locales en intervalos (El Angel, Siles, La Garganta, Los Chozos)
+[33m80e3a1e[m HEAD@{166}: commit: feat: exportar entrenamientos en TCX (Garmin) y ZWO (Zwift)
+[33md7630d2[m HEAD@{167}: commit: fix: actualizar UI exportación de Garmin/FIT a Zwift/ZWO
+[33m6d95d33[m HEAD@{168}: commit: feat: mejoras texto video biomecanica
+[33m2d8d845[m HEAD@{169}: commit: feat: mejoras texto video biomecanica
+[33m3a3c3ca[m HEAD@{170}: commit: feat: mejoras texto video biomecanica
+[33m425f996[m HEAD@{171}: commit: feat: mejoras texto video biomecanica
+[33m33e2d86[m HEAD@{172}: commit: fix: TCX sin PowerZone (no en schema publico), potencia en nombre de paso
+[33mbfabe22[m HEAD@{173}: commit: fix: cambiar exportacion FIT binario a TCX (XML) para compatibilidad Garmin Connect
+[33me784fe1[m HEAD@{174}: commit: fix: corregir numeros campo file_id y anadir intensity en workout_step FIT
+[33mec446a1[m HEAD@{175}: commit: fix: comida 15:00 y cena 21:30 en notificaciones push y locales
+[33m70efe76[m HEAD@{176}: commit: feat: calculadora presion con anchos y llantas completos por optgroup
+[33m9da0553[m HEAD@{177}: commit: feat: calculadora desarrollos con tipos de rueda completos por optgroup
+[33m38ef428[m HEAD@{178}: commit: fix: colores fca5a5/60a5fa modo claro, fondos aviso/info, ruleset vacio
+[33mc3a1202[m HEAD@{179}: commit: fix: colores modo claro biomecanica, labels iguales, frase toolbar eliminada
+[33me0bd69b[m HEAD@{180}: commit: fix: recuadros imagen/video en biomecanica respetan tema claro
+[33mbcfc8da[m HEAD@{181}: commit: fix: MTB usa bicycle+Mountain con use_hills:1.0 para priorizar pistas/senderos
+[33me290bd3[m HEAD@{182}: commit: fix: convertir horarios recordatorios a UTC antes de enviar al servidor
+[33m0f9472b[m HEAD@{183}: commit: fix: calcElevGain sin suavizado, umbral 3m calibrado contra Strava
+[33me3c33c3[m HEAD@{184}: commit: fix: desnivel con suavizado+umbral 4m, duración por velocidad real por tipo
+[33m060835a[m HEAD@{185}: commit: fix: desnivel con umbral 8m (método histéresis) para coincidir con Strava/Garmin
+[33mbd643ff[m HEAD@{186}: commit: fix: botón recordatorios mantiene estado al volver a nutrición
+[33m51f9ca9[m HEAD@{187}: commit: feat: desnivel D+ calculado desde Valhalla en tiempo real
+[33m744b8b9[m HEAD@{188}: commit: fix: perfiles Valhalla diferenciados por tipo de superficie
+[33m4b09802[m HEAD@{189}: commit: fix: evitar caminos de tierra en rutas tipo road
+[33m1346c5e[m HEAD@{190}: commit: feat: notificaciones push en segundo plano para recordatorios de agua y comida
+[33m3eb2aa3[m HEAD@{191}: commit: fix: tarjetas móvil con título arriba y referencia abajo
+[33m8aebcf8[m HEAD@{192}: commit: fix: botón Auto-calcular desde Strava responsive en móvil
+[33mb3a078a[m HEAD@{193}: commit: fix: mejorar selección y calidad de voz del coach de audio
+[33m1bc3ede[m HEAD@{194}: commit: fix: curva de potencia y zonas de entrenamiento responsive en móvil
+[33mf32a69d[m HEAD@{195}: commit: feat: añadir ayuda de instalación PWA junto al botón de recordatorios
+[33m0e3e633[m HEAD@{196}: commit: feat: recordatorios de agua y comidas via notificaciones del navegador
+[33m79b597b[m HEAD@{197}: commit: feat: guardar adaptación IA en la tarjeta y coach de audio
+[33m9bf7797[m HEAD@{198}: commit: fix: corregir exceso de grasa e hidratación en NutritionPlanner
+[33m310e14a[m HEAD@{199}: commit: fix: limitar cantidades exageradas en menús generados por IA
+[33m444e1f6[m HEAD@{200}: commit: feat: mostrar hora sugerida en cada vaso de hidratación
+[33m2e14cee[m HEAD@{201}: commit: fix: forzar tema oscuro por defecto en todas las pantallas
+[33meb7e547[m HEAD@{202}: commit: feat: eliminar sección ¿Cómo te encuentras hoy? de nutrición
+[33mf086de3[m HEAD@{203}: commit: refactor: renombrar botón 'Análisis IA' → 'Diagnóstico'
+[33m53577a9[m HEAD@{204}: commit: fix: post-entreno visible en días de descanso + botón Análisis IA funcional
+[33md920dd9[m HEAD@{205}: commit: feat: páginas de Política de Privacidad y Términos de Servicio
+[33m52a3c1c[m HEAD@{206}: commit: feat: auto-sync Strava silencioso al abrir la app
+[33mee4995a[m HEAD@{207}: commit: feat: plan semanal adaptado automáticamente al TSB del atleta
+[33m741694f[m HEAD@{208}: commit: feat: responsive rutas + coach de voz mejorado
+[33m199afd8[m HEAD@{209}: commit: feat: mejoras texto video biomecanica
+[33mbcea593[m HEAD@{210}: commit: feat: mejoras texto video biomecanica
+[33m952b70a[m HEAD@{211}: commit: feat: biomecánica instrucciones en canvas + ruta viento día siguiente
+[33m67fb6a7[m HEAD@{212}: commit: feat: coach de audio en plan semanal + fix km componentes garaje
+[33mc2126c4[m HEAD@{213}: commit: fix: filtrar spikes de potencia del sensor en parsers y curva de potencia
+[33m7d6b488[m HEAD@{214}: commit: remove: diseñador de ropa — kit-designer.html, rutas /kit y nav links
+[33mf063d41[m HEAD@{215}: commit: feat: soporte archivos .fit de Garmin en importación de actividades
+[33m42ba1fa[m HEAD@{216}: commit: feat: panel video biomecánica — reproductor integrado, sin botón de subida duplicado
+[33m96e4f3b[m HEAD@{217}: commit: feat: biomecánica — zona de subida unificada foto+video y guía plegable
+[33m1c80cf6[m HEAD@{218}: commit: security: eliminar endpoints debug públicos sin autenticación
+[33m3310cc4[m HEAD@{219}: commit: fix: usar leaflet-image en lugar de html2canvas — elimina desplazamiento en captura
+[33ma7b105f[m HEAD@{220}: commit: fix: captura de mapa sin desplazamiento — capturar div#map directamente
+[33m9ca6c81[m HEAD@{221}: commit: feat: páginas de términos de uso y política de privacidad
+[33m0bf2524[m HEAD@{222}: commit: fix: captura de mapa centrada y con zoom para mostrar nombres de pueblos
+[33m3cda7e1[m HEAD@{223}: commit: feat: compartir ruta con captura de pantalla del mapa via Web Share API
+[33mcbf82fc[m HEAD@{224}: commit: feat: compartir ruta por WhatsApp desde la sección de rutas
+[33mc96d553[m HEAD@{225}: commit: remove: botón rutas ciclistas — overlay vacío en la mayoría de zonas
+[33ma7aa4ec[m HEAD@{226}: commit: fix: rutas ciclistas — overlay sobre OSM en lugar de reemplazar mapa
+[33m05af46d[m HEAD@{227}: commit: fix: rutas ciclistas — CyclOSM en lugar de waymarkedtrails
+[33mb3819f4[m HEAD@{228}: commit: fix: PDF garaje sin HTML — texto plano en columnas uso/límite
+[33m0165919[m HEAD@{229}: commit: feat: ruta inteligente por viento — ida/vuelta o circular
+[33ma134c61[m HEAD@{230}: commit: fix: rutas — pintar todos los tramos (flatMap legs de Valhalla)
+[33m8c5eb10[m HEAD@{231}: commit: fix: rutas — polyline y marcadores no interceptan clicks del mapa
+[33mc02a721[m HEAD@{232}: commit: fix: sidebar rutas con secciones igual que el resto de páginas
+[33mf56d20f[m HEAD@{233}: commit: fix: routing rutas — Valhalla con fallback automático a OSRM
+[33m48a83cf[m HEAD@{234}: commit: fix: rutas — sidebar correcto, toolbar horizontal tipo page-header
+[33m2fbe05b[m HEAD@{235}: commit: fix: rutas — layout, cursor, routing gravel/MTB, viento funcional
+[33md0709a2[m HEAD@{236}: commit: feat: sección Rutas — mapa, trazado, GPX, sugerencia viento
+[33m06f7eb6[m HEAD@{237}: commit: fix: corrección cálculo semana en nutrición (bug domingo)
+[33m640433c[m HEAD@{238}: commit: feat: avatar en pantalla de perfil con upload directo
+[33mbcbd564[m HEAD@{239}: commit: feat: foto de perfil en sidebar — upload, compresión y display
+[33ma5e117d[m HEAD@{240}: commit: feat: tarjeta Perfil de Ciclista con radar chart en Métricas
+[33m075cdc2[m HEAD@{241}: commit: feat: guía de grabación antes del upload de vídeo biomecánico
+[33mbeb4489[m HEAD@{242}: commit: fix: análisis de vídeo biomecánico en español
+[33m4b263d5[m HEAD@{243}: commit: fix: biomechanics-video URL de polling doble y storage /tmp
+[33m50f3bce[m HEAD@{244}: commit: fix: distribución de zonas usa modelo gaussiano (NP/avg) en vez de zona única
+[33m672cdcf[m HEAD@{245}: commit: fix: auto-cálculo FC máx usa el máximo real en vez del percentil 5%
+[33mffafccc[m HEAD@{246}: commit: fix: plan de entrenamiento muestra la semana correcta los domingos
+[33m0f13e3b[m HEAD@{247}: commit: fix: auto-cálculo FTP usa curva de potencia (mejor segmento), no media de salida
+[33m64aa667[m HEAD@{248}: commit: fix: cap sensor noise en potencia, odómetro garaje post-sync Strava
+[33m1e4bc5e[m HEAD@{249}: commit: fix: redondear campos numéricos antes de insertar en Supabase
+[33m0c2e22f[m HEAD@{250}: commit: debug: logs detallados en garage y strava sync para diagnosticar problemas
+[33m519c641[m HEAD@{251}: commit: fix: cache-busting v101, sync Strava último año y limpieza de actividades antiguas
+[33m7d9af6f[m HEAD@{252}: commit: fix: sincronización Strava histórica, aislamiento de garaje y orden de rutas
+[33m8fc08b2[m HEAD@{253}: commit: feat: mejoras strava sync
+[33m66b448c[m HEAD@{254}: commit: feat: mejoras strava sync
+[33m6a7d377[m HEAD@{255}: commit: feat: mejoras strava sync
+[33m4865bb8[m HEAD@{256}: commit: feat: mejoras UI movil PWA
+[33mb71b3b5[m HEAD@{257}: commit: feat: mejoras UI movil PWA
+[33me850d2b[m HEAD@{258}: commit: feat: mejoras UI movil PWA
+[33m47e2fed[m HEAD@{259}: commit: Fix crítico: Reescritura profunda del motor de sincronización
+[33mde2ba34[m HEAD@{260}: commit: feat: mejoras UI movil PWA
+[33m0e19cec[m HEAD@{261}: commit: feat: mejoras UI movil PWA
+[33me29926f[m HEAD@{262}: commit: feat: mejoras UI movil PWA
+[33m43933ab[m HEAD@{263}: commit: feat: mejoras UI movil PWA
+[33m769802c[m HEAD@{264}: commit: feat: mejoras UI movil PWA
+[33mbd80b7e[m HEAD@{265}: commit: feat: mejoras UI movil PWA
+[33mda5c573[m HEAD@{266}: commit: feat: mejoras UI movil PWA
+[33mf949348[m HEAD@{267}: commit: feat: mejoras UI movil PWA
+[33m9e42ba3[m HEAD@{268}: commit: feat: mejoras UI movil PWA
+[33ma0ac1c8[m HEAD@{269}: commit: feat: mejoras UI movil PWA
+[33me16fc87[m HEAD@{270}: commit: feat: mejoras UI movil PWA
+[33m259c085[m HEAD@{271}: commit: feat: mejoras UI movil PWA
+[33m5a771aa[m HEAD@{272}: commit: feat: mejoras UI movil PWA
+[33mdcabf73[m HEAD@{273}: commit: feat: mejoras UI movil PWA
+[33m4cbc175[m HEAD@{274}: commit: feat: mejoras UI movil PWA
+[33md67e30b[m HEAD@{275}: commit: feat: mejoras UI movil PWA
+[33m29923f1[m HEAD@{276}: commit: feat: mejoras UI movil PWA
+[33m4d7aac4[m HEAD@{277}: commit: feat: mejoras UI movil PWA
+[33m711c326[m HEAD@{278}: commit: feat: mejoras UI movil PWA
+[33m86cfac2[m HEAD@{279}: commit: feat: mejoras UI movil PWA
+[33m4462b6d[m HEAD@{280}: commit: feat: mejoras UI movil PWA
+[33m62ccf35[m HEAD@{281}: commit: feat: mejoras UI movil PWA
+[33m628bf52[m HEAD@{282}: commit: feat: mejoras UI movil PWA
+[33mf7b67dd[m HEAD@{283}: commit: feat: mejoras UI movil PWA
+[33me1173c4[m HEAD@{284}: commit: feat: mejoras UI movil PWA
+[33m325bdcf[m HEAD@{285}: commit: feat: mejoras UI movil PWA
+[33m0ced8ef[m HEAD@{286}: commit: feat: mejoras UI movil PWA
+[33m125ee82[m HEAD@{287}: commit: feat: mejoras UI movil PWA
+[33mf35782a[m HEAD@{288}: commit: feat: mejoras UI movil PWA
+[33ma8b40b2[m HEAD@{289}: commit: feat: mejoras UI movil PWA
+[33md152836[m HEAD@{290}: commit: feat: mejoras UI movil PWA
+[33m5382864[m HEAD@{291}: commit: feat: mejoras UI movil PWA
+[33mdb7f0f9[m HEAD@{292}: commit: feat: mejoras UI movil PWA
+[33m5e7eab5[m HEAD@{293}: commit: feat: mejoras UI movil PWA
+[33m36cc602[m HEAD@{294}: commit: feat: mejoras UI movil PWA
+[33md01ae9b[m HEAD@{295}: commit: feat: mejoras UI movil PWA
+[33m85fb398[m HEAD@{296}: commit: feat: mejoras UI movil PWA
+[33mbfa219c[m HEAD@{297}: commit: feat: mejoras UI movil PWA
+[33m6d63001[m HEAD@{298}: commit: feat: mejoras UI movil PWA
+[33ma15c89e[m HEAD@{299}: commit: feat: mejoras UI movil PWA
+[33me3d15e3[m HEAD@{300}: commit: feat: mejoras UI movil PWA
+[33m2ae5a81[m HEAD@{301}: commit: feat: mejoras UI movil PWA
+[33mae558f5[m HEAD@{302}: commit: feat: mejoras UI movil PWA
+[33m3467817[m HEAD@{303}: commit: feat: mejoras UI movil PWA
+[33mfb55ad8[m HEAD@{304}: commit: feat: mejoras UI movil PWA
+[33m104cbdc[m HEAD@{305}: commit: feat: mejoras UI movil PWA
+[33me995c1d[m HEAD@{306}: commit: feat: mejoras UI movil PWA
+[33mfec2cfb[m HEAD@{307}: commit: feat: mejoras UI movil y modo claro
+[33mf3be81c[m HEAD@{308}: commit: feat: mejoras UI movil y modo claro
+[33m54e892f[m HEAD@{309}: commit: feat: mejoras UI movil y modo claro
+[33mc63a23a[m HEAD@{310}: commit: feat: mejoras UI movil y modo claro
+[33maf4ef4c[m HEAD@{311}: commit: feat: mejoras UI movil
+[33mc3caa88[m HEAD@{312}: commit: feat: mejoras UI movil
+[33m2c6d28e[m HEAD@{313}: commit: feat: mejoras UI boton login out
+[33md38db3b[m HEAD@{314}: commit: feat: mejoras UI boton login out
+[33m0d2895a[m HEAD@{315}: commit: feat: mejoras UI boton login out
+[33m9dec3ec[m HEAD@{316}: commit: feat: mejoras UI boton login out
+[33m8d8b781[m HEAD@{317}: commit: feat: mejoras UI frontend
+[33me963a71[m HEAD@{318}: commit: feat: mejoras UI boton login out
+[33m6da51e0[m HEAD@{319}: commit: fix strava final
+[33ma085556[m HEAD@{320}: commit: fix strava routes
+[33m1550182[m HEAD@{321}: commit: fix auth token bug
+[33m7c6b691[m HEAD@{322}: commit: fix backend cors + routes
+[33m106fe6c[m HEAD@{323}: commit: fix api url frontend
+[33m5de0a7d[m HEAD@{324}: commit: connect frontend to backend
+[33m3826662[m HEAD@{325}: Branch: renamed refs/heads/master to refs/heads/main
+[33m3826662[m HEAD@{327}: commit (initial): init velomind
