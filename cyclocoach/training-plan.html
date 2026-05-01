@@ -1581,7 +1581,65 @@ async function saveAdaptation(idx) {
 
   renderPlan(currentPlan, AppState.athlete);
   await silentSavePlan();
-  showToast('✅ Sesión adaptada guardada — coach de audio actualizado', 'var(--accent)');
+
+  // Si la sesión cancelada es futura, redistribuir automáticamente el TSS entre hoy y el resto de la semana
+  const todayIdxAuto = (new Date().getDay() + 6) % 7;
+  if (t.recomendacion === 'descanso' && idx > todayIdxAuto) {
+    showToast('⏳ Redistribuyendo la semana...', 'var(--text-muted)');
+    try {
+      const dayName = currentPlan.sessions[idx]?.day || `día ${idx + 1}`;
+      const feedback = `La sesión del ${dayName} ha sido cancelada porque el atleta tiene un evento y no puede entrenar (${t.razon || 'evento personal'}). Redistribuye el TSS perdido entre los días disponibles: hoy (si el atleta aún no ha salido) y los días restantes de la semana hasta el domingo.`;
+      const res2 = await fetch(`${API}/coach/recalculate-week`, {
+        method: 'POST',
+        headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: currentPlan, todayIdx: todayIdxAuto - 1, feedback })
+      });
+      const data2 = await res2.json();
+      if (res2.ok && data2.newPlan) {
+        const ftp2 = AppState.athlete?.ftp || 200;
+        data2.newPlan.sessions.forEach(s => {
+          if (s.isRest) {
+            s.intervals = []; s.alt_intervals = [];
+            s.description = 'Descanso.'; s.alt_description = '';
+            s.name = 'Descanso'; s.emoji = '😴';
+            s.advice = s.advice || 'Día de descanso. Escucha a tu cuerpo y prioriza la recuperación.';
+          } else if (window.TrainingPlanGenerator) {
+            const ifT = s.ifTarget || 0.75;
+            if (!s.name || s.name.includes('Descanso')) s.name = (window.WORKOUT_TYPES && window.WORKOUT_TYPES[s.type]?.label) || s.type;
+            s.emoji = (window.WORKOUT_TYPES && window.WORKOUT_TYPES[s.type]?.emoji) || '🚴';
+            s.intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp2, s.durationMin, s.tss, ifT, 'main');
+            s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp2, s.durationMin, s.tss, ifT, 'alt');
+            const bDesc = ivs => {
+              const parts = [];
+              for (let k = 0; k < ivs.length; k++) {
+                const iv = ivs[k], rm = iv.label.match(/\(×(\d+)/);
+                const bl = iv.label.split(' (')[0].trim(), dv = iv.dur.replace(' c/u', '').trim();
+                if (rm) {
+                  const nx = ivs[k + 1];
+                  if (nx && nx.label.toLowerCase().match(/recuperación|descanso/) && nx.label.includes('(×')) {
+                    parts.push(`${rm[1]}×${dv} ${bl} (rec: ${nx.dur.replace(' c/u', '').trim()})`); k++;
+                  } else { parts.push(`${rm[1]}×${dv} ${bl}`); }
+                } else { parts.push(`${dv} ${bl}`); }
+              }
+              return parts.join(' + ');
+            };
+            s.description = bDesc(s.intervals);
+            s.alt_description = bDesc(s.alt_intervals);
+          }
+        });
+        currentPlan.sessions = data2.newPlan.sessions;
+        await silentSavePlan();
+        renderPlan(currentPlan, AppState.athlete);
+        showToast('✅ Descanso guardado · ' + (data2.newPlan.mensaje_coach || 'Semana redistribuida automáticamente.'), 'var(--primary)');
+      } else {
+        showToast('✅ Sesión marcada como descanso', 'var(--accent)');
+      }
+    } catch (_) {
+      showToast('✅ Sesión marcada como descanso', 'var(--accent)');
+    }
+  } else {
+    showToast('✅ Sesión adaptada guardada — coach de audio actualizado', 'var(--accent)');
+  }
 }
 
 async function silentSavePlan() {
