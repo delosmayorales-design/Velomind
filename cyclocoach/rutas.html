@@ -206,6 +206,13 @@
     .wh-chip.wh-selected { outline:none; }
     #wind-body ::-webkit-scrollbar { display:none; }
 
+    /* Wind map info panel */
+    #wind-info-panel { display:none;position:absolute;bottom:54px;left:50%;transform:translateX(-50%);z-index:800;
+      background:rgba(10,11,15,0.97);border:1px solid rgba(0,212,255,0.35);border-radius:14px;
+      padding:16px 18px;max-width:290px;width:calc(100vw - 40px);font-size:12px;
+      color:var(--text-primary);line-height:1.6;box-shadow:0 4px 24px rgba(0,0,0,0.6); }
+    #btn-wind-info.active { background:rgba(0,212,255,0.15)!important; border-color:rgba(0,212,255,0.5)!important; color:#00D4FF!important; }
+
     /* Waypoint markers arrastrables */
     .wp-dot {
       width: 14px; height: 14px;
@@ -404,6 +411,9 @@
       </button>
       <button class="btn btn-secondary btn-sm" id="btn-wind-arrows" onclick="toggleWindArrows()" title="Flechas de viento animadas en el mapa">
         <i class="fas fa-location-arrow"></i><span class="btn-label"> Flechas viento</span>
+      </button>
+      <button class="btn btn-secondary btn-sm" id="btn-wind-info" onclick="toggleWindInfo()" title="Cómo funcionan las flechas de viento" style="padding:6px 9px;">
+        <i class="fas fa-circle-question"></i>
       </button>
       <button class="btn btn-secondary btn-sm" onclick="openWindRouteModal()" style="background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.35);color:#00D4FF;">
         <i class="fas fa-wind"></i><span class="btn-label"> Ruta por viento</span>
@@ -1354,20 +1364,24 @@ async function showWindSuggestion() {
 
 // ── Wind Map Arrows Overlay (estilo Windfinder) ──────────────────
 let windArrowsActive = false;
-let windArrowsFrame     = null;
-let windArrowsGrid      = [];   // puntos de flecha en coordenadas de pantalla
-let windSpatialGrid     = [];   // malla de datos reales {lat,lon,deg,spd,color,sx,sy}
-let windHourOverride    = null; // {deg,spd,color} cuando el usuario elige una hora concreta
-let windRefetchTimer    = null;
-let windLastZoom        = null;
-let windLastCenter      = null;
+let windArrowsFrame  = null;
+let windArrowsGrid   = [];   // {hx,hy,phase,wind} — posiciones de pantalla
+let windSpatialGrid  = [];   // {lat,lon,r,c,deg,spd,u,v,color} — malla geográfica
+let windGrid2D       = [];   // windGrid2D[r][c] → punto (lookup O(1) para interpolación)
+let windGridDims     = null; // {rows,cols,sw,latStep,lonStep}
+let windHourOverride = null; // {u,v,spd,color} cuando el usuario elige una hora
+let windRefetchTimer = null;
+let windLastZoom     = null;
 
-// ── Helpers internos ─────────────────────────────────────────────
+// Caché 15 minutos, clave = zoom + bounds + densidad de malla
+const _windCache = new Map();
+const _WIND_TTL  = 15 * 60 * 1000;
+
+// ── Helpers ──────────────────────────────────────────────────────
 function _windColor(spd) {
   return spd < 15 ? '#10B981' : spd < 30 ? '#F59E0B' : spd < 50 ? '#EF4444' : '#8B5CF6';
 }
 
-// Densidad de la malla según nivel de zoom
 function _gridDensity(zoom) {
   if (zoom >= 11) return { cols: 1, rows: 1 };
   if (zoom >= 8)  return { cols: 2, rows: 2 };
@@ -1376,14 +1390,36 @@ function _gridDensity(zoom) {
   return                 { cols: 7, rows: 5 };
 }
 
-// Obtener datos de viento para una malla de puntos geográficos
+function _showWindLoading(show) {
+  let el = document.getElementById('wind-loading-badge');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'wind-loading-badge';
+    el.style.cssText = 'display:none;position:absolute;bottom:14px;right:14px;z-index:700;' +
+      'background:rgba(0,0,0,0.78);color:#00D4FF;font-size:11px;padding:5px 10px;' +
+      'border-radius:8px;pointer-events:none;align-items:center;gap:6px;';
+    el.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="font-size:10px"></i> Cargando viento…';
+    map.getContainer().appendChild(el);
+  }
+  el.style.display = show ? 'flex' : 'none';
+}
+
+// ── Fetch con caché 15 min ───────────────────────────────────────
 async function _fetchWindGrid() {
   const bounds = map.getBounds();
   const zoom   = map.getZoom();
   const { cols, rows } = _gridDensity(zoom);
-
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
+
+  const cacheKey = `${zoom}|${sw.lat.toFixed(2)}|${sw.lng.toFixed(2)}|${ne.lat.toFixed(2)}|${ne.lng.toFixed(2)}|${rows}|${cols}`;
+  const cached = _windCache.get(cacheKey);
+  if (cached && (Date.now() - cached.ts < _WIND_TTL)) {
+    windGridDims = cached.dims;
+    windGrid2D   = cached.grid2D;
+    return cached.data;
+  }
+
   const latStep = rows > 1 ? (ne.lat - sw.lat) / (rows - 1) : 0;
   const lonStep = cols > 1 ? (ne.lng - sw.lng) / (cols - 1) : 0;
 
@@ -1393,27 +1429,69 @@ async function _fetchWindGrid() {
       points.push({
         lat: rows > 1 ? sw.lat + r * latStep : (sw.lat + ne.lat) / 2,
         lon: cols > 1 ? sw.lng + c * lonStep : (sw.lng + ne.lng) / 2,
+        r, c,
       });
 
-  // Peticiones en paralelo (Open-Meteo, sin límite documentado)
   const results = await Promise.all(points.map(async pt => {
     try {
-      const r = await fetch(
+      const res = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${pt.lat.toFixed(3)}&longitude=${pt.lon.toFixed(3)}` +
         `&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=auto`
       );
-      const d = await r.json();
+      const d = await res.json();
       const spd = Math.round(d.current.wind_speed_10m);
       const deg = d.current.wind_direction_10m;
-      return { lat: pt.lat, lon: pt.lon, deg, spd, color: _windColor(spd) };
+      // Componentes U,V del flujo (hacia dónde va el viento)
+      const u = Math.sin((deg + 180) * Math.PI / 180) * spd;
+      const v = -Math.cos((deg + 180) * Math.PI / 180) * spd;
+      return { lat: pt.lat, lon: pt.lon, r: pt.r, c: pt.c, deg, spd, u, v, color: _windColor(spd) };
     } catch { return null; }
   }));
 
-  return results.filter(Boolean);
+  const valid = results.filter(Boolean);
+  const dims  = { rows, cols, sw, latStep, lonStep };
+
+  // Tabla 2D para lookup O(1) en interpolación bilineal
+  const g2D = Array.from({ length: rows }, () => Array(cols).fill(null));
+  valid.forEach(pt => { g2D[pt.r][pt.c] = pt; });
+  // Rellenar huecos (peticiones fallidas) con el primer punto válido como fallback
+  const fallback = valid[0] || null;
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      if (!g2D[r][c]) g2D[r][c] = fallback;
+
+  windGridDims = dims;
+  windGrid2D   = g2D;
+  _windCache.set(cacheKey, { data: valid, dims, grid2D: g2D, ts: Date.now() });
+  return valid;
 }
 
-// Proyectar la malla geográfica a coordenadas de pantalla y asignar
-// cada flecha a su punto más cercano (nearest-neighbor)
+// ── Interpolación bilineal de componentes U,V ────────────────────
+function _bilinearInterp(lat, lon) {
+  if (!windGridDims || !windSpatialGrid.length) return windSpatialGrid[0] || null;
+  const { rows, cols, sw, latStep, lonStep } = windGridDims;
+
+  const fi = (latStep > 0 && rows > 1) ? (lat - sw.lat) / latStep : 0;
+  const fj = (lonStep > 0 && cols > 1) ? (lon - sw.lng) / lonStep : 0;
+
+  const r0 = rows > 1 ? Math.max(0, Math.min(rows - 2, Math.floor(fi))) : 0;
+  const r1 = rows > 1 ? r0 + 1 : 0;
+  const c0 = cols > 1 ? Math.max(0, Math.min(cols - 2, Math.floor(fj))) : 0;
+  const c1 = cols > 1 ? c0 + 1 : 0;
+
+  const wr = Math.max(0, Math.min(1, fi - r0));
+  const wc = Math.max(0, Math.min(1, fj - c0));
+
+  const g  = (r, c) => (windGrid2D[r] && windGrid2D[r][c]) || windSpatialGrid[0];
+  const P00 = g(r0, c0), P01 = g(r0, c1), P10 = g(r1, c0), P11 = g(r1, c1);
+
+  const u = P00.u*(1-wr)*(1-wc) + P01.u*(1-wr)*wc + P10.u*wr*(1-wc) + P11.u*wr*wc;
+  const v = P00.v*(1-wr)*(1-wc) + P01.v*(1-wr)*wc + P10.v*wr*(1-wc) + P11.v*wr*wc;
+  const spd = Math.sqrt(u * u + v * v);
+  return { u, v, spd, color: _windColor(spd) };
+}
+
+// ── Proyectar malla + asignar viento interpolado por flecha ──────
 function _assignArrowsToGrid(canvas) {
   const size = map.getSize();
   canvas.width  = size.x;
@@ -1425,28 +1503,23 @@ function _assignArrowsToGrid(canvas) {
   windArrowsGrid = [];
   for (let y = offY - GRID; y < size.y + GRID; y += GRID)
     for (let x = offX - GRID; x < size.x + GRID; x += GRID)
-      windArrowsGrid.push({ hx: x, hy: y, phase: Math.random(), wp: null });
+      windArrowsGrid.push({ hx: x, hy: y, phase: Math.random(), wind: null });
 
-  // Proyectar malla geográfica → pantalla
   windSpatialGrid.forEach(pt => {
     const sp = map.latLngToContainerPoint([pt.lat, pt.lon]);
     pt.sx = sp.x; pt.sy = sp.y;
   });
 
-  // Asignar cada flecha al punto de viento más cercano
+  // Cada flecha obtiene su viento por interpolación bilineal de la malla
   windArrowsGrid.forEach(arrow => {
-    let minD = Infinity, nearest = windSpatialGrid[0];
-    windSpatialGrid.forEach(pt => {
-      const d = (arrow.hx - pt.sx) ** 2 + (arrow.hy - pt.sy) ** 2;
-      if (d < minD) { minD = d; nearest = pt; }
-    });
-    arrow.wp = nearest;
+    const latLng  = map.containerPointToLatLng([arrow.hx, arrow.hy]);
+    arrow.wind = _bilinearInterp(latLng.lat, latLng.lng);
   });
 }
 
-// Bucle de animación — cada flecha usa los datos de su punto asignado
+// ── Bucle de animación ───────────────────────────────────────────
 function _animateWindArrows(canvas) {
-  const ctx = canvas.getContext('2d');
+  const ctx    = canvas.getContext('2d');
   const TRAVEL = 30;
   let lastTime = performance.now();
 
@@ -1455,7 +1528,6 @@ function _animateWindArrows(canvas) {
     const dt = Math.min((now - lastTime) / 16.67, 3);
     lastTime = now;
 
-    // Resize si el mapa cambió
     const size = map.getSize();
     if (canvas.width !== size.x || canvas.height !== size.y)
       _assignArrowsToGrid(canvas);
@@ -1463,15 +1535,14 @@ function _animateWindArrows(canvas) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     windArrowsGrid.forEach(pt => {
-      // En modo "hora concreta" todas usan el override; si no, su punto asignado
-      const wp = windHourOverride || pt.wp;
+      const wp = windHourOverride || pt.wind;
       if (!wp) return;
 
-      const rad   = (wp.deg + 180) * Math.PI / 180; // +180: de origen → destino del flujo
-      const vx    = Math.sin(rad);
-      const vy    = -Math.cos(rad);
+      const totalSpd = Math.max(0.1, wp.spd);
+      const vx    = wp.u / totalSpd;
+      const vy    = wp.v / totalSpd;
       const angle = Math.atan2(vx, -vy);
-      const speed = Math.max(0.3, wp.spd / 28);
+      const speed = Math.max(0.3, totalSpd / 28);
 
       pt.phase = (pt.phase + speed * dt / TRAVEL) % 1;
       const t     = pt.phase;
@@ -1510,10 +1581,12 @@ async function toggleWindArrows() {
     const c = document.getElementById('wind-map-canvas');
     if (c) { c.getContext('2d').clearRect(0, 0, c.width, c.height); c.style.display = 'none'; }
     btn?.classList.remove('active');
+    _showWindLoading(false);
     return;
   }
 
   btn?.classList.add('loading');
+  _showWindLoading(true);
   try {
     windSpatialGrid = await _fetchWindGrid();
     if (!windSpatialGrid.length) throw new Error('Sin datos de viento');
@@ -1522,69 +1595,143 @@ async function toggleWindArrows() {
     windHourOverride = null;
     btn?.classList.remove('loading');
     btn?.classList.add('active');
+    _showWindLoading(false);
 
     const canvas = document.getElementById('wind-map-canvas');
     canvas.style.display = 'block';
     _assignArrowsToGrid(canvas);
     _animateWindArrows(canvas);
 
-    windLastZoom   = map.getZoom();
-    windLastCenter = map.getCenter();
+    windLastZoom = map.getZoom();
   } catch (e) {
     btn?.classList.remove('loading');
+    _showWindLoading(false);
     console.error('[WindArrows]', e);
     alert('No se pudieron obtener datos de viento: ' + (e.message || e));
   }
 }
 
-// Re-fetch al cambiar la vista del mapa (debounced 600ms)
+// ── Bounding box para detectar si hay que re-fetch ───────────────
+function _spatialGridBounds() {
+  if (!windSpatialGrid.length) return null;
+  const lats = windSpatialGrid.map(p => p.lat);
+  const lons  = windSpatialGrid.map(p => p.lon);
+  return {
+    minLat: Math.min(...lats), maxLat: Math.max(...lats),
+    minLon: Math.min(...lons), maxLon: Math.max(...lons),
+  };
+}
+
+// ── Re-fetch al mover / hacer zoom (debounced 600ms) ─────────────
 function _onMapMoveEnd() {
   if (!windArrowsActive || windHourOverride) return;
 
+  const canvas = document.getElementById('wind-map-canvas');
   const zoom   = map.getZoom();
   const center = map.getCenter();
+
+  _assignArrowsToGrid(canvas); // reproyectar inmediatamente (sin red)
+
   const { cols: prevCols } = _gridDensity(windLastZoom || zoom);
   const { cols: newCols  } = _gridDensity(zoom);
+  const gb = _spatialGridBounds();
 
-  // Re-fetch si cambió nivel de zoom (distinta densidad) o se desplazó >30% del área visible
-  const bounds   = map.getBounds();
-  const latSpan  = bounds.getNorth() - bounds.getSouth();
-  const latDelta = windLastCenter ? Math.abs(center.lat - windLastCenter.lat) : 999;
-  const needsFetch = newCols !== prevCols || latDelta > latSpan * 0.3;
+  const centerOutOfGrid = !gb
+    || center.lat < gb.minLat || center.lat > gb.maxLat
+    || center.lng < gb.minLon || center.lng > gb.maxLon;
 
-  if (!needsFetch) {
-    // Solo reproyectar: actualizar sx,sy sin re-fetchear
-    const canvas = document.getElementById('wind-map-canvas');
-    _assignArrowsToGrid(canvas);
-    return;
-  }
+  const needsFetch = newCols !== prevCols || centerOutOfGrid;
+  if (!needsFetch) return;
 
   clearTimeout(windRefetchTimer);
+  _showWindLoading(true);
   windRefetchTimer = setTimeout(async () => {
     try {
       windSpatialGrid = await _fetchWindGrid();
-      windLastZoom   = zoom;
-      windLastCenter = map.getCenter();
-      const canvas = document.getElementById('wind-map-canvas');
+      windLastZoom    = map.getZoom();
       _assignArrowsToGrid(canvas);
     } catch (e) { console.warn('[WindArrows] re-fetch fallido', e); }
+    finally     { _showWindLoading(false); }
   }, 600);
 }
 
-// Seleccionar una hora concreta del pronóstico → override uniforme
+// ── Chips horarios ────────────────────────────────────────────────
 function selectWindHour(el, deg, spd) {
   document.querySelectorAll('.wh-chip').forEach(c => c.classList.remove('wh-selected'));
   el.classList.add('wh-selected');
-  windHourOverride = { deg, spd, color: _windColor(spd) };
-  // Si las flechas no están activas, no hace nada más
-  // Si están activas, la animación ya lee windHourOverride en el próximo frame
+  const u = Math.sin((deg + 180) * Math.PI / 180) * spd;
+  const v = -Math.cos((deg + 180) * Math.PI / 180) * spd;
+  windHourOverride = { deg, spd, u, v, color: _windColor(spd) };
 }
 
-// "Ahora" chip — vuelve al modo espacial
 function selectWindNow(el) {
   document.querySelectorAll('.wh-chip').forEach(c => c.classList.remove('wh-selected'));
   el.classList.add('wh-selected');
   windHourOverride = null;
+}
+
+// ── Panel de instrucciones ────────────────────────────────────────
+function toggleWindInfo() {
+  const btn = document.getElementById('btn-wind-info');
+  let panel = document.getElementById('wind-info-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'wind-info-panel';
+    panel.style.cssText = 'display:none;position:absolute;bottom:54px;left:50%;' +
+      'transform:translateX(-50%);z-index:800;background:rgba(10,11,15,0.97);' +
+      'border:1px solid rgba(0,212,255,0.35);border-radius:14px;padding:16px 18px;' +
+      'max-width:290px;width:calc(100vw - 40px);font-size:12px;color:var(--text-primary);' +
+      'line-height:1.6;box-shadow:0 4px 24px rgba(0,0,0,0.6);';
+    panel.innerHTML = `
+      <div style="font-size:13px;font-weight:700;margin:0 0 10px;color:#00D4FF">
+        <i class="fas fa-location-arrow"></i> Flechas de viento — Cómo usar
+      </div>
+      <p style="margin:0 0 10px">Las flechas muestran la <strong>dirección y velocidad del viento real</strong>
+        en cada zona del mapa. Se usa interpolación bilineal entre los puntos de la malla para
+        transiciones suaves.</p>
+      <div style="margin-bottom:10px">
+        <div style="font-weight:600;margin-bottom:5px">Colores (velocidad):</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="width:10px;height:10px;border-radius:50%;background:#10B981;flex-shrink:0;display:inline-block"></span>
+          Verde — Suave (0–15 km/h)
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="width:10px;height:10px;border-radius:50%;background:#F59E0B;flex-shrink:0;display:inline-block"></span>
+          Amarillo — Moderado (15–30 km/h)
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="width:10px;height:10px;border-radius:50%;background:#EF4444;flex-shrink:0;display:inline-block"></span>
+          Rojo — Fuerte (30–50 km/h)
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="width:10px;height:10px;border-radius:50%;background:#8B5CF6;flex-shrink:0;display:inline-block"></span>
+          Morado — Muy fuerte (&gt;50 km/h)
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-weight:600;margin-bottom:4px">Zoom y desplazamiento:</div>
+        Al alejar o mover el mapa a una nueva zona los datos se actualizan solos. Los resultados
+        se guardan en caché 15 min para no repetir peticiones innecesarias.
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-weight:600;margin-bottom:4px">Modo horario:</div>
+        Abre el panel <strong>Viento</strong> y elige una hora para ver el pronóstico de ese
+        instante en todo el mapa. Pulsa <em>Ahora (mapa)</em> para volver al modo espacial.
+      </div>
+      <div style="font-size:11px;color:var(--text-muted)">
+        Datos: <strong>Open-Meteo</strong> (ECMWF ~9 km resolución) · Actualización horaria
+      </div>
+      <button onclick="toggleWindInfo()"
+        style="margin-top:12px;width:100%;padding:7px;border-radius:8px;
+          background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);
+          color:#00D4FF;cursor:pointer;font-size:12px;font-family:inherit;">
+        Cerrar
+      </button>`;
+    map.getContainer().appendChild(panel);
+  }
+  const open = panel.style.display === 'none' || !panel.style.display;
+  panel.style.display = open ? 'block' : 'none';
+  btn?.classList.toggle('active', open);
 }
 
 // ── Animación de Viento ──────────────────────────────────────────
