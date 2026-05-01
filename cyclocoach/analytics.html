@@ -1546,8 +1546,19 @@ function renderRiderProfile(acts, athlete, curve) {
 }
 
 // ─── BOOT ─────────────────────────────────────────────────────
-// Mostrar datos cacheados inmediatamente sin esperar al backend
-(function() {
+// NOTA: renderZones() y loadPowerCurve() usan constantes definidas más abajo
+// (HR_ZONES_FRIEL, etc.) y no se pueden llamar aquí (TDZ con const/let).
+// Se llaman dentro de init() que corre tras DOMContentLoaded implícito.
+
+// Quitar opacity y lanzar init() cuando el DOM esté listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _boot);
+} else {
+  _boot();
+}
+
+function _boot() {
+  // Renderizar con datos cacheados inmediatamente
   try { state.athlete = JSON.parse(localStorage.getItem('velomind_athlete') || 'null'); } catch(e) {}
   try { state.activities = JSON.parse(localStorage.getItem('velomind_activities') || '[]'); } catch(e) {}
   if (!state.activities.length) setStatus('Sin actividades — Conecta Strava para empezar');
@@ -1556,20 +1567,24 @@ function renderRiderProfile(acts, athlete, curve) {
     if (!hasRecent) { var p = document.getElementById('period'); if (p) p.value = '9999'; }
   }
   state.pmc = calculatePMC(state.activities);
-  render(); renderZones(); loadPowerCurve();
+  try { render(); } catch(e) { console.warn('[Boot] render:', e); }
+  try { renderZones(); } catch(e) { console.warn('[Boot] renderZones:', e); }
+  try { loadPowerCurve(); } catch(e) { console.warn('[Boot] loadPowerCurve:', e); }
+  // Revelar página (con fallback por si View Transitions cancela el rAF)
   requestAnimationFrame(function(){ document.documentElement.style.removeProperty('opacity'); });
-})();
+  setTimeout(function(){ document.documentElement.style.removeProperty('opacity'); }, 300);
 
-// Refresh desde backend en background
-init()
-  .then(function() {
-    if (typeof BackendSync !== 'undefined') BackendSync.autoSyncIfNeeded();
-  })
-  .catch(function(e) {
-    console.error('[Métricas] Error:', e);
-    setStatus('Error cargando datos');
-    document.documentElement.style.removeProperty('opacity');
-  });
+  // Refresh desde backend en background
+  init()
+    .then(function() {
+      if (typeof BackendSync !== 'undefined') BackendSync.autoSyncIfNeeded();
+    })
+    .catch(function(e) {
+      console.error('[Métricas] Error:', e);
+      setStatus('Error cargando datos');
+      document.documentElement.style.removeProperty('opacity');
+    });
+}
 
 // ─── AYUDA ───────────────────────────────────────────────────
 function toggleHelp() {
