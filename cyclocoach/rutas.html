@@ -201,6 +201,11 @@
     #btn-wind-arrows.active { background:rgba(0,212,255,0.15)!important; border-color:rgba(0,212,255,0.5)!important; color:#00D4FF!important; }
     #btn-wind-arrows.loading { opacity:.55; pointer-events:none; }
 
+    /* Wind hourly chips */
+    .wh-chip:hover { background:rgba(255,255,255,0.09)!important; border-color:rgba(255,255,255,0.2)!important; }
+    .wh-chip.wh-selected { outline:none; }
+    #wind-body ::-webkit-scrollbar { display:none; }
+
     /* Waypoint markers arrastrables */
     .wp-dot {
       width: 14px; height: 14px;
@@ -615,6 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
   );
 
   map.on('click', onMapClick);
+  map.on('moveend', _onMapMoveEnd);
 
   // Crear canvas overlay para flechas de viento (screen-space, encima de todas las capas)
   const _wac = document.createElement('canvas');
@@ -1218,7 +1224,7 @@ async function showWindSuggestion() {
   navigator.geolocation.getCurrentPosition(async pos => {
     try {
       const { latitude: lat, longitude: lon } = pos.coords;
-      const res  = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kmh&timezone=auto`);
+      const res  = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kmh&timezone=auto&forecast_days=2`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const d    = await res.json();
       const cur  = d.current;
@@ -1265,13 +1271,78 @@ async function showWindSuggestion() {
         :             '⛔ Viento extremo — considera el rodillo hoy.'
         }</div>`;
 
+      // ── Sección horaria ──────────────────────────────────────────
+      if (d.hourly?.time) {
+        const nowTs   = Date.now();
+        const nowHour = new Date(nowTs).getHours();
+        const today   = new Date().toISOString().slice(0, 10);
+        const DAYS    = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+        // Filtrar próximas 24 horas desde la hora actual
+        const hours = d.hourly.time.map((t, i) => ({
+          time: t,
+          spd:  Math.round(d.hourly.wind_speed_10m[i]),
+          gust: Math.round(d.hourly.wind_gusts_10m[i]),
+          deg:  d.hourly.wind_direction_10m[i],
+        })).filter(h => new Date(h.time).getTime() >= nowTs - 3600000).slice(0, 24);
+
+        const arrowSvg = (hdeg, c) => {
+          const angle = (hdeg + 180) % 360; // donde fluye
+          return `<svg width="12" height="12" viewBox="-6 -6 12 12" style="transform:rotate(${angle}deg);flex-shrink:0">
+            <line x1="0" y1="4" x2="0" y2="-2" stroke="${c}" stroke-width="1.8" stroke-linecap="round"/>
+            <polyline points="-3,1 0,-5 3,1" fill="none" stroke="${c}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>`;
+        };
+
+        const windBody = document.getElementById('wind-body');
+        const section  = document.createElement('div');
+        section.style.cssText = 'margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px';
+        section.innerHTML = `
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px">
+            Próximas horas
+          </div>
+          <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+            <button class="wh-chip wh-selected" onclick="selectWindNow(this)"
+              title="Modo mapa espacial — datos reales por zona"
+              style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;
+                padding:7px 9px;border-radius:10px;cursor:pointer;font-family:inherit;
+                background:rgba(0,212,255,0.12);border:1px solid rgba(0,212,255,0.4);
+                color:var(--text-primary);min-width:48px;transition:all .15s">
+              <i class="fas fa-map" style="font-size:10px;color:#00D4FF;margin-bottom:1px"></i>
+              <div style="font-size:10px;font-weight:700;color:#00D4FF">Ahora</div>
+              <div style="font-size:8px;color:#00D4FF;opacity:.7">mapa</div>
+            </button>
+            ${hours.map(h => {
+              const dt       = new Date(h.time);
+              const hLabel   = dt.getHours() + ':00';
+              const dayLabel = dt.toISOString().slice(0,10) !== today
+                ? `<div style="font-size:8px;opacity:.6">${DAYS[dt.getDay()]}</div>` : '';
+              const hColor   = _windColor(h.spd);
+              return `<button class="wh-chip"
+                onclick="selectWindHour(this,${h.deg},${h.spd})"
+                title="Ráfagas: ${h.gust} km/h · ${degToCompass(h.deg)}"
+                style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;
+                  padding:7px 9px;border-radius:10px;cursor:pointer;font-family:inherit;
+                  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+                  color:var(--text-primary);min-width:48px;transition:all .15s">
+                ${dayLabel}
+                <div style="font-size:10px;font-weight:700;color:var(--text-muted)">${hLabel}</div>
+                ${arrowSvg(h.deg, hColor)}
+                <div style="font-size:11px;font-weight:800;color:${hColor}">${h.spd}</div>
+                <div style="font-size:9px;color:var(--text-muted)">km/h</div>
+              </button>`;
+            }).join('')}
+          </div>`;
+        windBody.appendChild(section);
+      }
+
       const mapCtrl = document.getElementById('map-wind-ctrl');
       if (mapCtrl) {
         mapCtrl.style.display = 'flex';
         mapCtrl.innerHTML = compassSVG(50, lvl.c);
         mapCtrl.title = `Viento desde el ${from} · ${spd} km/h`;
       }
-      
+
       startWindAnimation(deg, spd, lvl.c);
     } catch(e) {
       document.getElementById('wind-body').innerHTML = `<div style="color:#ff4757;font-size:12px">Error: ${e.message}</div>`;
@@ -1283,10 +1354,153 @@ async function showWindSuggestion() {
 
 // ── Wind Map Arrows Overlay (estilo Windfinder) ──────────────────
 let windArrowsActive = false;
-let windArrowsFrame  = null;
-let windArrowsData   = null; // { deg, spd, color }
-let windArrowsGrid   = [];
+let windArrowsFrame     = null;
+let windArrowsGrid      = [];   // puntos de flecha en coordenadas de pantalla
+let windSpatialGrid     = [];   // malla de datos reales {lat,lon,deg,spd,color,sx,sy}
+let windHourOverride    = null; // {deg,spd,color} cuando el usuario elige una hora concreta
+let windRefetchTimer    = null;
+let windLastZoom        = null;
+let windLastCenter      = null;
 
+// ── Helpers internos ─────────────────────────────────────────────
+function _windColor(spd) {
+  return spd < 15 ? '#10B981' : spd < 30 ? '#F59E0B' : spd < 50 ? '#EF4444' : '#8B5CF6';
+}
+
+// Densidad de la malla según nivel de zoom
+function _gridDensity(zoom) {
+  if (zoom >= 11) return { cols: 1, rows: 1 };
+  if (zoom >= 8)  return { cols: 2, rows: 2 };
+  if (zoom >= 6)  return { cols: 3, rows: 3 };
+  if (zoom >= 4)  return { cols: 5, rows: 4 };
+  return                 { cols: 7, rows: 5 };
+}
+
+// Obtener datos de viento para una malla de puntos geográficos
+async function _fetchWindGrid() {
+  const bounds = map.getBounds();
+  const zoom   = map.getZoom();
+  const { cols, rows } = _gridDensity(zoom);
+
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  const latStep = rows > 1 ? (ne.lat - sw.lat) / (rows - 1) : 0;
+  const lonStep = cols > 1 ? (ne.lng - sw.lng) / (cols - 1) : 0;
+
+  const points = [];
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      points.push({
+        lat: rows > 1 ? sw.lat + r * latStep : (sw.lat + ne.lat) / 2,
+        lon: cols > 1 ? sw.lng + c * lonStep : (sw.lng + ne.lng) / 2,
+      });
+
+  // Peticiones en paralelo (Open-Meteo, sin límite documentado)
+  const results = await Promise.all(points.map(async pt => {
+    try {
+      const r = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${pt.lat.toFixed(3)}&longitude=${pt.lon.toFixed(3)}` +
+        `&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=auto`
+      );
+      const d = await r.json();
+      const spd = Math.round(d.current.wind_speed_10m);
+      const deg = d.current.wind_direction_10m;
+      return { lat: pt.lat, lon: pt.lon, deg, spd, color: _windColor(spd) };
+    } catch { return null; }
+  }));
+
+  return results.filter(Boolean);
+}
+
+// Proyectar la malla geográfica a coordenadas de pantalla y asignar
+// cada flecha a su punto más cercano (nearest-neighbor)
+function _assignArrowsToGrid(canvas) {
+  const size = map.getSize();
+  canvas.width  = size.x;
+  canvas.height = size.y;
+
+  const GRID = 68;
+  const offX = (size.x % GRID) / 2;
+  const offY = (size.y % GRID) / 2;
+  windArrowsGrid = [];
+  for (let y = offY - GRID; y < size.y + GRID; y += GRID)
+    for (let x = offX - GRID; x < size.x + GRID; x += GRID)
+      windArrowsGrid.push({ hx: x, hy: y, phase: Math.random(), wp: null });
+
+  // Proyectar malla geográfica → pantalla
+  windSpatialGrid.forEach(pt => {
+    const sp = map.latLngToContainerPoint([pt.lat, pt.lon]);
+    pt.sx = sp.x; pt.sy = sp.y;
+  });
+
+  // Asignar cada flecha al punto de viento más cercano
+  windArrowsGrid.forEach(arrow => {
+    let minD = Infinity, nearest = windSpatialGrid[0];
+    windSpatialGrid.forEach(pt => {
+      const d = (arrow.hx - pt.sx) ** 2 + (arrow.hy - pt.sy) ** 2;
+      if (d < minD) { minD = d; nearest = pt; }
+    });
+    arrow.wp = nearest;
+  });
+}
+
+// Bucle de animación — cada flecha usa los datos de su punto asignado
+function _animateWindArrows(canvas) {
+  const ctx = canvas.getContext('2d');
+  const TRAVEL = 30;
+  let lastTime = performance.now();
+
+  function draw(now) {
+    if (!windArrowsActive) return;
+    const dt = Math.min((now - lastTime) / 16.67, 3);
+    lastTime = now;
+
+    // Resize si el mapa cambió
+    const size = map.getSize();
+    if (canvas.width !== size.x || canvas.height !== size.y)
+      _assignArrowsToGrid(canvas);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    windArrowsGrid.forEach(pt => {
+      // En modo "hora concreta" todas usan el override; si no, su punto asignado
+      const wp = windHourOverride || pt.wp;
+      if (!wp) return;
+
+      const rad   = (wp.deg + 180) * Math.PI / 180; // +180: de origen → destino del flujo
+      const vx    = Math.sin(rad);
+      const vy    = -Math.cos(rad);
+      const angle = Math.atan2(vx, -vy);
+      const speed = Math.max(0.3, wp.spd / 28);
+
+      pt.phase = (pt.phase + speed * dt / TRAVEL) % 1;
+      const t     = pt.phase;
+      const alpha = t < 0.2 ? t / 0.2 : (t < 0.8 ? 1 : (1 - t) / 0.2);
+      if (alpha < 0.01) return;
+
+      const offset = t * TRAVEL;
+      const x = pt.hx + vx * offset;
+      const y = pt.hy + vy * offset;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.globalAlpha = alpha * 0.72;
+      ctx.strokeStyle = wp.color;
+      ctx.lineWidth   = 1.8;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
+      ctx.beginPath(); ctx.moveTo(0, 8); ctx.lineTo(0, -3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-5.5, 2); ctx.lineTo(0, -8); ctx.lineTo(5.5, 2); ctx.stroke();
+      ctx.restore();
+    });
+
+    windArrowsFrame = requestAnimationFrame(draw);
+  }
+  windArrowsFrame = requestAnimationFrame(draw);
+}
+
+// ── Toggle principal ─────────────────────────────────────────────
 async function toggleWindArrows() {
   const btn = document.getElementById('btn-wind-arrows');
 
@@ -1299,126 +1513,78 @@ async function toggleWindArrows() {
     return;
   }
 
-  if (!navigator.geolocation) { alert('Geolocalización no disponible.'); return; }
   btn?.classList.add('loading');
-
   try {
-    const pos = await new Promise((res, rej) =>
-      navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
-    );
-    const { latitude: lat, longitude: lon } = pos.coords;
-    const resp = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-      `&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=auto`
-    );
-    const data = await resp.json();
-    const spd   = Math.round(data.current.wind_speed_10m);
-    const deg   = data.current.wind_direction_10m;
-    const color = spd < 15 ? '#10B981' : spd < 30 ? '#F59E0B' : spd < 50 ? '#EF4444' : '#8B5CF6';
+    windSpatialGrid = await _fetchWindGrid();
+    if (!windSpatialGrid.length) throw new Error('Sin datos de viento');
 
-    windArrowsData = { deg, spd, color };
     windArrowsActive = true;
+    windHourOverride = null;
     btn?.classList.remove('loading');
     btn?.classList.add('active');
 
     const canvas = document.getElementById('wind-map-canvas');
-    const size   = map.getSize();
-    canvas.width  = size.x;
-    canvas.height = size.y;
     canvas.style.display = 'block';
-
-    windArrowsGrid = _buildArrowGrid(size.x, size.y);
+    _assignArrowsToGrid(canvas);
     _animateWindArrows(canvas);
+
+    windLastZoom   = map.getZoom();
+    windLastCenter = map.getCenter();
   } catch (e) {
     btn?.classList.remove('loading');
+    console.error('[WindArrows]', e);
     alert('No se pudieron obtener datos de viento: ' + (e.message || e));
   }
 }
 
-function _buildArrowGrid(w, h) {
-  const GRID = 68;
-  const offX = (w % GRID) / 2;
-  const offY = (h % GRID) / 2;
-  const pts  = [];
-  for (let y = offY - GRID; y < h + GRID; y += GRID)
-    for (let x = offX - GRID; x < w + GRID; x += GRID)
-      pts.push({ hx: x, hy: y, phase: Math.random() });
-  return pts;
-}
+// Re-fetch al cambiar la vista del mapa (debounced 600ms)
+function _onMapMoveEnd() {
+  if (!windArrowsActive || windHourOverride) return;
 
-function _animateWindArrows(canvas) {
-  const ctx          = canvas.getContext('2d');
-  const { deg, spd, color } = windArrowsData;
+  const zoom   = map.getZoom();
+  const center = map.getCenter();
+  const { cols: prevCols } = _gridDensity(windLastZoom || zoom);
+  const { cols: newCols  } = _gridDensity(zoom);
 
-  // Dirección: hacia dónde sopla el viento
-  const rad        = deg * Math.PI / 180;
-  const vx         = Math.sin(rad);
-  const vy         = -Math.cos(rad);
-  const arrowAngle = Math.atan2(vx, -vy);
+  // Re-fetch si cambió nivel de zoom (distinta densidad) o se desplazó >30% del área visible
+  const bounds   = map.getBounds();
+  const latSpan  = bounds.getNorth() - bounds.getSouth();
+  const latDelta = windLastCenter ? Math.abs(center.lat - windLastCenter.lat) : 999;
+  const needsFetch = newCols !== prevCols || latDelta > latSpan * 0.3;
 
-  const TRAVEL = 30;   // px que recorre una flecha por ciclo
-  const SPEED  = Math.max(0.35, spd / 28); // unidades de ciclo por frame a 60fps
-
-  let lastTime = performance.now();
-
-  function draw(now) {
-    if (!windArrowsActive) return;
-
-    const dt = Math.min((now - lastTime) / 16.67, 3);
-    lastTime = now;
-
-    // Redimensionar si el mapa cambió de tamaño
-    const size = map.getSize();
-    if (canvas.width !== size.x || canvas.height !== size.y) {
-      canvas.width  = size.x;
-      canvas.height = size.y;
-      windArrowsGrid = _buildArrowGrid(size.x, size.y);
-    }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    windArrowsGrid.forEach(pt => {
-      pt.phase = (pt.phase + SPEED * dt / TRAVEL) % 1;
-      const t = pt.phase;
-
-      // Fade: sube 0→0.2, plano 0.2→0.8, baja 0.8→1
-      const alpha = t < 0.2 ? t / 0.2 : (t < 0.8 ? 1 : (1 - t) / 0.2);
-      if (alpha < 0.01) return;
-
-      const offset = t * TRAVEL;
-      const x = pt.hx + vx * offset;
-      const y = pt.hy + vy * offset;
-
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(arrowAngle);
-      ctx.globalAlpha = alpha * 0.72;
-
-      // Tallo
-      ctx.strokeStyle = color;
-      ctx.lineWidth   = 1.8;
-      ctx.lineCap     = 'round';
-      ctx.beginPath();
-      ctx.moveTo(0, 8);
-      ctx.lineTo(0, -3);
-      ctx.stroke();
-
-      // Cabeza tipo chevron (↑)
-      ctx.lineWidth   = 1.8;
-      ctx.lineJoin    = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-5.5, 2);
-      ctx.lineTo(0, -8);
-      ctx.lineTo(5.5, 2);
-      ctx.stroke();
-
-      ctx.restore();
-    });
-
-    windArrowsFrame = requestAnimationFrame(draw);
+  if (!needsFetch) {
+    // Solo reproyectar: actualizar sx,sy sin re-fetchear
+    const canvas = document.getElementById('wind-map-canvas');
+    _assignArrowsToGrid(canvas);
+    return;
   }
 
-  windArrowsFrame = requestAnimationFrame(draw);
+  clearTimeout(windRefetchTimer);
+  windRefetchTimer = setTimeout(async () => {
+    try {
+      windSpatialGrid = await _fetchWindGrid();
+      windLastZoom   = zoom;
+      windLastCenter = map.getCenter();
+      const canvas = document.getElementById('wind-map-canvas');
+      _assignArrowsToGrid(canvas);
+    } catch (e) { console.warn('[WindArrows] re-fetch fallido', e); }
+  }, 600);
+}
+
+// Seleccionar una hora concreta del pronóstico → override uniforme
+function selectWindHour(el, deg, spd) {
+  document.querySelectorAll('.wh-chip').forEach(c => c.classList.remove('wh-selected'));
+  el.classList.add('wh-selected');
+  windHourOverride = { deg, spd, color: _windColor(spd) };
+  // Si las flechas no están activas, no hace nada más
+  // Si están activas, la animación ya lee windHourOverride en el próximo frame
+}
+
+// "Ahora" chip — vuelve al modo espacial
+function selectWindNow(el) {
+  document.querySelectorAll('.wh-chip').forEach(c => c.classList.remove('wh-selected'));
+  el.classList.add('wh-selected');
+  windHourOverride = null;
 }
 
 // ── Animación de Viento ──────────────────────────────────────────
