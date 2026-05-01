@@ -416,9 +416,18 @@ function updateProgressItem(id, status, type) {
   const item = document.getElementById(id);
   if (!item) return;
   const colors = { success: 'var(--accent-green)', error: 'var(--accent-red)', warning: 'var(--accent-yellow)' };
+  const icons  = {
+    success: '<i class="fas fa-check-circle" style="color:var(--accent-green);font-size:18px"></i>',
+    error:   '<i class="fas fa-times-circle" style="color:var(--accent-red);font-size:18px"></i>',
+    warning: '<i class="fas fa-exclamation-circle" style="color:var(--accent-yellow);font-size:18px"></i>',
+  };
   item.querySelector('.status-text').textContent = status;
   item.querySelector('.status-text').style.color = colors[type] || 'var(--text-muted)';
-  item.querySelector('.spinner').innerHTML = '';
+  const spinEl = item.querySelector('.spinner');
+  spinEl.style.animation = 'none';
+  spinEl.style.border = 'none';
+  spinEl.style.background = 'transparent';
+  spinEl.innerHTML = icons[type] || '';
 }
 
 function toggleManualEntry() {
