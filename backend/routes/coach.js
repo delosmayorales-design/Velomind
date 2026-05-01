@@ -1702,23 +1702,27 @@ router.post('/recalculate-week', async (req, res) => {
     if (!anthropicKey && !openaiKey && !googleKey && !groqKey)
       return res.status(503).json({ error: 'No hay API Keys configuradas.' });
 
-    const { plan, todayIdx, feedback } = req.body;
+    const { plan, todayIdx, feedback, allowToday = false } = req.body;
 
     // Resumimos el plan para no saturar los tokens de la IA (quitamos intervals y descripciones largas)
     const planResumido = plan.sessions.map((s, i) => ({
       dayIndex: i,
       day: s.day,
       type: s.type,
+      isRest: s.isRest || false,
       durationMin: s.durationMin,
       targetWatts: s.targetWatts,
       tss: s.tss,
       advice: s.advice
     }));
 
-    const ayerIdx = todayIdx === 0 ? "anterior (fuera de esta semana)" : todayIdx - 1;
-    const mananaIdx = todayIdx === 6 ? "siguiente (fuera de esta semana)" : todayIdx + 1;
+    const ayerIdx = todayIdx === 0 ? 'anterior (fuera de esta semana)' : todayIdx - 1;
+    const mananaIdx = todayIdx === 6 ? 'siguiente (fuera de esta semana)' : todayIdx + 1;
+    const hoyRegla = allowToday
+      ? `HOY (índice ${todayIdx}) PUEDE ser modificado si el contexto lo justifica. NO modifiques días anteriores a ${todayIdx}.`
+      : `🛑 NUNCA modifiques HOY (índice ${todayIdx}) ni días anteriores. Solo puedes modificar días FUTUROS (índice > ${todayIdx}).`;
 
-    const systemPrompt = 'Eres un coach ciclista experto y nutricionista. Responde SOLO con JSON válido, sin markdown ni texto extra.';
+    const systemPrompt = 'Eres un coach ciclista experto. Responde SOLO con JSON válido, sin markdown ni texto extra.';
     const userMsg = `El atleta tiene esta planificación para la semana:
 ${JSON.stringify(planResumido, null, 2)}
 
@@ -1726,42 +1730,33 @@ HOY es el índice ${todayIdx} (0=Lunes, 6=Domingo).
 AYER es el índice ${ayerIdx}.
 MAÑANA es el índice ${mananaIdx}.
 
-El atleta reporta el siguiente feedback: "${feedback}"
+El atleta reporta: "${feedback}"
 
-Tu tarea:
-1. MAPEO EXACTO DE DÍAS (dayIndex): Determina de qué días habla el atleta usando la referencia de índices de arriba.
-2. 🛑 REGLA ABSOLUTA — DÍAS BLOQUEADOS: NUNCA modifiques HOY (índice ${todayIdx}) ni ningún día anterior. HOY ya ha ocurrido o está en curso. Solo puedes modificar días FUTUROS (índice > ${todayIdx}).
-3. APLICA LOS CAMBIOS ÚNICAMENTE EN DÍAS FUTUROS (dayIndex > ${todayIdx}):
-   - IMPORTANTE: Si programas una sesión activa ("isRest": false), el "type" DEBE ser exactamente uno de: "recovery", "endurance", "tempo", "threshold", "vo2max", "sprint", "long", "race", "strength". Además, incluye obligatoriamente un "name" y un "emoji" (ej: "🔵", "🚴").
-   - ⚠️ ¡TÍTULOS OBLIGATORIOS!: Siempre que modifiques una sesión, DEBES enviar el campo "name" con el nuevo título descriptivo de la sesión. Si la cambias a descanso, pon "name": "Descanso". Si la cambias a rodaje suave, pon "name": "Rodaje Z2", etc.
-4. RECALCULA EL RESTO DE LA SEMANA (solo días futuros):
-   - ⚠️ REASIGNACIÓN: Si el atleta no pudo hacer una sesión dura, muévela a un día futuro disponible (índice > ${todayIdx}).
-   - 📉 COMPENSACIÓN: Si hará muchas horas de grupeta, asegúrate de que el día siguiente sea suave o descanso.
+REGLAS:
+1. ${hoyRegla}
+2. Los días con "isRest": true que ya estén en el plan son INTOCABLES — no los conviertas en entrenamiento.
+3. Si programas una sesión activa ("isRest": false), el "type" DEBE ser uno de: "recovery", "endurance", "tempo", "threshold", "vo2max", "sprint", "long", "race", "strength". Incluye siempre "name" y "emoji".
+4. Si el atleta no pudo hacer una sesión dura, considérala perdida o reubícala en un día futuro disponible.
+5. No pongas dos sesiones de alta intensidad consecutivas.
 
 Devuelve EXACTAMENTE este JSON:
 {
-  "mensaje_coach": "Frase de entrenador explicando los cambios realizados en la semana.",
+  "mensaje_coach": "Frase corta explicando los cambios.",
   "modifications": [
-    {
-      "dayIndex": 0,
-      "changes": { "isRest": true, "name": "Descanso", "type": "recovery", "durationMin": 0, "tss": 0, "advice": "Descanso registrado." }
-    },
-    {
-      "dayIndex": 3,
-      "changes": { "isRest": false, "type": "endurance", "name": "Rodillo Z2", "emoji": "🔵", "durationMin": 60, "tss": 45, "description": "Sesión constante en rodillo.", "advice": "He adaptado tu entrenamiento a rodillo." }
-    }
+    { "dayIndex": 3, "changes": { "isRest": false, "type": "endurance", "name": "Rodaje Z2 extendido", "emoji": "🔵", "durationMin": 75, "tss": 55, "ifTarget": 0.72, "advice": "Añadida carga extra por el evento de mañana." } }
   ]
 }
-NOTA: 'modifications' DEBE contener las alteraciones exactas para los índices reportados. Asegúrate de que los dayIndex devueltos estén entre 0 y 6.`;
+Si no hay cambios que hacer, devuelve "modifications": [].`;
 
     const result = await callAI(systemPrompt, userMsg, { max_tokens: 1500, temperature: 0.3 });
     if (!result || !Array.isArray(result.modifications)) return res.status(500).json({ error: 'La IA no devolvió un plan válido.' });
 
-    // Aplicar modificaciones solo a días futuros (hoy y anteriores están bloqueados)
+    // Aplicar modificaciones respetando los días bloqueados
     const newSessions = [...plan.sessions];
     for (const mod of result.modifications) {
       const idx = Number(mod.dayIndex);
-      if (idx > todayIdx && idx < 7 && mod.changes) {
+      const allowed = allowToday ? idx >= todayIdx : idx > todayIdx;
+      if (allowed && idx < 7 && mod.changes) {
         newSessions[idx] = { ...newSessions[idx], ...mod.changes };
       }
     }

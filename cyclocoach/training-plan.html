@@ -1579,97 +1579,91 @@ async function saveAdaptation(idx) {
     sess.tss = Math.round((sess.durationMin / 60) * Math.pow(sess.ifTarget, 2) * 100);
   }
 
-  renderPlan(currentPlan, AppState.athlete);
-  await silentSavePlan();
+  // ── Si es descanso futuro → redistribuir la semana ANTES de renderizar ──
+  const todayNow = (new Date().getDay() + 6) % 7;
+  let toastMsg   = '✅ Sesión adaptada y guardada';
 
-  // Si la sesión cancelada es futura, redistribuir el TSS entre hoy y el resto de la semana
-  const todayIdxAuto = (new Date().getDay() + 6) % 7;
-  if (t.recomendacion === 'descanso' && idx > todayIdxAuto) {
-    // Guardar snapshot del descanso ANTES de la llamada — la IA no puede tocarlo
-    const descansoSnapshot = JSON.parse(JSON.stringify(currentPlan.sessions[idx]));
-
-    showToast('⏳ El coach está redistribuyendo la semana...', 'var(--text-muted)');
+  if (t.recomendacion === 'descanso' && idx > todayNow) {
+    const descansoSnapshot = JSON.parse(JSON.stringify(sess));
+    showToast('⏳ Calculando redistribución...', 'var(--text-muted)');
     try {
-      const dayName = currentPlan.sessions[idx]?.day || `día ${idx + 1}`;
-      const cancelledTSS = Math.round((currentPlan.sessions[idx]?.tssShare || 0) * (currentPlan.targetTSS || 400));
-      const planResumen = currentPlan.sessions.map((s, i) =>
-        `dayIndex ${i} (${s.day}): ${s.isRest ? 'DESCANSO' : (s.name || s.type) + ' ~' + Math.round((s.tssShare||0)*(currentPlan.targetTSS||400)) + 'TSS'}`
+      const dayName      = sess.day || `día ${idx + 1}`;
+      const cancelledTSS = Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
+      const planResumen  = currentPlan.sessions.map((s, i) =>
+        `dayIndex ${i} (${s.day}): ${s.isRest ? 'DESCANSO BLOQUEADO' : (s.name || s.type) + ' ~' + (s.tss || Math.round((s.tssShare||0)*(currentPlan.targetTSS||400))) + 'TSS'}`
       ).join(' | ');
 
       const feedback =
-        `SITUACIÓN: El atleta NO puede entrenar el ${dayName} (dayIndex ${idx}) por un evento personal. ` +
-        `Esta sesión YA está fijada como DESCANSO en el plan — es un dato bloqueado e intocable.\n\n` +
-        `PLAN ACTUAL: ${planResumen}\n\n` +
-        `TAREA: redistribuye los ~${cancelledTSS} TSS de esa sesión cancelada entre los días disponibles:\n` +
-        `- Hoy es dayIndex ${todayIdxAuto}. El atleta AÚN NO ha entrenado hoy: considera añadir carga moderada sin excederte.\n` +
-        `- Los días posteriores al evento que queden libres también pueden absorber parte de la carga.\n\n` +
-        `REGLAS ABSOLUTAS:\n` +
-        `1. NUNCA toques dayIndex ${idx} — es DESCANSO bloqueado, no lo cambies bajo ningún concepto.\n` +
-        `2. No pongas dos sesiones de alta intensidad consecutivas.\n` +
-        `3. Si añades carga a hoy (dayIndex ${todayIdxAuto}), el día siguiente al evento (dayIndex ${Math.min(idx + 1, 6)}) debería ser suave (Z1-Z2 recuperación).\n` +
-        `4. Mantén la coherencia de la semana: el volumen total debe ser razonable descontando el día de descanso.`;
+        `Atleta con evento el ${dayName} (dayIndex ${idx}): NO puede entrenar, ya marcado DESCANSO BLOQUEADO — no lo toques.\n` +
+        `Plan semana: ${planResumen}\n` +
+        `TSS perdido: ~${cancelledTSS}. Redistribuye esa carga inteligentemente:\n` +
+        `- HOY (dayIndex ${todayNow}) el atleta AÚN NO ha entrenado: puedes aumentar su carga moderadamente. HOY SÍ puede ser modificado.\n` +
+        `- También redistribuye en días posteriores disponibles (no el dayIndex ${idx}, que es descanso intocable).\n` +
+        `- No pongas dos días de alta intensidad seguidos. Respeta la periodización.`;
 
       const res2 = await fetch(`${API}/coach/recalculate-week`, {
         method: 'POST',
         headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: currentPlan, todayIdx: todayIdxAuto - 1, feedback })
+        body: JSON.stringify({ plan: currentPlan, todayIdx: todayNow, allowToday: true, feedback })
       });
       const data2 = await res2.json();
 
       if (res2.ok && data2.newPlan?.sessions) {
-        const ftp2 = AppState.athlete?.ftp || 200;
-        // Reconstruir intervalos para las sesiones modificadas
+        const ftp2 = ftp;
+        const _rd = ivs => {
+          const parts = [];
+          for (let k = 0; k < ivs.length; k++) {
+            const iv = ivs[k], rm = iv.label.match(/\(×(\d+)/);
+            const bl = iv.label.split(' (')[0].trim(), dv = iv.dur.replace(' c/u', '').trim();
+            if (rm) {
+              const nx = ivs[k + 1];
+              if (nx && nx.label.toLowerCase().match(/recuperación|descanso/) && nx.label.includes('(×')) {
+                parts.push(`${rm[1]}×${dv} ${bl} (rec: ${nx.dur.replace(' c/u', '').trim()})`); k++;
+              } else { parts.push(`${rm[1]}×${dv} ${bl}`); }
+            } else { parts.push(`${dv} ${bl}`); }
+          }
+          return parts.join(' + ');
+        };
         data2.newPlan.sessions.forEach(s => {
           if (s.isRest) {
             s.intervals = []; s.alt_intervals = [];
             s.description = 'Descanso.'; s.alt_description = '';
             s.name = 'Descanso'; s.emoji = '😴';
-            s.advice = s.advice || 'Día de descanso. Escucha a tu cuerpo y prioriza la recuperación.';
+            s.advice = s.advice || 'Día de descanso. Escucha a tu cuerpo.';
           } else if (window.TrainingPlanGenerator) {
             const ifT = s.ifTarget || 0.75;
-            if (!s.name || s.name === 'Descanso') s.name = (window.WORKOUT_TYPES?.[s.type]?.label) || s.type;
+            if (!s.name || s.name === 'Descanso') s.name = window.WORKOUT_TYPES?.[s.type]?.label || s.type;
             s.emoji = window.WORKOUT_TYPES?.[s.type]?.emoji || '🚴';
-            s.intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp2, s.durationMin, s.tss, ifT, 'main');
+            s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp2, s.durationMin, s.tss, ifT, 'main');
             s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp2, s.durationMin, s.tss, ifT, 'alt');
-            const bDesc = ivs => {
-              const parts = [];
-              for (let k = 0; k < ivs.length; k++) {
-                const iv = ivs[k], rm = iv.label.match(/\(×(\d+)/);
-                const bl = iv.label.split(' (')[0].trim(), dv = iv.dur.replace(' c/u', '').trim();
-                if (rm) {
-                  const nx = ivs[k + 1];
-                  if (nx && nx.label.toLowerCase().match(/recuperación|descanso/) && nx.label.includes('(×')) {
-                    parts.push(`${rm[1]}×${dv} ${bl} (rec: ${nx.dur.replace(' c/u', '').trim()})`); k++;
-                  } else { parts.push(`${rm[1]}×${dv} ${bl}`); }
-                } else { parts.push(`${dv} ${bl}`); }
-              }
-              return parts.join(' + ');
-            };
-            s.description = bDesc(s.intervals);
-            s.alt_description = bDesc(s.alt_intervals);
+            s.description     = _rd(s.intervals);
+            s.alt_description = _rd(s.alt_intervals);
           }
         });
-
-        // CRÍTICO: restaurar el descanso bloqueado — la IA no puede haberlo cambiado
+        // Blindar: el descanso bloqueado y los días pasados no pueden cambiar
         data2.newPlan.sessions[idx] = descansoSnapshot;
-
-        // Preservar días pasados y de hoy que la IA no debería haber tocado
-        for (let d = 0; d < todayIdxAuto; d++) {
+        for (let d = 0; d < todayNow; d++)
           data2.newPlan.sessions[d] = JSON.parse(JSON.stringify(currentPlan.sessions[d]));
-        }
 
         currentPlan.sessions = data2.newPlan.sessions;
-        await silentSavePlan();
-        renderPlan(currentPlan, AppState.athlete);
-        showToast('✅ ' + (data2.newPlan.mensaje_coach || `Descanso el ${dayName} · semana redistribuida`), 'var(--primary)');
+        toastMsg = '✅ ' + (data2.newPlan.mensaje_coach || `Descanso el ${dayName} · semana redistribuida`);
       } else {
-        showToast(`✅ Descanso el ${dayName} guardado`, 'var(--accent)');
+        toastMsg = `✅ Descanso el ${sess.day || 'mañana'} guardado`;
       }
     } catch (_) {
-      showToast('✅ Sesión marcada como descanso', 'var(--accent)');
+      toastMsg = '✅ Sesión marcada como descanso';
     }
-  } else {
-    showToast('✅ Sesión adaptada guardada', 'var(--accent)');
+  }
+
+  // ── Render único al final + guardar ──────────────────────────
+  renderPlan(currentPlan, AppState.athlete);
+  await silentSavePlan();
+  showToast(toastMsg, 'var(--primary)');
+
+  // Refrescar modal de detalle si está abierto
+  const sessionModal = document.getElementById('session-modal');
+  if (sessionModal && sessionModal.style.display !== 'none') {
+    showSessionDetail(idx);
   }
 }
 
