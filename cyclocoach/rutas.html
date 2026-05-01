@@ -1591,26 +1591,3 @@ requestAnimationFrame(() => document.documentElement.style.removeProperty('opaci
 </script>
 </body>
 </html>
-    document.getElementById('modal-type').value = type;
-
-    if (elevGain != null) {
-      document.getElementById('stat-elev').textContent = elevGain;
-      if (elevs?.length) renderElevChart(elevs);
-    } else {
-      fetchElevation(latLngs);
-    }
-    closeWindRouteModal();
-    showToast(`Ruta generada: ${distKm.toFixed(1)} km · ${degToCompass(windDeg)} → ${degToCompass((windDeg+180)%360)} a favor`, 'info');
-  } catch(e) {
-    showToast('No se pudo generar la ruta: ' + e.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-magic"></i> Generar ruta';
-  }
-}
-
-// Revelar página tras renderizado inicial
-requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
-</script>
-</body>
-</html>
