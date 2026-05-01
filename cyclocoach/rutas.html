@@ -1189,7 +1189,6 @@ function exportGPX(id) {
 // ── Viento (Open-Meteo, sin API key) ─────────────────────────────
 async function showWindSuggestion() {
   const card = document.getElementById('wind-card');
-  if (card.classList.contains('visible')) { card.classList.remove('visible'); return; }
   if (card.classList.contains('visible')) { 
     card.classList.remove('visible'); 
     stopWindAnimation();
