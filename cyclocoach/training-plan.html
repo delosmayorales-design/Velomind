@@ -788,6 +788,7 @@
         </div>
         <div id="week-dates" style="font-size:13px;color:var(--text-muted)"></div>
       </div>
+      <div id="missed-check-banner" style="display:none;padding:0 0 12px 0"></div>
       <div id="weekly-plan" class="session-cards-grid">
         <div style="text-align:center;padding:40px;color:var(--text-muted)">
           <i class="fas fa-spinner spinning" style="font-size:32px;margin-bottom:12px"></i>
@@ -1070,7 +1071,13 @@ async function initTrainingPlan() {
     // 2. SINCRONIZACIÓN EN SEGUNDO PLANO (Background Sync)
     if (typeof BackendSync !== 'undefined') {
       if (BackendSync.loadProfile) BackendSync.loadProfile().then(() => { renderAthleteSidebar(); fillAdjustmentForm(); });
-      if (BackendSync.loadActivities) BackendSync.loadActivities(); // Descarga de base de datos sin congelar pantalla
+      if (BackendSync.loadActivities) BackendSync.loadActivities().then(() => {
+        checkMissedYesterday(); // Revisar si ayer se perdió una sesión, tras cargar actividades reales
+      }).catch(() => {
+        checkMissedYesterday(); // También intentar con actividades locales si falla el backend
+      });
+    } else {
+      checkMissedYesterday();
     }
     
     const _fetchToken = ++_bgSyncToken;
@@ -1930,6 +1937,77 @@ function toggleRealityForm(idx) {
   body.style.display = open ? '' : 'none';
   chev.style.transform = open ? 'rotate(180deg)' : '';
   if (open) document.getElementById(`reality-input-${idx}`)?.focus();
+}
+
+// ── Detección de sesión perdida ayer ────────────────────────────
+function checkMissedYesterday() {
+  if (!currentPlan?.sessions) return;
+
+  const today = new Date();
+  const todayIdx = (today.getDay() + 6) % 7; // Lun=0 … Dom=6
+  const yesterdayIdx = todayIdx - 1;
+  if (yesterdayIdx < 0) return; // Lunes — no hay ayer en esta semana
+
+  const sess = currentPlan.sessions[yesterdayIdx];
+  if (!sess || sess.isRest || sess._missed || sess.completed) return;
+
+  // Calcular la fecha de ayer
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const ydKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
+
+  // Si hay actividad de Strava para ayer, no preguntar
+  const hasActivity = (AppState.activities || []).some(a => a.date?.slice(0,10) === ydKey);
+  if (hasActivity) return;
+
+  // Solo preguntar una vez por día calendario
+  const askKey = `velomind_missed_ask_${ydKey}`;
+  if (localStorage.getItem(askKey)) return;
+  localStorage.setItem(askKey, '1');
+
+  showMissedBanner(yesterdayIdx, sess);
+}
+
+function showMissedBanner(idx, sess) {
+  const banner = document.getElementById('missed-check-banner');
+  if (!banner) return;
+  const name = sess.name || sess.type || 'Sesión';
+  const dur  = sess.durationMin ? `${sess.durationMin} min` : '';
+  banner.innerHTML = `
+    <div style="background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.2);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:22px;flex-shrink:0">🤔</span>
+      <div style="flex:1;min-width:160px">
+        <div style="font-size:12px;font-weight:700;color:#38BDF8;margin-bottom:2px">Ayer no vemos actividad registrada</div>
+        <div style="font-size:11px;color:var(--text-secondary)">${sess.emoji || '🚴'} ${name}${dur ? ' · ' + dur : ''} planificados</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button onclick="dismissMissedCheck(${idx}, true)"
+          style="padding:6px 14px;background:rgba(16,185,129,.12);border:1.5px solid rgba(16,185,129,.4);color:#10b981;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
+          ✅ Sí, entrené
+        </button>
+        <button onclick="dismissMissedCheck(${idx}, false)"
+          style="padding:6px 14px;background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.3);color:#f87171;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
+          ❌ No pude
+        </button>
+      </div>
+    </div>`;
+  banner.style.display = 'block';
+}
+
+async function dismissMissedCheck(idx, didTrain) {
+  const banner = document.getElementById('missed-check-banner');
+  if (banner) { banner.style.display = 'none'; banner.innerHTML = ''; }
+
+  if (didTrain) {
+    if (currentPlan?.sessions?.[idx]) {
+      currentPlan.sessions[idx].completed = true;
+      renderPlan(currentPlan, AppState.athlete);
+      await silentSavePlan();
+      showToast('✅ Sesión de ayer marcada como completada', 'var(--primary)');
+    }
+  } else {
+    await markTodayAsRest(idx, 'Sesión no realizada ayer');
+  }
 }
 
 // ── Marcar hoy como descanso y redistribuir carga restante ──────
