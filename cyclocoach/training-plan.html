@@ -2679,6 +2679,10 @@ async function runAICoach() {
 }
 
 // ── Audio Coach ───────────────────────────────────────────────
+// Utiliza la API 'SpeechSynthesis' (sintetizador de voz nativo del navegador) 
+// para dictar el entrenamiento en tiempo real. Va descontando los segundos y 
+// cuando cambia un bloque, te dice por los auriculares la potencia objetivo, 
+// cadencia y frases motivacionales sin que tengas que mirar la pantalla.
 const AC = {
   sessIdx: -1, blocks: [], blockIdx: 0,
   blockRemaining: 0, blockTotal: 0, totalRemaining: 0,
