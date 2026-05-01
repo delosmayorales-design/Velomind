@@ -74,10 +74,13 @@
     .mod-card h3 i { color: var(--primary); width: 24px; }
     .mod-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5; }
     .mod-card[style*="span 2"] { grid-column: span 2; }
-    @media (max-width: 768px) { 
+    @media (max-width: 768px) {
       .mod-card[style*="span 2"] { grid-column: span 1 !important; }
       .calc-row { grid-template-columns: 1fr; }
       .torque-grid { grid-template-columns: 1fr; }
+      .tab-btn { padding: 7px 10px; font-size: 12px; }
+      .trouble-item { flex-wrap: wrap; }
+      .trouble-sym { min-width: unset; width: 100%; }
     }
     
     .calc-btn { width: 100%; padding: 12px; background: var(--primary); color: #111; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 8px; transition: var(--transition); font-family: 'Space Grotesk', sans-serif; }
@@ -154,6 +157,7 @@
       <button class="tab-btn" onclick="showTab('presiones')"><i class="fas fa-compress-arrows-alt"></i> Presiones</button>
       <button class="tab-btn" onclick="showTab('suspension')"><i class="fas fa-water"></i> Suspensión</button>
       <button class="tab-btn" onclick="showTab('frenos')"><i class="fas fa-stop-circle"></i> Frenos</button>
+      <button class="tab-btn" onclick="showTab('mantenimiento')"><i class="fas fa-calendar-check"></i> Mantenimiento</button>
       <button class="tab-btn" onclick="showTab('ruidos')"><i class="fas fa-volume-up"></i> Diagnóstico de Ruidos</button>
     </div>
 
@@ -367,19 +371,12 @@
             </div>
             
             <div class="mod-card">
-                <h3><i class="fas fa-sliders-h"></i> Variables del Algoritmo</h3>
-                <table class="diag-table">
-                    <tr><th>Variable</th><th>Impacto</th></tr>
-                    <tr><td>Ancho llanta interno ↓</td><td>Presión ↑ (+0.5 bar por cada 2mm)</td></tr>
-                    <tr><td>TPI carcasa ↑</td><td>Permite menor presión (más rodar)</td></tr>
-                    <tr><td>Peso sistema ↑</td><td>Presión ↑ proporcional (+0.2 bar/10kg)</td></tr>
-                    <tr><td>Wet / Mud</td><td>Bajar 0.3-0.5 bar para tracción</td></tr>
-                    <tr><td>Temperatura +10°C</td><td>Presión +0.1 bar (gas ideal)</td></tr>
-                </table>
-                <div class="warning-box">
-                    <div class="title">📐 FÓRMULA DE REFERENCIA</div>
-                    <div class="text">psi = ( peso_kg / ancho_mm × 0.1 ) + base_terreno + corrección</div>
-                    <div class="text" style="margin-top:4px">Base seco: 6.5 | Húmedo: 5.8 | Barro: 5.0</div>
+                <h3><i class="fas fa-lightbulb"></i> Consejos Rápidos de Presión</h3>
+                <div class="troubleshoot">
+                    <div class="trouble-item"><div class="trouble-sym">Pinchazo frecuente en ruta</div><div class="trouble-sol">Sube 0.2–0.3 bar. Posiblemente vas demasiado bajo para el asfalto.</div></div>
+                    <div class="trouble-item"><div class="trouble-sym">Vibración excesiva en manos</div><div class="trouble-sol">Baja 0.2–0.3 bar. Especialmente en tubeless puedes permitirte menos.</div></div>
+                    <div class="trouble-item"><div class="trouble-sym">La bici derrapa en curvas húmedas</div><div class="trouble-sol">Baja 0.3–0.5 bar. Más contacto = más tracción en mojado.</div></div>
+                    <div class="trouble-item"><div class="trouble-sym">Cambio de temperatura extremo</div><div class="trouble-sol">Por cada 10°C de subida, la presión sube ~0.1 bar. Verifica siempre en frío.</div></div>
                 </div>
             </div>
         </div>
@@ -415,25 +412,12 @@
             <div class="mod-card">
                 <h3><i class="fas fa-sliders-h"></i> Ajuste del Rebote</h3>
                 <table class="diag-table">
-                    <tr><th>Síntoma en ruta</th><th>Problema</th><th>Solución (Diales)</th></tr>
-                    <tr><td>Te escupe hacia arriba en los saltos</td><td>Rebote muy rápido</td><td>Girar dial hacia LENTO (Tortuga / +)</td></tr>
-                    <tr><td>Se hunde cada vez más en baches seguidos</td><td>Rebote muy lento</td><td>Girar dial hacia RÁPIDO (Liebre / -)</td></tr>
-                    <tr><td>Hace topes (bottom out) fácilmente</td><td>Falta progresividad</td><td>Añadir tokens (espaciadores) de volumen</td></tr>
+                    <tr><th>Síntoma en ruta</th><th>Problema</th><th>Solución</th></tr>
+                    <tr><td>Te escupe hacia arriba en saltos</td><td>Rebote muy rápido</td><td>Dial hacia LENTO (Tortuga / +)</td></tr>
+                    <tr><td>Se hunde cada vez más en baches</td><td>Rebote muy lento</td><td>Dial hacia RÁPIDO (Liebre / -)</td></tr>
+                    <tr><td>Hace topes (bottom out) fácilmente</td><td>Falta progresividad</td><td>Añadir tokens de volumen</td></tr>
                 </table>
-                <div class="mec-tips"><strong>Tip Pro:</strong> Empieza con el rebote a la mitad. Si vas a un circuito con muchos baches rápidos seguidos (rock garden), ábrelo un poco (rápido).</div>
-            </div>
-            
-            <div class="mod-card">
-                <h3><i class="fas fa-clipboard-check"></i> Checklist Salida</h3>
-                <div class="checklist">
-                    <label class="check-item safe"><input type="checkbox"> Cubierta exterior sin cortes</label>
-                    <label class="check-item safe"><input type="checkbox"> Presión verificada (psi/bar)</label>
-                    <label class="check-item safe"><input type="checkbox"> Cierre rápido pedals</label>
-                    <label class="check-item safe"><input type="checkbox"> Tensión cadena (10-15mm)</label>
-                    <label class="check-item safe"><input type="checkbox"> Pastillas freno >1mm</label>
-                    <label class="check-item safe"><input type="checkbox"> Abrazaderas cockpit</label>
-                    <label class="check-item safe"><input type="checkbox"> Bearing juego lateral</label>
-                </div>
+                <div class="mec-tips"><strong>Tip Pro:</strong> Empieza con el rebote a la mitad. En rock garden, ábrelo un poco (rápido).</div>
             </div>
         </div>
     </div>
@@ -502,7 +486,65 @@
         </div>
     </div>
 
-    <!-- MÓDULO 5: DIAGNÓSTICO DE RUIDOS -->
+    <!-- MÓDULO 5: MANTENIMIENTO PREVENTIVO -->
+    <div id="mantenimiento" class="tab-content">
+      <div class="mod-grid">
+
+        <div class="mod-card">
+          <h3><i class="fas fa-calendar-check"></i> Intervalos de Mantenimiento</h3>
+          <table class="diag-table">
+            <tr><th>Componente</th><th>Cada cuántos km</th><th>Señal de desgaste</th></tr>
+            <tr><td>Cadena</td><td>1.500–2.500 km</td><td>Elongación >0.5% (medidor de cadena)</td></tr>
+            <tr><td>Cassette</td><td>3–4 cadenas</td><td>Dientes en forma de "tiburón"</td></tr>
+            <tr><td>Platos</td><td>8.000–12.000 km</td><td>Dientes asimétricos o saltos bajo carga</td></tr>
+            <tr><td>Cables de cambio</td><td>5.000 km o anual</td><td>Hilos sueltos, funda aplastada, cambio impreciso</td></tr>
+            <tr><td>Cables de freno</td><td>5.000 km o anual</td><td>Hilo deshilachado, tacto esponjoso</td></tr>
+            <tr><td>Pastillas freno disco</td><td>2.000–4.000 km</td><td>Grosor <1 mm (orgánicas) / <2 mm (sinterizadas)</td></tr>
+            <tr><td>Neumáticos</td><td>4.000–8.000 km</td><td>Cortes, deformaciones, banda de rodadura plana</td></tr>
+            <tr><td>Líquido de sellante (tubeless)</td><td>Cada 3–6 meses</td><td>Se seca o ya no sella pequeños pinchazos</td></tr>
+            <tr><td>Rodamientos pedalier</td><td>10.000 km</td><td>Juego lateral o crujido al pedalear con carga</td></tr>
+            <tr><td>Rodamientos bujes</td><td>10.000–15.000 km</td><td>Juego lateral en la rueda</td></tr>
+            <tr><td>Rodamientos dirección</td><td>15.000 km</td><td>Golpeteo o resistencia al girar el manillar</td></tr>
+          </table>
+        </div>
+
+        <div class="mod-card">
+          <h3><i class="fas fa-oil-can"></i> Guía de Lubricación</h3>
+          <table class="diag-table">
+            <tr><th>Condición</th><th>Tipo de lube</th><th>Frecuencia</th></tr>
+            <tr><td>Seco / asfalto</td><td>Lube seco (cera o PTFE)</td><td>Cada 200–300 km</td></tr>
+            <tr><td>Húmedo / lluvia</td><td>Lube húmedo (aceite penetrante)</td><td>Después de cada salida en mojado</td></tr>
+            <tr><td>Barro / trail</td><td>Lube húmedo o wax reforzado</td><td>Antes y después de la salida</td></tr>
+            <tr><td>Competición / velocidad</td><td>Wax de alta calidad (Molten Speed Wax, Silca)</td><td>Cada 200 km o si cruje</td></tr>
+          </table>
+          <div class="mec-tips">
+            <strong>Cómo aplicar correctamente:</strong> Limpia la cadena con desengrasante → deja secar → aplica lube eslabón a eslabón → espera 5 min → retira el exceso con un trapo. El exceso de lube acumula suciedad.
+          </div>
+          <div class="warning-box" style="margin-top:12px">
+            <div class="title">⚠️ NUNCA mezcles</div>
+            <div class="text">No apliques lube húmedo sobre una cadena preparada con cera. Primero limpia completamente con desengrasante o deberás rehacer el tratamiento entero.</div>
+          </div>
+        </div>
+
+        <div class="mod-card" style="grid-column: span 2;">
+          <h3><i class="fas fa-clipboard-check"></i> Checklist Pre-Salida</h3>
+          <div class="checklist">
+            <label class="check-item safe"><input type="checkbox"> Cubierta exterior sin cortes visibles</label>
+            <label class="check-item safe"><input type="checkbox"> Presión verificada (psi/bar según calculadora)</label>
+            <label class="check-item safe"><input type="checkbox"> Cadena limpia y lubricada</label>
+            <label class="check-item safe"><input type="checkbox"> Cambio indexado correctamente (prueba en todos los piñones)</label>
+            <label class="check-item safe"><input type="checkbox"> Frenos con recorrido correcto (&lt;50% del levier)</label>
+            <label class="check-item safe"><input type="checkbox"> Pastillas freno con material suficiente (&gt;1mm)</label>
+            <label class="check-item safe"><input type="checkbox"> Cierre rápido o tornillos de rueda bien apretados</label>
+            <label class="check-item safe"><input type="checkbox"> Abrazaderas de cockpit y potencia apretadas</label>
+            <label class="check-item safe"><input type="checkbox"> Sin juego lateral en pedales, manillar y sillín</label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MÓDULO 6: DIAGNÓSTICO DE RUIDOS -->
     <div id="ruidos" class="tab-content">
       <div class="mod-grid" style="grid-template-columns:1fr">
         <div class="mod-card">

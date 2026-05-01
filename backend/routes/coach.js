@@ -1464,9 +1464,11 @@ Comentario / Intención del atleta: "${contexto || 'no especificado'}".
 Carga real en los últimos 7 días: ${recentHours.toFixed(1)} horas, ${recentTSS} TSS en ${recentActs.length} sesiones.
 Historial de últimas actividades registradas: ${JSON.stringify(actsCompact)}.
 
-Analiza si el atleta debe mantener, reducir, sustituir o descansar la sesión de ${diaRef}. REGLAS DE DECISIÓN:
-- Si el atleta está cansado, con poco sueño o estresado, prioriza 'reducir' la sesión (menos repeticiones o duración) antes que 'sustituir' por una sesión completamente diferente, a menos que la fatiga sea extrema (ej: "estoy muerto", "no puedo ni moverme"). En ese caso, 'descanso' o 'sustituir' por Z1 es correcto.
-¡MUY IMPORTANTE!: Si el atleta indica que hará una salida en grupo (grupeta), ruta larga libre o carrera, IGNORA los intervalos estructurados. Evalúa su fatiga y dale consejos tácticos para esa salida (ej: "ve a rueda", "escóndete en el grupo", "haz relevos cortos" si está muy cansado, o "prueba a atacar" si está fresco).
+Analiza si el atleta debe mantener, reducir, sustituir o descansar la sesión de ${diaRef}. REGLAS DE DECISIÓN (por orden de prioridad):
+1. ¡CRÍTICO!: Si el atleta dice que NO PUEDE entrenar (evento personal, viaje, trabajo, compromiso, no puede salir) → recomendacion SIEMPRE debe ser 'descanso', duracion_min: 0, tss_estimado: 0, if_estimado: 0. Nunca propongas ningún entrenamiento en este caso.
+2. ¡CRÍTICO!: Si el atleta especifica un tipo de entrenamiento que QUIERE hacer (ej: "quiero hacer series en Z3", "voy a hacer intervalos", "quiero hacer tempo") → RESPETA ESA PREFERENCIA. Diseña exactamente ese tipo de sesión adaptando duración e intensidad según su TSB actual, pero NO lo sustituyas por otra cosa completamente diferente.
+3. Si el atleta está cansado, con poco sueño o estresado, prioriza 'reducir' la sesión (menos repeticiones o duración) antes que 'sustituir' por una sesión completamente diferente, a menos que la fatiga sea extrema (ej: "estoy muerto", "no puedo ni moverme"). En ese caso, 'descanso' o 'sustituir' por Z1 es correcto.
+4. Si el atleta indica que hará una salida en grupo (grupeta), ruta larga libre o carrera, IGNORA los intervalos estructurados. Evalúa su fatiga y dale consejos tácticos para esa salida.
 Sé específico: usa los vatios reales del FTP (${ftp}W) si propones una alternativa.
 Responde con este JSON exacto:
 {

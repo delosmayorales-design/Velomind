@@ -164,7 +164,10 @@
             <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Duración (min)</label><input type="number" id="m-duration" class="form-input form-input--sm" placeholder="90"></div>
             <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Distancia (km)</label><input type="number" id="m-dist" class="form-input form-input--sm" placeholder="50"></div>
             <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Pot. Media (W)</label><input type="number" id="m-power" class="form-input form-input--sm" placeholder="175"></div>
+            <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Pot. Máx (W)</label><input type="number" id="m-maxpower" class="form-input form-input--sm" placeholder="420"></div>
             <div class="form-group" style="margin:0"><label class="form-label form-label--xs">FC Media (bpm)</label><input type="number" id="m-hr" class="form-input form-input--sm" placeholder="138"></div>
+            <div class="form-group" style="margin:0"><label class="form-label form-label--xs">FC Máx (bpm)</label><input type="number" id="m-maxhr" class="form-input form-input--sm" placeholder="178"></div>
+            <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Cadencia (rpm)</label><input type="number" id="m-cadence" class="form-input form-input--sm" placeholder="85"></div>
           </div>
           <div style="display:flex;justify-content:flex-end;gap:8px">
             <button class="btn btn-ghost btn-sm" onclick="toggleManualEntry()">Cancelar</button>
@@ -442,7 +445,10 @@ async function saveManualActivity() {
     distance: (parseFloat(document.getElementById('m-dist').value) || 0) * 1000,
     tss, avg_power: avgPower, np, if_value: ifValue,
     avg_hr: parseFloat(document.getElementById('m-hr').value) || 0,
-    avg_cadence: 0, elevation: 0, calories: 0,
+    max_hr: parseFloat(document.getElementById('m-maxhr').value) || 0,
+    max_power: parseFloat(document.getElementById('m-maxpower').value) || 0,
+    avg_cadence: parseFloat(document.getElementById('m-cadence').value) || 0,
+    elevation: 0, calories: 0,
     source: 'Manual',
   };
   const saved = saveActivity(activity);
