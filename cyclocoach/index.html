@@ -9,10 +9,11 @@
       var theme = localStorage.getItem('velomind_theme') || 'dark';
       document.documentElement.setAttribute('data-theme', theme);
       if (theme === 'light') document.documentElement.classList.add('light-theme');
+      document.documentElement.style.opacity = '0';
     })();
   </script>
   <style>
-    html { color-scheme: dark; background-color: #05070a; }
+    html { color-scheme: dark; background-color: #05070a; transition: opacity .18s ease; }
     html[data-theme="light"] { color-scheme: light; background-color: #f8fafc; }
   </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
@@ -687,6 +688,9 @@ async function handleProfileAvatarChange(input) {
     data = {...a};
   } catch(e){}
 })();
+
+// Revelar página tras renderizado inicial
+requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
 </script>
 </body>
 </html>

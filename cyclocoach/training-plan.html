@@ -863,10 +863,6 @@
 <script src="js/fit-encoder.js"></script>
 <script>
 const API = window.API_URL;
-
-
-
-
 let currentPlan = null;
 let progressionChart = null;
 const _adaptCache = {}; // { [idx]: adaptation data from AI }
@@ -875,8 +871,7 @@ let _bgSyncToken = 0; // se incrementa al guardar localmente para invalidar GETs
 // ── Sync Strava ─────────────────────────────────────────────
 async function syncStrava() {
   const btn = document.getElementById('sync-strava-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...'; }
   try {
     const result = await BackendSync.syncStrava((msg) => {
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + msg;
@@ -886,14 +881,18 @@ async function syncStrava() {
     await loadCoachData();
     generatePlan(); // Regenerar plan con la nueva fatiga real
     
-    setTimeout(() => { btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar Strava'; btn.disabled = false; }, 3000);
+    if (btn) {
+      setTimeout(() => { btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar Strava'; btn.disabled = false; }, 3000);
+    }
   } catch(e) {
     if (e.message.includes('no conectado')) { window.location.href = 'integrations.html'; return; }
-    btn.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${e.message}`;
-    setTimeout(() => {
-      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar Strava';
-      btn.disabled = false;
-    }, 3000);
+    if (btn) {
+      btn.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${e.message}`;
+      setTimeout(() => {
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar Strava';
+        btn.disabled = false;
+      }, 3000);
+    }
   }
 }
 
@@ -920,7 +919,7 @@ async function loadCoachData() {
 
 // ── Render form state ────────────────────────────────────────
 function renderFormState(s, training) {
-  document.getElementById('form-state-loading').style.display = 'none';
+  if (document.getElementById('form-state-loading')) document.getElementById('form-state-loading').style.display = 'none';
   const phaseClass = { base:'phase-base', build:'phase-build', peak:'phase-peak', recovery:'phase-recovery', race:'phase-race' }[s.phase] || 'phase-base';
   const formClass  = { blue:'form-blue', green:'form-green', lime:'form-lime', yellow:'form-yellow', orange:'form-orange', red:'form-red' }[s.form?.color] || 'form-lime';
 
@@ -944,7 +943,7 @@ function renderFormState(s, training) {
   const today = new Date().toLocaleDateString('es-ES', { day:'numeric', month:'short' });
 
   const content = document.getElementById('form-state-content');
-  content.innerHTML = `
+  if (content) content.innerHTML = `
     <div class="fs-header">
       <span class="phase-badge ${phaseClass}">${phaseLabel(s.phase)}</span>
       <span class="fs-date"><i class="fas fa-calendar-day" style="margin-right:4px;opacity:.5"></i>${today}</span>
@@ -979,7 +978,7 @@ function renderFormState(s, training) {
       ${s.wkg ? `<span><i class="fas fa-bolt"></i>${s.wkg} W/kg</span>` : ''}
     </div>
   `;
-  content.classList.remove('hidden');
+  if (content) content.classList.remove('hidden');
 }
 
 function renderZoneBars(z) {
@@ -1125,7 +1124,7 @@ function renderWeekDates() {
   monday.setDate(now.getDate() - (now.getDay() || 7) + 1);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  document.getElementById('week-dates').textContent =
+  if (document.getElementById('week-dates')) document.getElementById('week-dates').textContent =
     monday.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + ' — ' +
     sunday.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
@@ -1254,7 +1253,7 @@ function renderPlan(plan, athlete) {
   // todayIdx: Mon=0 … Sun=6
   const todayIdx = (new Date().getDay() + 6) % 7;
 
-  sessContainer.innerHTML = plan.sessions.map((sess, i) => {
+  if (sessContainer) sessContainer.innerHTML = plan.sessions.map((sess, i) => {
     const sessDate = new Date(mondayDate);
     sessDate.setDate(mondayDate.getDate() + i);
 
@@ -2987,7 +2986,8 @@ function stopAudioCoach() {
   document.getElementById('audio-coach-overlay').style.display = 'none';
 }
 
-initTrainingPlan().catch(() => {
+initTrainingPlan().catch((e) => {
+  console.error("Fallo al inicializar el plan de entrenamiento:", e);
   document.documentElement.style.removeProperty('opacity');
 });
 
@@ -3482,9 +3482,8 @@ function closePostModal() {
   document.body.style.overflow = '';
 }
 </script>
-
 <!-- Post-entreno modal -->
-<div id="post-modal-overlay" onclick="closePostModal()">
+<div id="post-modal-overlay" onclick="closePostModal()" style="display:none">
   <div id="post-modal-box" onclick="event.stopPropagation()">
     <div id="post-modal-content"></div>
   </div>
