@@ -1668,17 +1668,54 @@ async function saveAdaptation(idx) {
     try {
       const dayName      = sess.day || `día ${idx + 1}`;
       const cancelledTSS = Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
-      const planResumen  = currentPlan.sessions.map((s, i) =>
-        `dayIndex ${i} (${s.day}): ${s.isRest ? 'DESCANSO BLOQUEADO' : (s.name || s.type) + ' ~' + (s.tss || Math.round((s.tssShare||0)*(currentPlan.targetTSS||400))) + 'TSS'}`
-      ).join(' | ');
+
+      // ── Contexto de ayer (actividad real) ─────────────────────────
+      const HIGH_TYPES = ['threshold', 'vo2max', 'sprint', 'race'];
+      const yesterday  = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+      const ydKey      = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
+      const ydActs     = (AppState.activities || []).filter(a => a.date?.slice(0,10) === ydKey);
+      const ydType     = ydActs[0]?.type || null;
+      const ydTSS      = Math.round(ydActs.reduce((s, a) => s + (a.tss || 0), 0));
+      const ydWasHard  = ydType && HIGH_TYPES.includes(ydType);
+
+      // ── Días disponibles con carga actual ─────────────────────────
+      const mondayDate = new Date();
+      mondayDate.setDate(mondayDate.getDate() - (mondayDate.getDay() || 7) + 1);
+      const availDays  = currentPlan.sessions
+        .map((s, i) => ({ i, s, date: new Date(mondayDate.getTime() + i * 86400000) }))
+        .filter(({ i, s }) => i >= todayNow && i !== idx && !s.isRest)
+        .map(({ i, s }) => `dayIndex ${i} (${s.day}): tipo=${s.type}, ~${s.tss || Math.round((s.tssShare||0)*(currentPlan.targetTSS||400))} TSS`);
+
+      // ── Instrucción sobre hoy según actividad de ayer ─────────────
+      let todayInstruction;
+      if (ydWasHard) {
+        todayInstruction =
+          `⚠️ IMPORTANTE: AYER el atleta ya hizo "${ydType}" (~${ydTSS} TSS). ` +
+          `Por tanto HOY (dayIndex ${todayNow}) NO debe ser de alta intensidad. ` +
+          `Mantén o sube el tipo a "endurance" o "tempo" (Z2-Z3), aumenta duración +20-30 min. ` +
+          `NO asignes "threshold", "vo2max" ni "sprint" para hoy.`;
+      } else if (ydType) {
+        todayInstruction =
+          `Ayer el atleta hizo "${ydType}" (~${ydTSS} TSS). ` +
+          `HOY (dayIndex ${todayNow}) puede absorber algo más de carga moderada.`;
+      } else {
+        todayInstruction =
+          `HOY (dayIndex ${todayNow}) el atleta aún no ha entrenado y puede absorber carga moderada.`;
+      }
+
+      // ── Instrucción sobre días futuros (ej. domingo) ──────────────
+      const futureDays = availDays.filter(d => !d.includes(`dayIndex ${todayNow}`));
+      const futureInstruction = futureDays.length
+        ? `Los días siguientes disponibles (${futureDays.map(d => d.split(':')[0]).join(', ')}) pueden y deben absorber el resto de la carga cancelada. ` +
+          `Aumenta su intensidad o duración según corresponda con la periodización.`
+        : '';
 
       const feedback =
-        `Atleta con evento el ${dayName} (dayIndex ${idx}): NO puede entrenar, ya marcado DESCANSO BLOQUEADO — no lo toques.\n` +
-        `Plan semana: ${planResumen}\n` +
-        `TSS perdido: ~${cancelledTSS}. Redistribuye esa carga inteligentemente:\n` +
-        `- HOY (dayIndex ${todayNow}) el atleta AÚN NO ha entrenado: puedes aumentar su carga moderadamente. HOY SÍ puede ser modificado.\n` +
-        `- También redistribuye en días posteriores disponibles (no el dayIndex ${idx}, que es descanso intocable).\n` +
-        `- No pongas dos días de alta intensidad seguidos. Respeta la periodización.`;
+        `Atleta con evento el ${dayName} (dayIndex ${idx}): DESCANSO BLOQUEADO — no modificar.\n` +
+        `TSS cancelado: ~${cancelledTSS}. Días disponibles: ${availDays.join(' | ')}\n\n` +
+        `${todayInstruction}\n` +
+        (futureInstruction ? `${futureInstruction}\n` : '') +
+        `Regla: no pongas dos días de alta intensidad consecutivos.`;
 
       const res2 = await fetch(`${API}/coach/recalculate-week`, {
         method: 'POST',
