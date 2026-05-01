@@ -1219,7 +1219,7 @@ async function showWindSuggestion() {
           <text x="64" y="40" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="8" font-family="sans-serif">E</text>
           <text x="36" y="68" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="8" font-family="sans-serif">S</text>
           <text x="8"  y="40" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="8" font-family="sans-serif">O</text>
-          <g transform="rotate(${deg},36,36)">
+          <g transform="rotate(${(deg + 180) % 360},36,36)">
             <polygon points="36,5 31,16 41,16" fill="${color}"/>
             <line x1="36" y1="14" x2="36" y2="36" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>
             <line x1="36" y1="36" x2="36" y2="56" stroke="${color}" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>
@@ -1259,6 +1259,95 @@ async function showWindSuggestion() {
   }, () => {
     document.getElementById('wind-body').innerHTML = '<div style="color:#ff4757;font-size:12px">Activa la ubicación en el navegador.</div>';
   });
+}
+
+// ── Animación de Viento ──────────────────────────────────────────
+let windAnimFrame = null;
+let windParticles = [];
+
+function startWindAnimation(deg, spd, color) {
+  stopWindAnimation();
+  const canvas = document.getElementById('wind-canvas');
+  if (!canvas) return;
+  canvas.style.display = 'block';
+  const ctx = canvas.getContext('2d');
+
+  const resizeCanvas = () => {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+  };
+  resizeCanvas();
+  // Ajustar el canvas si la pantalla cambia de tamaño
+  window.addEventListener('resize', resizeCanvas);
+
+  // Calculamos los vectores X e Y en base a los grados (hacia dónde sopla)
+  const rad = (deg + 180) * Math.PI / 180;
+  const vx = Math.sin(rad);
+  const vy = -Math.cos(rad);
+  const speedFactor = Math.max(1.5, spd / 4); // La velocidad del viento afecta a la animación
+  
+  // Calcular cantidad de partículas basándonos en el tamaño de la pantalla
+  const NUM_PARTICLES = Math.min(200, Math.max(50, Math.floor((canvas.width * canvas.height) / 10000)));
+
+  windParticles = Array.from({length: NUM_PARTICLES}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    l: Math.random() * 25 + 10, // Longitud de la cola
+    s: (Math.random() * 0.5 + 0.5) * speedFactor, // Velocidad individual
+    a: Math.random() * 0.5 + 0.2 // Opacidad
+  }));
+
+  let lastTime = performance.now();
+
+  function animate(time) {
+    const dt = (time - lastTime) / 16; // Normalizado a 60fps
+    lastTime = time;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineCap = 'round';
+
+    windParticles.forEach(p => {
+      // Mover partícula
+      p.x += vx * p.s * dt;
+      p.y += vy * p.s * dt;
+
+      // Reposicionar al otro lado si sale de la pantalla
+      if (p.x < -50) p.x = canvas.width + 50;
+      else if (p.x > canvas.width + 50) p.x = -50;
+      if (p.y < -50) p.y = canvas.height + 50;
+      else if (p.y > canvas.height + 50) p.y = -50;
+
+      // Dibujar estela (cola)
+      ctx.beginPath();
+      ctx.globalAlpha = p.a * 0.4;
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - vx * p.l, p.y - vy * p.l);
+      ctx.stroke();
+
+      // Dibujar cabeza de la partícula
+      ctx.beginPath();
+      ctx.globalAlpha = p.a;
+      ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    
+    windAnimFrame = requestAnimationFrame(animate);
+  }
+  windAnimFrame = requestAnimationFrame(animate);
+}
+
+function stopWindAnimation() {
+  if (windAnimFrame) cancelAnimationFrame(windAnimFrame);
+  windAnimFrame = null;
+  const canvas = document.getElementById('wind-canvas');
+  if (canvas) {
+    canvas.style.display = 'none';
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  }
 }
 
 function degToCompass(deg) {
@@ -1308,16 +1397,33 @@ function renderWindStatus(day) {
   const from = degToCompass(d.deg);
   const lvlColor = d.spd < 15 ? '#10B981' : d.spd < 30 ? '#F59E0B' : '#EF4444';
   const dayLabel = day === 'tomorrow'
-    ? `<span style="font-size:10px;color:#94a3b8;font-weight:600;margin-left:6px">· pronóstico mañana (máx. diario)</span>`
+        ? `<span style="font-size:10px;color:#94a3b8;font-weight:600;margin-left:6px">· pronóstico mañana</span>`
     : '';
   windRouteData = { lat: windBothDays.lat, lon: windBothDays.lon, windDeg: d.deg, windSpeed: d.spd };
+      
+      const compassSVG = (size, color, deg) => `
+        <svg width="${size}" height="${size}" viewBox="0 0 72 72" style="flex-shrink:0">
+          <circle cx="36" cy="36" r="33" fill="rgba(0,212,255,0.05)" stroke="rgba(0,212,255,0.18)" stroke-width="1"/>
+          <text x="36" y="9"  text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="8" font-weight="700" font-family="sans-serif">N</text>
+          <text x="64" y="40" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="8" font-family="sans-serif">E</text>
+          <text x="36" y="68" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="8" font-family="sans-serif">S</text>
+          <text x="8"  y="40" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="8" font-family="sans-serif">O</text>
+          <g transform="rotate(${(deg + 180) % 360},36,36)">
+            <polygon points="36,5 31,16 41,16" fill="${color}"/>
+            <line x1="36" y1="14" x2="36" y2="36" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="36" y1="36" x2="36" y2="56" stroke="${color}" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>
+            <circle cx="36" cy="36" r="3.5" fill="${color}"/>
+          </g>
+        </svg>`;
+
   document.getElementById('wr-wind-status').innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px">
-      <div style="font-size:28px;font-weight:800;color:${lvlColor};font-family:'Space Grotesk',sans-serif">${d.spd}<span style="font-size:13px;font-weight:500"> km/h</span></div>
+        <div style="display:flex;align-items:center;gap:14px">
+          ${compassSVG(60, lvlColor, d.deg)}
       <div>
-        <div style="font-weight:700;color:var(--text-primary)">Desde el ${from} · Ráfagas ${d.gust} km/h${dayLabel}</div>
-        <div style="color:#00D4FF;font-size:12px;margin-top:3px">
-          ↗ Sal hacia el <strong>${from}</strong> · ↙ Vuelve con viento a favor
+            <div style="font-size:26px;font-weight:800;color:${lvlColor};font-family:'Space Grotesk',sans-serif;line-height:1;margin-bottom:2px">${d.spd}<span style="font-size:12px;font-weight:500"> km/h</span></div>
+            <div style="font-weight:700;color:var(--text-primary);font-size:12px">Desde el ${from} · Ráfagas ${d.gust} km/h${dayLabel}</div>
+            <div style="color:#00D4FF;font-size:11px;margin-top:2px">
+              ↗ Sal hacia el <strong>${from}</strong> · ↙ Vuelve a favor
         </div>
       </div>
     </div>`;
@@ -1462,6 +1568,29 @@ async function generateWindRoute() {
     document.getElementById('draw-toolbar').classList.add('visible');
     document.getElementById('modal-name').value =
       `Ruta ${wrShape === 'loop' ? 'circular' : 'ida y vuelta'} ${Math.round(distKm)}km · ${degToCompass(windDeg)}`;
+    document.getElementById('modal-type').value = type;
+
+    if (elevGain != null) {
+      document.getElementById('stat-elev').textContent = elevGain;
+      if (elevs?.length) renderElevChart(elevs);
+    } else {
+      fetchElevation(latLngs);
+    }
+    closeWindRouteModal();
+    showToast(`Ruta generada: ${distKm.toFixed(1)} km · ${degToCompass(windDeg)} → ${degToCompass((windDeg+180)%360)} a favor`, 'info');
+  } catch(e) {
+    showToast('No se pudo generar la ruta: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-magic"></i> Generar ruta';
+  }
+}
+
+// Revelar página tras renderizado inicial
+requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
+</script>
+</body>
+</html>
     document.getElementById('modal-type').value = type;
 
     if (elevGain != null) {
