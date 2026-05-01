@@ -85,12 +85,13 @@
     }
     .adapt-input:focus { border-color: rgba(196,239,68,.5); }
     .adapt-submit {
-      padding: 7px 14px; background: rgba(158,214,43,.15);
-      border: 1px solid rgba(139,92,246,.3); border-radius: 8px;
-      color: #C4EF44; font-size: 12px; font-weight: 600; cursor: pointer;
-      white-space: nowrap; font-family: inherit; transition: background .15s;
+      padding: 12px 20px; background: var(--primary);
+      border: none; border-radius: var(--radius-md, 8px);
+      color: #111 !important; font-size: 14px; font-weight: 700; cursor: pointer;
+      white-space: nowrap; font-family: 'Space Grotesk', sans-serif; transition: all 0.2s ease;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     }
-    .adapt-submit:hover { background: rgba(158,214,43,.25); }
+    .adapt-submit:hover { background: var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .adapt-submit:disabled { opacity: .5; cursor: not-allowed; }
 
     /* ── Check-in zone (pre-entreno simplificado) ───── */
@@ -105,14 +106,14 @@
     }
     .checkin-btns { display: flex; gap: 6px; flex: 1; }
     .checkin-btn {
-      flex: 1; padding: 5px 8px;
-      background: var(--bg-card); border: 1.5px solid var(--border);
-      border-radius: 8px; cursor: pointer; font-family: inherit;
-      font-size: 11px; font-weight: 700; color: var(--text-secondary);
-      display: flex; align-items: center; justify-content: center; gap: 5px;
-      transition: border-color .15s, background .15s, color .15s;
+      flex: 1; padding: 10px 14px;
+      background: var(--bg-input, rgba(255,255,255,0.05)); border: 1px solid var(--border, rgba(255,255,255,0.1));
+      border-radius: var(--radius-md, 8px); cursor: pointer; font-family: inherit;
+      font-size: 13px; font-weight: 600; color: var(--text-secondary, #cbd5e1);
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s ease;
     }
-    .checkin-btn:hover { border-color: rgba(196,239,68,.4); color: var(--text-primary); }
+    .checkin-btn:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); border-color: var(--primary); color: var(--text-primary, #fff); transform: translateY(-1px); }
     .checkin-btn.ci-mal.selected     { border-color: rgba(251,191,36,.6); background: rgba(251,191,36,.08); color: #fbbf24; }
     .checkin-btn.ci-normal.selected  { border-color: rgba(196,239,68,.6); background: rgba(196,239,68,.08); color: var(--primary); }
     .checkin-btn.ci-fuerte.selected  { border-color: rgba(239,68,68,.5);  background: rgba(239,68,68,.08);  color: #f87171; }
@@ -407,14 +408,14 @@
 
     /* ── AI Coach ────────────────────────────────────────────── */
     .btn-ai {
-      background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(59,130,246,0.2));
-      border: 1px solid rgba(139,92,246,0.4);
-      color: #C4EF44;
-      display:inline-flex; align-items:center; gap:8px;
-      padding:8px 16px; border-radius:10px; font-size:14px; font-weight:600;
-      cursor:pointer; font-family:inherit; transition:all .2s;
+      background: var(--primary);
+      border: none;
+      color: #111 !important;
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:12px 20px; border-radius:var(--radius-md, 8px); font-size:14px; font-weight:700;
+      cursor:pointer; font-family:'Space Grotesk', sans-serif; transition:all 0.2s ease;
     }
-    .btn-ai:hover { background:linear-gradient(135deg,rgba(139,92,246,0.35),rgba(59,130,246,0.35)); }
+    .btn-ai:hover { background:var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .btn-ai:disabled { opacity:.5; cursor:not-allowed; }
 
     .ai-section {
@@ -519,16 +520,16 @@
     select.params-input { width: 150px; cursor: pointer; }
     input[type=date].params-input { width: 140px; color-scheme: dark; }
     .params-apply-btn {
-      height: 32px; padding: 0 16px; margin-left: 4px;
-      background: rgba(196,239,68,.12);
-      border: 1px solid rgba(196,239,68,.3);
-      border-radius: 7px; color: #C4EF44;
-      font-size: 12px; font-weight: 700; font-family: inherit;
+      height: 38px; padding: 0 20px; margin-left: 4px;
+      background: var(--bg-input, rgba(255,255,255,0.05));
+      border: 1px solid var(--border, rgba(255,255,255,0.1));
+      border-radius: var(--radius-md, 8px); color: var(--text-secondary, #cbd5e1);
+      font-size: 13px; font-weight: 600; font-family: inherit;
       cursor: pointer; white-space: nowrap;
-      display: flex; align-items: center; gap: 6px;
-      transition: background .15s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.2s ease;
     }
-    .params-apply-btn:hover { background: rgba(196,239,68,.22); }
+    .params-apply-btn:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); border-color: var(--primary); color: var(--text-primary, #fff); transform: translateY(-1px); }
 
     /* ── Audio Coach Overlay ─────────────────────────────────── */
     #audio-coach-overlay {
@@ -574,9 +575,9 @@
     .ac-next-preview { font-size:12px; color:var(--text-muted); text-align:center; }
     .ac-next-preview strong { color:var(--text-secondary); }
     .ac-controls { display:flex; gap:10px; }
-    .ac-btn { padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; display:flex; align-items:center; gap:8px; transition:background .15s; }
-    .ac-btn-main { background:rgba(196,239,68,.15); border:1px solid rgba(196,239,68,.4); color:#C4EF44; flex:1; justify-content:center; }
-    .ac-btn-main:hover { background:rgba(196,239,68,.25); }
+    .ac-btn { padding:12px 20px; border-radius:var(--radius-md, 8px); font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:8px; transition:all 0.2s ease; }
+    .ac-btn-main { background:var(--primary); border:none; color:#111; flex:1; font-weight:700; font-family:'Space Grotesk', sans-serif; }
+    .ac-btn-main:hover { background:var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .ac-btn-stop { background:rgba(255,71,87,.12); border:1px solid rgba(255,71,87,.3); color:#ff4757; }
     .ac-btn-stop:hover { background:rgba(255,71,87,.22); }
     .ac-btn-skip { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); color:var(--text-muted); }

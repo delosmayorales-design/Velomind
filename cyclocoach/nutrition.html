@@ -52,6 +52,22 @@
     .timeline-item::before { content:''; position:absolute; left:-22px; top:6px; width:10px; height:10px; border-radius:50%; background:var(--primary); border:2px solid var(--bg-dark); }
 
     /* ── Tabs ────────────────────────────────────────────────── */
+    .tab-row {
+      display: flex; gap: 4px;
+      background: var(--bg-input);
+      border-radius: var(--radius-md);
+      padding: 4px;
+    }
+    .tab-btn {
+      flex: 1; padding: 9px 8px;
+      border: none; border-radius: 8px;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all .2s;
+    }
+    .tab-btn.active { background: var(--primary); color: #111; }
+    html.light-theme .tab-btn.active { color: #ffffff; }
     .tab-content { display:none; }
     .tab-content.active { display:block; }
 
@@ -79,8 +95,8 @@
     .menus-section { margin-top:28px; }
     .menus-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
     .menus-title { font-size:15px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px; }
-    .btn-generate { display:flex; align-items:center; gap:8px; padding:9px 18px; background:linear-gradient(135deg,rgba(255,107,53,.2),rgba(255,107,53,.1)); border:1px solid rgba(255,107,53,.4); border-radius:var(--radius-md); color:var(--primary); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .2s; }
-    .btn-generate:hover { background:linear-gradient(135deg,rgba(255,107,53,.3),rgba(255,107,53,.15)); border-color:rgba(255,107,53,.6); }
+    .btn-generate { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:12px 20px; background:var(--primary); border:none; border-radius:var(--radius-md, 8px); color:#111; font-size:14px; font-weight:700; cursor:pointer; font-family:'Space Grotesk', sans-serif; transition:all 0.2s ease; }
+    .btn-generate:hover { background:var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .btn-generate:disabled { opacity:.5; cursor:not-allowed; }
     .prefs-panel { background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; margin-bottom:16px; display:flex; flex-direction:column; gap:12px; }
     .prefs-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -197,7 +213,7 @@
         <hr><span id="detail-day-label">Selecciona un día</span><hr>
       </div>
       <!-- Tabs -->
-      <div class="tabs" style="max-width:600px">
+      <div class="tab-row" style="max-width:420px; margin-bottom: 24px;">
         <button class="tab-btn active" onclick="switchTab('general',this)">📊 Métricas</button>
         <button class="tab-btn" onclick="switchTab('tips',this)">💡 Guía práctica</button>
       </div>
@@ -302,7 +318,7 @@
               <i class="fas fa-info-circle"></i>
               <div style="font-size:12px">Orina amarillo claro = correctamente hidratado.</div>
             </div>
-            <button id="btn-reminders" onclick="toggleReminders()" style="margin-top:14px;width:100%;padding:11px;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);border-radius:10px;color:#00D4FF;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s">
+            <button id="btn-reminders" onclick="toggleReminders()" style="margin-top:14px;width:100%;padding:12px 20px;background:var(--bg-input, rgba(255,255,255,0.05));border:1px solid var(--border, rgba(255,255,255,0.1));border-radius:var(--radius-md, 8px);color:var(--text-secondary, #cbd5e1);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s ease" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)';this.style.background='var(--bg-card-hover)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)';this.style.background='var(--bg-input)';this.style.transform='none'">
               <i class="fas fa-bell"></i> Activar recordatorios de agua y comida
             </button>
 

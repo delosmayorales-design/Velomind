@@ -158,20 +158,20 @@
     }
     .draw-toolbar.visible { display: flex; }
     .dt-btn {
-      padding: 8px 14px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text-primary);
-      font-size: 12px; font-weight: 600;
+      padding: 10px 16px;
+      background: var(--bg-input, rgba(255,255,255,0.05));
+      border: 1px solid var(--border, rgba(255,255,255,0.1));
+      border-radius: var(--radius-md, 8px);
+      color: var(--text-secondary, #cbd5e1);
+      font-size: 13px; font-weight: 600;
       cursor: pointer; font-family: inherit;
       display: flex; align-items: center; gap: 6px;
       box-shadow: var(--shadow-md);
-      transition: all 0.18s;
+      transition: all 0.2s ease;
     }
-    .dt-btn:hover { background: var(--bg-input); }
-    .dt-btn.save { background: rgba(255,107,53,.15); border-color: rgba(255,107,53,.4); color: var(--primary); }
-    .dt-btn.save:hover { background: rgba(255,107,53,.25); }
+    .dt-btn:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); border-color: var(--primary); color: var(--text-primary, #fff); transform: translateY(-1px); }
+    .dt-btn.save { background: var(--primary); border: none; color: #111; font-weight: 700; font-family: 'Space Grotesk', sans-serif; }
+    .dt-btn.save:hover { background: var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .dt-btn.del  { color: #ff4757; }
 
     /* Wind card (abajo-derecha del mapa) */
@@ -261,9 +261,11 @@
     }
     .modal-input:focus,.modal-select:focus { outline:none;border-color:var(--primary); }
     .modal-row { display:flex;gap:8px;margin-top:6px; }
-    .modal-btn { flex:1;padding:10px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit; }
-    .modal-btn-cancel { background:var(--bg-input);color:var(--text-muted); }
-    .modal-btn-save   { background:var(--primary);color:#fff; }
+    .modal-btn { flex:1;padding:12px 16px;border:1px solid transparent;border-radius:var(--radius-md, 8px);font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s ease; }
+    .modal-btn-cancel { background:var(--bg-input, rgba(255,255,255,0.05));color:var(--text-secondary, #cbd5e1);border-color:var(--border, rgba(255,255,255,0.1)); }
+    .modal-btn-cancel:hover { background:var(--bg-card-hover, rgba(255,255,255,0.08));border-color:var(--primary);color:var(--text-primary, #fff);transform:translateY(-1px); }
+    .modal-btn-save   { background:var(--primary);color:#111;font-weight:700;font-family:'Space Grotesk',sans-serif;border:none; }
+    .modal-btn-save:hover { background:var(--primary-dark, #84B422);box-shadow:0 4px 16px rgba(158,214,43,0.3);transform:translateY(-1px); }
 
     /* ── Leaflet override (z-index) ───────────────────────────── */
     .leaflet-control-layers { z-index: 400 !important; }

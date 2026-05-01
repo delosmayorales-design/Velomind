@@ -192,17 +192,20 @@
     }
     .token-row input:focus { border-color: var(--border-focus); }
     .btn-save-token {
-      padding: 9px 16px;
+      padding: 12px 20px;
       background: var(--primary);
       color: #111;
       border: none;
-      border-radius: 8px;
-      font-size: 13px;
+      border-radius: var(--radius-md, 8px);
+      font-size: 14px;
       font-weight: 700;
       cursor: pointer;
-      font-family: inherit;
+      font-family: 'Space Grotesk', sans-serif;
       white-space: nowrap;
+      transition: all 0.2s ease;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     }
+    .btn-save-token:hover { background: var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .btn-save-token:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .last-sync-row {

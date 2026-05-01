@@ -1,4 +1,4 @@
-﻿﻿<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -213,25 +213,27 @@
     .comp-badge.red    { background: rgba(248,113,113,0.15); color: var(--danger); }
     .comp-actions { display: flex; gap: 8px; }
     .btn-checkin {
-      flex: 1; padding: 9px 10px; background: var(--primary); color: #111;
-      border: none; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600;
-      cursor: pointer; transition: var(--transition); display: flex;
-      align-items: center; justify-content: center; gap: 5px;
+      flex: 1; padding: 10px 14px; background: var(--primary); color: #111;
+      border: none; border-radius: var(--radius-md, 8px); font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s ease; display: inline-flex;
+      align-items: center; justify-content: center; gap: 8px;
       font-family: 'Space Grotesk', sans-serif;
     }
-    .btn-checkin:hover { background: var(--primary-dark); }
+    .btn-checkin:hover { background: var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .btn-hist {
-      padding: 9px 10px; background: var(--bg-input); color: var(--text-muted);
-      border: 1px solid var(--border); border-radius: var(--radius-sm);
-      font-size: 12px; cursor: pointer; transition: var(--transition);
+      padding: 10px 14px; background: var(--bg-input, rgba(255,255,255,0.05)); color: var(--text-secondary, #cbd5e1);
+      border: 1px solid var(--border, rgba(255,255,255,0.1)); border-radius: var(--radius-md, 8px);
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+      font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     }
-    .btn-hist:hover { color: var(--text); border-color: var(--primary); }
+    .btn-hist:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); color: var(--text-primary, #fff); border-color: var(--primary); transform: translateY(-1px); }
     .btn-add-km-sm {
-      padding: 9px 10px; background: transparent; color: var(--accent);
-      border: 1px solid rgba(16,185,129,0.25); border-radius: var(--radius-sm);
-      font-size: 12px; cursor: pointer; transition: var(--transition);
+      padding: 10px 14px; background: var(--bg-input, rgba(255,255,255,0.05)); color: var(--text-secondary, #cbd5e1);
+      border: 1px solid var(--border, rgba(255,255,255,0.1)); border-radius: var(--radius-md, 8px);
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+      font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     }
-    .btn-add-km-sm:hover { background: rgba(16,185,129,0.1); }
+    .btn-add-km-sm:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); color: var(--text-primary, #fff); border-color: var(--primary); transform: translateY(-1px); }
 
     /* ── Sync Banner ───────────────────────────────────────── */
     .sync-banner {
@@ -279,10 +281,10 @@
     .fg small { font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block; }
     .fg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-    .btn-mc { flex: 1; padding: 11px; background: var(--bg-input); color: var(--text-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; transition: var(--transition); }
-    .btn-mc:hover { border-color: var(--border-light); }
-    .btn-mok { flex: 2; padding: 11px; background: var(--primary); color: #111; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; transition: var(--transition); font-family: 'Space Grotesk', sans-serif; }
-    .btn-mok:hover { background: var(--primary-dark); box-shadow: 0 4px 16px var(--primary-glow); }
+    .btn-mc { flex: 1; padding: 12px 20px; background: var(--bg-input, rgba(255,255,255,0.05)); color: var(--text-secondary, #cbd5e1); border: 1px solid var(--border, rgba(255,255,255,0.1)); border-radius: var(--radius-md, 8px); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-mc:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); border-color: var(--primary); color: var(--text-primary, #fff); transform: translateY(-1px); }
+    .btn-mok { flex: 2; padding: 12px 20px; background: var(--primary); color: #111; border: none; border-radius: var(--radius-md, 8px); font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-family: 'Space Grotesk', sans-serif; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-mok:hover { background: var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
 
     /* ── Checkin Summary ───────────────────────────────────── */
     .ci-summary { background: var(--bg-input); border-radius: var(--radius-md); padding: 16px; margin-bottom: 18px; border-left: 3px solid var(--primary); }

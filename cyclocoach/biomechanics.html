@@ -123,15 +123,15 @@
     }
 
     .btn-full {
-      width: 100%; padding: 12px;
-      background: var(--primary); color: #fff;
-      border: none; border-radius: var(--radius-md);
+      width: 100%; padding: 12px 20px;
+      background: var(--primary); color: #111;
+      border: none; border-radius: var(--radius-md, 8px);
       font-family: 'Space Grotesk', sans-serif;
       font-size: 14px; font-weight: 700;
-      cursor: pointer; display: flex; align-items: center;
-      justify-content: center; gap: 8px; transition: all .2s;
+      cursor: pointer; display: inline-flex; align-items: center;
+      justify-content: center; gap: 8px; transition: all 0.2s ease;
     }
-    .btn-full:hover { background: var(--primary-dark); }
+    .btn-full:hover { background: var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .btn-full:disabled { opacity: .5; cursor: not-allowed; }
 
     /* ── Manual results ──────────────────────────── */
@@ -168,15 +168,15 @@
       flex-wrap: wrap;
     }
     .tool-btn {
-      padding: 6px 14px;
-      background: var(--bg-input);
-      border: 1px solid var(--border-light);
-      border-radius: 8px;
-      color: var(--text-secondary);
+      padding: 10px 16px;
+      background: var(--bg-input, rgba(255,255,255,0.05));
+      border: 1px solid var(--border, rgba(255,255,255,0.1));
+      border-radius: var(--radius-md, 8px);
+      color: var(--text-secondary, #cbd5e1);
       font-family: inherit; font-size: 12px; font-weight: 600;
-      cursor: pointer; transition: all .2s;
+      cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px;
     }
-    .tool-btn:hover { border-color: var(--primary); color: var(--primary-light); }
+    .tool-btn:hover { border-color: var(--primary); color: var(--text-primary, #fff); background: var(--bg-card-hover, rgba(255,255,255,0.08)); transform: translateY(-1px); }
     .tool-btn.active {
       background: var(--primary-glow);
       border-color: var(--primary);

@@ -262,20 +262,20 @@
       background: var(--primary);
       color: #111;
       border: none;
-      border-radius: var(--radius);
-      padding: 14px;
-      font-size: 15px;
+      border-radius: var(--radius-md, 8px);
+      padding: 12px 20px;
+      font-size: 14px;
       font-weight: 700;
       cursor: pointer;
       font-family: 'Space Grotesk', sans-serif;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       margin-top: 4px;
     }
-    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-glow); }
+    .btn-primary:hover { background: var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .btn-primary:active { transform: translateY(0); }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
