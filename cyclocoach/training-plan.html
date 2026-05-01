@@ -1598,9 +1598,20 @@ async function applyCheckIn(idx, feeling) {
   const sess = currentPlan.sessions[idx];
   if (sess.isRest) { showToast('Día de descanso — disfrútalo 😴', 'var(--text-muted)'); return; }
 
-  const ftp     = AppState.athlete?.ftp || 200;
-  const origTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
-  const origDur = sess.durationMin || 60;
+  const ftp = AppState.athlete?.ftp || 200;
+
+  // Guardar valores originales del plan la primera vez — siempre calculamos desde ahí
+  if (!sess._origCheckIn) {
+    sess._origCheckIn = {
+      type:        sess.type,
+      tss:         sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400)),
+      durationMin: sess.durationMin || 60,
+      ifTarget:    sess.ifTarget || 0.75,
+      name:        sess.name,
+      emoji:       sess.emoji,
+    };
+  }
+  const orig = sess._origCheckIn;
 
   const DOWNGRADE = { vo2max: 'tempo', threshold: 'tempo', tempo: 'endurance', sprint: 'endurance', race: 'endurance' };
   const UPGRADE   = { recovery: 'endurance', endurance: 'tempo', long: 'tempo' };
@@ -1620,51 +1631,65 @@ async function applyCheckIn(idx, feeling) {
     return parts.join(' + ');
   };
 
+  // Restaurar siempre al original primero, luego aplicar el ajuste
+  sess.type        = orig.type;
+  sess.tss         = orig.tss;
+  sess.durationMin = orig.durationMin;
+  sess.ifTarget    = orig.ifTarget;
+  sess.name        = orig.name;
+  sess.emoji       = orig.emoji;
+  sess._adapted    = false;
+  sess.advice      = null;
+  sess._checkin    = feeling;
+
   if (feeling === 'normal') {
-    sess._checkin = 'normal';
+    if (window.TrainingPlanGenerator) {
+      sess.intervals     = TrainingPlanGenerator._buildIntervals(orig.type, ftp, orig.durationMin, orig.tss, orig.ifTarget, 'main');
+      sess.alt_intervals = TrainingPlanGenerator._buildIntervals(orig.type, ftp, orig.durationMin, orig.tss, orig.ifTarget, 'alt');
+      sess.description     = _buildDesc(sess.intervals);
+      sess.alt_description = _buildDesc(sess.alt_intervals);
+    }
     renderPlan(currentPlan, AppState.athlete);
     await silentSavePlan();
     showToast('👍 Sesión confirmada tal como está', 'var(--primary)');
     return;
   }
 
-  let newType = sess.type;
-  let newTSS  = origTSS;
-  let newDur  = origDur;
+  let newType = orig.type;
+  let newTSS  = orig.tss;
+  let newDur  = orig.durationMin;
   let advice  = '';
 
   if (feeling === 'fuerte') {
-    newDur  = Math.round(Math.min(origDur * 1.15, origDur + 30));
-    newTSS  = Math.round(Math.min(origTSS * 1.15, origTSS * 1.20));
-    newType = UPGRADE[sess.type] || sess.type;
-    advice  = newType !== sess.type
+    newDur  = Math.round(Math.min(orig.durationMin * 1.15, orig.durationMin + 30));
+    newTSS  = Math.round(orig.tss * 1.15);
+    newType = UPGRADE[orig.type] || orig.type;
+    advice  = newType !== orig.type
       ? `Sesión escalada a ${newType} (+15% vol). ¡Muy bien!`
       : `+15% de volumen por buena forma. ¡A por ello!`;
   } else {
-    newDur  = Math.round(origDur * 0.70);
-    newTSS  = Math.round(origTSS * 0.70);
-    newType = DOWNGRADE[sess.type] || sess.type;
-    advice  = `Sesión reducida al 70%${newType !== sess.type ? ` y bajada a ${newType}` : ''} — recuperación prioritaria.`;
+    newDur  = Math.round(orig.durationMin * 0.70);
+    newTSS  = Math.round(orig.tss * 0.70);
+    newType = DOWNGRADE[orig.type] || orig.type;
+    advice  = `Sesión reducida al 70%${newType !== orig.type ? ` y bajada a ${newType}` : ''} — recuperación prioritaria.`;
   }
 
   sess.type        = newType;
   sess.tss         = newTSS;
   sess.durationMin = newDur;
-  sess._checkin    = feeling;
   sess._adapted    = true;
   sess.advice      = advice;
 
   if (window.TrainingPlanGenerator) {
-    const ifT = sess.ifTarget || 0.75;
-    sess.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, ifT, 'main');
-    sess.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, ifT, 'alt');
+    sess.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, orig.ifTarget, 'main');
+    sess.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, orig.ifTarget, 'alt');
     sess.description     = _buildDesc(sess.intervals);
     sess.alt_description = _buildDesc(sess.alt_intervals);
   }
 
   if (window.WORKOUT_TYPES?.[newType]) {
     sess.emoji = WORKOUT_TYPES[newType].emoji;
-    sess.name  = WORKOUT_TYPES[newType].label || sess.name;
+    sess.name  = WORKOUT_TYPES[newType].label || orig.name;
   }
 
   renderPlan(currentPlan, AppState.athlete);
