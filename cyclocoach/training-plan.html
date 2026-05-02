@@ -2400,9 +2400,11 @@ function showSessionDetail(idx, showAlt = false) {
   const _mainIv = !_showSingleWatt && sess.intervals
     ? sess.intervals.find((iv, i) => i > 0 && i < sess.intervals.length - 1)
     : null;
-  const _rangeDisplay = _mainIv?.watts
-    ? _mainIv.watts.replace(/\s*W$/, 'W')
-    : (targetWatts ? targetWatts + 'W' : null);
+  let _rangeDisplay = _mainIv?.watts ? _mainIv.watts.replace(/\s*W$/, 'W') : null;
+  if (!_rangeDisplay && !_showSingleWatt && sess.ifTarget && ftp) {
+    const _z = ZONES_COGGAN.find(z => sess.ifTarget >= z.min && sess.ifTarget < z.max);
+    if (_z) _rangeDisplay = `${Math.round(_z.min * ftp)}–${_z.max === 99 ? '+' : Math.round(_z.max * ftp)}W`;
+  }
 
   if (sess.isRest) {
     document.getElementById('modal-title').textContent = '😴 Día de Descanso';
