@@ -784,6 +784,14 @@ async function loadDashPlan() {
     const data = await res.json();
     if (data?.sessions) {
       dashPlan = { sessions: data.sessions, phase: data.phase, targetTSS: data.tss_target, advice: data.advice || {} };
+      localStorage.setItem('cyclocoach_training_plan', JSON.stringify({
+        week_start: data.week_start || new Date().toISOString().substring(0, 10),
+        sessions: data.sessions,
+        tss_target: data.tss_target,
+        phase: data.phase,
+        advice: data.advice,
+        savedAt: Date.now()
+      }));
       renderTodaySession(dashPlan, AppState.athlete);
       renderWeekCompliance(dashPlan);
       renderCoachNote(dashPlan);
