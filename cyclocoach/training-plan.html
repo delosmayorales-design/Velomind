@@ -1369,7 +1369,7 @@ function renderPlan(plan, athlete) {
             </div>
             <div id="reality-body-${i}" class="adapt-body" style="display:none">
               <textarea class="adapt-input" id="reality-input-${i}" placeholder="Día de descanso — ¿hiciste algo? Ej: Salí 30 min a caminar, estiramientos..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px"></textarea>
-              <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(255,107,53,.15);color:#FF6B35;border-color:rgba(255,107,53,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
+              <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
                 <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
               </button>
               <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
@@ -1469,7 +1469,7 @@ function renderPlan(plan, athlete) {
         </div>
         <div id="reality-body-${i}" class="adapt-body" style="display:none">
           <textarea class="adapt-input" id="reality-input-${i}" placeholder="Ej: Tuve un imprevisto e hice 30 min suaves. Me comí un bocadillo en vez de la ensalada..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px"></textarea>
-          <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(255,107,53,.15);color:#FF6B35;border-color:rgba(255,107,53,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
+          <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
             <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
           </button>
           <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
@@ -2138,7 +2138,12 @@ async function markTodayAsRest(idx, userNote) {
   sess._missed       = true;
 
   // Si el usuario entrenó ayer (día de descanso), anotar en esa sesión pasada
-  const trainedYesterdayCheck = /ayer sal[ií]|sal[ií] ayer|ayer entr[eé]n|entr[eé]n[eé] ayer|ayer hice|hice ayer/i.test(userNote || '');
+  const _fbLow = (userNote || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const _hasTrainVerb = /sal[ií]|entr[eé]n|rode|mont[eé]|fui|pude salir/.test(_fbLow);
+  const _hasDayMention = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'].some(d => _fbLow.includes(d));
+  const trainedYesterdayCheck =
+    /ayer sal[ií]|sal[ií] ayer|ayer entr[eé]n|entr[eé]n[eé] ayer|ayer hice|hice ayer/i.test(userNote || '') ||
+    (_hasDayMention && _hasTrainVerb && idx > 0 && !!currentPlan.sessions[idx - 1]?.isRest);
   if (trainedYesterdayCheck && idx > 0) {
     const yesterdaySess = currentPlan.sessions[idx - 1];
     if (yesterdaySess?.isRest) {
@@ -2155,34 +2160,39 @@ async function markTodayAsRest(idx, userNote) {
     .filter(({ s, i }) => i > idx && !s.isRest);
 
   if (remaining.length > 0) {
-    // Si el usuario entrenó ayer (día de descanso planificado), viene con fatiga extra → redistribuir menos
-    const trainedYesterday = /ayer sal[ií]|sal[ií] ayer|ayer entr[eé]n|entr[eé]n[eé] ayer|ayer hice|hice ayer/i.test(userNote || '');
-    const redistFactor = trainedYesterday
+    const redistFactor = trainedYesterdayCheck
       ? (remaining.length === 1 ? 0.15 : 0.25)
       : (remaining.length === 1 ? 0.30 : remaining.length === 2 ? 0.50 : 0.60);
     const perDayTSS = Math.round(cancelTSS * redistFactor / remaining.length);
+    // IF mínimo garantizado por tipo (evita heredar un ifTarget bajo/incorrecto)
+    const MIN_IF  = { recovery: 0.40, endurance: 0.60, long: 0.62, tempo: 0.76, threshold: 0.83, vo2max: 0.90, sprint: 0.95 };
+    // Duración máxima realista por tipo
+    const MAX_DUR = { recovery: 90, endurance: 210, long: 300, tempo: 120, threshold: 80, vo2max: 70, sprint: 55 };
     remaining.forEach(({ s: rs, i: ri }, pos) => {
       const origTSS = rs.tss || Math.round((rs.tssShare || 0) * (currentPlan.targetTSS || 400));
       const newTSS  = origTSS + perDayTSS;
       // Último día disponible: sube un escalón de intensidad
       const newType  = (pos === remaining.length - 1) ? (UPGRADE[rs.type] || rs.type) : rs.type;
       const typeChanged = newType !== rs.type;
-      // Si cambia el tipo, actualizar ifTarget al valor típico del nuevo tipo
-      const newIF    = typeChanged ? (UPGRADE_IF[rs.type] || rs.ifTarget || 0.65) : (rs.ifTarget || 0.65);
-      // Recalcular duración coherente con el nuevo TSS e IF
-      const newDur   = Math.round((newTSS / (Math.pow(newIF, 2) * 100)) * 60);
+      // IF: si cambia el tipo usar el típico del tipo nuevo; si no, respetar el original pero forzar mínimo por tipo
+      const rawIF  = typeChanged ? (UPGRADE_IF[rs.type] || rs.ifTarget || 0.65) : (rs.ifTarget || 0.65);
+      const newIF  = Math.max(rawIF, MIN_IF[newType] || 0.60);
+      // Duración coherente con TSS e IF, con techo por tipo para que sea realista
+      const rawDur = Math.round((newTSS / (Math.pow(newIF, 2) * 100)) * 60);
+      const newDur = Math.min(rawDur, MAX_DUR[newType] || 210);
+      // Si la duración fue recortada, ajustar TSS al valor real que cabe
+      const adjTSS = rawDur > newDur ? Math.round((newDur / 60) * Math.pow(newIF, 2) * 100) : newTSS;
       rs.type        = newType;
       rs.ifTarget    = newIF;
-      rs.tss         = newTSS;
+      rs.tss         = adjTSS;
       rs.durationMin = newDur;
       rs._adapted    = true;
-      rs.advice      = trainedYesterday
+      rs.advice      = trainedYesterdayCheck
         ? `Sesión ajustada con cuidado: entrenaste ayer (día de descanso), lo que explica el cansancio de hoy. Solo +${perDayTSS} TSS extra para no acumular más fatiga.`
         : `+${perDayTSS} TSS redistribuido de la sesión perdida del ${dayName}.`;
       if (window.TrainingPlanGenerator) {
-        const ifT = newIF;
-        rs.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, ifT, 'main');
-        rs.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, ifT, 'alt');
+        rs.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, adjTSS, newIF, 'main');
+        rs.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, adjTSS, newIF, 'alt');
         rs.description     = _rd(rs.intervals);
         rs.alt_description = _rd(rs.alt_intervals);
       }
@@ -3548,7 +3558,7 @@ function openPostEntrenoModal(sessIdx) {
 
     <div class="post-modal-actions">
       <button id="post-modal-recalc-btn" onclick="_recalcFromModal()"
-        style="padding:13px;background:rgba(255,107,53,.15);border:1px solid rgba(255,107,53,.3);border-radius:10px;color:#FF6B35;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;transition:background .15s">
+        style="padding:13px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.3);border-radius:10px;color:#38bdf8;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;transition:background .15s">
         <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
       </button>
       <button onclick="closePostModal()"
