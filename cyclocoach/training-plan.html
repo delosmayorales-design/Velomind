@@ -1096,7 +1096,15 @@ async function initTrainingPlan() {
         if (localStr) {
           try {
             const localObj = JSON.parse(localStr);
-            if (localObj.savedAt && Date.now() - localObj.savedAt < 15000) return; // Prioridad al guardado ultra reciente
+            if (localObj.savedAt && Date.now() - localObj.savedAt < 5 * 60 * 1000) {
+              // Prioridad al guardado local reciente. Re-sincronizamos al servidor por si se cortó.
+              fetch(`${window.API_URL}/plans/training`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
+                body: localStr
+              }).catch(()=>{});
+              return;
+            }
           } catch(e) {}
         }
 
@@ -1359,11 +1367,13 @@ function renderPlan(plan, athlete) {
         const maxIF = Math.max(...dayActsRest.map(a => Number(a.if_value) || 0));
         restExecBadge = `<div style="padding:10px 16px; background:rgba(239,68,68,.08); border-top:1px solid rgba(239,68,68,.25); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
           <div style="font-size:12px; font-weight:700; color:#ef4444;"><i class="fas fa-triangle-exclamation" style="margin-right:5px"></i>Entrenaste en tu día de descanso</div>
-          <div onclick="event.stopPropagation(); window.location.href='activities.html?id=${dayActsRest[0].id}'" style="font-size:13px; font-weight:700; color:#ef4444; display:flex; align-items:center; gap:12px; cursor:pointer; padding:6px 10px; border-radius:8px; background:rgba(239,68,68,0.05); transition:background 0.2s" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='rgba(239,68,68,0.05)'">
-            <span style="font-size:11px; font-weight:600; opacity:0.9;">Lo que realmente hiciste:</span>
-            <span><i class="fas fa-clock" style="opacity:0.8; margin-right:4px"></i> ${actualDurMin} min</span>
-            <span><i class="fas fa-star" style="opacity:0.8; margin-right:4px"></i> ${actualTSS} TSS <span style="font-size:10px; font-weight:500; opacity:0.8">(IF ${maxIF.toFixed(2)})</span></span>
-            <i class="fas fa-chevron-right" style="font-size:10px; opacity:0.8; margin-left:2px;"></i>
+          <div onclick="event.stopPropagation(); window.location.href='activities.html?id=${dayActsRest[0].id}'" style="flex:1 1 100%; font-size:13px; font-weight:700; color:#ef4444; display:flex; align-items:center; flex-wrap:wrap; gap:10px; cursor:pointer; padding:8px 12px; border-radius:8px; background:rgba(239,68,68,0.05); transition:background 0.2s" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='rgba(239,68,68,0.05)'">
+            <span style="font-size:11px; font-weight:600; opacity:0.9; white-space:nowrap;">Lo que realmente hiciste:</span>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; flex:1">
+              <span style="white-space:nowrap;"><i class="fas fa-clock" style="opacity:0.8; margin-right:4px"></i> ${actualDurMin} min</span>
+              <span style="white-space:nowrap;"><i class="fas fa-star" style="opacity:0.8; margin-right:4px"></i> ${actualTSS} TSS <span style="font-size:10px; font-weight:500; opacity:0.8">(IF ${maxIF.toFixed(2)})</span></span>
+            </div>
+            <i class="fas fa-chevron-right" style="font-size:10px; opacity:0.8;"></i>
           </div>
         </div>`;
       }
@@ -1456,11 +1466,13 @@ function renderPlan(plan, athlete) {
 
         execBadge = `<div style="padding:10px 16px; background:${eBg}; border-top:1px solid ${eBorder}; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
           <div style="font-size:12px; font-weight:700; color:${eColor};"><i class="fas ${eIcon}" style="margin-right:5px"></i>${eLabel}</div>
-          <div onclick="event.stopPropagation(); window.location.href='activities.html?id=${dayActs[0].id}'" style="font-size:13px; font-weight:700; color:${eColor}; display:flex; align-items:center; gap:12px; cursor:pointer; padding:6px 10px; border-radius:8px; background:rgba(255,255,255,0.03); transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
-            <span style="font-size:11px; font-weight:600; opacity:0.9;">Lo que realmente hiciste:</span>
-            <span><i class="fas fa-clock" style="opacity:0.8; margin-right:4px"></i> ${actualDurMin} min</span>
-            <span><i class="fas fa-star" style="opacity:0.8; margin-right:4px"></i> ${actualTSS} TSS <span style="font-size:10px; font-weight:500; opacity:0.8">(IF ${maxIF.toFixed(2)})</span></span>
-            <i class="fas fa-chevron-right" style="font-size:10px; opacity:0.8; margin-left:2px;"></i>
+          <div onclick="event.stopPropagation(); window.location.href='activities.html?id=${dayActs[0].id}'" style="flex:1 1 100%; font-size:13px; font-weight:700; color:${eColor}; display:flex; align-items:center; flex-wrap:wrap; gap:10px; cursor:pointer; padding:8px 12px; border-radius:8px; background:rgba(255,255,255,0.04); transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+            <span style="font-size:11px; font-weight:600; opacity:0.9; white-space:nowrap;">Lo que realmente hiciste:</span>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; flex:1">
+              <span style="white-space:nowrap;"><i class="fas fa-clock" style="opacity:0.8; margin-right:4px"></i> ${actualDurMin} min</span>
+              <span style="white-space:nowrap;"><i class="fas fa-star" style="opacity:0.8; margin-right:4px"></i> ${actualTSS} TSS <span style="font-size:10px; font-weight:500; opacity:0.8">(IF ${maxIF.toFixed(2)})</span></span>
+            </div>
+            <i class="fas fa-chevron-right" style="font-size:10px; opacity:0.8;"></i>
           </div>
         </div>`;
       }
@@ -1531,14 +1543,16 @@ function renderPlan(plan, athlete) {
 
     const actionButtons = `
       <div style="width:100%; display:flex; gap:6px; align-items:center; margin-top:10px; flex-wrap:wrap">
-        <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-right:2px;"><i class="fas fa-download"></i> Exportar:</span>
-        <button onclick="event.stopPropagation();exportSessionToGarmin(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">TCX</button>
-        <button onclick="event.stopPropagation();exportSessionToZwift(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">ZWO</button>
-        <button onclick="event.stopPropagation();exportSessionToERG(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">ERG</button>
-        <button onclick="event.stopPropagation();exportSessionToGPX(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">GPX</button>
+        <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-right:2px; white-space:nowrap;"><i class="fas fa-download"></i> Exportar:</span>
+        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+          <button onclick="event.stopPropagation();exportSessionToGarmin(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">TCX</button>
+          <button onclick="event.stopPropagation();exportSessionToZwift(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">ZWO</button>
+          <button onclick="event.stopPropagation();exportSessionToERG(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">ERG</button>
+          <button onclick="event.stopPropagation();exportSessionToGPX(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">GPX</button>
+        </div>
         
         <div style="flex:1;min-width:10px"></div>
-        <button onclick="event.stopPropagation();startAudioCoach(${i})" style="background:rgba(196,239,68,0.1);border:1px solid rgba(196,239,68,0.3);color:#C4EF44;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(196,239,68,0.2)'" onmouseout="this.style.background='rgba(196,239,68,0.1)'"><i class="fas fa-headphones"></i> Audio</button>
+        <button onclick="event.stopPropagation();startAudioCoach(${i})" style="background:rgba(196,239,68,0.1);border:1px solid rgba(196,239,68,0.3);color:#C4EF44;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;" onmouseover="this.style.background='rgba(196,239,68,0.2)'" onmouseout="this.style.background='rgba(196,239,68,0.1)'"><i class="fas fa-headphones"></i> Audio</button>
       </div>
     `;
 
@@ -1569,7 +1583,7 @@ function renderPlan(plan, athlete) {
                 
                 <div style="flex:1; min-width:10px"></div>
                 ${(!sess.isRest && isPastOrToday) ? `
-                  <button onclick="event.stopPropagation();markSessionDone(${i})" title="${sess.completed ? 'Desmarcar' : 'Marcar como hecha'}" style="display:flex;align-items:center;gap:6px;background:${sess.completed ? 'rgba(16,185,129,0.1)' : 'var(--bg-input)'};border:1px solid ${sess.completed ? 'rgba(16,185,129,0.3)' : 'var(--border)'};color:${sess.completed ? '#10b981' : (isToday ? 'var(--primary)' : 'var(--text-secondary)')};border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='${sess.completed ? '#10b981' : 'var(--primary)'}';this.style.color='${sess.completed ? '#10b981' : 'var(--primary)'}'" onmouseout="this.style.borderColor='${sess.completed ? 'rgba(16,185,129,0.3)' : 'var(--border)'}';this.style.color='${sess.completed ? '#10b981' : (isToday ? 'var(--primary)' : 'var(--text-secondary)')}'">
+                  <button onclick="event.stopPropagation();markSessionDone(${i})" title="${sess.completed ? 'Desmarcar' : 'Marcar como hecha'}" style="display:flex;align-items:center;gap:6px;background:${sess.completed ? 'rgba(16,185,129,0.1)' : 'var(--bg-input)'};border:1px solid ${sess.completed ? 'rgba(16,185,129,0.3)' : 'var(--border)'};color:${sess.completed ? '#10b981' : (isToday ? 'var(--primary)' : 'var(--text-secondary)')};border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;transition:all .2s;white-space:nowrap;" onmouseover="this.style.borderColor='${sess.completed ? '#10b981' : 'var(--primary)'}';this.style.color='${sess.completed ? '#10b981' : 'var(--primary)'}'" onmouseout="this.style.borderColor='${sess.completed ? 'rgba(16,185,129,0.3)' : 'var(--border)'}';this.style.color='${sess.completed ? '#10b981' : (isToday ? 'var(--primary)' : 'var(--text-secondary)')}'">
                     <i class="fas ${sess.completed ? 'fa-check-circle' : 'fa-circle'}"></i> ${sess.completed ? 'Realizada' : 'Marcar'}
                   </button>
                 ` : ''}
@@ -2035,8 +2049,7 @@ async function silentSavePlan() {
     await fetch(`${API}/plans/training`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
-      body: JSON.stringify(planData),
-      keepalive: true
+      body: JSON.stringify(planData)
     });
   } catch(e) { /* fallo silencioso — localStorage ya tiene la copia */ }
 }
@@ -2883,8 +2896,7 @@ async function savePlan() {
     const r = await fetch(`${window.API_URL}/plans/training`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
-      body: JSON.stringify(planData),
-      keepalive: true
+      body: JSON.stringify(planData)
     });
     if (!r.ok) throw new Error((await r.json()).error || 'Error servidor');
 

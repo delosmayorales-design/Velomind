@@ -576,7 +576,6 @@ function saveDashPlan() {
   fetch(`${window.API_URL}/plans/training`, {
     method: 'POST',
     headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-    keepalive: true,
     body: JSON.stringify({
       week_start: monday.toISOString().substring(0, 10),
       sessions: dashPlan.sessions,
