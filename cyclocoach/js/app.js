@@ -276,6 +276,7 @@ const TrainingPlanGenerator = {
     const goal   = GoalUtils.normalize(athlete.goal || 'resistencia');
     const trainingGoal = GoalUtils.toTrainingGoal(goal);
     const exp    = athlete.experience || 'intermedio';
+    const days_per_week = Math.max(1, Math.min(7, athlete.days_per_week || 5));
 
     // Determinar fase (si hay fecha objetivo)
     const phase = this._detectPhase(athlete.event_date);
@@ -323,7 +324,7 @@ const TrainingPlanGenerator = {
     const advice = this._getAdvice(tsb, ctl, effectivePhase);
 
     // Sesiones según goal y phase (con carga ya ajustada)
-    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, activities);
+    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week);
 
     return { phase: effectivePhase, targetTSS, advice, adaptation, sessions, ctl: Math.round(ctl), tsb: tsbRound };
   },
@@ -352,9 +353,30 @@ const TrainingPlanGenerator = {
     return phaseMessages[phase] || phaseMessages.base;
   },
 
-  _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities) {
+  _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week = 5) {
     // ── Selección de plantilla según goal y phase ──
     let templates = this._getTemplate(goal, phase, exp, tsb);
+
+    // ── Respetar días de entrenamiento configurados por el atleta ──
+    const TYPE_PRIORITY = { recovery: 1, endurance: 2, long: 3, tempo: 4, threshold: 5, vo2max: 6, sprint: 7, race: 8 };
+    const trainingDays = templates.filter(t => !t.isRest);
+    if (trainingDays.length > days_per_week) {
+      const excess = trainingDays.length - days_per_week;
+      const toRemove = new Set(
+        [...trainingDays]
+          .sort((a, b) => (TYPE_PRIORITY[a.type] || 5) - (TYPE_PRIORITY[b.type] || 5))
+          .slice(0, excess)
+          .map(s => s.day)
+      );
+      templates = templates.map(t =>
+        toRemove.has(t.day)
+          ? { day: t.day, isRest: true, description: 'Descanso activo — movilidad, estiramientos o caminar.' }
+          : t
+      );
+      const remainingTotal = templates.filter(t => !t.isRest && t.tssShare).reduce((s, t) => s + t.tssShare, 0);
+      if (remainingTotal > 0)
+        templates = templates.map(t => (t.isRest || !t.tssShare) ? t : { ...t, tssShare: t.tssShare / remainingTotal });
+    }
 
     // Con fatiga alta sustituir la sesión más intensa por endurance
     if (tsb < -20 && tsb >= -30) {
