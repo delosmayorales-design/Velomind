@@ -2193,6 +2193,97 @@ function syncPlanWithReality() {
   }
 }
 
+// ── Marcar hoy como descanso y redistribuir carga restante ──────
+async function markTodayAsRest(idx, userNote) {
+  if (!currentPlan?.sessions?.[idx]) return;
+  const sess      = currentPlan.sessions[idx];
+  const ftp       = AppState.athlete?.ftp || 200;
+  const cancelTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
+  const dayName   = sess.day || 'hoy';
+
+  const _rd = ivs => {
+    const parts = [];
+    for (let k = 0; k < ivs.length; k++) {
+      const iv = ivs[k], rm = iv.label.match(/\(×(\d+)/);
+      const bl = iv.label.split(' (')[0].trim(), dv = iv.dur.replace(' c/u', '').trim();
+      if (rm) {
+        const nx = ivs[k + 1];
+        if (nx && nx.label.toLowerCase().match(/recuperación|descanso/) && nx.label.includes('(×')) {
+          parts.push(`${rm[1]}×${dv} ${bl} (rec: ${nx.dur.replace(' c/u', '').trim()})`); k++;
+        } else { parts.push(`${rm[1]}×${dv} ${bl}`); }
+      } else { parts.push(`${dv} ${bl}`); }
+    }
+    return parts.join(' + ');
+  };
+
+  sess.isRest        = true;
+  sess.durationMin   = 0;
+  sess.tss           = 0;
+  sess.ifTarget      = 0;
+  sess.name          = 'Descanso';
+  sess.type          = 'recovery';
+  sess.emoji         = '😴';
+  sess.intervals     = [];
+  sess.alt_intervals = [];
+  sess.description   = 'Descanso — sesión no realizada.';
+  sess.alt_description = '';
+  sess.advice        = userNote ? `No salí: "${userNote.slice(0, 80)}"` : 'Sesión no realizada hoy.';
+  sess._missed       = true;
+
+  const UPGRADE    = { recovery: 'endurance', endurance: 'tempo', long: 'tempo', tempo: 'threshold' };
+  const UPGRADE_IF = { recovery: 0.65, endurance: 0.76, long: 0.76, tempo: 0.82 };
+  const remaining = currentPlan.sessions
+    .map((s, i) => ({ s, i }))
+    .filter(({ s, i }) => i > idx && !s.isRest);
+
+  if (remaining.length > 0) {
+    const redistFactor = remaining.length === 1 ? 0.30 : remaining.length === 2 ? 0.50 : 0.60;
+    const perDayTSS = Math.round(cancelTSS * redistFactor / remaining.length);
+    const MIN_IF  = { recovery: 0.40, endurance: 0.60, long: 0.62, tempo: 0.76, threshold: 0.83, vo2max: 0.90, sprint: 0.95 };
+    const MAX_DUR = { recovery: 90, endurance: 210, long: 300, tempo: 120, threshold: 80, vo2max: 70, sprint: 55 };
+    
+    remaining.forEach(({ s: rs, i: ri }, pos) => {
+      const origTSS = rs.tss || Math.round((rs.tssShare || 0) * (currentPlan.targetTSS || 400));
+      const newTSS  = origTSS + perDayTSS;
+      const newType  = (pos === remaining.length - 1) ? (UPGRADE[rs.type] || rs.type) : rs.type;
+      const typeChanged = newType !== rs.type;
+      const rawIF  = typeChanged ? (UPGRADE_IF[rs.type] || rs.ifTarget || 0.65) : (rs.ifTarget || 0.65);
+      const newIF  = Math.max(rawIF, MIN_IF[newType] || 0.60);
+      const rawDur = Math.round((newTSS / (Math.pow(newIF, 2) * 100)) * 60);
+      const newDur = Math.min(rawDur, MAX_DUR[newType] || 210);
+      const adjTSS = rawDur > newDur ? Math.round((newDur / 60) * Math.pow(newIF, 2) * 100) : newTSS;
+      
+      rs.type        = newType;
+      rs.ifTarget    = newIF;
+      rs.tss         = adjTSS;
+      rs.durationMin = newDur;
+      rs._adapted    = true;
+      rs.advice      = `+${perDayTSS} TSS redistribuido de la sesión perdida del ${dayName}.`;
+      
+      if (window.TrainingPlanGenerator) {
+        rs.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, adjTSS, newIF, 'main');
+        rs.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, adjTSS, newIF, 'alt');
+        rs.description     = _rd(rs.intervals);
+        rs.alt_description = _rd(rs.alt_intervals);
+      }
+      if (window.WORKOUT_TYPES?.[newType]) { rs.emoji = window.WORKOUT_TYPES[newType].emoji; rs.name = window.WORKOUT_TYPES[newType].label; }
+    });
+  }
+
+  const recalcChanges = [];
+  recalcChanges.push({ icon: '😴', day: dayName, desc: 'Sesión convertida en descanso.' });
+  remaining.forEach(({ s: rs }) => {
+    recalcChanges.push({ icon: '⚡', day: rs.day, desc: rs.advice });
+  });
+  if (!remaining.length) {
+    recalcChanges.push({ icon: 'ℹ️', day: 'Esta semana', desc: 'No quedan sesiones restantes. La carga perdida no se redistribuye.' });
+  }
+  currentPlan._recalcSummary = { timestamp: Date.now(), feedback: userNote, changes: recalcChanges };
+
+  renderPlan(currentPlan, AppState.athlete);
+  await silentSavePlan();
+}
+
 async function recalculateWeek(idx) {
   const input = document.getElementById(`reality-input-${idx}`);
   const btn = document.getElementById(`reality-btn-${idx}`);
@@ -2256,7 +2347,7 @@ async function recalculateWeek(idx) {
   try {
     const res = await fetch(`${API}/coach/recalculate-week`, {
       method: 'POST', headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: currentPlan, todayIdx: idx, feedback })
+      body: JSON.stringify({ plan: currentPlan, todayIdx: idx, feedback, allowToday: true })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al recalcular la semana');
