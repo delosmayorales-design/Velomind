@@ -1351,6 +1351,7 @@ function renderPlan(plan, athlete) {
         restExecBadge = `<div style="padding:12px 20px; background:rgba(239,68,68,.08); border-top:1px solid rgba(239,68,68,.25); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
           <div style="font-size:12px; font-weight:700; color:#ef4444;"><i class="fas fa-triangle-exclamation" style="margin-right:5px"></i>Entrenaste en tu día de descanso</div>
           <div style="font-size:13px; font-weight:700; color:#ef4444; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:11px; font-weight:600; opacity:0.9;">Lo que realmente hiciste:</span>
             <span><i class="fas fa-clock" style="opacity:0.8; margin-right:4px"></i> ${actualDurMin} min</span>
             <span><i class="fas fa-star" style="opacity:0.8; margin-right:4px"></i> ${actualTSS} TSS <span style="font-size:10px; font-weight:500; opacity:0.8">(IF ${maxIF.toFixed(2)})</span></span>
           </div>
@@ -1446,6 +1447,7 @@ function renderPlan(plan, athlete) {
         execBadge = `<div style="padding:12px 20px; background:${eBg}; border-top:1px solid ${eBorder}; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
           <div style="font-size:12px; font-weight:700; color:${eColor};"><i class="fas ${eIcon}" style="margin-right:5px"></i>${eLabel}</div>
           <div style="font-size:13px; font-weight:700; color:${eColor}; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:11px; font-weight:600; opacity:0.9;">Lo que realmente hiciste:</span>
             <span><i class="fas fa-clock" style="opacity:0.8; margin-right:4px"></i> ${actualDurMin} min</span>
             <span><i class="fas fa-star" style="opacity:0.8; margin-right:4px"></i> ${actualTSS} TSS <span style="font-size:10px; font-weight:500; opacity:0.8">(IF ${maxIF.toFixed(2)})</span></span>
           </div>
