@@ -1318,6 +1318,7 @@ function renderPlan(plan, athlete) {
     const durMin = Number.isFinite(sess.durationMin) ? sess.durationMin : (sess.ifTarget ? Math.round(tssVal / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
     const targetWatts = sess.ifTarget ? Math.round(ftp * sess.ifTarget) : (Number.isFinite(sess.targetWatts) ? sess.targetWatts : null);
     const ifVal = sess.ifTarget || 0;
+    const _cardAerobic = ['endurance', 'long', 'recovery'].includes(sess.type);
 
     // ── Execution badge: compara actividad real de ese día vs planificado ──
     const sessDayKey = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
@@ -1463,7 +1464,7 @@ function renderPlan(plan, athlete) {
               ${tssVal > 0 ? `<span class="meta-tag"><i class="fas fa-star" style="color:${color}"></i> TSS ${tssVal}</span>` : ''}
               ${durMin > 0 ? `<span class="meta-tag"><i class="fas fa-clock"></i> ${durMin} min</span>` : ''}
               ${ifVal > 0 ? `<span class="meta-tag"><i class="fas fa-bolt" style="color:var(--primary)"></i> IF ${ifVal.toFixed(2)}</span>` : ''}
-              ${targetWatts > 0 ? `<span class="meta-tag"><i class="fas fa-tachometer-alt"></i> ~${targetWatts}W</span>` : ''}
+              ${!_cardAerobic && targetWatts > 0 ? `<span class="meta-tag"><i class="fas fa-tachometer-alt"></i> ~${targetWatts}W</span>` : ''}
             </div>
           </div>
           <div style="text-align:right;padding:8px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;flex-shrink:0">
@@ -2393,6 +2394,13 @@ function showSessionDetail(idx, showAlt = false) {
     : (sess.ifTarget ? Math.round(tss / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
   const targetWatts = sess.ifTarget ? Math.round(ftp * sess.ifTarget) : (Number.isFinite(sess.targetWatts) ? sess.targetWatts : null);
   const ifVal = sess.ifTarget || 0;
+  const _aerobicTypes = ['endurance', 'long', 'recovery'];
+  const _showSingleWatt = !_aerobicTypes.includes(sess.type);
+  // Para sesiones aeróbicas mostramos el rango de la zona principal (ej: "175–235W")
+  const _mainIv = !_showSingleWatt && sess.intervals
+    ? sess.intervals.find((iv, i) => i > 0 && i < sess.intervals.length - 1)
+    : null;
+  const _rangeDisplay = _mainIv?.watts ? _mainIv.watts.replace(/\s*W$/, 'W') : null;
 
   if (sess.isRest) {
     document.getElementById('modal-title').textContent = '😴 Día de Descanso';
@@ -2428,7 +2436,9 @@ function showSessionDetail(idx, showAlt = false) {
           <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Duración est.</div>
         </div>
         <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);text-align:center">
-          <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:var(--primary)">${targetWatts ? targetWatts : '--'}${targetWatts ? 'W' : ''}</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:${_showSingleWatt ? '20' : '14'}px;font-weight:700;color:var(--primary);line-height:1.2">
+            ${_showSingleWatt ? (targetWatts ? targetWatts + 'W' : '--') : (_rangeDisplay || '--')}
+          </div>
           <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Potencia</div>
         </div>
         <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);text-align:center">
