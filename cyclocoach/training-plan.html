@@ -2400,7 +2400,9 @@ function showSessionDetail(idx, showAlt = false) {
   const _mainIv = !_showSingleWatt && sess.intervals
     ? sess.intervals.find((iv, i) => i > 0 && i < sess.intervals.length - 1)
     : null;
-  const _rangeDisplay = _mainIv?.watts ? _mainIv.watts.replace(/\s*W$/, 'W') : null;
+  const _rangeDisplay = _mainIv?.watts
+    ? _mainIv.watts.replace(/\s*W$/, 'W')
+    : (targetWatts ? targetWatts + 'W' : null);
 
   if (sess.isRest) {
     document.getElementById('modal-title').textContent = '😴 Día de Descanso';
@@ -2527,19 +2529,6 @@ function showSessionDetail(idx, showAlt = false) {
               ${iv.watts ? `<span>⚡ ${iv.watts}</span>` : ''}
               ${iv.rpm ? `<span>🔄 ${iv.rpm}</span>` : ''}
             </div>
-          </div>`).join('')}
-      </div>` : ''}
-      ${sess.ifTarget ? `
-      <div style="background:var(--bg-input);padding:14px;border-radius:var(--radius-md);margin-bottom:16px">
-        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px">Zona principal</div>
-        ${ZONES_COGGAN.filter(z => {
-          const ratio = sess.ifTarget;
-          return ratio >= z.min && ratio < z.max;
-        }).map(z => `
-          <div style="display:flex;align-items:center;gap:8px;padding:8px;background:${z.color}15;border-radius:6px">
-            <div style="width:10px;height:10px;border-radius:50%;background:${z.color}"></div>
-            <strong style="color:${z.color};font-size:13px">${z.name}</strong>
-            <span style="color:var(--text-muted);font-size:12px;margin-left:auto">${Math.round(z.min * ftp)}–${z.max === 99 ? '∞' : Math.round(z.max * ftp)}W</span>
           </div>`).join('')}
       </div>` : ''}
       <div class="alert alert-info">
