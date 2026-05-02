@@ -2093,7 +2093,12 @@ async function markTodayAsRest(idx, userNote) {
     .filter(({ s, i }) => i > idx && !s.isRest);
 
   if (remaining.length > 0) {
-    const perDayTSS = Math.round(cancelTSS * 0.6 / remaining.length);
+    // Si el usuario entrenó ayer (día de descanso planificado), viene con fatiga extra → redistribuir menos
+    const trainedYesterday = /ayer sal[ií]|sal[ií] ayer|ayer entr[eé]n|entr[eé]n[eé] ayer|ayer hice|hice ayer/i.test(userNote || '');
+    const redistFactor = trainedYesterday
+      ? (remaining.length === 1 ? 0.15 : 0.25)
+      : (remaining.length === 1 ? 0.30 : remaining.length === 2 ? 0.50 : 0.60);
+    const perDayTSS = Math.round(cancelTSS * redistFactor / remaining.length);
     remaining.forEach(({ s: rs, i: ri }, pos) => {
       const origTSS = rs.tss || Math.round((rs.tssShare || 0) * (currentPlan.targetTSS || 400));
       const newTSS  = origTSS + perDayTSS;
@@ -2104,7 +2109,9 @@ async function markTodayAsRest(idx, userNote) {
       rs.tss         = newTSS;
       rs.durationMin = newDur;
       rs._adapted    = true;
-      rs.advice      = `+${perDayTSS} TSS redistribuido de la sesión perdida del ${dayName}.`;
+      rs.advice      = trainedYesterday
+        ? `Sesión ajustada con cuidado: entrenaste ayer (día de descanso), lo que explica el cansancio de hoy. Solo +${perDayTSS} TSS extra para no acumular más fatiga.`
+        : `+${perDayTSS} TSS redistribuido de la sesión perdida del ${dayName}.`;
       if (window.TrainingPlanGenerator) {
         const ifT = rs.ifTarget || 0.75;
         rs.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, ifT, 'main');
@@ -2167,7 +2174,13 @@ async function recalculateWeek(idx) {
     'sin tiempo', 'no tengo tiempo', 'trabajo hoy', 'tengo trabajo',
     'al final no', 'finalmente no', 'imposible salir', 'no pude salir',
     'no pude entrenar', 'no pude ir', 'no salí', 'no entrené',
-    'dia libre forzado', 'día libre forzado', 'sesión perdida', 'sesion perdida'
+    'dia libre forzado', 'día libre forzado', 'sesión perdida', 'sesion perdida',
+    'no he podido', 'no he salido', 'no he entrenado', 'hoy no he',
+    'hoy no pude', 'hoy no salí', 'hoy no entrené', 'hoy no entrenado',
+    'no he podido salir', 'no he podido entrenar', 'no he podido ir',
+    'no lo he podido', 'no he podio', 'no he podidu',
+    'me ha sido imposible', 'ha sido imposible', 'no ha podido ser',
+    'no me ha dado tiempo', 'no me ha dado', 'no pude completar', 'no completé'
   ];
   const fbNorm = feedback.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   if (KW_NO_SALIR.some(k => fbNorm.includes(k.normalize('NFD').replace(/[̀-ͯ]/g, '')))) {
