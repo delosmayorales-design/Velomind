@@ -565,9 +565,9 @@ function toggleTodayDone() {
 
 function saveDashPlan() {
   if (!dashPlan) return;
-  const local = JSON.parse(localStorage.getItem('velomind_training_plan') || '{}');
+  const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan') || '{}');
   local.sessions = dashPlan.sessions;
-  localStorage.setItem('velomind_training_plan', JSON.stringify(local));
+  localStorage.setItem('cyclocoach_training_plan', JSON.stringify(local));
 
   fetch(`${window.API_URL}/plans/training`, {
     method: 'POST',
@@ -765,7 +765,7 @@ function renderLastActivity() {
 async function loadDashPlan() {
   // Try localStorage first for instant render
   try {
-    const local = JSON.parse(localStorage.getItem('velomind_training_plan') || '{}');
+    const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan') || '{}');
     if (local?.sessions) {
       dashPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {} };
       renderTodaySession(dashPlan, AppState.athlete);

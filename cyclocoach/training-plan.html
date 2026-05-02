@@ -1589,7 +1589,7 @@ function markSessionDone(idx) {
   if (!currentPlan?.sessions?.[idx]) return;
   const sess = currentPlan.sessions[idx];
   sess.completed = !sess.completed;
-  savePlan();
+  silentSavePlan();
   renderPlan(currentPlan, AppState.athlete);
 }
 
@@ -2805,6 +2805,7 @@ function showToast(text, color = 'var(--primary)') {
 
 function regeneratePlan() { 
   generatePlan(); 
+  silentSavePlan();
   showToast('✅ Plan de entrenamiento y nutrición recalculado', 'var(--accent-green)');
 }
 
@@ -2830,6 +2831,7 @@ async function applyAdjustments() {
 
   generatePlan();
   renderAthleteSidebar();
+  silentSavePlan();
 
   showToast('✅ Plan de entrenamiento y nutrición recalculado', 'var(--accent-green)');
 }
