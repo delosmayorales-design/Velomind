@@ -1091,6 +1091,15 @@ async function initTrainingPlan() {
       .then(r => r.ok ? r.json() : null)
       .then(savedPlan => {
         if (_fetchToken !== _bgSyncToken) return; // El usuario ya guardó localmente — ignorar respuesta antigua
+        
+        const localStr = localStorage.getItem('cyclocoach_training_plan');
+        if (localStr) {
+          try {
+            const localObj = JSON.parse(localStr);
+            if (localObj.savedAt && Date.now() - localObj.savedAt < 15000) return; // Prioridad al guardado ultra reciente
+          } catch(e) {}
+        }
+
         if (savedPlan?.sessions) {
           currentPlan = { sessions: savedPlan.sessions, phase: savedPlan.phase, targetTSS: savedPlan.tss_target, advice: savedPlan.advice || {} };
           _patchSegmentDistances(currentPlan);
@@ -2027,6 +2036,7 @@ async function silentSavePlan() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
       body: JSON.stringify(planData),
+      keepalive: true
     });
   } catch(e) { /* fallo silencioso — localStorage ya tiene la copia */ }
 }
@@ -2082,15 +2092,21 @@ function syncPlanWithReality() {
 
     if (dayActs.length === 0) {
       if (!sess.isRest) {
-        sess._missed = true;
-        sess.completed = false;
-        accumTSSDeviation -= planTSS;
-        if (['threshold', 'vo2max', 'sprint'].includes(sess.type)) missedIntensity = true;
-        changesSummary.push({ icon: '📉', day: sess.day, desc: `Sin actividad registrada. Faltaron ${planTSS} TSS planificados.` });
-        changed = true;
+        if (sess.completed) {
+          // El usuario la marcó manualmente como hecha. Respetamos su elección.
+        } else {
+          sess._missed = true;
+          sess.completed = false;
+          accumTSSDeviation -= planTSS;
+          if (['threshold', 'vo2max', 'sprint'].includes(sess.type)) missedIntensity = true;
+          changesSummary.push({ icon: '📉', day: sess.day, desc: `Sin actividad registrada. Faltaron ${planTSS} TSS planificados.` });
+          changed = true;
+        }
       } else {
-        sess.completed = true; // Día de descanso cumplido
-        changed = true;
+        if (!sess.completed) {
+          sess.completed = true; // Día de descanso cumplido
+          changed = true;
+        }
       }
     } else {
       let actType = 'endurance';
@@ -2100,18 +2116,26 @@ function syncPlanWithReality() {
       else if (maxIF < 0.60) actType = 'recovery';
 
       accumTSSDeviation += diffTSS;
-      sess.completed = true;
-      changed = true;
+      if (!sess.completed) {
+        sess.completed = true;
+        changed = true;
+      }
 
       if (sess.isRest) {
-        sess.advice = `Entrenaste en tu día de descanso (${actDur} min, ${actTSS} TSS). Acumulas fatiga extra que ajustaremos.`;
-        changesSummary.push({ icon: '⚠️', day: sess.day, desc: `Entrenaste en descanso: ${actTSS} TSS añadidos.` });
+        if (!sess.advice || !sess.advice.includes('Entrenaste')) {
+          sess.advice = `Entrenaste en tu día de descanso (${actDur} min, ${actTSS} TSS). Acumulas fatiga extra que ajustaremos.`;
+          changesSummary.push({ icon: '⚠️', day: sess.day, desc: `Entrenaste en descanso: ${actTSS} TSS añadidos.` });
+          changed = true;
+        }
       } else {
         if (Math.abs(diffTSS) <= 15 && (sess.type === actType || actTSS > 0)) {
           // Sesión cumplida aceptablemente
         } else {
-          sess.advice = `Planificado: ${planTSS} TSS. Realizado: ${actTSS} TSS (IF máx ${maxIF.toFixed(2)}).`;
-          changesSummary.push({ icon: '📊', day: sess.day, desc: `Plan: ${planTSS} TSS → Real: ${actTSS} TSS. Ajustando balance.` });
+          if (!sess.advice || !sess.advice.includes('Planificado:')) {
+            sess.advice = `Planificado: ${planTSS} TSS. Realizado: ${actTSS} TSS (IF máx ${maxIF.toFixed(2)}).`;
+            changesSummary.push({ icon: '📊', day: sess.day, desc: `Plan: ${planTSS} TSS → Real: ${actTSS} TSS. Ajustando balance.` });
+            changed = true;
+          }
         }
       }
     }
@@ -2860,6 +2884,7 @@ async function savePlan() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
       body: JSON.stringify(planData),
+      keepalive: true
     });
     if (!r.ok) throw new Error((await r.json()).error || 'Error servidor');
 

@@ -567,12 +567,18 @@ function saveDashPlan() {
   if (!dashPlan) return;
   const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan') || '{}');
   local.sessions = dashPlan.sessions;
+  local.savedAt = Date.now();
   localStorage.setItem('cyclocoach_training_plan', JSON.stringify(local));
+
+  const monday = new Date();
+  monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
 
   fetch(`${window.API_URL}/plans/training`, {
     method: 'POST',
     headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+    keepalive: true,
     body: JSON.stringify({
+      week_start: monday.toISOString().substring(0, 10),
       sessions: dashPlan.sessions,
       phase: dashPlan.phase,
       tss_target: dashPlan.targetTSS,
