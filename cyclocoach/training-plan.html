@@ -1521,17 +1521,15 @@ function renderPlan(plan, athlete) {
       </div>` : '');
 
     const actionButtons = `
-      <div style="flex:1;min-width:20px"></div>
-      <div style="display:flex; gap:12px; align-items:center; border-left:1px solid var(--border); padding-left:12px; margin-left:4px">
-        <button onclick="event.stopPropagation();startAudioCoach(${i})" title="Coach de audio" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0;font-size:13px;transition:color .2s" onmouseover="this.style.color='#C4EF44'" onmouseout="this.style.color='var(--text-muted)'"><i class="fas fa-headphones"></i></button>
-        <button onclick="event.stopPropagation();exportSessionToGarmin(${i})" title="Exportar a Garmin Connect (.tcx)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0;font-size:13px;transition:color .2s" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-muted)'"><i class="fas fa-watch"></i></button>
-        <button onclick="event.stopPropagation();exportSessionToZwift(${i})" title="Exportar a Zwift (.zwo)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0;font-size:13px;transition:color .2s" onmouseover="this.style.color='#818cf8'" onmouseout="this.style.color='var(--text-muted)'"><i class="fas fa-bolt"></i></button>
-        ${(!sess.isRest && isPastOrToday) ? `
-          <div style="width:1px;height:12px;background:var(--border);margin:0 2px"></div>
-          <button onclick="event.stopPropagation();markSessionDone(${i})" title="${sess.completed ? 'Desmarcar' : 'Marcar como hecha'}" style="background:none;border:none;color:${sess.completed ? '#10b981' : (isToday ? 'var(--primary)' : 'var(--text-muted)')};opacity:${sess.completed || isToday ? '1' : '0.6'};cursor:pointer;padding:0;font-size:15px;transition:transform .1s" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'">
-            <i class="fas ${sess.completed ? 'fa-check-circle' : 'fa-circle'}"></i>
-          </button>
-        ` : ''}
+      <div style="width:100%; display:flex; gap:6px; align-items:center; margin-top:10px; flex-wrap:wrap">
+        <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-right:2px;"><i class="fas fa-download"></i> Exportar:</span>
+        <button onclick="event.stopPropagation();exportSessionToGarmin(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">TCX</button>
+        <button onclick="event.stopPropagation();exportSessionToZwift(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">ZWO</button>
+        <button onclick="event.stopPropagation();exportSessionToFIT(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">FIT</button>
+        <button onclick="event.stopPropagation();exportSessionToGPX(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">GPX</button>
+        
+        <div style="flex:1;min-width:10px"></div>
+        <button onclick="event.stopPropagation();startAudioCoach(${i})" style="background:rgba(196,239,68,0.1);border:1px solid rgba(196,239,68,0.3);color:#C4EF44;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(196,239,68,0.2)'" onmouseout="this.style.background='rgba(196,239,68,0.1)'"><i class="fas fa-headphones"></i> Audio</button>
       </div>
     `;
 
@@ -1554,11 +1552,18 @@ function renderPlan(plan, athlete) {
               <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:2px">🎯 ${objective}</div>
               <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;line-height:1.5">${wkSummary}</div>
               ${sess.terrain ? `<div style="font-size:11px;color:${color};margin-bottom:4px;font-weight:600;opacity:.9">${sess.terrain}</div>` : ''}
-              <div class="session-meta" style="align-items:center; width:100%">
+              <div class="session-meta" style="align-items:center; width:100%; flex-wrap:wrap;">
               ${tssVal > 0 ? `<span class="meta-tag"><i class="fas fa-star" style="color:${color}"></i> TSS ${tssVal}</span>` : ''}
               ${durMin > 0 ? `<span class="meta-tag"><i class="fas fa-clock"></i> ${durMin} min</span>` : ''}
               ${ifVal > 0 ? `<span class="meta-tag"><i class="fas fa-bolt" style="color:var(--primary)"></i> IF ${ifVal.toFixed(2)}</span>` : ''}
               ${_cardWatts > 0 ? `<span class="meta-tag"><i class="fas fa-tachometer-alt"></i> ~${_cardWatts}W</span>` : ''}
+                
+                <div style="flex:1; min-width:10px"></div>
+                ${(!sess.isRest && isPastOrToday) ? `
+                  <button onclick="event.stopPropagation();markSessionDone(${i})" title="${sess.completed ? 'Desmarcar' : 'Marcar como hecha'}" style="background:none;border:none;color:${sess.completed ? '#10b981' : (isToday ? 'var(--primary)' : 'var(--text-muted)')};opacity:${sess.completed || isToday ? '1' : '0.6'};cursor:pointer;padding:0;font-size:17px;transition:transform .1s" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'">
+                    <i class="fas ${sess.completed ? 'fa-check-circle' : 'fa-circle'}"></i>
+                  </button>
+                ` : ''}
                 ${actionButtons}
             </div>
           </div>
@@ -3221,6 +3226,18 @@ function exportSessionToGarmin(index) {
 function exportSessionToZwift(index) {
   if (!currentPlan) { alert('El plan aún no está generado.'); return; }
   FITWorkoutEncoder.exportSession(currentPlan.sessions[index], (AppState.athlete || {}).ftp || 200, 'zwo');
+}
+
+function exportSessionToFIT(index) {
+  if (!currentPlan) { alert('El plan aún no está generado.'); return; }
+  if (typeof FITWorkoutEncoder === 'undefined' || !FITWorkoutEncoder.exportSession) { alert('Librería de exportación no disponible.'); return; }
+  FITWorkoutEncoder.exportSession(currentPlan.sessions[index], (AppState.athlete || {}).ftp || 200, 'fit');
+}
+
+function exportSessionToGPX(index) {
+  if (!currentPlan) { alert('El plan aún no está generado.'); return; }
+  if (typeof FITWorkoutEncoder === 'undefined' || !FITWorkoutEncoder.exportSession) { alert('Librería de exportación no disponible.'); return; }
+  FITWorkoutEncoder.exportSession(currentPlan.sessions[index], (AppState.athlete || {}).ftp || 200, 'gpx');
 }
 
 function exportWeekToGarmin() {
