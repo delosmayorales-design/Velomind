@@ -1307,7 +1307,7 @@ function renderPlan(plan, athlete) {
     const color  = typeColors[sess.type] || 'var(--text-secondary)';
     const tssVal = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare || 0) * plan.targetTSS);
     const durMin = Number.isFinite(sess.durationMin) ? sess.durationMin : (sess.ifTarget ? Math.round(tssVal / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
-    const targetWatts = Number.isFinite(sess.targetWatts) ? sess.targetWatts : (sess.ifTarget ? Math.round(ftp * sess.ifTarget) : null);
+    const targetWatts = sess.ifTarget ? Math.round(ftp * sess.ifTarget) : (Number.isFinite(sess.targetWatts) ? sess.targetWatts : null);
     const ifVal = sess.ifTarget || 0;
 
     // ── Execution badge: compara actividad real de ese día vs planificado ──
