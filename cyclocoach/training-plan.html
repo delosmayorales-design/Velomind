@@ -1203,7 +1203,7 @@ function buildWorkoutSummary(desc, durMin) {
   } else {
     const durMatch = mainBlock.match(/^(\d+)\s*min(?:\s+(.+))?/);
     const label = durMatch?.[2]?.trim().split(' ').slice(0, 3).join(' ') || '';
-    line = durMatch ? `🏃 ${durMatch[1]} min${label ? ' ' + label : ''}` : (mainBlock ? `🏃 ${mainBlock.slice(0, 30)}` : '');
+    line = durMatch ? `🚴 ${durMatch[1]} min${label ? ' ' + label : ''}` : (mainBlock ? `🚴 ${mainBlock.slice(0, 30)}` : '');
   }
   return [line, durMin > 0 ? `⏱️ ${durMin} min total` : ''].filter(Boolean).join('  ·  ');
 }
@@ -1211,6 +1211,15 @@ function buildWorkoutSummary(desc, durMin) {
 function renderPlan(plan, athlete) {
   const metrics = AppState.getCurrentMetrics();
   const ftp = athlete.ftp || 200;
+
+  // Reconstruir intervalos con FTP actual para que vatios mostrados sean siempre consistentes
+  if (window.TrainingPlanGenerator) {
+    (plan.sessions || []).forEach(s => {
+      if (s.isRest || !s.type) return;
+      s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, 'main');
+      s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, 'alt');
+    });
+  }
 
   // Actualizar objetivos en el panel superior (si ya se renderizó)
   if (document.getElementById('plan-target-tss-val')) {
@@ -2382,9 +2391,7 @@ function showSessionDetail(idx, showAlt = false) {
   const durMin = Number.isFinite(sess.durationMin)
     ? sess.durationMin
     : (sess.ifTarget ? Math.round(tss / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
-  const targetWatts = Number.isFinite(sess.targetWatts)
-    ? sess.targetWatts
-    : (sess.ifTarget ? Math.round(ftp * sess.ifTarget) : null);
+  const targetWatts = sess.ifTarget ? Math.round(ftp * sess.ifTarget) : (Number.isFinite(sess.targetWatts) ? sess.targetWatts : null);
   const ifVal = sess.ifTarget || 0;
 
   if (sess.isRest) {
