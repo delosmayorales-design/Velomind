@@ -1388,7 +1388,7 @@ function renderPlan(plan, athlete) {
             </div>
             <div id="reality-body-${i}" class="adapt-body" style="display:none">
               <textarea class="adapt-input" id="reality-input-${i}" placeholder="Día de descanso — ¿hiciste algo? Ej: Salí 30 min a caminar, estiramientos..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px"></textarea>
-              <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(56,189,248,.12);color:#ffffff;border-color:rgba(56,189,248,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
+              <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:#38BDF8;color:#0f172a !important;border:none;width:100%;display:flex;justify-content:center;align-items:center;gap:8px;transition:background 0.2s" onmouseover="this.style.background='#0ea5e9'" onmouseout="this.style.background='#38BDF8'">
                 <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
               </button>
               <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
@@ -1491,7 +1491,7 @@ function renderPlan(plan, athlete) {
         </div>
         <div id="reality-body-${i}" class="adapt-body" style="display:none">
           <textarea class="adapt-input" id="reality-input-${i}" placeholder="Ej: Tuve un imprevisto e hice 30 min suaves. Me comí un bocadillo en vez de la ensalada..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px"></textarea>
-          <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(56,189,248,.12);color:#ffffff;border-color:rgba(56,189,248,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
+          <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:#38BDF8;color:#0f172a !important;border:none;width:100%;display:flex;justify-content:center;align-items:center;gap:8px;transition:background 0.2s" onmouseover="this.style.background='#0ea5e9'" onmouseout="this.style.background='#38BDF8'">
             <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
           </button>
           <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
@@ -1525,7 +1525,7 @@ function renderPlan(plan, athlete) {
         <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-right:2px;"><i class="fas fa-download"></i> Exportar:</span>
         <button onclick="event.stopPropagation();exportSessionToGarmin(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">TCX</button>
         <button onclick="event.stopPropagation();exportSessionToZwift(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">ZWO</button>
-        <button onclick="event.stopPropagation();exportSessionToFIT(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">FIT</button>
+        <button onclick="event.stopPropagation();exportSessionToERG(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">ERG</button>
         <button onclick="event.stopPropagation();exportSessionToGPX(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">GPX</button>
         
         <div style="flex:1;min-width:10px"></div>
@@ -1560,8 +1560,8 @@ function renderPlan(plan, athlete) {
                 
                 <div style="flex:1; min-width:10px"></div>
                 ${(!sess.isRest && isPastOrToday) ? `
-                  <button onclick="event.stopPropagation();markSessionDone(${i})" title="${sess.completed ? 'Desmarcar' : 'Marcar como hecha'}" style="background:none;border:none;color:${sess.completed ? '#10b981' : (isToday ? 'var(--primary)' : 'var(--text-muted)')};opacity:${sess.completed || isToday ? '1' : '0.6'};cursor:pointer;padding:0;font-size:17px;transition:transform .1s" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'">
-                    <i class="fas ${sess.completed ? 'fa-check-circle' : 'fa-circle'}"></i>
+                  <button onclick="event.stopPropagation();markSessionDone(${i})" title="${sess.completed ? 'Desmarcar' : 'Marcar como hecha'}" style="display:flex;align-items:center;gap:6px;background:${sess.completed ? 'rgba(16,185,129,0.1)' : 'var(--bg-input)'};border:1px solid ${sess.completed ? 'rgba(16,185,129,0.3)' : 'var(--border)'};color:${sess.completed ? '#10b981' : (isToday ? 'var(--primary)' : 'var(--text-secondary)')};border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='${sess.completed ? '#10b981' : 'var(--primary)'}';this.style.color='${sess.completed ? '#10b981' : 'var(--primary)'}'" onmouseout="this.style.borderColor='${sess.completed ? 'rgba(16,185,129,0.3)' : 'var(--border)'}';this.style.color='${sess.completed ? '#10b981' : (isToday ? 'var(--primary)' : 'var(--text-secondary)')}'">
+                    <i class="fas ${sess.completed ? 'fa-check-circle' : 'fa-circle'}"></i> ${sess.completed ? 'Realizada' : 'Marcar'}
                   </button>
                 ` : ''}
                 ${actionButtons}
@@ -3228,10 +3228,10 @@ function exportSessionToZwift(index) {
   FITWorkoutEncoder.exportSession(currentPlan.sessions[index], (AppState.athlete || {}).ftp || 200, 'zwo');
 }
 
-function exportSessionToFIT(index) {
+function exportSessionToERG(index) {
   if (!currentPlan) { alert('El plan aún no está generado.'); return; }
   if (typeof FITWorkoutEncoder === 'undefined' || !FITWorkoutEncoder.exportSession) { alert('Librería de exportación no disponible.'); return; }
-  FITWorkoutEncoder.exportSession(currentPlan.sessions[index], (AppState.athlete || {}).ftp || 200, 'fit');
+  FITWorkoutEncoder.exportSession(currentPlan.sessions[index], (AppState.athlete || {}).ftp || 200, 'erg');
 }
 
 function exportSessionToGPX(index) {
@@ -3630,7 +3630,7 @@ function openPostEntrenoModal(sessIdx) {
 
     <div class="post-modal-actions">
       <button id="post-modal-recalc-btn" onclick="_recalcFromModal()"
-        style="padding:13px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.3);border-radius:10px;color:#38bdf8;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;transition:background .15s">
+        style="padding:13px;background:#38BDF8;border:none;border-radius:10px;color:#0f172a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;transition:background .15s" onmouseover="this.style.background='#0ea5e9'" onmouseout="this.style.background='#38BDF8'">
         <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
       </button>
       <button onclick="closePostModal()"

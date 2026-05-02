@@ -184,6 +184,38 @@ ${stepsXml}
 </workout_file>`;
   }
 
+  // ── GPX (Genérico para tracks, usado como fallback de descripción) ─────────
+  function encodeGPX(workoutName, steps) {
+    const desc = steps.map(s => `${s.name || 'Paso'}: ${s.sec}s @ ${s.lo}-${s.hi}W`).join('\n');
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="VeloMind" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>${escapeXml(workoutName)}</name>
+    <desc>${escapeXml(desc)}</desc>
+  </metadata>
+  <trk>
+    <name>${escapeXml(workoutName)}</name>
+    <desc>${escapeXml(desc)}</desc>
+    <trkseg></trkseg>
+  </trk>
+</gpx>`;
+  }
+
+  // ── ERG (Estándar de texto para rodillos inteligentes en lugar de FIT binario) ──
+  function encodeERG(workoutName, steps, ftp) {
+    let erg = `[COURSE HEADER]\nVERSION = 2\nUNITS = METRIC\nDESCRIPTION = ${workoutName}\nFILE NAME = ${workoutName}.erg\nFTP = ${ftp}\nMINUTES WATTS\n[END COURSE HEADER]\n[COURSE DATA]\n`;
+    let currentMin = 0;
+    steps.forEach(s => {
+      let startMin = currentMin;
+      let endMin = currentMin + (s.sec / 60);
+      let pwr = Math.round((s.lo + s.hi) / 2);
+      erg += `${startMin.toFixed(2)}\t${pwr}\n${endMin.toFixed(2)}\t${pwr}\n`;
+      currentMin = endMin;
+    });
+    erg += `[END COURSE DATA]`;
+    return erg;
+  }
+
   // ── Export helpers ─────────────────────────────────────────────────────────
 
   function exportSession(session, ftp, format) {
@@ -194,6 +226,10 @@ ${stepsXml}
     const steps        = buildSteps(session, ftp);
     if (format === 'zwo') {
       download(`VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.zwo`, encodeZWO(sessionLabel, steps, ftp));
+    } else if (format === 'gpx') {
+      download(`VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.gpx`, encodeGPX(sessionLabel, steps));
+    } else if (format === 'erg' || format === 'fit') {
+      download(`VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.erg`, encodeERG(sessionLabel, steps, ftp));
     } else {
       download(`VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.tcx`, encodeTCX(sessionLabel, steps));
     }
@@ -211,7 +247,7 @@ ${stepsXml}
     next();
   }
 
-  return { buildSteps, encodeTCX, encodeZWO, download, exportSession, exportWeek };
+  return { buildSteps, encodeTCX, encodeZWO, encodeGPX, encodeERG, download, exportSession, exportWeek };
 })();
 
 window.FITWorkoutEncoder = FITWorkoutEncoder;
