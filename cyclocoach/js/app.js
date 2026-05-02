@@ -353,6 +353,30 @@ const TrainingPlanGenerator = {
     return phaseMessages[phase] || phaseMessages.base;
   },
 
+  _buildDesc(ivs) {
+    let parts = [];
+    for (let idx = 0; idx < ivs.length; idx++) {
+      let i = ivs[idx];
+      let repsMatch = i.label.match(/\(×(\d+)/);
+      let baseLabel = i.label.split(' (')[0].trim();
+      let durVal = i.dur.replace(' c/u', '').trim();
+      if (repsMatch) {
+        let reps = repsMatch[1];
+        let next = ivs[idx + 1];
+        if (next && (next.label.toLowerCase().includes('recuperación') || next.label.toLowerCase().includes('descanso')) && next.label.includes('(×')) {
+           let nextDur = next.dur.replace(' c/u', '').trim();
+           parts.push(`${reps}×${durVal} ${baseLabel} (rec: ${nextDur})`);
+           idx++;
+        } else {
+           parts.push(`${reps}×${durVal} ${baseLabel}`);
+        }
+      } else {
+        parts.push(`${durVal} ${baseLabel}`);
+      }
+    }
+    return parts.join(' + ');
+  },
+
   _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week = 5) {
     // ── Selección de plantilla según goal y phase ──
     let templates = this._getTemplate(goal, phase, exp, tsb);
@@ -422,32 +446,8 @@ const TrainingPlanGenerator = {
       const alt_intervals = this._buildIntervals(t.type, ftp, durMin, sessTSS, t.ifTarget, 'alt');
 
       // Construir descripción dinámica que coincida exactamente con los intervalos
-      const buildDesc = (ivs) => {
-        let parts = [];
-        for (let idx = 0; idx < ivs.length; idx++) {
-          let i = ivs[idx];
-          let repsMatch = i.label.match(/\(×(\d+)/);
-          let baseLabel = i.label.split(' (')[0].trim();
-          let durVal = i.dur.replace(' c/u', '').trim();
-          if (repsMatch) {
-            let reps = repsMatch[1];
-            let next = ivs[idx + 1];
-            if (next && (next.label.toLowerCase().includes('recuperación') || next.label.toLowerCase().includes('descanso')) && next.label.includes('(×')) {
-               let nextDur = next.dur.replace(' c/u', '').trim();
-               parts.push(`${reps}×${durVal} ${baseLabel} (rec: ${nextDur})`);
-               idx++;
-            } else {
-               parts.push(`${reps}×${durVal} ${baseLabel}`);
-            }
-          } else {
-            parts.push(`${durVal} ${baseLabel}`);
-          }
-        }
-        return parts.join(' + ');
-      };
-
-      let dynamicDesc = buildDesc(intervals);
-      let altDesc = buildDesc(alt_intervals);
+      let dynamicDesc = this._buildDesc(intervals);
+      let altDesc = this._buildDesc(alt_intervals);
 
       // ── Consejo de terreno con segmentos locales ──
       let terrainAdvice = '';

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -1078,14 +1078,12 @@ async function initTrainingPlan() {
     if (typeof BackendSync !== 'undefined') {
       if (BackendSync.loadProfile) BackendSync.loadProfile().then(() => { renderAthleteSidebar(); fillAdjustmentForm(); });
       if (BackendSync.loadActivities) BackendSync.loadActivities().then(() => {
-        checkMissedYesterday(); // Revisar si ayer se perdió una sesión, tras cargar actividades reales
-        autoMarkCompletedFromActivities();
+        syncPlanWithReality();
       }).catch(() => {
-        checkMissedYesterday(); // También intentar con actividades locales si falla el backend
-        autoMarkCompletedFromActivities();
+        syncPlanWithReality();
       });
     } else {
-      checkMissedYesterday();
+      syncPlanWithReality();
     }
     
     const _fetchToken = ++_bgSyncToken;
@@ -1096,6 +1094,7 @@ async function initTrainingPlan() {
         if (savedPlan?.sessions) {
           currentPlan = { sessions: savedPlan.sessions, phase: savedPlan.phase, targetTSS: savedPlan.tss_target, advice: savedPlan.advice || {} };
           _patchSegmentDistances(currentPlan);
+          syncPlanWithReality();
           localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...savedPlan, savedAt: Date.now() }));
           if (AppState.athlete) renderPlan(currentPlan, AppState.athlete);
         }
@@ -1142,6 +1141,7 @@ function generatePlan() {
   const athlete = AppState.athlete || getDefaultAthlete();
   const plan = TrainingPlanGenerator.generate(athlete, AppState.activities);
   currentPlan = plan;
+  syncPlanWithReality();
   renderPlan(plan, athlete);
 }
 
@@ -1369,7 +1369,7 @@ function renderPlan(plan, athlete) {
             </div>
             <div id="reality-body-${i}" class="adapt-body" style="display:none">
               <textarea class="adapt-input" id="reality-input-${i}" placeholder="Día de descanso — ¿hiciste algo? Ej: Salí 30 min a caminar, estiramientos..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px"></textarea>
-              <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
+              <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(56,189,248,.12);color:#ffffff;border-color:rgba(56,189,248,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
                 <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
               </button>
               <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
@@ -1469,7 +1469,7 @@ function renderPlan(plan, athlete) {
         </div>
         <div id="reality-body-${i}" class="adapt-body" style="display:none">
           <textarea class="adapt-input" id="reality-input-${i}" placeholder="Ej: Tuve un imprevisto e hice 30 min suaves. Me comí un bocadillo en vez de la ensalada..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px"></textarea>
-          <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
+          <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:rgba(56,189,248,.12);color:#ffffff;border-color:rgba(56,189,248,.3);width:100%;display:flex;justify-content:center;align-items:center;gap:8px">
             <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
           </button>
           <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
@@ -2028,217 +2028,148 @@ function toggleRealityForm(idx) {
   if (open) document.getElementById(`reality-input-${idx}`)?.focus();
 }
 
-// ── Detección de sesión perdida ayer ────────────────────────────
-function checkMissedYesterday() {
-  if (!currentPlan?.sessions) return;
-
-  const today = new Date();
-  const todayIdx = (today.getDay() + 6) % 7; // Lun=0 … Dom=6
-  const yesterdayIdx = todayIdx - 1;
-  if (yesterdayIdx < 0) return; // Lunes — no hay ayer en esta semana
-
-  const sess = currentPlan.sessions[yesterdayIdx];
-  if (!sess || sess.isRest || sess._missed || sess.completed) return;
-
-  // Calcular la fecha de ayer
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const ydKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
-
-  // Si hay actividad de Strava para ayer, no preguntar
-  const hasActivity = (AppState.activities || []).some(a => a.date?.slice(0,10) === ydKey);
-  if (hasActivity) return;
-
-  // Solo preguntar una vez por día calendario
-  const askKey = `velomind_missed_ask_${ydKey}`;
-  if (localStorage.getItem(askKey)) return;
-  localStorage.setItem(askKey, '1');
-
-  showMissedBanner(yesterdayIdx, sess);
-}
-
-function showMissedBanner(idx, sess) {
-  const banner = document.getElementById('missed-check-banner');
-  if (!banner) return;
-  const name = sess.name || sess.type || 'Sesión';
-  const dur  = sess.durationMin ? `${sess.durationMin} min` : '';
-  banner.innerHTML = `
-    <div style="background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.2);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <span style="font-size:22px;flex-shrink:0">🤔</span>
-      <div style="flex:1;min-width:160px">
-        <div style="font-size:12px;font-weight:700;color:#38BDF8;margin-bottom:2px">Ayer no vemos actividad registrada</div>
-        <div style="font-size:11px;color:var(--text-secondary)">${sess.emoji || '🚴'} ${name}${dur ? ' · ' + dur : ''} planificados</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-shrink:0">
-        <button onclick="dismissMissedCheck(${idx}, true)"
-          style="padding:6px 14px;background:rgba(16,185,129,.12);border:1.5px solid rgba(16,185,129,.4);color:#10b981;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
-          ✅ Sí, entrené
-        </button>
-        <button onclick="dismissMissedCheck(${idx}, false)"
-          style="padding:6px 14px;background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.3);color:#f87171;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
-          ❌ No pude
-        </button>
-      </div>
-    </div>`;
-  banner.style.display = 'block';
-}
-
-async function dismissMissedCheck(idx, didTrain) {
-  const banner = document.getElementById('missed-check-banner');
-  if (banner) { banner.style.display = 'none'; banner.innerHTML = ''; }
-
-  if (didTrain) {
-    if (currentPlan?.sessions?.[idx]) {
-      currentPlan.sessions[idx].completed = true;
-      renderPlan(currentPlan, AppState.athlete);
-      await silentSavePlan();
-      showToast('✅ Sesión de ayer marcada como completada', 'var(--primary)');
-    }
-  } else {
-    await markTodayAsRest(idx, 'Sesión no realizada ayer');
-  }
-}
-
-// ── Marcar hoy como descanso y redistribuir carga restante ──────
-async function markTodayAsRest(idx, userNote) {
-  if (!currentPlan?.sessions?.[idx]) return;
-  const sess      = currentPlan.sessions[idx];
-  const ftp       = AppState.athlete?.ftp || 200;
-  const cancelTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
-  const dayName   = sess.day || 'hoy';
-
-  const _rd = ivs => {
-    const parts = [];
-    for (let k = 0; k < ivs.length; k++) {
-      const iv = ivs[k], rm = iv.label.match(/\(×(\d+)/);
-      const bl = iv.label.split(' (')[0].trim(), dv = iv.dur.replace(' c/u', '').trim();
-      if (rm) {
-        const nx = ivs[k + 1];
-        if (nx && nx.label.toLowerCase().match(/recuperación|descanso/) && nx.label.includes('(×')) {
-          parts.push(`${rm[1]}×${dv} ${bl} (rec: ${nx.dur.replace(' c/u', '').trim()})`); k++;
-        } else { parts.push(`${rm[1]}×${dv} ${bl}`); }
-      } else { parts.push(`${dv} ${bl}`); }
-    }
-    return parts.join(' + ');
-  };
-
-  // Marcar hoy como descanso
-  sess.isRest        = true;
-  sess.durationMin   = 0;
-  sess.tss           = 0;
-  sess.ifTarget      = 0;
-  sess.name          = 'Descanso';
-  sess.type          = 'recovery';
-  sess.emoji         = '😴';
-  sess.intervals     = [];
-  sess.alt_intervals = [];
-  sess.description   = 'Descanso — sesión no realizada.';
-  sess.alt_description = '';
-  sess.advice        = userNote ? `No salí: "${userNote.slice(0, 80)}"` : 'Sesión no realizada hoy.';
-  sess._missed       = true;
-
-  // Si el usuario entrenó ayer (día de descanso), anotar en esa sesión pasada
-  const _fbLow = (userNote || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const _hasTrainVerb = /sal[ií]|entr[eé]n|rode|mont[eé]|fui|pude salir/.test(_fbLow);
-  const _hasDayMention = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'].some(d => _fbLow.includes(d));
-  const trainedYesterdayCheck =
-    /ayer sal[ií]|sal[ií] ayer|ayer entr[eé]n|entr[eé]n[eé] ayer|ayer hice|hice ayer/i.test(userNote || '') ||
-    (_hasDayMention && _hasTrainVerb && idx > 0 && !!currentPlan.sessions[idx - 1]?.isRest);
-  if (trainedYesterdayCheck && idx > 0) {
-    const yesterdaySess = currentPlan.sessions[idx - 1];
-    if (yesterdaySess?.isRest) {
-      yesterdaySess._trainedOnRest = true;
-      yesterdaySess.advice = `✏️ Según tu registro, entrenaste este día de descanso (hiciste la sesión de ${sess.day || 'hoy'}). El cansancio acumulado explica que ${sess.day || 'hoy'} no pudieras salir.`;
-    }
-  }
-
-  // Redistribuir entre los días restantes disponibles
-  const UPGRADE    = { recovery: 'endurance', endurance: 'tempo', long: 'tempo', tempo: 'threshold' };
-  const UPGRADE_IF = { recovery: 0.65, endurance: 0.76, long: 0.76, tempo: 0.82 };
-  const remaining = currentPlan.sessions
-    .map((s, i) => ({ s, i }))
-    .filter(({ s, i }) => i > idx && !s.isRest);
-
-  if (remaining.length > 0) {
-    const redistFactor = trainedYesterdayCheck
-      ? (remaining.length === 1 ? 0.15 : 0.25)
-      : (remaining.length === 1 ? 0.30 : remaining.length === 2 ? 0.50 : 0.60);
-    const perDayTSS = Math.round(cancelTSS * redistFactor / remaining.length);
-    // IF mínimo garantizado por tipo (evita heredar un ifTarget bajo/incorrecto)
-    const MIN_IF  = { recovery: 0.40, endurance: 0.60, long: 0.62, tempo: 0.76, threshold: 0.83, vo2max: 0.90, sprint: 0.95 };
-    // Duración máxima realista por tipo
-    const MAX_DUR = { recovery: 90, endurance: 210, long: 300, tempo: 120, threshold: 80, vo2max: 70, sprint: 55 };
-    remaining.forEach(({ s: rs, i: ri }, pos) => {
-      const origTSS = rs.tss || Math.round((rs.tssShare || 0) * (currentPlan.targetTSS || 400));
-      const newTSS  = origTSS + perDayTSS;
-      // Último día disponible: sube un escalón de intensidad
-      const newType  = (pos === remaining.length - 1) ? (UPGRADE[rs.type] || rs.type) : rs.type;
-      const typeChanged = newType !== rs.type;
-      // IF: si cambia el tipo usar el típico del tipo nuevo; si no, respetar el original pero forzar mínimo por tipo
-      const rawIF  = typeChanged ? (UPGRADE_IF[rs.type] || rs.ifTarget || 0.65) : (rs.ifTarget || 0.65);
-      const newIF  = Math.max(rawIF, MIN_IF[newType] || 0.60);
-      // Duración coherente con TSS e IF, con techo por tipo para que sea realista
-      const rawDur = Math.round((newTSS / (Math.pow(newIF, 2) * 100)) * 60);
-      const newDur = Math.min(rawDur, MAX_DUR[newType] || 210);
-      // Si la duración fue recortada, ajustar TSS al valor real que cabe
-      const adjTSS = rawDur > newDur ? Math.round((newDur / 60) * Math.pow(newIF, 2) * 100) : newTSS;
-      rs.type        = newType;
-      rs.ifTarget    = newIF;
-      rs.tss         = adjTSS;
-      rs.durationMin = newDur;
-      rs._adapted    = true;
-      rs.advice      = trainedYesterdayCheck
-        ? `Sesión ajustada con cuidado: entrenaste ayer (día de descanso), lo que explica el cansancio de hoy. Solo +${perDayTSS} TSS extra para no acumular más fatiga.`
-        : `+${perDayTSS} TSS redistribuido de la sesión perdida del ${dayName}.`;
-      if (window.TrainingPlanGenerator) {
-        rs.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, adjTSS, newIF, 'main');
-        rs.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, adjTSS, newIF, 'alt');
-        rs.description     = _rd(rs.intervals);
-        rs.alt_description = _rd(rs.alt_intervals);
-      }
-      if (window.WORKOUT_TYPES?.[newType]) { rs.emoji = WORKOUT_TYPES[newType].emoji; rs.name = WORKOUT_TYPES[newType].label; }
-    });
-  }
-
-  // ── Construir resumen del recálculo ──────────────────────────
-  const recalcChanges = [];
-  if (trainedYesterdayCheck && idx > 0 && currentPlan.sessions[idx - 1]?.isRest) {
-    recalcChanges.push({ icon: '✏️', day: currentPlan.sessions[idx - 1].day, desc: 'Entrenaste en tu día de descanso — registrado como actividad no planificada.' });
-  }
-  recalcChanges.push({ icon: '😴', day: dayName, desc: 'Sesión cancelada y convertida en descanso.' });
-  remaining.forEach(({ s: rs }) => {
-    recalcChanges.push({ icon: '⚡', day: rs.day, desc: rs.advice });
-  });
-  if (!remaining.length) {
-    recalcChanges.push({ icon: 'ℹ️', day: 'Esta semana', desc: 'No quedan sesiones restantes. La carga perdida no se redistribuye.' });
-  }
-  currentPlan._recalcSummary = { timestamp: Date.now(), feedback: userNote, changes: recalcChanges };
-
-  renderPlan(currentPlan, AppState.athlete);
-  await silentSavePlan();
-}
-
-// ── Auto-mark sessions as done when there's an activity for that day ──
-function autoMarkCompletedFromActivities() {
-  if (!currentPlan?.sessions || !AppState.activities?.length) return;
+// ── Sincronización Proactiva del Plan con Actividades Reales ─────────
+function syncPlanWithReality() {
+  if (!currentPlan?.sessions || !AppState.activities) return;
 
   const mondayDate = new Date();
   mondayDate.setDate(mondayDate.getDate() - (mondayDate.getDay() || 7) + 1);
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  const ftp = AppState.athlete?.ftp || 200;
 
   let changed = false;
-  currentPlan.sessions.forEach((sess, i) => {
-    if (sess.isRest || sess.completed) return;
+  const changesSummary = [];
+  let accumTSSDeviation = 0;
+  let missedIntensity = false;
+
+  for (let i = 0; i <= todayIdx; i++) {
+    const sess = currentPlan.sessions[i];
+    if (sess._evaluated) continue;
+
     const sessDate = new Date(mondayDate);
     sessDate.setDate(mondayDate.getDate() + i);
-    const sessDayKey = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
-    const acts = AppState.activities.filter(a => a.date?.slice(0, 10) === sessDayKey);
-    if (acts.length > 0) {
+    const dateKey = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
+    const dayActs = AppState.activities.filter(a => a.date?.slice(0, 10) === dateKey);
+
+    const isToday = i === todayIdx;
+    if (isToday && dayActs.length === 0) continue; // Hoy aún no termina
+
+    const planTSS = sess.isRest ? 0 : (sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400)));
+    let actTSS = 0, actDur = 0, maxIF = 0, actTypeStr = '';
+
+    if (dayActs.length > 0) {
+      actTSS = Math.round(dayActs.reduce((s, a) => s + (Number(a.tss) || 0), 0));
+      actDur = Math.round(dayActs.reduce((s, a) => s + (Number(a.duration) || 0), 0) / 60);
+      maxIF = Math.max(...dayActs.map(a => Number(a.if_value) || 0));
+      actTypeStr = dayActs.map(a => a.name).join(' + ');
+    }
+
+    const diffTSS = actTSS - planTSS;
+    sess._evaluated = true;
+
+    if (dayActs.length === 0) {
+      if (!sess.isRest) {
+        sess._missed = true;
+        sess.completed = false;
+        accumTSSDeviation -= planTSS;
+        if (['threshold', 'vo2max', 'sprint'].includes(sess.type)) missedIntensity = true;
+        changesSummary.push({ icon: '📉', day: sess.day, desc: `Sin actividad registrada. Faltaron ${planTSS} TSS planificados.` });
+        changed = true;
+      } else {
+        sess.completed = true; // Día de descanso cumplido
+        changed = true;
+      }
+    } else {
+      let actType = 'endurance';
+      if (maxIF > 0.90) actType = 'vo2max';
+      else if (maxIF > 0.80) actType = 'threshold';
+      else if (maxIF > 0.70) actType = 'tempo';
+      else if (maxIF < 0.60) actType = 'recovery';
+
+      accumTSSDeviation += diffTSS;
       sess.completed = true;
       changed = true;
+
+      if (sess.isRest) {
+        sess.advice = `Entrenaste en tu día de descanso (${actDur} min, ${actTSS} TSS). Acumulas fatiga extra que ajustaremos.`;
+        changesSummary.push({ icon: '⚠️', day: sess.day, desc: `Entrenaste en descanso: ${actTSS} TSS añadidos.` });
+      } else {
+        if (Math.abs(diffTSS) <= 15 && (sess.type === actType || actTSS > 0)) {
+          // Sesión cumplida aceptablemente
+        } else {
+          sess.advice = `Planificado: ${planTSS} TSS. Realizado: ${actTSS} TSS (IF máx ${maxIF.toFixed(2)}).`;
+          changesSummary.push({ icon: '📊', day: sess.day, desc: `Plan: ${planTSS} TSS → Real: ${actTSS} TSS. Ajustando balance.` });
+        }
+      }
     }
-  });
+  }
+
+  if (changed && Math.abs(accumTSSDeviation) > 20) {
+    for (let i = todayIdx + 1; i < 7; i++) {
+      const sess = currentPlan.sessions[i];
+      if (sess.isRest) continue;
+
+      let planTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
+
+      if (accumTSSDeviation > 30) {
+        const reduction = Math.min(accumTSSDeviation, Math.round(planTSS * 0.35));
+        sess.tss = Math.max(20, planTSS - reduction);
+        sess.durationMin = Math.round((sess.durationMin || 60) * (sess.tss / planTSS));
+        accumTSSDeviation -= reduction;
+        
+        if (['vo2max', 'threshold', 'sprint'].includes(sess.type)) {
+          sess.type = 'endurance';
+          sess.ifTarget = 0.65;
+          if (window.WORKOUT_TYPES) {
+            sess.emoji = window.WORKOUT_TYPES['endurance'].emoji;
+            sess.name = 'Z2 (Ajuste por fatiga)';
+          }
+        }
+        
+        sess._adapted = true;
+        sess.advice = `Reducimos la carga (${sess.tss} TSS) para compensar el exceso de fatiga acumulado a principios de semana.`;
+        changesSummary.push({ icon: '📉', day: sess.day, desc: `Carga reducida a ${sess.tss} TSS por fatiga acumulada.` });
+
+      } else if (accumTSSDeviation < -30) {
+        const addition = Math.min(Math.abs(accumTSSDeviation), Math.round(planTSS * 0.35));
+        sess.tss = planTSS + addition;
+        sess.durationMin = Math.round((sess.durationMin || 60) * (sess.tss / planTSS));
+        accumTSSDeviation += addition;
+
+        if (missedIntensity && sess.type === 'endurance') {
+          sess.type = 'tempo';
+          sess.ifTarget = 0.78;
+          if (window.WORKOUT_TYPES) {
+            sess.emoji = window.WORKOUT_TYPES['tempo'].emoji;
+            sess.name = 'Tempo (Recuperar intensidad)';
+          }
+          missedIntensity = false;
+        }
+
+        sess._adapted = true;
+        sess.advice = `Aumentamos volumen/intensidad a ${sess.tss} TSS para recuperar parte de la carga perdida.`;
+        changesSummary.push({ icon: '📈', day: sess.day, desc: `Carga aumentada a ${sess.tss} TSS para compensar.` });
+      }
+      
+      if (sess._adapted && window.TrainingPlanGenerator) {
+        sess.intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'main');
+        sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'alt');
+        if (TrainingPlanGenerator._buildDesc) {
+          sess.description = TrainingPlanGenerator._buildDesc(sess.intervals);
+          sess.alt_description = TrainingPlanGenerator._buildDesc(sess.alt_intervals);
+        }
+      }
+    }
+  }
 
   if (changed) {
+    if (changesSummary.length > 0) {
+      currentPlan._recalcSummary = { 
+        timestamp: Date.now(), 
+        feedback: 'Adaptación automática proactiva basada en tus actividades reales de esta semana.', 
+        changes: changesSummary 
+      };
+    }
     silentSavePlan();
     renderPlan(currentPlan, AppState.athlete);
   }
@@ -2264,13 +2195,38 @@ async function recalculateWeek(idx) {
     'dia libre forzado', 'día libre forzado', 'sesión perdida', 'sesion perdida',
     'no he podido', 'no he salido', 'no he entrenado', 'hoy no he',
     'hoy no pude', 'hoy no salí', 'hoy no entrené', 'hoy no entrenado',
+    'hoy no he podido', 'hoy no he salido', 'hoy no he entrenado',
+    'pero hoy no', 'y hoy no', 'mas hoy no', 'más hoy no',
+    'hoy tampoco', 'hoy descanso', 'hoy me quedo',
     'no he podido salir', 'no he podido entrenar', 'no he podido ir',
     'no lo he podido', 'no he podio', 'no he podidu',
     'me ha sido imposible', 'ha sido imposible', 'no ha podido ser',
     'no me ha dado tiempo', 'no me ha dado', 'no pude completar', 'no completé'
   ];
   const fbNorm = feedback.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  if (KW_NO_SALIR.some(k => fbNorm.includes(k.normalize('NFD').replace(/[̀-ͯ]/g, '')))) {
+
+  // ── Comprobación por actividades de Strava ────────────────────
+  // Si hoy no hay actividad registrada y el texto no indica que entrenaron → descanso determinista
+  const _rcMonday = new Date();
+  _rcMonday.setDate(_rcMonday.getDate() - (_rcMonday.getDay() || 7) + 1);
+  _rcMonday.setHours(0, 0, 0, 0);
+  const _rcTodayDate = new Date(_rcMonday);
+  _rcTodayDate.setDate(_rcMonday.getDate() + idx);
+  const _rcTodayKey = `${_rcTodayDate.getFullYear()}-${String(_rcTodayDate.getMonth()+1).padStart(2,'0')}-${String(_rcTodayDate.getDate()).padStart(2,'0')}`;
+  const _rcPrevDate = new Date(_rcMonday);
+  _rcPrevDate.setDate(_rcMonday.getDate() + (idx - 1));
+  const _rcPrevKey = `${_rcPrevDate.getFullYear()}-${String(_rcPrevDate.getMonth()+1).padStart(2,'0')}-${String(_rcPrevDate.getDate()).padStart(2,'0')}`;
+  const _acts = AppState.activities || [];
+  const _todayHasActivity  = _acts.some(a => a.date?.slice(0, 10) === _rcTodayKey);
+  const _prevIsRestDay     = idx > 0 && !!currentPlan.sessions[idx - 1]?.isRest;
+  const _prevHasActivity   = _prevIsRestDay && _acts.some(a => a.date?.slice(0, 10) === _rcPrevKey);
+  // Si Strava confirma que hoy no entrenaron → ruta determinista (sin necesidad de keywords)
+  const _stravaConfirmsNoTraining = !_todayHasActivity && /ayer|no (he|pude|pud)|hoy no|no sal|no entr/i.test(fbNorm);
+
+  // Patrón texto: "ayer X pero hoy no"
+  const _ayerHoyNo = /ayer.{0,40}hoy no\b|hoy no (sal|entr|pued|voy|puedo)\b/i.test(fbNorm);
+
+  if (_stravaConfirmsNoTraining || _ayerHoyNo || KW_NO_SALIR.some(k => fbNorm.includes(k.normalize('NFD').replace(/[̀-ͯ]/g, '')))) {
     markTodayAsRest(idx, feedback);
     return;
   }
