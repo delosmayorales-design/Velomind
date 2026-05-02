@@ -1520,20 +1520,16 @@ function renderPlan(plan, athlete) {
         </div>
       </div>` : '');
 
-    // Botón "Marcar como hecha": grande y prominente para hoy, compacto para pasado
+    // Botón "Marcar como hecha": integrado en la misma fila para ahorrar espacio
     const doneBtn = !sess.isRest && isPastOrToday ? (isToday && !sess.completed ? `
-      <div style="padding:0 16px 12px 16px">
-        <button onclick="event.stopPropagation();markSessionDone(${i})"
-          style="width:100%;background:rgba(16,185,129,.12);border:1.5px solid rgba(16,185,129,.4);color:#10b981;border-radius:12px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px">
-          <i class="fas fa-circle-check"></i> Marcar sesión como hecha
-        </button>
-      </div>` : `
-      <div style="padding:0 16px 10px 16px;display:flex;justify-content:flex-end">
-        <button onclick="event.stopPropagation();markSessionDone(${i})"
-          style="background:transparent;border:1px solid ${sess.completed ? 'rgba(128,128,128,.3)' : 'var(--border)'};color:${sess.completed ? '#10b981' : 'var(--text-muted)'};border-radius:8px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px">
-          <i class="fas ${sess.completed ? 'fa-circle-check' : 'fa-circle'}"></i> ${sess.completed ? 'Hecha' : 'Marcar como hecha'}
-        </button>
-      </div>`) : '';
+      <button onclick="event.stopPropagation();markSessionDone(${i})"
+        style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.4);color:#10b981;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+        <i class="fas fa-circle-check"></i> Marcar como hecha
+      </button>` : `
+      <button onclick="event.stopPropagation();markSessionDone(${i})"
+        style="background:transparent;border:1px solid ${sess.completed ? 'rgba(128,128,128,.3)' : 'var(--border)'};color:${sess.completed ? '#10b981' : 'var(--text-muted)'};border-radius:8px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px">
+        <i class="fas ${sess.completed ? 'fa-circle-check' : 'fa-circle'}"></i> ${sess.completed ? 'Hecha' : 'Marcar como hecha'}
+      </button>`) : '';
 
     return `
       <div class="session-card-item${sess.completed ? ' completed' : ''}${isToday ? ' today-card' : ''}">
@@ -1569,7 +1565,7 @@ function renderPlan(plan, athlete) {
         </div>
         ${adaptBanner}
         ${execBadge}
-        <div style="display:flex;gap:8px;padding:8px 16px 4px 16px;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;gap:8px;padding:8px 16px 12px 16px;flex-wrap:wrap;align-items:center">
           <button onclick="event.stopPropagation();startAudioCoach(${i})" title="Coach de audio"
             style="background:rgba(196,239,68,.12);border:1px solid rgba(196,239,68,.3);color:#C4EF44;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:5px">
             <i class="fas fa-headphones"></i> Audio
@@ -1582,8 +1578,8 @@ function renderPlan(plan, athlete) {
             style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.35);color:#818cf8;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:5px">
             <i class="fas fa-bolt"></i> Zwift
           </button>
+          ${doneBtn ? `<div style="flex:1;min-width:0px"></div>${doneBtn}` : ''}
         </div>
-        ${doneBtn}
         ${adaptZone}
       </div>`;
   }).join('');
