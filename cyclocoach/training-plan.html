@@ -1341,6 +1341,22 @@ function renderPlan(plan, athlete) {
 
     const isToday_rest = i === todayIdx;
     if (sess.isRest) {
+      const sessDayKeyRest = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
+      const dayActsRest = (i <= todayIdx) ? (AppState.activities || []).filter(a => a.date && a.date.slice(0, 10) === sessDayKeyRest) : [];
+      let restExecBadge = '';
+      if (dayActsRest.length > 0) {
+        const actualTSS = Math.round(dayActsRest.reduce((s, a) => s + (Number(a.tss) || 0), 0));
+        const actualDurMin = Math.round(dayActsRest.reduce((s, a) => s + (Number(a.duration) || 0), 0) / 60);
+        const maxIF = Math.max(...dayActsRest.map(a => Number(a.if_value) || 0));
+        restExecBadge = `<div style="padding:12px 20px; background:rgba(239,68,68,.08); border-top:1px solid rgba(239,68,68,.25); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <div style="font-size:12px; font-weight:700; color:#ef4444;"><i class="fas fa-triangle-exclamation" style="margin-right:5px"></i>Entrenaste en tu día de descanso</div>
+          <div style="font-size:13px; font-weight:700; color:#ef4444; display:flex; align-items:center; gap:12px;">
+            <span><i class="fas fa-clock" style="opacity:0.8; margin-right:4px"></i> ${actualDurMin} min</span>
+            <span><i class="fas fa-star" style="opacity:0.8; margin-right:4px"></i> ${actualTSS} TSS <span style="font-size:10px; font-weight:500; opacity:0.8">(IF ${maxIF.toFixed(2)})</span></span>
+          </div>
+        </div>`;
+      }
+
       return `
         <div class="session-card-item rest">
           <div class="session-row" style="cursor:default">
@@ -1360,6 +1376,7 @@ function renderPlan(plan, athlete) {
             <span style="font-size:16px;flex-shrink:0">✏️</span>
             <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${sess.advice}</div>
           </div>` : ''}
+          ${restExecBadge}
           ${isToday_rest ? `
           <div class="adapt-zone" style="background:rgba(255,107,53,.03);border-top:1px solid rgba(255,107,53,.1)" onclick="event.stopPropagation()">
             <div class="adapt-trigger" onclick="toggleRealityForm(${i})" style="color:#FF6B35">
@@ -1400,65 +1417,39 @@ function renderPlan(plan, athlete) {
     let execBadge = '';
     if (isPast || (isToday_ex && dayActs.length > 0)) {
       if (dayActs.length === 0 && isPast && !sess.isRest) {
-        execBadge = `<div style="padding:14px 20px; background:rgba(239,68,68,.05); border-top:1px solid rgba(239,68,68,.15);">
-          <div style="font-size:12px; font-weight:700; color:#ef4444; margin-bottom:6px;"><i class="fas fa-circle-minus" style="margin-right:5px"></i>Sesión no realizada</div>
-          <div style="font-size:12px; color:var(--text-muted); line-height:1.4;">El plan pedía ${durMin} min y ${tssVal} TSS. Al faltar esta carga, VeloMind ajustará los próximos días si la desviación semanal lo requiere.</div>
+        execBadge = `<div style="padding:12px 20px; background:rgba(239,68,68,.05); border-top:1px solid rgba(239,68,68,.15); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <div style="font-size:12px; font-weight:700; color:#ef4444;"><i class="fas fa-circle-minus" style="margin-right:5px"></i>Sesión no realizada</div>
+          <div style="font-size:11px; color:var(--text-muted); line-height:1.4; max-width:60%;">VeloMind ajustará tu plan según la desviación de fatiga semanal.</div>
         </div>`;
       } else if (dayActs.length > 0) {
         const actualTSS    = Math.round(dayActs.reduce((s, a) => s + (Number(a.tss) || 0), 0));
         const actualDurMin = Math.round(dayActs.reduce((s, a) => s + (Number(a.duration) || 0), 0) / 60);
         const maxIF        = Math.max(...dayActs.map(a => Number(a.if_value) || 0));
         
-        if (sess.isRest) {
-          execBadge = `<div style="padding:14px 20px; background:rgba(239,68,68,.08); border-top:1px solid rgba(239,68,68,.25);">
-            <div style="font-size:12px; font-weight:700; color:#ef4444; margin-bottom:12px;"><i class="fas fa-triangle-exclamation" style="margin-right:5px"></i>Entrenaste en tu día de descanso</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-              <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:10px;">
-                <div style="font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Planificado</div>
-                <div style="font-size:13px; font-weight:700; color:var(--text-secondary);">Descanso total</div>
-                <div style="font-size:13px; font-weight:700; color:var(--text-secondary); margin-top:2px;">0 TSS</div>
-              </div>
-              <div style="background:var(--bg-card); border:1px solid rgba(239,68,68,.25); border-radius:8px; padding:10px;">
-                <div style="font-size:9px; font-weight:700; color:#ef4444; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Realizado</div>
-                <div style="font-size:13px; font-weight:700; color:#ef4444;"><i class="fas fa-clock" style="opacity:0.8; margin-right:4px"></i> ${actualDurMin} min</div>
-                <div style="font-size:13px; font-weight:700; color:#ef4444; margin-top:2px;"><i class="fas fa-star" style="opacity:0.8; margin-right:4px"></i> ${actualTSS} TSS <span style="font-size:10px; font-weight:500; opacity:0.8">(IF ${maxIF.toFixed(2)})</span></div>
-              </div>
-            </div>
-          </div>`;
+        const ratio = tssVal > 0 ? actualTSS / tssVal : 1;
+        let eIcon, eLabel, eBg, eBorder, eColor;
+        
+        if (ratio >= 1.15) {
+          eIcon = 'fa-fire'; eLabel = '¡Te excediste de carga!';
+          eBg = 'rgba(239,68,68,.08)'; eBorder = 'rgba(239,68,68,.25)'; eColor = '#ef4444';
+        } else if (ratio >= 0.85) {
+          eIcon = 'fa-circle-check'; eLabel = '¡Plan cumplido!';
+          eBg = 'rgba(16,185,129,.08)'; eBorder = 'rgba(16,185,129,.25)'; eColor = '#10b981';
+        } else if (ratio >= 0.50) {
+          eIcon = 'fa-circle-half-stroke'; eLabel = 'Sesión parcial';
+          eBg = 'rgba(251,191,36,.08)'; eBorder = 'rgba(251,191,36,.25)'; eColor = '#f59e0b';
         } else {
-          const ratio = tssVal > 0 ? actualTSS / tssVal : 1;
-          let eIcon, eLabel, eBg, eBorder, eColor;
-          
-          if (ratio >= 1.15) {
-            eIcon = 'fa-fire'; eLabel = '¡Te excediste de carga!';
-            eBg = 'rgba(239,68,68,.08)'; eBorder = 'rgba(239,68,68,.25)'; eColor = '#ef4444';
-          } else if (ratio >= 0.85) {
-            eIcon = 'fa-circle-check'; eLabel = '¡Plan cumplido!';
-            eBg = 'rgba(16,185,129,.08)'; eBorder = 'rgba(16,185,129,.25)'; eColor = '#10b981';
-          } else if (ratio >= 0.50) {
-            eIcon = 'fa-circle-half-stroke'; eLabel = 'Sesión parcial';
-            eBg = 'rgba(251,191,36,.08)'; eBorder = 'rgba(251,191,36,.25)'; eColor = '#f59e0b';
-          } else {
-            eIcon = 'fa-circle-exclamation'; eLabel = 'Muy por debajo del plan';
-            eBg = 'rgba(239,68,68,.08)'; eBorder = 'rgba(239,68,68,.25)'; eColor = '#ef4444';
-          }
-
-          execBadge = `<div style="padding:14px 20px; background:${eBg}; border-top:1px solid ${eBorder};">
-            <div style="font-size:12px; font-weight:700; color:${eColor}; margin-bottom:12px;"><i class="fas ${eIcon}" style="margin-right:5px"></i>${eLabel}</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-              <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:10px;">
-                <div style="font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Planificado</div>
-                <div style="font-size:13px; font-weight:700; color:var(--text-secondary);"><i class="fas fa-clock" style="opacity:0.6; margin-right:4px"></i> ${durMin} min</div>
-                <div style="font-size:13px; font-weight:700; color:var(--text-secondary); margin-top:2px;"><i class="fas fa-star" style="opacity:0.6; margin-right:4px"></i> ${tssVal} TSS <span style="font-size:10px; font-weight:500; opacity:0.7">(IF ${ifVal.toFixed(2)})</span></div>
-              </div>
-              <div style="background:var(--bg-card); border:1px solid ${eBorder}; border-radius:8px; padding:10px;">
-                <div style="font-size:9px; font-weight:700; color:${eColor}; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Realizado</div>
-                <div style="font-size:13px; font-weight:700; color:${eColor};"><i class="fas fa-clock" style="opacity:0.8; margin-right:4px"></i> ${actualDurMin} min</div>
-                <div style="font-size:13px; font-weight:700; color:${eColor}; margin-top:2px;"><i class="fas fa-star" style="opacity:0.8; margin-right:4px"></i> ${actualTSS} TSS <span style="font-size:10px; font-weight:500; opacity:0.8">(IF ${maxIF.toFixed(2)})</span></div>
-              </div>
-            </div>
-          </div>`;
+          eIcon = 'fa-circle-exclamation'; eLabel = 'Muy por debajo del plan';
+          eBg = 'rgba(239,68,68,.08)'; eBorder = 'rgba(239,68,68,.25)'; eColor = '#ef4444';
         }
+
+        execBadge = `<div style="padding:12px 20px; background:${eBg}; border-top:1px solid ${eBorder}; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <div style="font-size:12px; font-weight:700; color:${eColor};"><i class="fas ${eIcon}" style="margin-right:5px"></i>${eLabel}</div>
+          <div style="font-size:13px; font-weight:700; color:${eColor}; display:flex; align-items:center; gap:12px;">
+            <span><i class="fas fa-clock" style="opacity:0.8; margin-right:4px"></i> ${actualDurMin} min</span>
+            <span><i class="fas fa-star" style="opacity:0.8; margin-right:4px"></i> ${actualTSS} TSS <span style="font-size:10px; font-weight:500; opacity:0.8">(IF ${maxIF.toFixed(2)})</span></span>
+          </div>
+        </div>`;
       }
     }
 
