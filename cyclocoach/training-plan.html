@@ -1198,6 +1198,12 @@ function _parseWattsRange(str) {
   return null;
 }
 
+function _findMainInterval(intervals) {
+  if (!intervals?.length) return null;
+  if (intervals.length === 1) return intervals[0];
+  return intervals.find((iv, i) => i > 0 && i < intervals.length - 1) ?? intervals[1];
+}
+
 function buildWorkoutSummary(desc, durMin, mainIv) {
   if (!desc || desc === 'Descanso.') return durMin > 0 ? `⏱️ ${durMin} min` : '';
   const SKIP = ['calentamiento', 'activación', 'vuelta', 'enfriamiento', 'pedaleo suave z1'];
@@ -1331,7 +1337,7 @@ function renderPlan(plan, athlete) {
     const durMin = Number.isFinite(sess.durationMin) ? sess.durationMin : (sess.ifTarget ? Math.round(tssVal / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
     const targetWatts = sess.ifTarget ? Math.round(ftp * sess.ifTarget) : (Number.isFinite(sess.targetWatts) ? sess.targetWatts : null);
     const ifVal = sess.ifTarget || 0;
-    const _cardMainIv = (sess.intervals || []).find((iv, j) => j > 0 && j < (sess.intervals || []).length - 1);
+    const _cardMainIv = _findMainInterval(sess.intervals);
     const _cardWp = _parseWattsRange(_cardMainIv?.watts);
     const _cardWatts = _cardWp ? _cardWp.mid : targetWatts;
 
@@ -2409,9 +2415,7 @@ function showSessionDetail(idx, showAlt = false) {
     : (sess.ifTarget ? Math.round(tss / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
   const targetWatts = sess.ifTarget ? Math.round(ftp * sess.ifTarget) : (Number.isFinite(sess.targetWatts) ? sess.targetWatts : null);
   const ifVal = sess.ifTarget || 0;
-  const _mainIv = sess.intervals
-    ? sess.intervals.find((iv, i) => i > 0 && i < sess.intervals.length - 1)
-    : null;
+  const _mainIv = _findMainInterval(sess.intervals);
   const _wParsed = _parseWattsRange(_mainIv?.watts);
   let _rangeDisplay = _wParsed?.str || null;
   if (!_rangeDisplay && sess.ifTarget && ftp) {
