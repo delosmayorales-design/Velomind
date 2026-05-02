@@ -1198,7 +1198,7 @@ function _parseWattsRange(str) {
   return null;
 }
 
-function buildWorkoutSummary(desc, durMin) {
+function buildWorkoutSummary(desc, durMin, mainIv) {
   if (!desc || desc === 'Descanso.') return durMin > 0 ? `⏱️ ${durMin} min` : '';
   const SKIP = ['calentamiento', 'activación', 'vuelta', 'enfriamiento', 'pedaleo suave z1'];
   const parts = desc.split(' + ');
@@ -1213,6 +1213,10 @@ function buildWorkoutSummary(desc, durMin) {
     const durMatch = mainBlock.match(/^(\d+)\s*min(?:\s+(.+))?/);
     const label = durMatch?.[2]?.trim().split(' ').slice(0, 3).join(' ') || '';
     line = durMatch ? `🚴 ${durMatch[1]} min${label ? ' ' + label : ''}` : (mainBlock ? `🚴 ${mainBlock.slice(0, 30)}` : '');
+  }
+  if (mainIv?.watts) {
+    const ivWp = _parseWattsRange(mainIv.watts);
+    if (ivWp) line = line.replace(/\d+\s*[–\-]\s*\d+\s*W/g, `${ivWp.lo}–${ivWp.hi}W`);
   }
   return [line, durMin > 0 ? `⏱️ ${durMin} min total` : ''].filter(Boolean).join('  ·  ');
 }
@@ -1418,7 +1422,7 @@ function renderPlan(plan, athlete) {
 
     const isPastOrToday = i <= todayIdx;
     const objective     = SESSION_OBJECTIVES[sess.type] || 'Entrenamiento';
-    const wkSummary     = buildWorkoutSummary(sess.description, durMin);
+    const wkSummary     = buildWorkoutSummary(sess.description, durMin, _cardMainIv);
 
     // Banner de adaptación automática (visible cuando la sesión fue ajustada)
     const adaptBanner = sess._adapted && sess.advice ? `
