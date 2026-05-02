@@ -783,6 +783,7 @@
 
     <!-- PLAN SEMANAL -->
     <div id="coach-alerts-section" class="hidden" style="margin-bottom:20px"></div>
+    <div id="recalc-summary" style="display:none;margin-bottom:20px"></div>
 
     <div class="card mb-6">
       <div class="card-header">
@@ -1227,6 +1228,49 @@ function buildWorkoutSummary(desc, durMin, mainIv) {
   return [line, durMin > 0 ? `⏱️ ${durMin} min total` : ''].filter(Boolean).join('  ·  ');
 }
 
+function renderRecalcSummary(plan) {
+  const el = document.getElementById('recalc-summary');
+  if (!el) return;
+  const s = plan._recalcSummary;
+  if (!s) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+  const timeAgo = (() => {
+    const mins = Math.round((Date.now() - s.timestamp) / 60000);
+    if (mins < 1) return 'hace un momento';
+    if (mins < 60) return `hace ${mins} min`;
+    return `hace ${Math.round(mins / 60)}h`;
+  })();
+
+  el.style.display = '';
+  el.innerHTML = `
+    <div style="background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(99,102,241,.06));border:1px solid rgba(56,189,248,.25);border-radius:14px;padding:18px 20px;position:relative">
+      <button onclick="dismissRecalcSummary()" title="Cerrar" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;line-height:1">×</button>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(56,189,248,.15);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#38BDF8;letter-spacing:.3px">Semana recalculada · <span style="font-weight:400;color:var(--text-muted);font-size:11px">${timeAgo}</span></div>
+          ${s.feedback ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;font-style:italic">"${s.feedback.slice(0, 120)}${s.feedback.length > 120 ? '…' : ''}"</div>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${s.changes.map(c => `
+          <div style="display:flex;align-items:flex-start;gap:10px;background:rgba(255,255,255,.03);border-radius:8px;padding:9px 12px">
+            <span style="font-size:15px;flex-shrink:0;margin-top:1px">${c.icon}</span>
+            <div>
+              <span style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px">${c.day}</span>
+              <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:2px">${c.desc}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function dismissRecalcSummary() {
+  if (currentPlan) { delete currentPlan._recalcSummary; silentSavePlan(); }
+  const el = document.getElementById('recalc-summary');
+  if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+}
+
 function renderPlan(plan, athlete) {
   const metrics = AppState.getCurrentMetrics();
   const ftp = athlete.ftp || 200;
@@ -1252,6 +1296,8 @@ function renderPlan(plan, athlete) {
                    '🌱 Semana de base aeróbica';
   document.getElementById('plan-summary-inline').innerHTML =
     `${_weekCtx} · <strong style="color:var(--primary)">${plan.targetTSS} TSS</strong> · ${athlete.weekly_hours || 8}h · ${phaseLabel(plan.phase)}`;
+
+  renderRecalcSummary(plan);
 
   // ── Banner de adaptación por TSB ──────────────────────────────
   const alertSection = document.getElementById('coach-alerts-section');
@@ -1309,6 +1355,11 @@ function renderPlan(plan, athlete) {
               <div style="font-size:12px;color:var(--text-muted)">${sess.description}</div>
             </div>
           </div>
+          ${sess._trainedOnRest ? `
+          <div style="background:rgba(251,191,36,.06);border-top:1px solid rgba(251,191,36,.2);padding:10px 18px;display:flex;gap:10px;align-items:flex-start">
+            <span style="font-size:16px;flex-shrink:0">✏️</span>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${sess.advice}</div>
+          </div>` : ''}
           ${isToday_rest ? `
           <div class="adapt-zone" style="background:rgba(255,107,53,.03);border-top:1px solid rgba(255,107,53,.1)" onclick="event.stopPropagation()">
             <div class="adapt-trigger" onclick="toggleRealityForm(${i})" style="color:#FF6B35">
@@ -2086,8 +2137,19 @@ async function markTodayAsRest(idx, userNote) {
   sess.advice        = userNote ? `No salí: "${userNote.slice(0, 80)}"` : 'Sesión no realizada hoy.';
   sess._missed       = true;
 
+  // Si el usuario entrenó ayer (día de descanso), anotar en esa sesión pasada
+  const trainedYesterdayCheck = /ayer sal[ií]|sal[ií] ayer|ayer entr[eé]n|entr[eé]n[eé] ayer|ayer hice|hice ayer/i.test(userNote || '');
+  if (trainedYesterdayCheck && idx > 0) {
+    const yesterdaySess = currentPlan.sessions[idx - 1];
+    if (yesterdaySess?.isRest) {
+      yesterdaySess._trainedOnRest = true;
+      yesterdaySess.advice = `✏️ Según tu registro, entrenaste este día de descanso (hiciste la sesión de ${sess.day || 'hoy'}). El cansancio acumulado explica que ${sess.day || 'hoy'} no pudieras salir.`;
+    }
+  }
+
   // Redistribuir entre los días restantes disponibles
-  const UPGRADE = { recovery: 'endurance', endurance: 'tempo', long: 'tempo', tempo: 'threshold' };
+  const UPGRADE    = { recovery: 'endurance', endurance: 'tempo', long: 'tempo', tempo: 'threshold' };
+  const UPGRADE_IF = { recovery: 0.65, endurance: 0.76, long: 0.76, tempo: 0.82 };
   const remaining = currentPlan.sessions
     .map((s, i) => ({ s, i }))
     .filter(({ s, i }) => i > idx && !s.isRest);
@@ -2102,10 +2164,15 @@ async function markTodayAsRest(idx, userNote) {
     remaining.forEach(({ s: rs, i: ri }, pos) => {
       const origTSS = rs.tss || Math.round((rs.tssShare || 0) * (currentPlan.targetTSS || 400));
       const newTSS  = origTSS + perDayTSS;
-      const newDur  = Math.round((rs.durationMin || 60) * 1.12);
       // Último día disponible: sube un escalón de intensidad
-      const newType = (pos === remaining.length - 1) ? (UPGRADE[rs.type] || rs.type) : rs.type;
+      const newType  = (pos === remaining.length - 1) ? (UPGRADE[rs.type] || rs.type) : rs.type;
+      const typeChanged = newType !== rs.type;
+      // Si cambia el tipo, actualizar ifTarget al valor típico del nuevo tipo
+      const newIF    = typeChanged ? (UPGRADE_IF[rs.type] || rs.ifTarget || 0.65) : (rs.ifTarget || 0.65);
+      // Recalcular duración coherente con el nuevo TSS e IF
+      const newDur   = Math.round((newTSS / (Math.pow(newIF, 2) * 100)) * 60);
       rs.type        = newType;
+      rs.ifTarget    = newIF;
       rs.tss         = newTSS;
       rs.durationMin = newDur;
       rs._adapted    = true;
@@ -2113,7 +2180,7 @@ async function markTodayAsRest(idx, userNote) {
         ? `Sesión ajustada con cuidado: entrenaste ayer (día de descanso), lo que explica el cansancio de hoy. Solo +${perDayTSS} TSS extra para no acumular más fatiga.`
         : `+${perDayTSS} TSS redistribuido de la sesión perdida del ${dayName}.`;
       if (window.TrainingPlanGenerator) {
-        const ifT = rs.ifTarget || 0.75;
+        const ifT = newIF;
         rs.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, ifT, 'main');
         rs.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, ifT, 'alt');
         rs.description     = _rd(rs.intervals);
@@ -2123,12 +2190,22 @@ async function markTodayAsRest(idx, userNote) {
     });
   }
 
+  // ── Construir resumen del recálculo ──────────────────────────
+  const recalcChanges = [];
+  if (trainedYesterdayCheck && idx > 0 && currentPlan.sessions[idx - 1]?.isRest) {
+    recalcChanges.push({ icon: '✏️', day: currentPlan.sessions[idx - 1].day, desc: 'Entrenaste en tu día de descanso — registrado como actividad no planificada.' });
+  }
+  recalcChanges.push({ icon: '😴', day: dayName, desc: 'Sesión cancelada y convertida en descanso.' });
+  remaining.forEach(({ s: rs }) => {
+    recalcChanges.push({ icon: '⚡', day: rs.day, desc: rs.advice });
+  });
+  if (!remaining.length) {
+    recalcChanges.push({ icon: 'ℹ️', day: 'Esta semana', desc: 'No quedan sesiones restantes. La carga perdida no se redistribuye.' });
+  }
+  currentPlan._recalcSummary = { timestamp: Date.now(), feedback: userNote, changes: recalcChanges };
+
   renderPlan(currentPlan, AppState.athlete);
   await silentSavePlan();
-  const redistMsg = remaining.length
-    ? `carga redistribuida en ${remaining.length} sesión${remaining.length > 1 ? 'es' : ''} restante${remaining.length > 1 ? 's' : ''}`
-    : 'sin sesiones restantes esta semana';
-  showToast(`🧠 ${dayName} → descanso · ${redistMsg}`, 'var(--primary)');
 }
 
 // ── Auto-mark sessions as done when there's an activity for that day ──
@@ -2242,10 +2319,14 @@ async function recalculateWeek(idx) {
         });
 
     currentPlan.sessions = data.newPlan.sessions;
-    await savePlan(); // Persiste en DB y LocalStorage
-    renderPlan(currentPlan, AppState.athlete); // Actualiza la pantalla (cerrará el acordeón)
-    
-    showToast('✅ Entrenamiento y nutrición recalculados. ' + (data.newPlan.mensaje_coach || 'Resto de la semana reprogramado.'), 'var(--primary)');
+    // Resumen del recálculo por IA
+    const aiChanges = data.newPlan.sessions
+      .filter(s => s._adapted || s._missed)
+      .map(s => ({ icon: s.isRest ? '😴' : '⚡', day: s.day, desc: s.advice || (s.isRest ? 'Convertida en descanso.' : 'Sesión ajustada.') }));
+    if (aiChanges.length === 0) aiChanges.push({ icon: 'ℹ️', day: 'Semana', desc: data.newPlan.mensaje_coach || 'Plan revisado sin cambios mayores.' });
+    currentPlan._recalcSummary = { timestamp: Date.now(), feedback, changes: aiChanges };
+    await savePlan();
+    renderPlan(currentPlan, AppState.athlete);
   } catch(e) {
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Recalcular resto de la semana';
     result.innerHTML = `<span style="color:#ff4757"><i class="fas fa-exclamation-triangle"></i> ${e.message}</span>`; result.style.display = '';
