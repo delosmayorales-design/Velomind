@@ -716,10 +716,13 @@ const TrainingPlanGenerator = {
         } else {
           let blocks = Math.floor(main / 20);
           if (blocks >= 2) {
-            intervals.push({ label: `Z2 Aeróbico (×${blocks} repeticiones)`, dur: `18 min c/u`, watts: `${pct(0.60)}–${pct(0.70)} W`, rpm: '85-90 rpm', desc: 'Base aeróbica estable.' });
-            intervals.push({ label: `Inserción Tempo (×${blocks} repeticiones)`, dur: `2 min c/u`, watts: `${pct(0.80)}–${pct(0.85)} W`, rpm: '95 rpm', desc: 'Romper la monotonía muscular.' });
-            if (main - (blocks * 20) > 0) {
-              intervals.push({ label: 'Z2 Aeróbico', dur: `${main - (blocks * 20)} min`, watts: `${pct(0.60)}–${pct(0.70)} W`, rpm: '85-90 rpm', desc: 'Completar tiempo aeróbico.' });
+            for (let b = 0; b < blocks; b++) {
+              intervals.push({ label: 'Z2 Aeróbico', dur: '18 min', watts: `${pct(0.60)}–${pct(0.70)} W`, rpm: '85-90 rpm', desc: 'Base aeróbica estable.' });
+              intervals.push({ label: 'Inserción Tempo', dur: '2 min', watts: `${pct(0.80)}–${pct(0.85)} W`, rpm: '95 rpm', desc: 'Romper la monotonía muscular.' });
+            }
+            const remaining = main - (blocks * 20);
+            if (remaining > 0) {
+              intervals.push({ label: 'Z2 Aeróbico', dur: `${remaining} min`, watts: `${pct(0.60)}–${pct(0.70)} W`, rpm: '85-90 rpm', desc: 'Completar tiempo aeróbico.' });
             }
           } else {
             intervals.push({ label: 'Bloque Z2 con variaciones de cadencia', dur: `${main} min`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: '75-95 rpm (alternando)', desc: 'Esfuerzo aeróbico continuo alternando cadencias.' });
