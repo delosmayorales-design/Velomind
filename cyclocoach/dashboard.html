@@ -20,16 +20,337 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <style>
-    /* ── Dashboard cards ──────────────────────────────── */
-    .dash-grid {
+
+    /* ── Hero Banner ──────────────────────────────────────── */
+    .coach-hero {
+      border-radius: var(--radius-lg);
+      padding: 32px 28px 28px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+      min-height: 160px;
+    }
+    .coach-hero-bg {
+      position: absolute;
+      inset: 0;
+      background-size: 300% 300%;
+      animation: heroShift 8s ease infinite;
+      z-index: 0;
+    }
+    .coach-hero-bg.fresh {
+      background: linear-gradient(135deg, #0f2d10 0%, #1a3d1a 30%, #0a2020 60%, #162d0a 100%);
+    }
+    .coach-hero-bg.optimal {
+      background: linear-gradient(135deg, #1a1a06 0%, #2a2208 30%, #1a1205 60%, #251800 100%);
+    }
+    .coach-hero-bg.loaded {
+      background: linear-gradient(135deg, #1a0d06 0%, #250d06 30%, #1a0808 60%, #200505 100%);
+    }
+    .coach-hero-bg.no-data {
+      background: linear-gradient(135deg, #0a0f18 0%, #0d1520 30%, #080e16 60%, #0b1218 100%);
+    }
+    @keyframes heroShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .coach-hero-glow {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.25;
+      top: -80px;
+      right: -60px;
+      animation: glowPulse 4s ease-in-out infinite;
+      z-index: 0;
+    }
+    @keyframes glowPulse {
+      0%, 100% { transform: scale(1); opacity: 0.2; }
+      50%       { transform: scale(1.15); opacity: 0.35; }
+    }
+    .coach-hero-content {
+      position: relative;
+      z-index: 1;
+    }
+    .hero-greeting {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.6;
+      margin-bottom: 6px;
+    }
+    .hero-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 10px;
+    }
+    .hero-phrase {
+      font-size: 15px;
+      opacity: 0.75;
+      line-height: 1.5;
+      max-width: 560px;
+      font-style: italic;
+    }
+    .hero-badges {
+      display: flex;
+      gap: 8px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .hero-date {
+      position: absolute;
+      top: 28px;
+      right: 28px;
+      font-size: 12px;
+      opacity: 0.5;
+      text-align: right;
+      z-index: 1;
+    }
+
+    /* ── Today + Weather grid ─────────────────────────────── */
+    .top-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
       margin-bottom: 16px;
     }
-    .dash-grid-3 {
+
+    /* ── Today Big Card ───────────────────────────────────── */
+    .today-big {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .today-big .card-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .today-session-emoji {
+      font-size: 44px;
+      margin-bottom: 8px;
+      display: block;
+      animation: emojiBounce 2.5s ease-in-out infinite;
+    }
+    @keyframes emojiBounce {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-5px); }
+    }
+    .today-session-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+    .today-session-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .today-meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--bg-input);
+      border-radius: 99px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .today-why {
+      background: rgba(255,255,255,0.04);
+      border-left: 3px solid var(--primary);
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-bottom: 14px;
+      flex: 1;
+    }
+    .today-why strong {
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 3px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .btn-mark-done {
+      background: var(--bg-input, rgba(255,255,255,0.05));
+      border: 1px solid var(--border, rgba(255,255,255,0.1));
+      color: var(--text-secondary, #cbd5e1);
+      border-radius: var(--radius-md, 8px);
+      padding: 11px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      width: 100%;
+    }
+    .btn-mark-done.done {
+      background: rgba(16,185,129,.08);
+      border-color: rgba(16,185,129,.3);
+      color: #10b981;
+    }
+    .btn-mark-done:hover:not(.done) {
+      background: var(--bg-card-hover, rgba(255,255,255,0.08));
+      border-color: var(--primary);
+      color: var(--text-primary, #fff);
+      transform: translateY(-1px);
+    }
+
+    /* ── Weather Card ─────────────────────────────────────── */
+    .weather-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+    }
+    .weather-card .card-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .weather-main {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .weather-emoji {
+      font-size: 48px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .weather-temp {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .weather-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .weather-stats {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .weather-stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--bg-input);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .weather-rec {
+      background: rgba(158,214,43,0.06);
+      border: 1px solid rgba(158,214,43,0.2);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: auto;
+    }
+    .weather-rec-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+    .weather-rec-text {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .weather-loading {
+      text-align: center;
+      padding: 30px 0;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* ── FTP Readiness Banner ─────────────────────────────── */
+    .ftp-banner {
+      border-radius: var(--radius-lg);
+      padding: 18px 22px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border: 1px solid;
+    }
+    .ftp-banner.ready {
+      background: rgba(16,185,129,0.07);
+      border-color: rgba(16,185,129,0.25);
+    }
+    .ftp-banner.soon {
+      background: rgba(245,158,11,0.07);
+      border-color: rgba(245,158,11,0.25);
+    }
+    .ftp-banner.not-yet {
+      display: none;
+    }
+    .ftp-banner-emoji { font-size: 32px; flex-shrink: 0; }
+    .ftp-banner-text h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .ftp-banner-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* ── Bottom grid ──────────────────────────────────────── */
+    .dash-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: 1fr 1fr;
       gap: 16px;
       margin-bottom: 16px;
     }
@@ -57,139 +378,8 @@
       line-height: 1.2;
       margin-bottom: 4px;
     }
-    .dash-card-sub {
-      font-size: 13px;
-      color: var(--text-muted);
-    }
 
-    /* ── Greeting ──────────────────────────────────────── */
-    .greeting-wrap {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .greeting-text h2 {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 26px;
-      font-weight: 700;
-      margin-bottom: 2px;
-    }
-    .greeting-text p {
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-    .greeting-date {
-      font-size: 13px;
-      color: var(--text-muted);
-      text-align: right;
-    }
-
-    /* ── Today session ─────────────────────────────────── */
-    .today-session-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 20px 22px;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      flex-wrap: wrap;
-    }
-    .today-session-card.is-done {
-      border-color: var(--border);
-      filter: grayscale(0.85);
-      opacity: 0.7;
-    }
-    .today-session-card.is-rest {
-      opacity: 0.75;
-    }
-    .session-type-dot {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      flex-shrink: 0;
-    }
-    .session-info { flex: 1; min-width: 0; }
-    .session-info .label {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--text-muted);
-      margin-bottom: 3px;
-    }
-    .session-info .name {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 18px;
-      font-weight: 700;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .session-info .meta {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-top: 3px;
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .session-info .meta span {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .done-badge-dash {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: rgba(128,128,128,.1);
-      border: 1px solid rgba(128,128,128,.2);
-      color: var(--text-muted);
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 99px;
-      margin-left: 8px;
-      vertical-align: middle;
-    }
-    .btn-mark-done {
-      background: var(--bg-input, rgba(255,255,255,0.05));
-      border: 1px solid var(--border, rgba(255,255,255,0.1));
-      color: var(--text-secondary, #cbd5e1);
-      border-radius: var(--radius-md, 8px);
-      padding: 12px 20px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: all 0.2s ease;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .btn-mark-done.done { background: rgba(128,128,128,.08); border-color: rgba(128,128,128,.25); color: var(--text-muted); }
-    .btn-mark-done:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); border-color: var(--primary); color: var(--text-primary, #fff); transform: translateY(-1px); }
-    .btn-mark-done.done:hover { border-color: rgba(128,128,128,.4); transform: none; color: var(--text-muted); background: rgba(128,128,128,.08); }
-
-    /* ── PMC form card ─────────────────────────────────── */
-    .form-state-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 20px 22px;
-    }
+    /* ── PMC metrics ──────────────────────────────────────── */
     .form-state-badge {
       display: inline-flex;
       align-items: center;
@@ -220,31 +410,31 @@
       color: var(--text-muted);
     }
 
-    /* ── Weekly compliance ─────────────────────────────── */
-    .week-bar-wrap {
-      margin-top: 12px;
-    }
-    .week-days {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-    .week-day-dot {
+    /* ── Weekly compliance ─────────────────────────────────── */
+    .week-bar-wrap { margin-top: 12px; }
+    .week-days { display: flex; gap: 6px; margin-bottom: 8px; }
+    .week-day-item {
       flex: 1;
-      height: 8px;
-      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .week-day-bar {
+      width: 100%;
+      height: 36px;
+      border-radius: 6px;
       background: var(--bg-input);
       transition: all .3s;
+      position: relative;
     }
-    .week-day-dot.done { background: #10b981; }
-    .week-day-dot.today { box-shadow: 0 0 0 2px var(--primary); }
-    .week-day-dot.rest { background: var(--bg-input); opacity: 0.4; }
-    .week-compliance-text {
-      font-size: 13px;
+    .week-day-bar.done { background: #10b981; }
+    .week-day-bar.today { box-shadow: 0 0 0 2px var(--primary); }
+    .week-day-bar.rest { background: var(--bg-input); opacity: 0.35; }
+    .week-day-bar-label {
+      font-size: 10px;
+      font-weight: 700;
       color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
     }
     .week-compliance-pct {
       font-family: 'Space Grotesk', sans-serif;
@@ -253,7 +443,7 @@
       color: var(--text);
     }
 
-    /* ── Last activity ─────────────────────────────────── */
+    /* ── Last activity ─────────────────────────────────────── */
     .last-act-metrics {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -280,37 +470,7 @@
       margin-top: 2px;
     }
 
-    /* ── Quick links ───────────────────────────────────── */
-    .quick-links {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .quick-link {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 16px 12px;
-      text-align: center;
-      text-decoration: none;
-      color: var(--text);
-      transition: all .2s;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-    .quick-link:hover {
-      border-color: var(--primary);
-      background: rgba(158,214,43,0.05);
-      color: var(--primary);
-      transform: translateY(-1px);
-    }
-    .quick-link i { font-size: 20px; color: var(--primary); }
-    .quick-link span { font-size: 12px; font-weight: 600; }
-
-    /* ── Empty states ──────────────────────────────────── */
+    /* ── Empty states ──────────────────────────────────────── */
     .empty-state {
       text-align: center;
       padding: 24px 0;
@@ -319,18 +479,30 @@
     }
     .empty-state i { font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.4; }
 
-    /* ── Responsive ────────────────────────────────────── */
+    /* ── Slide-in animation ────────────────────────────────── */
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .coach-hero      { animation: slideUp 0.4s ease both; }
+    .top-grid        { animation: slideUp 0.4s ease 0.1s both; }
+    .ftp-banner      { animation: slideUp 0.4s ease 0.15s both; }
+    .dash-grid       { animation: slideUp 0.4s ease 0.2s both; }
+    .last-act-wrap   { animation: slideUp 0.4s ease 0.25s both; }
+
+    /* ── Responsive ────────────────────────────────────────── */
     @media (max-width: 900px) {
+      .top-grid  { grid-template-columns: 1fr; }
       .dash-grid { grid-template-columns: 1fr; }
-      .dash-grid-3 { grid-template-columns: 1fr 1fr; }
-      .quick-links { grid-template-columns: repeat(2, 1fr); }
+      .hero-name { font-size: 26px; }
+      .hero-date { display: none; }
     }
     @media (max-width: 600px) {
-      .dash-grid-3 { grid-template-columns: 1fr; }
-      .quick-links { grid-template-columns: repeat(2, 1fr); }
+      .coach-hero { padding: 22px 18px 20px; }
+      .hero-name  { font-size: 22px; }
       .pmc-metrics { gap: 14px; }
       .last-act-metrics { grid-template-columns: repeat(3, 1fr); }
-      .today-session-card { flex-direction: column; align-items: flex-start; }
+      .ftp-banner { flex-direction: column; text-align: center; }
     }
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
@@ -391,69 +563,62 @@
 </nav>
 
 <main class="main-content">
-  <header class="page-header">
-    <div class="page-title">
-      <h1><i class="fas fa-home" style="color:var(--primary)"></i> Inicio</h1>
-      <p>Tu entrenamiento de hoy de un vistazo</p>
-    </div>
-    <div class="header-actions">
-      <a href="training-plan.html" class="btn btn-secondary" style="text-decoration:none">
-        <i class="fas fa-calendar-check"></i> Ver plan completo
-      </a>
-    </div>
-  </header>
-
   <div class="page-body">
 
-    <!-- Greeting -->
-    <div class="greeting-wrap">
-      <div class="greeting-text">
-        <h2 id="greeting-text">Buenas, ciclista 👋</h2>
-        <p id="greeting-sub">Cargando tu resumen...</p>
+    <!-- Coach Hero Banner -->
+    <div class="coach-hero" id="coach-hero">
+      <div class="coach-hero-bg no-data" id="hero-bg"></div>
+      <div class="coach-hero-glow" id="hero-glow" style="background:#9ED62B"></div>
+      <div class="coach-hero-content">
+        <div class="hero-greeting" id="hero-greeting">Cargando...</div>
+        <div class="hero-name" id="hero-name">Bienvenido 👋</div>
+        <div class="hero-phrase" id="hero-phrase">Preparando tu briefing de hoy...</div>
+        <div class="hero-badges" id="hero-badges"></div>
       </div>
-      <div class="greeting-date" id="greeting-date"></div>
+      <div class="hero-date" id="hero-date"></div>
     </div>
 
-    <!-- Quick links -->
-    <div class="quick-links">
-      <a href="activities.html" class="quick-link">
-        <i class="fas fa-history"></i>
-        <span>Actividades</span>
-      </a>
-      <a href="analytics.html" class="quick-link">
-        <i class="fas fa-chart-bar"></i>
-        <span>Métricas PMC</span>
-      </a>
-      <a href="training-plan.html" class="quick-link">
-        <i class="fas fa-calendar-check"></i>
-        <span>Mi Plan</span>
-      </a>
-      <a href="nutrition.html" class="quick-link">
-        <i class="fas fa-apple-alt"></i>
-        <span>Nutrición</span>
-      </a>
+    <!-- Today session + Weather -->
+    <div class="top-grid">
+
+      <!-- Today big card -->
+      <div class="today-big" id="today-big-wrap">
+        <div class="card-label"><i class="fas fa-bolt" style="color:var(--primary)"></i> &nbsp;QUÉ TIENES QUE HACER HOY</div>
+        <div class="empty-state"><i class="fas fa-calendar-plus"></i> Cargando sesión...</div>
+      </div>
+
+      <!-- Weather card -->
+      <div class="weather-card">
+        <div class="card-label"><i class="fas fa-cloud-sun" style="color:#60a5fa"></i> &nbsp;TIEMPO Y RECOMENDACIÓN</div>
+        <div id="weather-content" class="weather-loading">
+          <i class="fas fa-location-arrow" style="font-size:24px;margin-bottom:8px;display:block;opacity:.4"></i>
+          Obteniendo tu ubicación...
+        </div>
+      </div>
+
     </div>
 
-    <!-- Today's session -->
-    <div id="today-session-wrap"></div>
+    <!-- FTP Readiness Banner -->
+    <div class="ftp-banner not-yet" id="ftp-banner">
+      <div class="ftp-banner-emoji" id="ftp-banner-emoji">🎯</div>
+      <div class="ftp-banner-text">
+        <h3 id="ftp-banner-title">Test de FTP</h3>
+        <p id="ftp-banner-msg">Calculando...</p>
+      </div>
+    </div>
 
-    <!-- Coach note -->
-    <div id="coach-note-wrap"></div>
-
-    <!-- Main grid -->
+    <!-- Weekly + PMC -->
     <div class="dash-grid">
 
-      <!-- Weekly compliance -->
       <div class="dash-card">
-        <div class="dash-card-label"><i class="fas fa-calendar-week"></i> Cumplimiento semanal</div>
+        <div class="dash-card-label"><i class="fas fa-calendar-week"></i> &nbsp;Semana actual</div>
         <div id="week-compliance-content">
           <div class="empty-state"><i class="fas fa-calendar"></i> Sin plan activo</div>
         </div>
       </div>
 
-      <!-- PMC Form state -->
       <div class="dash-card" id="pmc-card">
-        <div class="dash-card-label"><i class="fas fa-heartbeat"></i> Tu forma actual</div>
+        <div class="dash-card-label"><i class="fas fa-heartbeat"></i> &nbsp;Tu forma (PMC)</div>
         <div id="pmc-content">
           <div class="empty-state"><i class="fas fa-chart-line"></i> Sin actividades registradas</div>
         </div>
@@ -462,8 +627,8 @@
     </div>
 
     <!-- Last activity -->
-    <div class="dash-card" style="margin-bottom:24px">
-      <div class="dash-card-label"><i class="fas fa-bicycle"></i> Última actividad</div>
+    <div class="dash-card last-act-wrap" style="margin-bottom:32px">
+      <div class="dash-card-label"><i class="fas fa-bicycle"></i> &nbsp;Última actividad</div>
       <div id="last-activity-content">
         <div class="empty-state"><i class="fas fa-upload"></i> Importa tu primera actividad para verla aquí</div>
       </div>
@@ -475,84 +640,167 @@
 <script src="js/app.js"></script>
 <script src="js/backend-sync.js"></script>
 <script>
-const DAY_NAMES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const DAY_NAMES      = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const DAY_NAMES_FULL = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
-const MONTH_NAMES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const MONTH_NAMES    = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
-// todayIdx: 0=Mon … 6=Sun (same convention as training-plan.html)
 const todayIdx = (new Date().getDay() + 6) % 7;
-
 let dashPlan = null;
 
-/* ── Greeting ───────────────────────────────────────────── */
-function renderGreeting(athlete) {
-  const hour = new Date().getHours();
-  const greet = hour < 13 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches';
-  const name  = athlete?.name?.split(' ')[0] || 'ciclista';
-  document.getElementById('greeting-text').textContent = `${greet}, ${name} 👋`;
+/* ── Motivational phrases per state ────────────────────── */
+const PHRASES = {
+  fresh: [
+    "Tu cuerpo está cargado y listo. Hoy puedes dar más.",
+    "Forma óptima. Los días así son los que marcan diferencia.",
+    "Estás fresco. Aprovecha cada pedalada de hoy.",
+    "El descanso hizo su trabajo. Ahora hazlo tú.",
+  ],
+  optimal: [
+    "Carga perfecta. Estás en la zona de construcción real.",
+    "Cada sesión suma. Sigue con esa consistencia.",
+    "El progreso se hace así, día a día, sin saltarse nada.",
+    "Estás en el proceso. Confía en el plan.",
+  ],
+  loaded: [
+    "Alta carga acumulada. Hoy, inteligencia antes que intensidad.",
+    "El cuerpo habla. Escúchalo y saca partido al día.",
+    "Los campeones también saben cuándo aflojar. Hoy es ese día.",
+    "La fatiga es señal de que estás trabajando. Gestiona bien.",
+  ],
+  rest: [
+    "El descanso no es perder el tiempo — es cuando mejoras.",
+    "Recuperar bien hoy = rendir mejor mañana.",
+    "Los grandes atletas respetan los días de descanso tanto como los duros.",
+    "Hidratación, sueño, alimentación. Hoy esos son tus entrenos.",
+  ],
+  no_data: [
+    "Bienvenido a VeloMind. Empieza registrando tu primera actividad.",
+    "Cada gran ciclista empezó con un primer pedaleo.",
+    "Tu aventura comienza hoy. ¡Vamos!",
+  ],
+};
 
-  const now  = new Date();
-  const dayName  = DAY_NAMES_FULL[todayIdx];
-  const dateStr  = `${now.getDate()} de ${MONTH_NAMES[now.getMonth()]} de ${now.getFullYear()}`;
-  document.getElementById('greeting-sub').textContent = `Hoy es ${dayName}, ${dateStr}`;
-  document.getElementById('greeting-date').textContent = dateStr.replace(/^\d/, c => c.toUpperCase());
+function randomPhrase(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/* ── Today's session ────────────────────────────────────── */
-function renderTodaySession(plan, athlete) {
-  const wrap = document.getElementById('today-session-wrap');
+/* ── Hero Banner ────────────────────────────────────────── */
+function renderHero(athlete, pmcMetrics, plan) {
+  const hour   = new Date().getHours();
+  const greet  = hour < 13 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches';
+  const name   = athlete?.name?.split(' ')[0] || 'Ciclista';
+  const now    = new Date();
+  const dayName = DAY_NAMES_FULL[todayIdx];
+  const dateStr = `${now.getDate()} de ${MONTH_NAMES[now.getMonth()]} de ${now.getFullYear()}`;
+
+  document.getElementById('hero-greeting').textContent = greet;
+  document.getElementById('hero-date').innerHTML = `📅 ${dayName.charAt(0).toUpperCase()+dayName.slice(1)}, ${dateStr}`;
+
+  let state = 'no_data';
+  let glowColor = '#9ED62B';
+  let badges = [];
+
+  if (pmcMetrics) {
+    const { ctl, atl, tsb } = pmcMetrics;
+    if (tsb > 5)        { state = 'fresh';   glowColor = '#10b981'; }
+    else if (tsb > -15) { state = 'optimal'; glowColor = '#f59e0b'; }
+    else                { state = 'loaded';  glowColor = '#ef4444'; }
+
+    badges.push(`💪 CTL ${ctl.toFixed(0)}`);
+    badges.push(`🔥 ATL ${atl.toFixed(0)}`);
+    badges.push(`${tsb >= 0 ? '✅' : '⚠️'} TSB ${tsb > 0 ? '+' : ''}${tsb.toFixed(0)}`);
+  }
+
+  const todaySess = plan?.sessions?.[todayIdx];
+  if (todaySess?.isRest) {
+    state = 'rest';
+    badges.push('😴 Día de descanso');
+  } else if (todaySess && !todaySess.isRest) {
+    const wt = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[todaySess.type]) || {};
+    const emoji = todaySess.emoji || wt.emoji || '🚴';
+    badges.push(`${emoji} ${todaySess.name || wt.label || 'Sesión'}`);
+  }
+
+  document.getElementById('hero-bg').className = `coach-hero-bg ${state}`;
+  document.getElementById('hero-glow').style.background = glowColor;
+
+  const emoji = { fresh:'🟢', optimal:'🟡', loaded:'🔴', rest:'😴', no_data:'🚴' }[state];
+  document.getElementById('hero-name').innerHTML = `${emoji} ${greet}, ${name}`;
+  document.getElementById('hero-phrase').textContent = randomPhrase(PHRASES[state]);
+
+  const badgesEl = document.getElementById('hero-badges');
+  badgesEl.innerHTML = badges.map(b => `<span class="hero-badge">${b}</span>`).join('');
+}
+
+/* ── Today Big Card ─────────────────────────────────────── */
+function renderTodayBig(plan, athlete) {
+  const wrap = document.getElementById('today-big-wrap');
+  const label = `<div class="card-label"><i class="fas fa-bolt" style="color:var(--primary)"></i> &nbsp;QUÉ TIENES QUE HACER HOY</div>`;
+
   if (!plan?.sessions) {
-    wrap.innerHTML = `
-      <div class="dash-card" style="margin-bottom:16px;text-align:center;padding:28px">
-        <p style="color:var(--text-muted);margin-bottom:12px"><i class="fas fa-calendar-plus" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4"></i> No tienes un plan activo</p>
-        <a href="training-plan.html" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px"><i class="fas fa-magic"></i> Crear mi plan</a>
+    wrap.innerHTML = label + `
+      <div style="text-align:center;padding:28px 0">
+        <p style="color:var(--text-muted);margin-bottom:14px"><i class="fas fa-calendar-plus" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i> No tienes un plan activo</p>
+        <a href="training-plan.html" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px"><i class="fas fa-magic"></i> Crear mi plan con IA</a>
       </div>`;
     return;
   }
 
   const sess = plan.sessions[todayIdx];
-  if (!sess) return;
+  if (!sess) { wrap.innerHTML = label + `<div class="empty-state">Sin sesión programada</div>`; return; }
 
   if (sess.isRest) {
-    wrap.innerHTML = `
-      <div class="today-session-card is-rest" style="margin-bottom:16px">
-        <div class="session-type-dot" style="background:rgba(107,114,128,.15)">😴</div>
-        <div class="session-info">
-          <div class="label">Hoy · ${DAY_NAMES[todayIdx]}</div>
-          <div class="name">Día de descanso</div>
-          <div class="meta"><span>Recuperación y recarga</span></div>
-        </div>
-      </div>`;
+    wrap.innerHTML = label + `
+      <span class="today-session-emoji">😴</span>
+      <div class="today-session-name">Día de descanso activo</div>
+      <div class="today-why">
+        <strong>Por qué es importante</strong>
+        Durante el descanso es cuando el cuerpo se adapta y se vuelve más fuerte. No lo saltes — es parte del plan.
+      </div>
+      <div style="font-size:13px;color:var(--text-muted)">Aprovecha para estirar, hidratarte bien y dormir al menos 8 horas.</div>`;
     return;
   }
 
-  const wt    = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || { label: sess.type, color: '#9ED62B', emoji: '🚴' };
-  const emoji = sess.emoji || wt.emoji || '🚴';
-  const color = wt.color || '#9ED62B';
-  const tss   = Math.round((sess.tssShare || 0) * (plan.targetTSS || 0)) || sess.tss || 0;
-  const dur   = sess.durationMin ? `${sess.durationMin} min` : '';
+  const wt     = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || { label: sess.type, color: '#9ED62B', emoji: '🚴' };
+  const emoji  = sess.emoji || wt.emoji || '🚴';
+  const color  = wt.color || '#9ED62B';
+  const tss    = Math.round((sess.tssShare || 0) * (plan.targetTSS || 0)) || sess.tss || 0;
+  const dur    = sess.durationMin ? `${sess.durationMin} min` : '';
   const isDone = !!sess.completed;
 
-  wrap.innerHTML = `
-    <div class="today-session-card${isDone ? ' is-done' : ''}" style="margin-bottom:16px" id="today-card">
-      <div class="session-type-dot" style="background:${color}22">${emoji}</div>
-      <div class="session-info">
-        <div class="label">Hoy · ${DAY_NAMES[todayIdx]}</div>
-        <div class="name">
-          ${sess.name || wt.label}
-          ${isDone ? '<span class="done-badge-dash"><i class="fas fa-check"></i> Hecha</span>' : ''}
-        </div>
-        <div class="meta">
-          ${dur ? `<span><i class="fas fa-clock" style="color:${color}"></i> ${dur}</span>` : ''}
-          ${tss ? `<span><i class="fas fa-bolt" style="color:${color}"></i> ${tss} TSS</span>` : ''}
-          ${wt.label ? `<span style="color:${color}">${wt.label}</span>` : ''}
-        </div>
-      </div>
-      <button class="btn-mark-done${isDone ? ' done' : ''}" onclick="toggleTodayDone()">
-        <i class="fas ${isDone ? 'fa-circle-check' : 'fa-circle'}"></i>
-        ${isDone ? 'Hecha' : 'Marcar como hecha'}
-      </button>
-    </div>`;
+  // Generate "why" explanation based on session type
+  const whyTexts = {
+    z2:         'Construye tu motor aeróbico. Es la base de todo. Sin esta resistencia, ningún bloque de intensidad funciona.',
+    endurance:  'Larga resistencia para fortalecer fibras tipo I y mejorar la economía de pedaleo.',
+    tempo:      'Trabajo en umbral para subir el techo de potencia sostenida. Duele bien.',
+    threshold:  'Empujas tu FTP hacia arriba. Este tipo de trabajo es el que más mejora tu rendimiento a largo plazo.',
+    vo2max:     'Intervalos cortos de alta intensidad para aumentar tu VO₂ máx. Difícil pero muy eficaz.',
+    sprint:     'Potencia neuromuscular. Reclutas fibras rápidas que mejoran tu capacidad de ataque.',
+    recovery:   'Sesión suave para limpiar lactato y preparar el cuerpo para la próxima carga dura.',
+    long:       'Fondo largo para desarrollar resistencia aeróbica y enseñar al cuerpo a oxidar grasa.',
+  };
+  const sessType = (sess.type || '').toLowerCase();
+  const why = plan.advice?.today || whyTexts[sessType] || whyTexts[Object.keys(whyTexts).find(k => sessType.includes(k))] || 'Esta sesión encaja en tu bloque de entrenamiento actual para progresar de forma continua.';
+
+  wrap.innerHTML = label + `
+    <span class="today-session-emoji" style="${isDone ? 'filter:grayscale(1);opacity:.6' : ''}">${emoji}</span>
+    <div class="today-session-name" style="color:${isDone ? 'var(--text-muted)' : 'var(--text)'}">
+      ${sess.name || wt.label}
+      ${isDone ? ' <span style="font-size:13px;color:#10b981;font-weight:600">✓ Completada</span>' : ''}
+    </div>
+    <div class="today-session-meta">
+      ${dur  ? `<span class="today-meta-pill"><i class="fas fa-clock" style="color:${color}"></i> ${dur}</span>` : ''}
+      ${tss  ? `<span class="today-meta-pill"><i class="fas fa-bolt" style="color:${color}"></i> ${tss} TSS</span>` : ''}
+      ${wt.label ? `<span class="today-meta-pill" style="color:${color}">${wt.label}</span>` : ''}
+    </div>
+    <div class="today-why">
+      <strong>¿Por qué hoy este entreno?</strong>
+      ${why}
+    </div>
+    <button class="btn-mark-done${isDone ? ' done' : ''}" onclick="toggleTodayDone()" id="btn-mark-done">
+      <i class="fas ${isDone ? 'fa-circle-check' : 'fa-circle'}"></i>
+      ${isDone ? 'Sesión completada' : 'Marcar como hecha'}
+    </button>`;
 }
 
 function toggleTodayDone() {
@@ -560,14 +808,16 @@ function toggleTodayDone() {
   const sess = dashPlan.sessions[todayIdx];
   sess.completed = !sess.completed;
   saveDashPlan();
-  renderTodaySession(dashPlan, AppState.athlete);
+  renderTodayBig(dashPlan, AppState.athlete);
+  renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
+  renderWeekCompliance(dashPlan);
 }
 
 function saveDashPlan() {
   if (!dashPlan) return;
   const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan') || '{}');
   local.sessions = dashPlan.sessions;
-  local.savedAt = Date.now();
+  local.savedAt  = Date.now();
   localStorage.setItem('cyclocoach_training_plan', JSON.stringify(local));
 
   const monday = new Date();
@@ -578,63 +828,15 @@ function saveDashPlan() {
     headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({
       week_start: monday.toISOString().substring(0, 10),
-      sessions: dashPlan.sessions,
-      phase: dashPlan.phase,
+      sessions:   dashPlan.sessions,
+      phase:      dashPlan.phase,
       tss_target: dashPlan.targetTSS,
-      advice: dashPlan.advice || {},
+      advice:     dashPlan.advice || {},
     }),
   }).catch(() => {});
 }
 
-/* ── Coach note ─────────────────────────────────────────────── */
-function renderCoachNote(plan) {
-  const wrap = document.getElementById('coach-note-wrap');
-  if (!wrap) return;
-
-  if (!plan?.sessions || !AppState.activities?.length) {
-    wrap.innerHTML = '';
-    return;
-  }
-
-  const sess = plan.sessions[todayIdx];
-  if (!sess || sess.isRest) { wrap.innerHTML = ''; return; }
-
-  const todayDate = new Date();
-  const todayKey  = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
-  const todayActs = AppState.activities.filter(a => a.date?.slice(0, 10) === todayKey);
-  if (!todayActs.length) { wrap.innerHTML = ''; return; }
-
-  const tssP  = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare || 0) * (plan.targetTSS || 400));
-  const tssA  = Math.round(todayActs.reduce((s, a) => s + (Number(a.tss) || 0), 0));
-  const ratio = tssP > 0 ? tssA / tssP : 1;
-  const pct   = Math.round(ratio * 100);
-
-  let icon, color, msg;
-  if (ratio >= 1.15) {
-    icon = '🔥'; color = '#f87171';
-    msg = `Te has excedido del plan hoy (${pct}% del TSS objetivo). Considera reducir la intensidad en los próximos días para evitar acumular demasiada fatiga. Usa "Ver análisis del entreno y recalcular" en el plan.`;
-  } else if (ratio >= 0.9) {
-    icon = '✅'; color = '#10b981';
-    msg = `Excelente trabajo hoy. Completaste el ${pct}% del TSS planificado. La consistencia es la clave del progreso.`;
-  } else if (ratio >= 0.65) {
-    icon = '👍'; color = '#f59e0b';
-    msg = `Sesión parcial hoy (${pct}% del TSS). No pasa nada, mañana con energía renovada. ¡Descansa bien esta noche!`;
-  } else {
-    icon = '📉'; color = '#6366f1';
-    msg = `Hoy fue un día difícil (${pct}% del TSS). Escucha a tu cuerpo y asegúrate de recuperar bien antes de la próxima sesión.`;
-  }
-
-  wrap.innerHTML = `
-    <div class="dash-card" style="margin-bottom:16px;border-left:3px solid ${color}">
-      <div class="dash-card-label"><i class="fas fa-comment" style="color:${color}"></i> Nota del entrenador</div>
-      <div style="display:flex;gap:12px;align-items:flex-start">
-        <span style="font-size:22px;flex-shrink:0">${icon}</span>
-        <div style="font-size:14px;color:var(--text-secondary);line-height:1.6">${msg}</div>
-      </div>
-    </div>`;
-}
-
-/* ── Auto-mark today from activities ────────────────────────── */
+/* ── Auto-mark today from activities ───────────────────── */
 function autoMarkTodayFromActivities() {
   if (!dashPlan?.sessions?.[todayIdx]) return;
   const sess = dashPlan.sessions[todayIdx];
@@ -647,8 +849,250 @@ function autoMarkTodayFromActivities() {
   if (todayActs.length > 0) {
     sess.completed = true;
     saveDashPlan();
-    renderTodaySession(dashPlan, AppState.athlete);
+    renderTodayBig(dashPlan, AppState.athlete);
     renderWeekCompliance(dashPlan);
+  }
+}
+
+/* ── Weather & Training recommendation ─────────────────── */
+const WX_CODES = {
+  0: { label: 'Despejado', emoji: '☀️' },
+  1: { label: 'Principalmente despejado', emoji: '🌤️' },
+  2: { label: 'Parcialmente nublado', emoji: '⛅' },
+  3: { label: 'Nublado', emoji: '☁️' },
+  45: { label: 'Niebla', emoji: '🌫️' },
+  48: { label: 'Niebla con escarcha', emoji: '🌫️' },
+  51: { label: 'Llovizna ligera', emoji: '🌦️' },
+  53: { label: 'Llovizna moderada', emoji: '🌦️' },
+  55: { label: 'Llovizna intensa', emoji: '🌧️' },
+  61: { label: 'Lluvia ligera', emoji: '🌧️' },
+  63: { label: 'Lluvia moderada', emoji: '🌧️' },
+  65: { label: 'Lluvia intensa', emoji: '🌧️' },
+  71: { label: 'Nieve ligera', emoji: '❄️' },
+  73: { label: 'Nieve moderada', emoji: '❄️' },
+  75: { label: 'Nieve intensa', emoji: '❄️' },
+  80: { label: 'Chubascos ligeros', emoji: '🌦️' },
+  81: { label: 'Chubascos moderados', emoji: '🌧️' },
+  82: { label: 'Chubascos intensos', emoji: '⛈️' },
+  95: { label: 'Tormenta', emoji: '⛈️' },
+  96: { label: 'Tormenta con granizo', emoji: '⛈️' },
+  99: { label: 'Tormenta con granizo', emoji: '⛈️' },
+};
+
+function getClothingRec(temp, wind, precip, code) {
+  const isRain  = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
+  const windChill = temp - (wind > 20 ? (wind - 20) * 0.3 : 0); // sensación térmica simplificada
+
+  const items = [];
+
+  // Base layer
+  if (windChill < 5)        items.push('🧥 Maillot térmico + camiseta interior');
+  else if (windChill < 12)  items.push('👕 Maillot manga larga');
+  else if (windChill < 18)  items.push('👕 Maillot manga corta + gilet');
+  else                      items.push('👕 Maillot manga corta');
+
+  // Legs
+  if (windChill < 8)        items.push('🩲 Culote con mallas largas');
+  else if (windChill < 15)  items.push('🩲 Culote + calentadores de pierna');
+  else                      items.push('🩲 Culote corto');
+
+  // Hands
+  if (windChill < 5)        items.push('🧤 Guantes gruesos');
+  else if (windChill < 14)  items.push('🧤 Guantes finos');
+  else                      items.push('🤚 Sin guantes');
+
+  // Head
+  if (windChill < 8)        items.push('🪖 Gorro bajo el casco');
+
+  // Rain
+  if (isRain) {
+    items.push('🌧️ Cortavientos impermeable');
+    items.push('👟 Fundas para zapatillas');
+  } else if (wind > 30) {
+    items.push('💨 Cortavientos ligero');
+  }
+
+  // Shoes
+  if (windChill < 8)        items.push('🧦 Calcetines térmicos o fundas');
+
+  return items;
+}
+
+function getWeatherRec(code, wind, precip, temp, todaySess) {
+  const isRain       = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
+  const isHeavyRain  = [65,82,95,96,99].includes(code) || precip > 2;
+  const isFog        = [45,48].includes(code);
+  const isSnow       = [71,73,75,85,86].includes(code);
+  const isStrongWind = wind > 40;
+  const isModWind    = wind > 25;
+  const isCold       = temp < 4;
+  const isPerfect    = !isRain && !isFog && !isSnow && !isStrongWind && temp >= 8;
+
+  // Determine session need (road bike, gravel/mtb, or indoor)
+  const sessType = (todaySess?.type || '').toLowerCase();
+  const isLowInt = ['z2','recovery','endurance'].some(t => sessType.includes(t)) || todaySess?.isRest;
+
+  if (isSnow || isHeavyRain || isCold) {
+    return {
+      icon: '🏠',
+      type: 'Rodillo',
+      color: '#6366f1',
+      msg: isSnow ? 'Nieve o temperatura muy baja. Rodillo hoy, sin dudarlo.' :
+           isCold  ? `${temp}°C — demasiado frío para una salida segura. Rodillo y música.` :
+                     'Lluvia intensa. Rodillo con la sesión planificada, sin excusas.',
+    };
+  }
+  if (isRain && isStrongWind) {
+    return {
+      icon: '🏠',
+      type: 'Rodillo',
+      color: '#6366f1',
+      msg: `Lluvia + ${wind.toFixed(0)} km/h de viento. Condiciones malas. Rodillo es la opción inteligente.`,
+    };
+  }
+  if (isRain) {
+    if (isLowInt) {
+      return {
+        icon: '🏔️',
+        type: 'MTB / Gravel',
+        color: '#10b981',
+        msg: `Lluvia ligera. Con una MTB o gravel en caminos de tierra puedes salir igual. O rodillo si prefieres.`,
+      };
+    }
+    return {
+      icon: '🏠',
+      type: 'Rodillo',
+      color: '#6366f1',
+      msg: `Lluvia — no ideal para carretera. Rodillo para la sesión de hoy.`,
+    };
+  }
+  if (isStrongWind) {
+    return {
+      icon: '🏔️',
+      type: 'MTB / Gravel',
+      color: '#10b981',
+      msg: `Viento fuerte (${wind.toFixed(0)} km/h). Evita carretera — MTB o gravel por senderos protegidos es más seguro y disfrutable.`,
+    };
+  }
+  if (isModWind) {
+    return {
+      icon: '🪨',
+      type: 'Gravel',
+      color: '#f59e0b',
+      msg: `Viento de ${wind.toFixed(0)} km/h. Considera gravel o rutas más resguardadas. La carretera es viable pero incómoda.`,
+    };
+  }
+  if (isFog) {
+    return {
+      icon: '🏔️',
+      type: 'MTB / Gravel',
+      color: '#94a3b8',
+      msg: `Niebla — reduce visibilidad en carretera. MTB o gravel por caminos tranquilos es más seguro hoy.`,
+    };
+  }
+  if (isPerfect) {
+    return {
+      icon: '🚴',
+      type: 'Carretera',
+      color: '#9ED62B',
+      msg: `Condiciones perfectas para salir en carretera. ¡Aprovéchalo, no siempre es así!`,
+    };
+  }
+  return {
+    icon: '🚴',
+    type: 'Carretera / Gravel',
+    color: '#9ED62B',
+    msg: `Condiciones aceptables. Carretera o gravel según tu preferencia de hoy.`,
+  };
+}
+
+async function fetchWeather() {
+  const el = document.getElementById('weather-content');
+
+  if (!navigator.geolocation) {
+    el.innerHTML = `<div class="empty-state"><i class="fas fa-map-marker-alt"></i> Geolocalización no disponible en este navegador</div>`;
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lon } = pos.coords;
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&wind_speed_unit=kmh&timezone=auto`;
+      const res  = await fetch(url);
+      const data = await res.json();
+      const cur  = data.current;
+
+      const code   = cur.weather_code;
+      const temp   = Math.round(cur.temperature_2m);
+      const feels  = Math.round(cur.apparent_temperature);
+      const wind   = cur.wind_speed_10m;
+      const precip = cur.precipitation;
+      const wx     = WX_CODES[code] || { label: 'Variable', emoji: '🌥️' };
+
+      const todaySess = dashPlan?.sessions?.[todayIdx];
+      const rec      = getWeatherRec(code, wind, precip, temp, todaySess);
+      const clothing = getClothingRec(temp, wind, precip, code);
+
+      el.innerHTML = `
+        <div class="weather-main">
+          <div class="weather-emoji">${wx.emoji}</div>
+          <div>
+            <div class="weather-temp">${temp}°C</div>
+            <div class="weather-desc">${wx.label} · Sensación ${feels}°C</div>
+          </div>
+        </div>
+        <div class="weather-stats">
+          <div class="weather-stat"><i class="fas fa-wind" style="color:#60a5fa"></i> ${wind.toFixed(0)} km/h</div>
+          <div class="weather-stat"><i class="fas fa-tint" style="color:#38bdf8"></i> ${precip.toFixed(1)} mm</div>
+        </div>
+        <div class="weather-rec" style="border-color:${rec.color}40;background:${rec.color}08;margin-bottom:10px">
+          <div class="weather-rec-label" style="color:${rec.color}">RECOMENDACIÓN DE HOY</div>
+          <div class="weather-rec-text">${rec.icon} <strong>${rec.type}</strong></div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.45">${rec.msg}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:11px 13px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:8px">👗 ROPA RECOMENDADA</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            ${clothing.map(item => `<div style="font-size:12px;line-height:1.4">${item}</div>`).join('')}
+          </div>
+        </div>`;
+
+    } catch {
+      el.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> No se pudo obtener el tiempo</div>`;
+    }
+  }, () => {
+    el.innerHTML = `
+      <div class="empty-state" style="padding:16px 0">
+        <i class="fas fa-map-marker-slash"></i>
+        Permite el acceso a tu ubicación para ver el tiempo y la recomendación de ruta.
+      </div>`;
+  });
+}
+
+/* ── FTP Readiness ──────────────────────────────────────── */
+function renderFTPReadiness(pmcMetrics) {
+  const el = document.getElementById('ftp-banner');
+  if (!pmcMetrics) { el.className = 'ftp-banner not-yet'; return; }
+
+  const { ctl, atl, tsb } = pmcMetrics;
+
+  if (ctl < 25) {
+    el.className = 'ftp-banner not-yet';
+    return;
+  }
+
+  if (tsb > 10) {
+    el.className = 'ftp-banner ready';
+    document.getElementById('ftp-banner-emoji').textContent = '🎯';
+    document.getElementById('ftp-banner-title').textContent = '¡Momento ideal para un test de FTP!';
+    document.getElementById('ftp-banner-msg').textContent = `Tu TSB está en +${tsb.toFixed(0)} — estás fresco y con buena forma base (CTL ${ctl.toFixed(0)}). Esta semana es perfecta para hacer un test y actualizar tus zonas.`;
+  } else if (tsb > 3) {
+    el.className = 'ftp-banner soon';
+    document.getElementById('ftp-banner-emoji').textContent = '📈';
+    document.getElementById('ftp-banner-title').textContent = 'Casi listo para test de FTP';
+    document.getElementById('ftp-banner-msg').textContent = `TSB en ${tsb > 0 ? '+' : ''}${tsb.toFixed(0)}, forma base sólida (CTL ${ctl.toFixed(0)}). Con 1-2 días más de recuperación estarás en el punto óptimo para un test.`;
+  } else {
+    el.className = 'ftp-banner not-yet';
   }
 }
 
@@ -657,9 +1101,8 @@ function renderWeekCompliance(plan) {
   const el = document.getElementById('week-compliance-content');
   if (!plan?.sessions) return;
 
-  const sessions = plan.sessions; // 7 items Mon–Sun
+  const sessions = plan.sessions;
 
-  // Determine which days this week had actual activity (source of truth for green dots)
   const mondayDate = new Date();
   mondayDate.setDate(mondayDate.getDate() - (mondayDate.getDay() || 7) + 1);
   mondayDate.setHours(0, 0, 0, 0);
@@ -672,32 +1115,37 @@ function renderWeekCompliance(plan) {
     if (idx >= 0 && idx <= 6) activeDays.add(idx);
   });
 
-  const nonRest = sessions.filter(s => !s.isRest);
+  const nonRest       = sessions.filter(s => !s.isRest);
   let donePlannedCount = 0;
   sessions.forEach((s, i) => { if (!s.isRest && activeDays.has(i)) donePlannedCount++; });
   const totalDone = activeDays.size;
   const pct       = nonRest.length ? Math.round((donePlannedCount / nonRest.length) * 100) : 0;
+  const pctColor  = pct >= 80 ? '#10b981' : pct >= 50 ? 'var(--primary)' : 'var(--text-muted)';
 
   const dots = sessions.map((s, i) => {
     const hasActivity = activeDays.has(i);
-    if (!hasActivity && s.isRest) return `<div class="week-day-dot rest" title="${DAY_NAMES[i]} — Descanso"></div>`;
-    const cls   = hasActivity ? 'done' : (i === todayIdx ? 'today' : '');
-    const title = `${DAY_NAMES[i]}${hasActivity ? (s.isRest ? ' — Entrenaste ✓' : ' ✓') : ''}`;
-    return `<div class="week-day-dot ${cls}" title="${title}"></div>`;
+    const isToday     = i === todayIdx;
+    let cls = '';
+    if (!hasActivity && s.isRest) cls = 'rest';
+    else if (hasActivity)         cls = 'done';
+    else if (isToday)             cls = 'today';
+    const title = `${DAY_NAMES[i]}${hasActivity ? ' ✓' : s.isRest ? ' · Descanso' : ''}`;
+    return `
+      <div class="week-day-item">
+        <div class="week-day-bar ${cls}" title="${title}"></div>
+        <span class="week-day-bar-label" style="${isToday ? 'color:var(--primary)' : ''}">${DAY_NAMES[i]}</span>
+      </div>`;
   }).join('');
 
   el.innerHTML = `
-    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px">
       <div>
         <div class="week-compliance-pct">${totalDone}<span style="font-size:14px;font-weight:400;color:var(--text-muted)"> / ${nonRest.length}</span></div>
         <div style="font-size:12px;color:var(--text-muted)">sesiones completadas</div>
       </div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:${pct >= 80 ? '#10b981' : pct >= 50 ? 'var(--primary)' : 'var(--text-muted)'}">${pct}%</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:800;color:${pctColor}">${pct}%</div>
     </div>
-    <div class="week-days">${dots}</div>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:2px">
-      ${DAY_NAMES.map(d => `<span>${d}</span>`).join('')}
-    </div>`;
+    <div class="week-days">${dots}</div>`;
 }
 
 /* ── PMC form state ─────────────────────────────────────── */
@@ -708,12 +1156,12 @@ function renderPMCCard() {
   const { ctl, atl, tsb } = AppState.getCurrentMetrics();
   const status = Utils.getTSBStatus(tsb);
 
-  const tsbDesc = tsb > 25  ? 'Estás muy descansado. Buen momento para competir o hacer un test de FTP.'
-                : tsb > 5   ? 'Te encuentras fresco. Puedes apretar un poco más hoy.'
+  const tsbDesc = tsb > 25  ? 'Muy descansado. Buen momento para competir o test de FTP.'
+                : tsb > 5   ? 'Fresco. Puedes apretar un poco más hoy.'
                 : tsb > -10 ? 'Carga óptima. Tu rendimiento está en el punto ideal.'
-                : tsb > -20 ? 'Carga alta acumulada. Mantén la intensidad con cuidado.'
+                : tsb > -20 ? 'Carga alta. Mantén la intensidad con cuidado.'
                 : tsb > -30 ? 'Fatiga notable. Considera reducir la carga esta semana.'
-                :             'Posible sobreentrenamiento. Prioriza el descanso y la recuperación.';
+                :             'Posible sobreentrenamiento. Prioriza el descanso.';
 
   el.innerHTML = `
     <div class="form-state-badge" style="background:${status.color}18;border:1px solid ${status.color}40;color:${status.color}">
@@ -723,22 +1171,24 @@ function renderPMCCard() {
     <div class="pmc-metrics">
       <div class="pmc-metric">
         <div class="val" style="color:#3B82F6">${ctl.toFixed(1)}</div>
-        <div class="lbl">CTL (fitness)</div>
+        <div class="lbl">CTL fitness</div>
       </div>
       <div class="pmc-metric">
         <div class="val" style="color:#EF4444">${atl.toFixed(1)}</div>
-        <div class="lbl">ATL (fatiga)</div>
+        <div class="lbl">ATL fatiga</div>
       </div>
       <div class="pmc-metric">
         <div class="val" style="color:${status.color}">${tsb > 0 ? '+' : ''}${tsb.toFixed(1)}</div>
-        <div class="lbl">TSB (forma)</div>
+        <div class="lbl">TSB forma</div>
       </div>
     </div>
-    <div style="margin-top:12px">
+    <div style="margin-top:14px">
       <a href="analytics.html" style="font-size:12px;color:var(--primary);text-decoration:none;font-weight:600">
         Ver PMC completo <i class="fas fa-arrow-right"></i>
       </a>
     </div>`;
+
+  renderFTPReadiness({ ctl, atl, tsb });
 }
 
 /* ── Last activity ──────────────────────────────────────── */
@@ -746,7 +1196,6 @@ function renderLastActivity() {
   const el = document.getElementById('last-activity-content');
   if (!AppState.activities?.length) return;
 
-  // Activities are sorted ascending — last is most recent
   const sorted = [...AppState.activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
   const act    = sorted[0];
   if (!act) return;
@@ -786,40 +1235,35 @@ function renderLastActivity() {
 
 /* ── Load training plan ─────────────────────────────────── */
 async function loadDashPlan() {
-  // Try localStorage first for instant render
   try {
     const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan') || '{}');
     if (local?.sessions) {
       dashPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {} };
-      renderTodaySession(dashPlan, AppState.athlete);
+      renderTodayBig(dashPlan, AppState.athlete);
       renderWeekCompliance(dashPlan);
+      renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
     }
   } catch {}
 
-  // Then fetch from backend
   try {
     const res  = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() });
     const data = await res.json();
     if (data?.sessions) {
-      // Merge: preserve completed states from localStorage in case the backend hasn't
-      // received the latest save yet (race condition between POST and this GET)
       if (dashPlan?.sessions) {
-        data.sessions.forEach((s, i) => {
-          if (dashPlan.sessions[i]?.completed) s.completed = true;
-        });
+        data.sessions.forEach((s, i) => { if (dashPlan.sessions[i]?.completed) s.completed = true; });
       }
       dashPlan = { sessions: data.sessions, phase: data.phase, targetTSS: data.tss_target, advice: data.advice || {} };
       localStorage.setItem('cyclocoach_training_plan', JSON.stringify({
         week_start: data.week_start || new Date().toISOString().substring(0, 10),
-        sessions: data.sessions,
+        sessions:   data.sessions,
         tss_target: data.tss_target,
-        phase: data.phase,
-        advice: data.advice,
-        savedAt: Date.now()
+        phase:      data.phase,
+        advice:     data.advice,
+        savedAt:    Date.now()
       }));
-      renderTodaySession(dashPlan, AppState.athlete);
+      renderTodayBig(dashPlan, AppState.athlete);
       renderWeekCompliance(dashPlan);
-      renderCoachNote(dashPlan);
+      renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
     }
   } catch {}
 }
@@ -828,14 +1272,13 @@ async function loadDashPlan() {
 (async function init() {
   await AppState.init();
 
-  renderGreeting(AppState.athlete);
+  renderHero(AppState.athlete, null, null);
   renderPMCCard();
   renderLastActivity();
-  renderTodaySession(null, AppState.athlete); // placeholder while plan loads
+  renderTodayBig(null, AppState.athlete);
 
-  // Auth UI
   if (AppState.athlete) {
-    const a = AppState.athlete;
+    const a       = AppState.athlete;
     const avatarEl = document.getElementById('athlete-avatar');
     const nameEl   = document.getElementById('athlete-name');
     const ftpEl    = document.getElementById('athlete-ftp');
@@ -844,32 +1287,30 @@ async function loadDashPlan() {
     if (ftpEl)    ftpEl.textContent    = `FTP: ${a.ftp || '--'} W`;
   }
 
-  // Load plan (fast local + backend refresh)
+  fetchWeather();
   await loadDashPlan();
 
-  // Load fresh activities + PMC in background
   BackendSync.loadActivities().then(() => {
     renderPMCCard();
     renderLastActivity();
     autoMarkTodayFromActivities();
-    renderCoachNote(dashPlan);
-    if (dashPlan) renderWeekCompliance(dashPlan); // re-render with fresh activity data
+    if (dashPlan) renderWeekCompliance(dashPlan);
+    renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
   });
 
   BackendSync.loadProfile().then(profile => {
     if (profile) {
-      renderGreeting(AppState.athlete);
-      const a = AppState.athlete;
+      const a       = AppState.athlete;
       const avatarEl = document.getElementById('athlete-avatar');
       const nameEl   = document.getElementById('athlete-name');
       const ftpEl    = document.getElementById('athlete-ftp');
       if (avatarEl) avatarEl.textContent = (a?.name || '?')[0].toUpperCase();
       if (nameEl)   nameEl.textContent   = a?.name || 'Atleta';
       if (ftpEl)    ftpEl.textContent    = `FTP: ${a?.ftp || '--'} W`;
+      renderHero(a, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
     }
   });
 
-  // Revelar página tras renderizado inicial
   requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
 })();
 </script>
