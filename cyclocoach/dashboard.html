@@ -657,17 +657,32 @@ function renderWeekCompliance(plan) {
   const el = document.getElementById('week-compliance-content');
   if (!plan?.sessions) return;
 
-  const sessions    = plan.sessions; // 7 items Mon–Sun
-  const nonRest     = sessions.filter(s => !s.isRest);
-  const donePlanned = sessions.filter(s => !s.isRest && s.completed);
-  const doneExtra   = sessions.filter(s => s.isRest && s.completed); // rest days where training happened
-  const totalDone   = donePlanned.length + doneExtra.length;
-  const pct         = nonRest.length ? Math.round((donePlanned.length / nonRest.length) * 100) : 0;
+  const sessions = plan.sessions; // 7 items Mon–Sun
+
+  // Determine which days this week had actual activity (source of truth for green dots)
+  const mondayDate = new Date();
+  mondayDate.setDate(mondayDate.getDate() - (mondayDate.getDay() || 7) + 1);
+  mondayDate.setHours(0, 0, 0, 0);
+  const activeDays = new Set();
+  (AppState.activities || []).forEach(a => {
+    const dateStr = a.date?.slice(0, 10);
+    if (!dateStr) return;
+    const d = new Date(dateStr + 'T00:00:00');
+    const idx = Math.round((d - mondayDate) / 86400000);
+    if (idx >= 0 && idx <= 6) activeDays.add(idx);
+  });
+
+  const nonRest = sessions.filter(s => !s.isRest);
+  let donePlannedCount = 0;
+  sessions.forEach((s, i) => { if (!s.isRest && activeDays.has(i)) donePlannedCount++; });
+  const totalDone = activeDays.size;
+  const pct       = nonRest.length ? Math.round((donePlannedCount / nonRest.length) * 100) : 0;
 
   const dots = sessions.map((s, i) => {
-    if (s.isRest && !s.completed) return `<div class="week-day-dot rest" title="${DAY_NAMES[i]} — Descanso"></div>`;
-    const cls   = s.completed ? 'done' : (i === todayIdx ? 'today' : '');
-    const title = `${DAY_NAMES[i]}${s.completed ? (s.isRest ? ' — Entrenaste ✓' : ' ✓') : ''}`;
+    const hasActivity = activeDays.has(i);
+    if (!hasActivity && s.isRest) return `<div class="week-day-dot rest" title="${DAY_NAMES[i]} — Descanso"></div>`;
+    const cls   = hasActivity ? 'done' : (i === todayIdx ? 'today' : '');
+    const title = `${DAY_NAMES[i]}${hasActivity ? (s.isRest ? ' — Entrenaste ✓' : ' ✓') : ''}`;
     return `<div class="week-day-dot ${cls}" title="${title}"></div>`;
   }).join('');
 
@@ -838,6 +853,7 @@ async function loadDashPlan() {
     renderLastActivity();
     autoMarkTodayFromActivities();
     renderCoachNote(dashPlan);
+    if (dashPlan) renderWeekCompliance(dashPlan); // re-render with fresh activity data
   });
 
   BackendSync.loadProfile().then(profile => {
