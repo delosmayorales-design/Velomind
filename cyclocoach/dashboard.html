@@ -657,21 +657,24 @@ function renderWeekCompliance(plan) {
   const el = document.getElementById('week-compliance-content');
   if (!plan?.sessions) return;
 
-  const sessions  = plan.sessions; // 7 items Mon–Sun
-  const nonRest   = sessions.filter(s => !s.isRest);
-  const done      = sessions.filter(s => !s.isRest && s.completed);
-  const pct       = nonRest.length ? Math.round((done.length / nonRest.length) * 100) : 0;
+  const sessions    = plan.sessions; // 7 items Mon–Sun
+  const nonRest     = sessions.filter(s => !s.isRest);
+  const donePlanned = sessions.filter(s => !s.isRest && s.completed);
+  const doneExtra   = sessions.filter(s => s.isRest && s.completed); // rest days where training happened
+  const totalDone   = donePlanned.length + doneExtra.length;
+  const pct         = nonRest.length ? Math.round((donePlanned.length / nonRest.length) * 100) : 0;
 
   const dots = sessions.map((s, i) => {
-    if (s.isRest) return `<div class="week-day-dot rest" title="${DAY_NAMES[i]} — Descanso"></div>`;
-    const cls  = s.completed ? 'done' : (i === todayIdx ? 'today' : '');
-    return `<div class="week-day-dot ${cls}" title="${DAY_NAMES[i]}${s.completed ? ' ✓' : ''}"></div>`;
+    if (s.isRest && !s.completed) return `<div class="week-day-dot rest" title="${DAY_NAMES[i]} — Descanso"></div>`;
+    const cls   = s.completed ? 'done' : (i === todayIdx ? 'today' : '');
+    const title = `${DAY_NAMES[i]}${s.completed ? (s.isRest ? ' — Entrenaste ✓' : ' ✓') : ''}`;
+    return `<div class="week-day-dot ${cls}" title="${title}"></div>`;
   }).join('');
 
   el.innerHTML = `
     <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px">
       <div>
-        <div class="week-compliance-pct">${done.length}<span style="font-size:14px;font-weight:400;color:var(--text-muted)"> / ${nonRest.length}</span></div>
+        <div class="week-compliance-pct">${totalDone}<span style="font-size:14px;font-weight:400;color:var(--text-muted)"> / ${nonRest.length}</span></div>
         <div style="font-size:12px;color:var(--text-muted)">sesiones completadas</div>
       </div>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:${pct >= 80 ? '#10b981' : pct >= 50 ? 'var(--primary)' : 'var(--text-muted)'}">${pct}%</div>
@@ -783,6 +786,13 @@ async function loadDashPlan() {
     const res  = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() });
     const data = await res.json();
     if (data?.sessions) {
+      // Merge: preserve completed states from localStorage in case the backend hasn't
+      // received the latest save yet (race condition between POST and this GET)
+      if (dashPlan?.sessions) {
+        data.sessions.forEach((s, i) => {
+          if (dashPlan.sessions[i]?.completed) s.completed = true;
+        });
+      }
       dashPlan = { sessions: data.sessions, phase: data.phase, targetTSS: data.tss_target, advice: data.advice || {} };
       localStorage.setItem('cyclocoach_training_plan', JSON.stringify({
         week_start: data.week_start || new Date().toISOString().substring(0, 10),

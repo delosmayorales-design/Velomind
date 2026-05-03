@@ -2840,8 +2840,18 @@ function showToast(text, color = 'var(--primary)') {
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 3500);
 }
 
-function regeneratePlan() { 
-  generatePlan(); 
+function regeneratePlan() {
+  // Preserve completed states before regeneration (syncPlanWithReality resets them on new plan)
+  const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
+  generatePlan();
+  // Re-apply: union of activity-based detection + manual marks
+  if (currentPlan?.sessions && prevCompleted.length) {
+    let anyChange = false;
+    currentPlan.sessions.forEach((s, i) => {
+      if (!s.completed && prevCompleted[i]) { s.completed = true; anyChange = true; }
+    });
+    if (anyChange) renderPlan(currentPlan, AppState.athlete);
+  }
   silentSavePlan();
   showToast('✅ Plan de entrenamiento y nutrición recalculado', 'var(--accent-green)');
 }
