@@ -69,13 +69,16 @@
       right: 32px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 88px;
-      line-height: 1;
-      opacity: .38;
+      width: 90px;
+      height: 90px;
+      opacity: .40;
       user-select: none;
       pointer-events: none;
-      font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
+    .hero-deco img { width: 90px; height: 90px; display: block; }
     .hero-content { position: relative; z-index: 1; max-width: calc(100% - 130px); }
     .hero-eyebrow {
       font-size: 11px;
@@ -159,12 +162,12 @@
        SESIÓN DE HOY
     ───────────────────────────────────────────────────────── */
     .session-emoji-big {
-      font-size: 52px;
-      line-height: 1;
-      margin-bottom: 10px;
       display: block;
-      font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
+      width: 54px;
+      height: 54px;
+      margin-bottom: 12px;
     }
+    .session-emoji-big img { width: 54px; height: 54px; display: block; }
     .session-title {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 22px;
@@ -629,7 +632,7 @@
 
     <!-- ── HERO ── -->
     <div class="coach-hero no-data" id="coach-hero">
-      <div class="hero-deco" id="hero-deco">💪</div>
+      <div class="hero-deco" id="hero-deco"></div>
       <div class="hero-date-chip" id="hero-date"></div>
       <div class="hero-content">
         <div class="hero-eyebrow" id="hero-eyebrow">VeloMind · Tu coach personal</div>
@@ -729,6 +732,18 @@ const PHRASES = {
 };
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
+/* Convierte un emoji en <img> desde Twemoji CDN — evita el recuadro
+   de fallback que muestran algunos navegadores con emojis grandes */
+function bigEmoji(char, sizePx) {
+  const codepoints = [...(char || '🚴')]
+    .map(c => c.codePointAt(0).toString(16))
+    .filter(cp => cp !== 'fe0f')   // elimina variation selector
+    .join('-');
+  const url = `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/${codepoints}.png`;
+  // onerror: si el CDN falla, muestra el carácter directamente
+  return `<img src="${url}" width="${sizePx}" height="${sizePx}" draggable="false" alt="${char}" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=\\"font-size:${sizePx * 0.9}px;line-height:1\\">${char}</span>')">`;
+}
+
 /* ── HERO ────────────────────────────────────────────────── */
 function renderHero(athlete, metrics, plan) {
   const hour = new Date().getHours();
@@ -774,7 +789,7 @@ function renderHero(athlete, metrics, plan) {
 
   const heroEl = document.getElementById('coach-hero');
   heroEl.className = `coach-hero ${state}`;
-  document.getElementById('hero-deco').textContent = deco;
+  document.getElementById('hero-deco').innerHTML = bigEmoji(deco, 90);
   document.getElementById('hero-eyebrow').textContent = `${greet} · ${stateLabel}`;
   document.getElementById('hero-greeting').textContent = `${firstName}, ${
     state === 'fresh'   ? 'estás listo para dar el 100%' :
@@ -823,7 +838,7 @@ function renderToday(plan, athlete) {
 
   if (sess.isRest) {
     wrap.innerHTML = eyebrow + `
-      <span class="session-emoji-big">😴</span>
+      <span class="session-emoji-big">${bigEmoji('😴', 54)}</span>
       <div class="session-title">Día de descanso</div>
       <div class="why-block">
         <b>Por qué importa</b>
@@ -847,7 +862,7 @@ function renderToday(plan, athlete) {
   const why      = plan.advice?.today || (whyKey ? WHY[whyKey] : 'Esta sesión encaja en tu bloque actual para progresar de forma continua.');
 
   wrap.innerHTML = eyebrow + `
-    <span class="session-emoji-big">${emoji}</span>
+    <span class="session-emoji-big">${bigEmoji(emoji, 54)}</span>
     <div class="session-title" style="${isDone ? 'opacity:.5' : ''}">
       ${sess.name || wt.label}
       ${isDone ? '<span style="font-size:13px;font-weight:600;color:#10b981;margin-left:6px">✓ Hecha</span>' : ''}
