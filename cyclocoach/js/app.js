@@ -2044,52 +2044,32 @@ document.addEventListener('DOMContentLoaded', () => {
   `;
   document.head.appendChild(mobileStyle);
 
-  // 2. Inyectar Botón de Menú y Overlay automáticamente si existe el Sidebar
-  const headerTitle = document.querySelector('.page-header .page-title');
-  if (headerTitle && document.querySelector('.sidebar')) {
-    const h1 = headerTitle.querySelector('h1');
-    const p = headerTitle.querySelector('p');
-    
-    const btn = document.createElement('button');
-    btn.className = 'mobile-menu-btn';
-    btn.innerHTML = '<i class="fas fa-bars"></i>';
-    btn.onclick = () => document.body.classList.toggle('sidebar-open');
-    
-    // Autocerrar el menú al tocar cualquier enlace en móviles
+  // 2. Overlay + Bottom Nav — se inyectan en CUALQUIER página que tenga sidebar
+  if (document.querySelector('.sidebar')) {
+    // Autocerrar el menú al tocar cualquier enlace
     document.querySelectorAll('.sidebar a').forEach(link => {
       link.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
     });
-    
-    const textWrapper = document.createElement('div');
-    if (h1) textWrapper.appendChild(h1);
-    if (p) textWrapper.appendChild(p);
-    
-    headerTitle.innerHTML = '';
-    headerTitle.style.display = 'flex';
-    headerTitle.style.alignItems = 'center';
-    
-    headerTitle.appendChild(btn);
-    headerTitle.appendChild(textWrapper);
 
     const overlay = document.createElement('div');
     overlay.className = 'sidebar-overlay';
     overlay.onclick = () => document.body.classList.remove('sidebar-open');
     document.body.appendChild(overlay);
 
-    // 3. Inyectar Bottom Navigation Bar (Experiencia App Nativa)
+    // Bottom Navigation Bar
     const bottomNav = document.createElement('nav');
     bottomNav.className = 'bottom-nav';
     bottomNav.style.display = 'none'; // Oculto en PC, visible solo por CSS en móvil
-    
+
     const currentPath = window.location.pathname;
     const navItems = [
-      { name: 'Métricas', icon: 'fa-chart-bar', href: 'analytics.html' },
-      { name: 'Mi Plan', icon: 'fa-calendar-check', href: 'training-plan.html' },
-      { name: 'Actividades', icon: 'fa-history', href: 'activities.html' },
-      { name: 'Garaje', icon: 'fa-warehouse', href: 'garaje.html' },
-      { name: 'Menú', icon: 'fa-bars', href: '#', isMenu: true }
+      { name: 'Métricas',    icon: 'fa-chart-bar',      href: 'analytics.html' },
+      { name: 'Mi Plan',     icon: 'fa-calendar-check', href: 'training-plan.html' },
+      { name: 'Actividades', icon: 'fa-history',        href: 'activities.html' },
+      { name: 'Garaje',      icon: 'fa-warehouse',      href: 'garaje.html' },
+      { name: 'Menú',        icon: 'fa-bars',           href: '#', isMenu: true }
     ];
-    
+
     bottomNav.innerHTML = navItems.map(item => {
       const isActive = currentPath.includes(item.href) && !item.isMenu ? 'active' : '';
       return `
@@ -2099,13 +2079,35 @@ document.addEventListener('DOMContentLoaded', () => {
         </a>
       `;
     }).join('');
-    
+
     document.body.appendChild(bottomNav);
-    
+
     document.getElementById('bottom-nav-menu-btn')?.addEventListener('click', (e) => {
       e.preventDefault();
-      document.body.classList.add('sidebar-open'); // Sigue abriendo el resto de opciones
+      document.body.classList.add('sidebar-open');
     });
+  }
+
+  // 3. Botón hamburguesa en el page-header — solo si existe el header
+  const headerTitle = document.querySelector('.page-header .page-title');
+  if (headerTitle && document.querySelector('.sidebar')) {
+    const h1 = headerTitle.querySelector('h1');
+    const p  = headerTitle.querySelector('p');
+
+    const btn = document.createElement('button');
+    btn.className = 'mobile-menu-btn';
+    btn.innerHTML = '<i class="fas fa-bars"></i>';
+    btn.onclick = () => document.body.classList.toggle('sidebar-open');
+
+    const textWrapper = document.createElement('div');
+    if (h1) textWrapper.appendChild(h1);
+    if (p)  textWrapper.appendChild(p);
+
+    headerTitle.innerHTML = '';
+    headerTitle.style.display = 'flex';
+    headerTitle.style.alignItems = 'center';
+    headerTitle.appendChild(btn);
+    headerTitle.appendChild(textWrapper);
   }
 });
 
