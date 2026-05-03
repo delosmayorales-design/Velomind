@@ -21,429 +21,386 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <style>
 
-    /* ── Hero Banner ──────────────────────────────────────── */
+    /* ─────────────────────────────────────────────────────────
+       HERO BANNER  — estático, sin elementos que se muevan
+    ───────────────────────────────────────────────────────── */
     .coach-hero {
-      border-radius: var(--radius-lg);
-      padding: 32px 28px 28px;
-      margin-bottom: 20px;
+      border-radius: 20px;
+      padding: 36px 32px 32px;
+      margin-bottom: 18px;
       position: relative;
       overflow: hidden;
-      min-height: 160px;
+      border-left: 5px solid var(--hero-accent, #9ED62B);
+      /* El fondo es un gradiente estático (sin animación) */
+      background: var(--hero-bg, linear-gradient(135deg,#0a0f14 0%,#080c10 100%));
+      transition: border-color .5s ease, background .5s ease;
     }
-    .coach-hero-bg {
+    /* State variants — solo cambia background + accent, nada se mueve */
+    .coach-hero.fresh {
+      --hero-accent: #10b981;
+      --hero-glow: rgba(16,185,129,.14);
+      background:
+        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(16,185,129,.13) 0%, transparent 68%),
+        linear-gradient(135deg, #0b1f12 0%, #091510 100%);
+    }
+    .coach-hero.optimal {
+      --hero-accent: #f59e0b;
+      --hero-glow: rgba(245,158,11,.12);
+      background:
+        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(245,158,11,.11) 0%, transparent 68%),
+        linear-gradient(135deg, #181209 0%, #110e06 100%);
+    }
+    .coach-hero.loaded {
+      --hero-accent: #ef4444;
+      --hero-glow: rgba(239,68,68,.12);
+      background:
+        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(239,68,68,.11) 0%, transparent 68%),
+        linear-gradient(135deg, #180a0a 0%, #110606 100%);
+    }
+    .coach-hero.no-data {
+      --hero-accent: #9ED62B;
+      background:
+        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(158,214,43,.08) 0%, transparent 68%),
+        linear-gradient(135deg, #0c1008 0%, #090d06 100%);
+    }
+    /* Gran emoji decorativo — fijo, sin animación de movimiento */
+    .hero-deco {
       position: absolute;
-      inset: 0;
-      background-size: 300% 300%;
-      animation: heroShift 8s ease infinite;
-      z-index: 0;
+      right: 32px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 88px;
+      line-height: 1;
+      opacity: .22;
+      user-select: none;
+      pointer-events: none;
     }
-    .coach-hero-bg.fresh {
-      background: linear-gradient(135deg, #0f2d10 0%, #1a3d1a 30%, #0a2020 60%, #162d0a 100%);
-    }
-    .coach-hero-bg.optimal {
-      background: linear-gradient(135deg, #1a1a06 0%, #2a2208 30%, #1a1205 60%, #251800 100%);
-    }
-    .coach-hero-bg.loaded {
-      background: linear-gradient(135deg, #1a0d06 0%, #250d06 30%, #1a0808 60%, #200505 100%);
-    }
-    .coach-hero-bg.no-data {
-      background: linear-gradient(135deg, #0a0f18 0%, #0d1520 30%, #080e16 60%, #0b1218 100%);
-    }
-    @keyframes heroShift {
-      0%   { background-position: 0% 50%; }
-      50%  { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-    .coach-hero-glow {
-      position: absolute;
-      width: 300px;
-      height: 300px;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.25;
-      top: -80px;
-      right: -60px;
-      animation: glowPulse 4s ease-in-out infinite;
-      z-index: 0;
-    }
-    @keyframes glowPulse {
-      0%, 100% { transform: scale(1); opacity: 0.2; }
-      50%       { transform: scale(1.15); opacity: 0.35; }
-    }
-    .coach-hero-content {
-      position: relative;
-      z-index: 1;
-    }
-    .hero-greeting {
-      font-size: 13px;
+    .hero-content { position: relative; z-index: 1; max-width: calc(100% - 130px); }
+    .hero-eyebrow {
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      opacity: 0.6;
-      margin-bottom: 6px;
+      letter-spacing: 1.2px;
+      opacity: .5;
+      margin-bottom: 8px;
     }
-    .hero-name {
+    .hero-greeting {
       font-family: 'Space Grotesk', sans-serif;
-      font-size: 32px;
+      font-size: 34px;
       font-weight: 800;
       line-height: 1.15;
       margin-bottom: 10px;
     }
     .hero-phrase {
       font-size: 15px;
-      opacity: 0.75;
-      line-height: 1.5;
-      max-width: 560px;
       font-style: italic;
+      opacity: .65;
+      line-height: 1.55;
+      margin-bottom: 18px;
     }
-    .hero-badges {
-      display: flex;
-      gap: 8px;
-      margin-top: 18px;
-      flex-wrap: wrap;
-    }
-    .hero-badge {
+    .hero-chips { display: flex; gap: 7px; flex-wrap: wrap; }
+    .hero-chip {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 5px 12px;
+      padding: 5px 11px;
       border-radius: 99px;
       font-size: 12px;
       font-weight: 700;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.1);
+      white-space: nowrap;
     }
-    .hero-date {
+    .hero-date-chip {
       position: absolute;
       top: 28px;
-      right: 28px;
-      font-size: 12px;
-      opacity: 0.5;
-      text-align: right;
-      z-index: 1;
+      right: 140px;
+      font-size: 11px;
+      opacity: .4;
+      font-weight: 600;
     }
 
-    /* ── Today + Weather grid ─────────────────────────────── */
-    .top-grid {
+    /* ─────────────────────────────────────────────────────────
+       GRID 2 COLUMNAS  (sesión + tiempo)
+    ───────────────────────────────────────────────────────── */
+    .main-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
       margin-bottom: 16px;
     }
 
-    /* ── Today Big Card ───────────────────────────────────── */
-    .today-big {
+    /* ─────────────────────────────────────────────────────────
+       TARJETA GENÉRICA
+    ───────────────────────────────────────────────────────── */
+    .card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 22px;
+      border-radius: 16px;
+      padding: 22px 22px 20px;
       display: flex;
       flex-direction: column;
-      gap: 0;
     }
-    .today-big .card-label {
+    .card-eyebrow {
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.8px;
+      letter-spacing: .9px;
       color: var(--text-muted);
-      margin-bottom: 12px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    .today-session-emoji {
-      font-size: 44px;
-      margin-bottom: 8px;
+    .card-eyebrow i { font-size: 11px; }
+
+    /* ─────────────────────────────────────────────────────────
+       SESIÓN DE HOY
+    ───────────────────────────────────────────────────────── */
+    .session-emoji-big {
+      font-size: 52px;
+      line-height: 1;
+      margin-bottom: 10px;
       display: block;
-      animation: emojiBounce 2.5s ease-in-out infinite;
     }
-    @keyframes emojiBounce {
-      0%, 100% { transform: translateY(0); }
-      50%       { transform: translateY(-5px); }
-    }
-    .today-session-name {
+    .session-title {
       font-family: 'Space Grotesk', sans-serif;
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 800;
       line-height: 1.2;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
-    .today-session-meta {
+    .session-pills {
       display: flex;
-      gap: 10px;
+      gap: 7px;
       flex-wrap: wrap;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
-    .today-meta-pill {
+    .session-pill {
       display: inline-flex;
       align-items: center;
       gap: 4px;
       background: var(--bg-input);
       border-radius: 99px;
-      padding: 3px 10px;
+      padding: 4px 10px;
       font-size: 12px;
       font-weight: 600;
     }
-    .today-why {
-      background: rgba(255,255,255,0.04);
+    .why-block {
+      background: rgba(255,255,255,.03);
       border-left: 3px solid var(--primary);
-      border-radius: 0 8px 8px 0;
-      padding: 10px 14px;
+      border-radius: 0 10px 10px 0;
+      padding: 11px 14px;
       font-size: 13px;
       color: var(--text-muted);
-      line-height: 1.55;
-      margin-bottom: 14px;
+      line-height: 1.6;
+      margin-bottom: 16px;
       flex: 1;
     }
-    .today-why strong {
-      color: var(--text-secondary);
+    .why-block b {
       display: block;
-      margin-bottom: 3px;
-      font-size: 11px;
+      font-size: 10px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: .6px;
+      color: var(--primary);
+      margin-bottom: 4px;
     }
-    .btn-mark-done {
-      background: var(--bg-input, rgba(255,255,255,0.05));
-      border: 1px solid var(--border, rgba(255,255,255,0.1));
-      color: var(--text-secondary, #cbd5e1);
-      border-radius: var(--radius-md, 8px);
-      padding: 11px 18px;
+    .btn-done {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text-secondary);
       font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
+      font-weight: 700;
       font-family: inherit;
-      display: inline-flex;
+      cursor: pointer;
+      display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      transition: all 0.2s ease;
-      white-space: nowrap;
-      width: 100%;
+      transition: background .18s, border-color .18s, color .18s, transform .15s;
     }
-    .btn-mark-done.done {
+    .btn-done:hover:not(.done) {
+      background: rgba(158,214,43,.08);
+      border-color: var(--primary);
+      color: var(--primary);
+      transform: translateY(-1px);
+    }
+    .btn-done.done {
       background: rgba(16,185,129,.08);
       border-color: rgba(16,185,129,.3);
       color: #10b981;
     }
-    .btn-mark-done:hover:not(.done) {
-      background: var(--bg-card-hover, rgba(255,255,255,0.08));
-      border-color: var(--primary);
-      color: var(--text-primary, #fff);
-      transform: translateY(-1px);
-    }
 
-    /* ── Weather Card ─────────────────────────────────────── */
-    .weather-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 22px;
-      display: flex;
-      flex-direction: column;
-    }
-    .weather-card .card-label {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-    }
-    .weather-main {
+    /* ─────────────────────────────────────────────────────────
+       TIEMPO METEOROLÓGICO
+    ───────────────────────────────────────────────────────── */
+    .wx-main {
       display: flex;
       align-items: center;
-      gap: 14px;
-      margin-bottom: 14px;
+      gap: 16px;
+      margin-bottom: 12px;
     }
-    .weather-emoji {
-      font-size: 48px;
-      line-height: 1;
-      flex-shrink: 0;
-    }
-    .weather-temp {
+    .wx-emoji { font-size: 54px; line-height: 1; flex-shrink: 0; }
+    .wx-temp {
       font-family: 'Space Grotesk', sans-serif;
-      font-size: 38px;
+      font-size: 42px;
       font-weight: 800;
       line-height: 1;
     }
-    .weather-desc {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-    .weather-stats {
+    .wx-sub { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+    .wx-stats {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       margin-bottom: 14px;
       flex-wrap: wrap;
     }
-    .weather-stat {
+    .wx-stat {
       display: inline-flex;
       align-items: center;
       gap: 5px;
       background: var(--bg-input);
       border-radius: 8px;
-      padding: 5px 10px;
+      padding: 5px 11px;
       font-size: 12px;
       font-weight: 600;
     }
-    .weather-rec {
-      background: rgba(158,214,43,0.06);
-      border: 1px solid rgba(158,214,43,0.2);
+    .rec-box {
+      border-radius: 10px;
+      padding: 12px 14px;
+      border: 1px solid;
+      margin-bottom: 10px;
+    }
+    .rec-box-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin-bottom: 4px;
+    }
+    .rec-box-title {
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 3px;
+    }
+    .rec-box-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+    .clothes-box {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
       border-radius: 10px;
       padding: 12px 14px;
       margin-top: auto;
     }
-    .weather-rec-label {
+    .clothes-label {
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: var(--primary);
-      margin-bottom: 4px;
-    }
-    .weather-rec-text {
-      font-size: 14px;
-      font-weight: 600;
-      line-height: 1.4;
-    }
-    .weather-loading {
-      text-align: center;
-      padding: 30px 0;
+      letter-spacing: .6px;
       color: var(--text-muted);
-      font-size: 13px;
+      margin-bottom: 8px;
     }
+    .clothes-items {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .clothes-item { font-size: 13px; line-height: 1.4; }
 
-    /* ── FTP Readiness Banner ─────────────────────────────── */
+    /* ─────────────────────────────────────────────────────────
+       FTP BANNER
+    ───────────────────────────────────────────────────────── */
     .ftp-banner {
-      border-radius: var(--radius-lg);
+      border-radius: 16px;
       padding: 18px 22px;
       margin-bottom: 16px;
-      display: flex;
+      display: none;
       align-items: center;
       gap: 16px;
       border: 1px solid;
     }
-    .ftp-banner.ready {
-      background: rgba(16,185,129,0.07);
-      border-color: rgba(16,185,129,0.25);
-    }
-    .ftp-banner.soon {
-      background: rgba(245,158,11,0.07);
-      border-color: rgba(245,158,11,0.25);
-    }
-    .ftp-banner.not-yet {
-      display: none;
-    }
-    .ftp-banner-emoji { font-size: 32px; flex-shrink: 0; }
-    .ftp-banner-text h3 {
+    .ftp-banner.show { display: flex; }
+    .ftp-banner.ready  { background: rgba(16,185,129,.07);  border-color: rgba(16,185,129,.3); }
+    .ftp-banner.soon   { background: rgba(245,158,11,.07);  border-color: rgba(245,158,11,.3); }
+    .ftp-banner-icon { font-size: 36px; flex-shrink: 0; }
+    .ftp-banner-title {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 16px;
       font-weight: 700;
       margin-bottom: 3px;
     }
-    .ftp-banner-text p {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.45;
-    }
+    .ftp-banner-msg { font-size: 13px; color: var(--text-muted); line-height: 1.45; }
 
-    /* ── Bottom grid ──────────────────────────────────────── */
-    .dash-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+    /* ─────────────────────────────────────────────────────────
+       SEMANA
+    ───────────────────────────────────────────────────────── */
+    .week-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
       margin-bottom: 16px;
     }
-    .dash-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 20px 22px;
-      position: relative;
-      overflow: hidden;
+    .week-pct {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1;
     }
-    .dash-card-full { grid-column: 1 / -1; }
-    .dash-card-label {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-    .dash-card-title {
+    .week-pct-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .week-sessions-done {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 22px;
       font-weight: 700;
-      line-height: 1.2;
-      margin-bottom: 4px;
+      text-align: right;
     }
-
-    /* ── PMC metrics ──────────────────────────────────────── */
-    .form-state-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      border-radius: 99px;
-      font-size: 14px;
-      font-weight: 700;
-      margin-bottom: 10px;
+    .week-sessions-sub { font-size: 11px; color: var(--text-muted); text-align: right; }
+    .week-days-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
     }
-    .pmc-metrics {
-      display: flex;
-      gap: 24px;
-      margin-top: 12px;
-      flex-wrap: wrap;
-    }
-    .pmc-metric { text-align: center; }
-    .pmc-metric .val {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 20px;
-      font-weight: 700;
-    }
-    .pmc-metric .lbl {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: var(--text-muted);
-    }
-
-    /* ── Weekly compliance ─────────────────────────────────── */
-    .week-bar-wrap { margin-top: 12px; }
-    .week-days { display: flex; gap: 6px; margin-bottom: 8px; }
-    .week-day-item {
-      flex: 1;
+    .week-day-col {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
     }
-    .week-day-bar {
+    .week-day-bar-outer {
       width: 100%;
-      height: 36px;
-      border-radius: 6px;
+      height: 44px;
+      border-radius: 8px;
       background: var(--bg-input);
-      transition: all .3s;
       position: relative;
+      overflow: hidden;
     }
-    .week-day-bar.done { background: #10b981; }
-    .week-day-bar.today { box-shadow: 0 0 0 2px var(--primary); }
-    .week-day-bar.rest { background: var(--bg-input); opacity: 0.35; }
-    .week-day-bar-label {
+    .week-day-bar-outer.done   { background: rgba(16,185,129,.25); border: 1px solid rgba(16,185,129,.4); }
+    .week-day-bar-outer.today  { border: 2px solid var(--primary); }
+    .week-day-bar-outer.rest   { opacity: .35; }
+    .week-day-bar-inner {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #10b981;
+      transition: height .5s ease;
+    }
+    .week-day-name {
       font-size: 10px;
       font-weight: 700;
       color: var(--text-muted);
+      text-transform: uppercase;
     }
-    .week-compliance-pct {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--text);
-    }
+    .week-day-name.today { color: var(--primary); }
 
-    /* ── Last activity ─────────────────────────────────────── */
+    /* ─────────────────────────────────────────────────────────
+       ÚLTIMA ACTIVIDAD
+    ───────────────────────────────────────────────────────── */
     .last-act-metrics {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -453,56 +410,178 @@
     .last-act-metric {
       background: var(--bg-input);
       border-radius: 10px;
-      padding: 10px 12px;
+      padding: 11px 12px;
       text-align: center;
     }
     .last-act-metric .val {
       font-family: 'Space Grotesk', sans-serif;
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 700;
     }
     .last-act-metric .lbl {
       font-size: 9px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: .5px;
       color: var(--text-muted);
       margin-top: 2px;
     }
 
-    /* ── Empty states ──────────────────────────────────────── */
+    /* ─────────────────────────────────────────────────────────
+       EMPTY STATE
+    ───────────────────────────────────────────────────────── */
     .empty-state {
       text-align: center;
-      padding: 24px 0;
+      padding: 28px 0;
       color: var(--text-muted);
       font-size: 14px;
     }
-    .empty-state i { font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.4; }
+    .empty-state i { font-size: 28px; margin-bottom: 8px; display: block; opacity: .35; }
 
-    /* ── Slide-in animation ────────────────────────────────── */
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(16px); }
+    /* ─────────────────────────────────────────────────────────
+       ENTRADA  — una sola animación suave por sección
+    ───────────────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .coach-hero      { animation: slideUp 0.4s ease both; }
-    .top-grid        { animation: slideUp 0.4s ease 0.1s both; }
-    .ftp-banner      { animation: slideUp 0.4s ease 0.15s both; }
-    .dash-grid       { animation: slideUp 0.4s ease 0.2s both; }
-    .last-act-wrap   { animation: slideUp 0.4s ease 0.25s both; }
+    .coach-hero  { animation: fadeUp .35s ease both; }
+    .main-grid   { animation: fadeUp .35s ease .08s both; }
+    .ftp-banner  { animation: fadeUp .35s ease .13s both; }
+    .week-card   { animation: fadeUp .35s ease .16s both; }
+    .last-act-card { animation: fadeUp .35s ease .2s both; }
 
-    /* ── Responsive ────────────────────────────────────────── */
-    @media (max-width: 900px) {
-      .top-grid  { grid-template-columns: 1fr; }
-      .dash-grid { grid-template-columns: 1fr; }
-      .hero-name { font-size: 26px; }
-      .hero-date { display: none; }
+    /* ─────────────────────────────────────────────────────────
+       LIGHT MODE  — hero y componentes del dashboard
+    ───────────────────────────────────────────────────────── */
+    html.light-theme .coach-hero.fresh {
+      background:
+        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(5,150,105,.10) 0%, transparent 68%),
+        linear-gradient(135deg, #e8f5ec 0%, #dff0e5 100%) !important;
+      border-left-color: #059669 !important;
     }
-    @media (max-width: 600px) {
-      .coach-hero { padding: 22px 18px 20px; }
-      .hero-name  { font-size: 22px; }
-      .pmc-metrics { gap: 14px; }
-      .last-act-metrics { grid-template-columns: repeat(3, 1fr); }
-      .ftp-banner { flex-direction: column; text-align: center; }
+    html.light-theme .coach-hero.optimal {
+      background:
+        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(180,83,9,.09) 0%, transparent 68%),
+        linear-gradient(135deg, #fef3e2 0%, #fde9c8 100%) !important;
+      border-left-color: #b45309 !important;
+    }
+    html.light-theme .coach-hero.loaded {
+      background:
+        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(185,28,28,.08) 0%, transparent 68%),
+        linear-gradient(135deg, #fef0f0 0%, #fde8e8 100%) !important;
+      border-left-color: #b91c1c !important;
+    }
+    html.light-theme .coach-hero.no-data {
+      background:
+        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(77,122,0,.09) 0%, transparent 68%),
+        linear-gradient(135deg, #f0f7e4 0%, #e8f2d8 100%) !important;
+      border-left-color: #4d7a00 !important;
+    }
+    html.light-theme .hero-chip {
+      background: rgba(0,0,0,.06) !important;
+      border-color: rgba(0,0,0,.10) !important;
+      color: var(--text-primary) !important;
+    }
+    html.light-theme .hero-eyebrow,
+    html.light-theme .hero-phrase,
+    html.light-theme .hero-date-chip { color: var(--text-secondary) !important; opacity: 1 !important; }
+    html.light-theme .hero-greeting { color: var(--text-primary) !important; }
+
+    html.light-theme .card {
+      background: var(--bg-card) !important;
+      border-color: var(--border) !important;
+    }
+    html.light-theme .card-eyebrow { color: var(--text-muted) !important; }
+    html.light-theme .session-pill  { background: var(--bg-input) !important; color: var(--text-secondary) !important; }
+    html.light-theme .why-block {
+      background: rgba(77,122,0,.04) !important;
+      color: var(--text-secondary) !important;
+    }
+    html.light-theme .btn-done {
+      background: var(--bg-input) !important;
+      border-color: var(--border) !important;
+      color: var(--text-secondary) !important;
+    }
+    html.light-theme .btn-done:hover:not(.done) { color: var(--primary) !important; border-color: var(--primary) !important; }
+    html.light-theme .btn-done.done { background: rgba(5,150,105,.08) !important; border-color: rgba(5,150,105,.3) !important; color: #059669 !important; }
+
+    html.light-theme .wx-stat { background: var(--bg-input) !important; color: var(--text-secondary) !important; }
+    html.light-theme .clothes-box { background: var(--bg-input) !important; border-color: var(--border) !important; }
+    html.light-theme .clothes-label { color: var(--text-muted) !important; }
+    html.light-theme .clothes-item  { color: var(--text-primary) !important; }
+    html.light-theme .wx-sub { color: var(--text-muted) !important; }
+
+    html.light-theme .ftp-banner.ready {
+      background: rgba(5,150,105,.07) !important;
+      border-color: rgba(5,150,105,.28) !important;
+    }
+    html.light-theme .ftp-banner.soon {
+      background: rgba(180,83,9,.07) !important;
+      border-color: rgba(180,83,9,.28) !important;
+    }
+    html.light-theme .ftp-banner-title,
+    html.light-theme .ftp-banner-msg { color: var(--text-secondary) !important; }
+
+    html.light-theme .week-pct { color: inherit; }
+    html.light-theme .week-pct-sub,
+    html.light-theme .week-sessions-sub,
+    html.light-theme .week-day-name { color: var(--text-muted) !important; }
+    html.light-theme .week-day-bar-outer { background: var(--bg-input) !important; }
+    html.light-theme .week-day-bar-outer.done { background: rgba(5,150,105,.18) !important; border-color: rgba(5,150,105,.35) !important; }
+
+    html.light-theme .last-act-metric { background: var(--bg-input) !important; }
+    html.light-theme .last-act-metric .val { color: var(--text-primary) !important; }
+    html.light-theme .last-act-metric .lbl { color: var(--text-muted) !important; }
+
+    /* ─────────────────────────────────────────────────────────
+       RESPONSIVE — móvil primero
+    ───────────────────────────────────────────────────────── */
+    @media (max-width: 860px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .hero-greeting { font-size: 26px; }
+      .hero-deco { font-size: 64px; right: 16px; }
+      .hero-date-chip { display: none; }
+    }
+    /* Móvil: pantallas < 560px */
+    @media (max-width: 560px) {
+      .page-body { padding: 12px !important; }
+      .coach-hero {
+        padding: 20px 16px 18px;
+        border-radius: 14px;
+        border-left-width: 4px;
+      }
+      .hero-content { max-width: calc(100% - 80px); }
+      .hero-greeting { font-size: 20px; }
+      .hero-phrase  { font-size: 13px; }
+      .hero-deco    { font-size: 48px; right: 12px; }
+      .hero-chips   { gap: 5px; }
+      .hero-chip    { font-size: 11px; padding: 4px 9px; }
+
+      .main-grid    { gap: 12px; margin-bottom: 12px; }
+      .card         { padding: 16px 16px 14px; border-radius: 12px; }
+      .session-emoji-big { font-size: 40px; }
+      .session-title     { font-size: 18px; }
+
+      .wx-emoji { font-size: 40px; }
+      .wx-temp  { font-size: 32px; }
+
+      .ftp-banner {
+        flex-direction: row;
+        padding: 14px 16px;
+        border-radius: 12px;
+      }
+      .ftp-banner-icon  { font-size: 28px; }
+      .ftp-banner-title { font-size: 14px; }
+      .ftp-banner-msg   { font-size: 12px; }
+
+      .week-pct           { font-size: 28px; }
+      .week-sessions-done { font-size: 18px; }
+      .week-day-bar-outer { height: 32px; border-radius: 6px; }
+
+      .last-act-metrics { gap: 6px; }
+      .last-act-metric  { padding: 8px 8px; }
+      .last-act-metric .val { font-size: 14px; }
     }
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
@@ -516,40 +595,21 @@
   </div>
   <div class="sidebar-nav">
     <div class="nav-section-title">Principal</div>
-    <a href="dashboard.html" class="nav-item active">
-      <i class="fas fa-home"></i> Inicio
-    </a>
-    <a href="activities.html" class="nav-item">
-      <i class="fas fa-history"></i> Actividades
-    </a>
-    <a href="analytics.html" class="nav-item">
-      <i class="fas fa-chart-bar"></i> Métricas
-    </a>
-
+    <a href="dashboard.html" class="nav-item active"><i class="fas fa-home"></i> Inicio</a>
+    <a href="activities.html" class="nav-item"><i class="fas fa-history"></i> Actividades</a>
+    <a href="analytics.html" class="nav-item"><i class="fas fa-chart-bar"></i> Métricas</a>
     <div class="nav-section-title">Entrenamiento</div>
-    <a href="training-plan.html" class="nav-item">
-      <i class="fas fa-calendar-check"></i> Mi Plan
-    </a>
-    <a href="nutrition.html" class="nav-item">
-      <i class="fas fa-apple-alt"></i> Nutrición
-    </a>
-    <a href="body-weight.html" class="nav-item">
-      <i class="fas fa-weight"></i> Peso y W/Kg
-    </a>
-
+    <a href="training-plan.html" class="nav-item"><i class="fas fa-calendar-check"></i> Mi Plan</a>
+    <a href="nutrition.html" class="nav-item"><i class="fas fa-apple-alt"></i> Nutrición</a>
+    <a href="body-weight.html" class="nav-item"><i class="fas fa-weight"></i> Peso y W/Kg</a>
     <div class="nav-section-title">Análisis y Técnica</div>
     <a href="rutas.html" class="nav-item"><i class="fas fa-map-marked-alt"></i> Rutas</a>
     <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
     <a href="mecanica-general.html" class="nav-item"><i class="fas fa-wrench"></i> Mecánica</a>
     <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
-
     <div class="nav-section-title">Cuenta</div>
-    <a href="integrations.html" class="nav-item">
-      <i class="fas fa-plug"></i> Integraciones
-    </a>
-    <a href="index.html" class="nav-item">
-      <i class="fas fa-user-cog"></i> Mi Perfil
-    </a>
+    <a href="integrations.html" class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
   </div>
   <div class="sidebar-footer">
     <div class="athlete-card">
@@ -565,71 +625,61 @@
 <main class="main-content">
   <div class="page-body">
 
-    <!-- Coach Hero Banner -->
-    <div class="coach-hero" id="coach-hero">
-      <div class="coach-hero-bg no-data" id="hero-bg"></div>
-      <div class="coach-hero-glow" id="hero-glow" style="background:#9ED62B"></div>
-      <div class="coach-hero-content">
-        <div class="hero-greeting" id="hero-greeting">Cargando...</div>
-        <div class="hero-name" id="hero-name">Bienvenido 👋</div>
-        <div class="hero-phrase" id="hero-phrase">Preparando tu briefing de hoy...</div>
-        <div class="hero-badges" id="hero-badges"></div>
+    <!-- ── HERO ── -->
+    <div class="coach-hero no-data" id="coach-hero">
+      <div class="hero-deco" id="hero-deco">💪</div>
+      <div class="hero-date-chip" id="hero-date"></div>
+      <div class="hero-content">
+        <div class="hero-eyebrow" id="hero-eyebrow">VeloMind · Tu coach personal</div>
+        <div class="hero-greeting" id="hero-greeting">Bienvenido 👋</div>
+        <div class="hero-phrase" id="hero-phrase">Cargando tu briefing...</div>
+        <div class="hero-chips" id="hero-chips"></div>
       </div>
-      <div class="hero-date" id="hero-date"></div>
     </div>
 
-    <!-- Today session + Weather -->
-    <div class="top-grid">
+    <!-- ── GRID: HOY + TIEMPO ── -->
+    <div class="main-grid">
 
-      <!-- Today big card -->
-      <div class="today-big" id="today-big-wrap">
-        <div class="card-label"><i class="fas fa-bolt" style="color:var(--primary)"></i> &nbsp;QUÉ TIENES QUE HACER HOY</div>
-        <div class="empty-state"><i class="fas fa-calendar-plus"></i> Cargando sesión...</div>
+      <!-- Sesión de hoy -->
+      <div class="card" id="today-card">
+        <div class="card-eyebrow"><i class="fas fa-bolt" style="color:var(--primary)"></i> Qué tienes que hacer hoy</div>
+        <div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando plan...</div>
       </div>
 
-      <!-- Weather card -->
-      <div class="weather-card">
-        <div class="card-label"><i class="fas fa-cloud-sun" style="color:#60a5fa"></i> &nbsp;TIEMPO Y RECOMENDACIÓN</div>
-        <div id="weather-content" class="weather-loading">
-          <i class="fas fa-location-arrow" style="font-size:24px;margin-bottom:8px;display:block;opacity:.4"></i>
-          Obteniendo tu ubicación...
+      <!-- Tiempo -->
+      <div class="card">
+        <div class="card-eyebrow"><i class="fas fa-cloud-sun" style="color:#60a5fa"></i> Tiempo · Ruta recomendada · Ropa</div>
+        <div id="wx-content">
+          <div class="empty-state" style="padding:20px 0">
+            <i class="fas fa-location-arrow"></i>
+            Obteniendo tu ubicación...
+          </div>
         </div>
       </div>
 
     </div>
 
-    <!-- FTP Readiness Banner -->
-    <div class="ftp-banner not-yet" id="ftp-banner">
-      <div class="ftp-banner-emoji" id="ftp-banner-emoji">🎯</div>
-      <div class="ftp-banner-text">
-        <h3 id="ftp-banner-title">Test de FTP</h3>
-        <p id="ftp-banner-msg">Calculando...</p>
+    <!-- ── FTP READINESS ── -->
+    <div class="ftp-banner" id="ftp-banner">
+      <div class="ftp-banner-icon" id="ftp-icon">🎯</div>
+      <div>
+        <div class="ftp-banner-title" id="ftp-title">Test de FTP</div>
+        <div class="ftp-banner-msg" id="ftp-msg"></div>
       </div>
     </div>
 
-    <!-- Weekly + PMC -->
-    <div class="dash-grid">
-
-      <div class="dash-card">
-        <div class="dash-card-label"><i class="fas fa-calendar-week"></i> &nbsp;Semana actual</div>
-        <div id="week-compliance-content">
-          <div class="empty-state"><i class="fas fa-calendar"></i> Sin plan activo</div>
-        </div>
+    <!-- ── SEMANA ── -->
+    <div class="card week-card" style="margin-bottom:16px">
+      <div class="card-eyebrow"><i class="fas fa-calendar-week" style="color:var(--primary)"></i> Tu semana</div>
+      <div id="week-content">
+        <div class="empty-state"><i class="fas fa-calendar"></i> Sin plan activo</div>
       </div>
-
-      <div class="dash-card" id="pmc-card">
-        <div class="dash-card-label"><i class="fas fa-heartbeat"></i> &nbsp;Tu forma (PMC)</div>
-        <div id="pmc-content">
-          <div class="empty-state"><i class="fas fa-chart-line"></i> Sin actividades registradas</div>
-        </div>
-      </div>
-
     </div>
 
-    <!-- Last activity -->
-    <div class="dash-card last-act-wrap" style="margin-bottom:32px">
-      <div class="dash-card-label"><i class="fas fa-bicycle"></i> &nbsp;Última actividad</div>
-      <div id="last-activity-content">
+    <!-- ── ÚLTIMA ACTIVIDAD ── -->
+    <div class="card last-act-card" style="margin-bottom:32px">
+      <div class="card-eyebrow"><i class="fas fa-bicycle" style="color:var(--primary)"></i> Última actividad</div>
+      <div id="last-act-content">
         <div class="empty-state"><i class="fas fa-upload"></i> Importa tu primera actividad para verla aquí</div>
       </div>
     </div>
@@ -640,16 +690,15 @@
 <script src="js/app.js"></script>
 <script src="js/backend-sync.js"></script>
 <script>
-const DAY_NAMES      = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-const DAY_NAMES_FULL = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+/* ── Constants ──────────────────────────────────────────── */
+const DAY_NAMES      = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const DAY_NAMES_FULL = ['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
 const MONTH_NAMES    = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-
-const todayIdx = (new Date().getDay() + 6) % 7;
+const todayIdx       = (new Date().getDay() + 6) % 7;
 let dashPlan = null;
 
-/* ── Motivational phrases per state ────────────────────── */
 const PHRASES = {
-  fresh: [
+  fresh:   [
     "Tu cuerpo está cargado y listo. Hoy puedes dar más.",
     "Forma óptima. Los días así son los que marcan diferencia.",
     "Estás fresco. Aprovecha cada pedalada de hoy.",
@@ -661,144 +710,154 @@ const PHRASES = {
     "El progreso se hace así, día a día, sin saltarse nada.",
     "Estás en el proceso. Confía en el plan.",
   ],
-  loaded: [
+  loaded:  [
     "Alta carga acumulada. Hoy, inteligencia antes que intensidad.",
     "El cuerpo habla. Escúchalo y saca partido al día.",
     "Los campeones también saben cuándo aflojar. Hoy es ese día.",
-    "La fatiga es señal de que estás trabajando. Gestiona bien.",
   ],
-  rest: [
+  rest:    [
     "El descanso no es perder el tiempo — es cuando mejoras.",
     "Recuperar bien hoy = rendir mejor mañana.",
     "Los grandes atletas respetan los días de descanso tanto como los duros.",
-    "Hidratación, sueño, alimentación. Hoy esos son tus entrenos.",
   ],
   no_data: [
+    "Cada gran ciclista empezó con un primer pedaleo. ¡El tuyo es hoy!",
     "Bienvenido a VeloMind. Empieza registrando tu primera actividad.",
-    "Cada gran ciclista empezó con un primer pedaleo.",
-    "Tu aventura comienza hoy. ¡Vamos!",
   ],
 };
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
-function randomPhrase(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
+/* ── HERO ────────────────────────────────────────────────── */
+function renderHero(athlete, metrics, plan) {
+  const hour = new Date().getHours();
+  const greet = hour < 13 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches';
+  const firstName = athlete?.name?.split(' ')[0] || 'Ciclista';
+  const now = new Date();
+  const dateStr = `${DAY_NAMES_FULL[todayIdx].charAt(0).toUpperCase()+DAY_NAMES_FULL[todayIdx].slice(1)}, ${now.getDate()} de ${MONTH_NAMES[now.getMonth()]}`;
 
-/* ── Hero Banner ────────────────────────────────────────── */
-function renderHero(athlete, pmcMetrics, plan) {
-  const hour   = new Date().getHours();
-  const greet  = hour < 13 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches';
-  const name   = athlete?.name?.split(' ')[0] || 'Ciclista';
-  const now    = new Date();
-  const dayName = DAY_NAMES_FULL[todayIdx];
-  const dateStr = `${now.getDate()} de ${MONTH_NAMES[now.getMonth()]} de ${now.getFullYear()}`;
+  document.getElementById('hero-date').textContent = dateStr;
 
-  document.getElementById('hero-greeting').textContent = greet;
-  document.getElementById('hero-date').innerHTML = `📅 ${dayName.charAt(0).toUpperCase()+dayName.slice(1)}, ${dateStr}`;
+  let state = 'no_data', chips = [], deco = '💪';
 
-  let state = 'no_data';
-  let glowColor = '#9ED62B';
-  let badges = [];
+  if (metrics) {
+    const { ctl, atl, tsb } = metrics;
+    if      (tsb > 5)   state = 'fresh';
+    else if (tsb > -15) state = 'optimal';
+    else                state = 'loaded';
 
-  if (pmcMetrics) {
-    const { ctl, atl, tsb } = pmcMetrics;
-    if (tsb > 5)        { state = 'fresh';   glowColor = '#10b981'; }
-    else if (tsb > -15) { state = 'optimal'; glowColor = '#f59e0b'; }
-    else                { state = 'loaded';  glowColor = '#ef4444'; }
-
-    badges.push(`💪 CTL ${ctl.toFixed(0)}`);
-    badges.push(`🔥 ATL ${atl.toFixed(0)}`);
-    badges.push(`${tsb >= 0 ? '✅' : '⚠️'} TSB ${tsb > 0 ? '+' : ''}${tsb.toFixed(0)}`);
+    const tsbSign = tsb >= 0 ? '+' : '';
+    chips.push(`💪 CTL ${ctl.toFixed(0)}`);
+    chips.push(`⚡ ATL ${atl.toFixed(0)}`);
+    chips.push(
+      state === 'fresh'   ? `✅ Fresco (TSB ${tsbSign}${tsb.toFixed(0)})` :
+      state === 'optimal' ? `🟡 Cargado (TSB ${tsbSign}${tsb.toFixed(0)})` :
+                            `🔴 Fatigado (TSB ${tsbSign}${tsb.toFixed(0)})`
+    );
   }
 
-  const todaySess = plan?.sessions?.[todayIdx];
-  if (todaySess?.isRest) {
-    state = 'rest';
-    badges.push('😴 Día de descanso');
-  } else if (todaySess && !todaySess.isRest) {
-    const wt = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[todaySess.type]) || {};
-    const emoji = todaySess.emoji || wt.emoji || '🚴';
-    badges.push(`${emoji} ${todaySess.name || wt.label || 'Sesión'}`);
+  const sess = plan?.sessions?.[todayIdx];
+  if (sess?.isRest) {
+    state = metrics ? state : 'rest';
+    deco = '😴';
+    chips.push('Día de descanso');
+  } else if (sess && !sess.isRest) {
+    const wt = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || {};
+    const em = sess.emoji || wt.emoji || '🚴';
+    deco = em;
+    chips.push(`${em} ${sess.name || wt.label || 'Sesión de hoy'}`);
   }
 
-  document.getElementById('hero-bg').className = `coach-hero-bg ${state}`;
-  document.getElementById('hero-glow').style.background = glowColor;
+  const stateLabel = { fresh:'🟢 Fresco', optimal:'🟡 En carga', loaded:'🔴 Fatigado', rest:'😴 Descanso', no_data:'🚴 Empecemos' }[state];
 
-  const emoji = { fresh:'🟢', optimal:'🟡', loaded:'🔴', rest:'😴', no_data:'🚴' }[state];
-  document.getElementById('hero-name').innerHTML = `${emoji} ${greet}, ${name}`;
-  document.getElementById('hero-phrase').textContent = randomPhrase(PHRASES[state]);
-
-  const badgesEl = document.getElementById('hero-badges');
-  badgesEl.innerHTML = badges.map(b => `<span class="hero-badge">${b}</span>`).join('');
+  const heroEl = document.getElementById('coach-hero');
+  heroEl.className = `coach-hero ${state}`;
+  document.getElementById('hero-deco').textContent = deco;
+  document.getElementById('hero-eyebrow').textContent = `${greet} · ${stateLabel}`;
+  document.getElementById('hero-greeting').textContent = `${firstName}, ${
+    state === 'fresh'   ? 'estás listo para dar el 100%' :
+    state === 'optimal' ? 'sigues construyendo rendimiento' :
+    state === 'loaded'  ? 'escucha a tu cuerpo hoy' :
+    state === 'rest'    ? 'hoy tocas recarga total' :
+                          'tu aventura empieza hoy'
+  } 👊`;
+  document.getElementById('hero-phrase').textContent = pick(PHRASES[state]);
+  document.getElementById('hero-chips').innerHTML =
+    chips.map(c => `<span class="hero-chip">${c}</span>`).join('');
 }
 
-/* ── Today Big Card ─────────────────────────────────────── */
-function renderTodayBig(plan, athlete) {
-  const wrap = document.getElementById('today-big-wrap');
-  const label = `<div class="card-label"><i class="fas fa-bolt" style="color:var(--primary)"></i> &nbsp;QUÉ TIENES QUE HACER HOY</div>`;
+/* ── SESIÓN DE HOY ──────────────────────────────────────── */
+const WHY = {
+  z2:        'Base aeróbica. Sin zona 2 no hay motor. Es la sesión más rentable del plan.',
+  endurance: 'Larga distancia para fortalecer fibras tipo I y enseñar al cuerpo a oxidar grasa.',
+  tempo:     'Trabajo en umbral para subir el techo de potencia sostenida. Duele bien.',
+  threshold: 'Empujas tu FTP hacia arriba. El entrenamiento que más mejora tu rendimiento.',
+  vo2max:    'Intervalos VO₂ máx. Cortos, intensos, efectivos. El camino directo al techo aeróbico.',
+  sprint:    'Potencia neuromuscular pura. Reclutas fibras rápidas que mejoran tu capacidad de ataque.',
+  recovery:  'Sesión suave para limpiar lactato y preparar el cuerpo para la próxima carga dura.',
+  long:      'Fondo largo para construir resistencia aeróbica y fortalecer el sistema mitocondrial.',
+};
+
+function renderToday(plan, athlete) {
+  const wrap = document.getElementById('today-card');
+  const eyebrow = `<div class="card-eyebrow"><i class="fas fa-bolt" style="color:var(--primary)"></i> Qué tienes que hacer hoy</div>`;
 
   if (!plan?.sessions) {
-    wrap.innerHTML = label + `
-      <div style="text-align:center;padding:28px 0">
-        <p style="color:var(--text-muted);margin-bottom:14px"><i class="fas fa-calendar-plus" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i> No tienes un plan activo</p>
-        <a href="training-plan.html" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px"><i class="fas fa-magic"></i> Crear mi plan con IA</a>
+    wrap.innerHTML = eyebrow + `
+      <div style="text-align:center;padding:24px 0">
+        <p style="color:var(--text-muted);margin-bottom:16px">
+          <i class="fas fa-calendar-plus" style="font-size:36px;display:block;margin-bottom:12px;opacity:.35"></i>
+          No tienes un plan activo todavía
+        </p>
+        <a href="training-plan.html" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+          <i class="fas fa-magic"></i> Crear mi plan con IA
+        </a>
       </div>`;
     return;
   }
 
   const sess = plan.sessions[todayIdx];
-  if (!sess) { wrap.innerHTML = label + `<div class="empty-state">Sin sesión programada</div>`; return; }
+  if (!sess) { wrap.innerHTML = eyebrow + `<div class="empty-state">Sin sesión para hoy</div>`; return; }
 
   if (sess.isRest) {
-    wrap.innerHTML = label + `
-      <span class="today-session-emoji">😴</span>
-      <div class="today-session-name">Día de descanso activo</div>
-      <div class="today-why">
-        <strong>Por qué es importante</strong>
-        Durante el descanso es cuando el cuerpo se adapta y se vuelve más fuerte. No lo saltes — es parte del plan.
+    wrap.innerHTML = eyebrow + `
+      <span class="session-emoji-big">😴</span>
+      <div class="session-title">Día de descanso</div>
+      <div class="why-block">
+        <b>Por qué importa</b>
+        El descanso es cuando el cuerpo se adapta y se hace más fuerte. No lo saltes — es parte del plan.
       </div>
-      <div style="font-size:13px;color:var(--text-muted)">Aprovecha para estirar, hidratarte bien y dormir al menos 8 horas.</div>`;
+      <div style="font-size:13px;color:var(--text-muted)">💧 Hidratación · 🛌 8h de sueño · 🥗 Come bien hoy</div>`;
     return;
   }
 
-  const wt     = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || { label: sess.type, color: '#9ED62B', emoji: '🚴' };
-  const emoji  = sess.emoji || wt.emoji || '🚴';
-  const color  = wt.color || '#9ED62B';
-  const tss    = Math.round((sess.tssShare || 0) * (plan.targetTSS || 0)) || sess.tss || 0;
-  const dur    = sess.durationMin ? `${sess.durationMin} min` : '';
+  const wt    = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || { label: sess.type, color:'#9ED62B', emoji:'🚴' };
+  const emoji = sess.emoji || wt.emoji || '🚴';
+  const color = wt.color || '#9ED62B';
+  const tss   = Math.round((sess.tssShare||0)*(plan.targetTSS||0)) || sess.tss || 0;
+  const dur   = sess.durationMin ? `${sess.durationMin} min` : '';
   const isDone = !!sess.completed;
 
-  // Generate "why" explanation based on session type
-  const whyTexts = {
-    z2:         'Construye tu motor aeróbico. Es la base de todo. Sin esta resistencia, ningún bloque de intensidad funciona.',
-    endurance:  'Larga resistencia para fortalecer fibras tipo I y mejorar la economía de pedaleo.',
-    tempo:      'Trabajo en umbral para subir el techo de potencia sostenida. Duele bien.',
-    threshold:  'Empujas tu FTP hacia arriba. Este tipo de trabajo es el que más mejora tu rendimiento a largo plazo.',
-    vo2max:     'Intervalos cortos de alta intensidad para aumentar tu VO₂ máx. Difícil pero muy eficaz.',
-    sprint:     'Potencia neuromuscular. Reclutas fibras rápidas que mejoran tu capacidad de ataque.',
-    recovery:   'Sesión suave para limpiar lactato y preparar el cuerpo para la próxima carga dura.',
-    long:       'Fondo largo para desarrollar resistencia aeróbica y enseñar al cuerpo a oxidar grasa.',
-  };
-  const sessType = (sess.type || '').toLowerCase();
-  const why = plan.advice?.today || whyTexts[sessType] || whyTexts[Object.keys(whyTexts).find(k => sessType.includes(k))] || 'Esta sesión encaja en tu bloque de entrenamiento actual para progresar de forma continua.';
+  const sessType = (sess.type||'').toLowerCase();
+  const whyKey   = Object.keys(WHY).find(k => sessType.includes(k));
+  const why      = plan.advice?.today || (whyKey ? WHY[whyKey] : 'Esta sesión encaja en tu bloque actual para progresar de forma continua.');
 
-  wrap.innerHTML = label + `
-    <span class="today-session-emoji" style="${isDone ? 'filter:grayscale(1);opacity:.6' : ''}">${emoji}</span>
-    <div class="today-session-name" style="color:${isDone ? 'var(--text-muted)' : 'var(--text)'}">
+  wrap.innerHTML = eyebrow + `
+    <span class="session-emoji-big">${emoji}</span>
+    <div class="session-title" style="${isDone ? 'opacity:.5' : ''}">
       ${sess.name || wt.label}
-      ${isDone ? ' <span style="font-size:13px;color:#10b981;font-weight:600">✓ Completada</span>' : ''}
+      ${isDone ? '<span style="font-size:13px;font-weight:600;color:#10b981;margin-left:6px">✓ Hecha</span>' : ''}
     </div>
-    <div class="today-session-meta">
-      ${dur  ? `<span class="today-meta-pill"><i class="fas fa-clock" style="color:${color}"></i> ${dur}</span>` : ''}
-      ${tss  ? `<span class="today-meta-pill"><i class="fas fa-bolt" style="color:${color}"></i> ${tss} TSS</span>` : ''}
-      ${wt.label ? `<span class="today-meta-pill" style="color:${color}">${wt.label}</span>` : ''}
+    <div class="session-pills">
+      ${dur  ? `<span class="session-pill"><i class="fas fa-clock" style="color:${color}"></i> ${dur}</span>` : ''}
+      ${tss  ? `<span class="session-pill"><i class="fas fa-bolt" style="color:${color}"></i> ${tss} TSS</span>` : ''}
+      ${wt.label ? `<span class="session-pill" style="color:${color}">${wt.label}</span>` : ''}
     </div>
-    <div class="today-why">
-      <strong>¿Por qué hoy este entreno?</strong>
+    <div class="why-block" style="border-left-color:${color}">
+      <b>¿Por qué hoy este entreno?</b>
       ${why}
     </div>
-    <button class="btn-mark-done${isDone ? ' done' : ''}" onclick="toggleTodayDone()" id="btn-mark-done">
-      <i class="fas ${isDone ? 'fa-circle-check' : 'fa-circle'}"></i>
+    <button class="btn-done${isDone?' done':''}" onclick="toggleTodayDone()">
+      <i class="fas ${isDone?'fa-circle-check':'fa-circle'}"></i>
       ${isDone ? 'Sesión completada' : 'Marcar como hecha'}
     </button>`;
 }
@@ -808,9 +867,9 @@ function toggleTodayDone() {
   const sess = dashPlan.sessions[todayIdx];
   sess.completed = !sess.completed;
   saveDashPlan();
-  renderTodayBig(dashPlan, AppState.athlete);
+  renderToday(dashPlan, AppState.athlete);
   renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
-  renderWeekCompliance(dashPlan);
+  renderWeek(dashPlan);
 }
 
 function saveDashPlan() {
@@ -819,496 +878,306 @@ function saveDashPlan() {
   local.sessions = dashPlan.sessions;
   local.savedAt  = Date.now();
   localStorage.setItem('cyclocoach_training_plan', JSON.stringify(local));
-
   const monday = new Date();
-  monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
-
+  monday.setDate(monday.getDate() - (monday.getDay()||7) + 1);
   fetch(`${window.API_URL}/plans/training`, {
     method: 'POST',
     headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      week_start: monday.toISOString().substring(0, 10),
-      sessions:   dashPlan.sessions,
-      phase:      dashPlan.phase,
-      tss_target: dashPlan.targetTSS,
-      advice:     dashPlan.advice || {},
-    }),
-  }).catch(() => {});
+    body: JSON.stringify({ week_start: monday.toISOString().substring(0,10), sessions: dashPlan.sessions, phase: dashPlan.phase, tss_target: dashPlan.targetTSS, advice: dashPlan.advice||{} }),
+  }).catch(()=>{});
 }
 
-/* ── Auto-mark today from activities ───────────────────── */
-function autoMarkTodayFromActivities() {
+function autoMarkToday() {
   if (!dashPlan?.sessions?.[todayIdx]) return;
   const sess = dashPlan.sessions[todayIdx];
   if (sess.isRest || sess.completed) return;
-
-  const todayDate = new Date();
-  const todayKey  = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
-  const todayActs = AppState.activities.filter(a => a.date?.slice(0, 10) === todayKey);
-
-  if (todayActs.length > 0) {
+  const key = new Date().toISOString().substring(0,10);
+  if ((AppState.activities||[]).some(a => a.date?.slice(0,10) === key)) {
     sess.completed = true;
     saveDashPlan();
-    renderTodayBig(dashPlan, AppState.athlete);
-    renderWeekCompliance(dashPlan);
+    renderToday(dashPlan, AppState.athlete);
+    renderWeek(dashPlan);
   }
 }
 
-/* ── Weather & Training recommendation ─────────────────── */
-const WX_CODES = {
-  0: { label: 'Despejado', emoji: '☀️' },
-  1: { label: 'Principalmente despejado', emoji: '🌤️' },
-  2: { label: 'Parcialmente nublado', emoji: '⛅' },
-  3: { label: 'Nublado', emoji: '☁️' },
-  45: { label: 'Niebla', emoji: '🌫️' },
-  48: { label: 'Niebla con escarcha', emoji: '🌫️' },
-  51: { label: 'Llovizna ligera', emoji: '🌦️' },
-  53: { label: 'Llovizna moderada', emoji: '🌦️' },
-  55: { label: 'Llovizna intensa', emoji: '🌧️' },
-  61: { label: 'Lluvia ligera', emoji: '🌧️' },
-  63: { label: 'Lluvia moderada', emoji: '🌧️' },
-  65: { label: 'Lluvia intensa', emoji: '🌧️' },
-  71: { label: 'Nieve ligera', emoji: '❄️' },
-  73: { label: 'Nieve moderada', emoji: '❄️' },
-  75: { label: 'Nieve intensa', emoji: '❄️' },
-  80: { label: 'Chubascos ligeros', emoji: '🌦️' },
-  81: { label: 'Chubascos moderados', emoji: '🌧️' },
-  82: { label: 'Chubascos intensos', emoji: '⛈️' },
-  95: { label: 'Tormenta', emoji: '⛈️' },
-  96: { label: 'Tormenta con granizo', emoji: '⛈️' },
-  99: { label: 'Tormenta con granizo', emoji: '⛈️' },
+/* ── TIEMPO + ROPA ───────────────────────────────────────── */
+const WX = {
+  0:{l:'Despejado',e:'☀️'}, 1:{l:'Principalmente despejado',e:'🌤️'}, 2:{l:'Parcialmente nublado',e:'⛅'},
+  3:{l:'Nublado',e:'☁️'}, 45:{l:'Niebla',e:'🌫️'}, 48:{l:'Niebla con escarcha',e:'🌫️'},
+  51:{l:'Llovizna ligera',e:'🌦️'}, 53:{l:'Llovizna',e:'🌦️'}, 55:{l:'Llovizna densa',e:'🌧️'},
+  61:{l:'Lluvia ligera',e:'🌧️'}, 63:{l:'Lluvia moderada',e:'🌧️'}, 65:{l:'Lluvia intensa',e:'🌧️'},
+  71:{l:'Nieve ligera',e:'❄️'}, 73:{l:'Nieve',e:'❄️'}, 75:{l:'Nevada intensa',e:'❄️'},
+  80:{l:'Chubascos ligeros',e:'🌦️'}, 81:{l:'Chubascos',e:'🌧️'}, 82:{l:'Chubascos fuertes',e:'⛈️'},
+  95:{l:'Tormenta',e:'⛈️'}, 96:{l:'Tormenta con granizo',e:'⛈️'}, 99:{l:'Tormenta',e:'⛈️'},
 };
 
-function getClothingRec(temp, wind, precip, code) {
-  const isRain  = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
-  const windChill = temp - (wind > 20 ? (wind - 20) * 0.3 : 0); // sensación térmica simplificada
-
+function getClothing(temp, wind, precip, code) {
+  const isRain = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
+  const wc = temp - (wind > 20 ? (wind-20)*0.3 : 0);
   const items = [];
-
-  // Base layer
-  if (windChill < 5)        items.push('🧥 Maillot térmico + camiseta interior');
-  else if (windChill < 12)  items.push('👕 Maillot manga larga');
-  else if (windChill < 18)  items.push('👕 Maillot manga corta + gilet');
-  else                      items.push('👕 Maillot manga corta');
-
-  // Legs
-  if (windChill < 8)        items.push('🩲 Culote con mallas largas');
-  else if (windChill < 15)  items.push('🩲 Culote + calentadores de pierna');
-  else                      items.push('🩲 Culote corto');
-
-  // Hands
-  if (windChill < 5)        items.push('🧤 Guantes gruesos');
-  else if (windChill < 14)  items.push('🧤 Guantes finos');
-  else                      items.push('🤚 Sin guantes');
-
-  // Head
-  if (windChill < 8)        items.push('🪖 Gorro bajo el casco');
-
-  // Rain
-  if (isRain) {
-    items.push('🌧️ Cortavientos impermeable');
-    items.push('👟 Fundas para zapatillas');
-  } else if (wind > 30) {
-    items.push('💨 Cortavientos ligero');
-  }
-
-  // Shoes
-  if (windChill < 8)        items.push('🧦 Calcetines térmicos o fundas');
-
+  if      (wc < 5)  items.push('🧥 Maillot térmico + camiseta interior');
+  else if (wc < 12) items.push('👕 Maillot manga larga');
+  else if (wc < 18) items.push('👕 Maillot manga corta + gilet');
+  else              items.push('👕 Maillot manga corta');
+  if      (wc < 8)  items.push('🩲 Culote + mallas largas');
+  else if (wc < 15) items.push('🩲 Culote + calentadores de pierna');
+  else              items.push('🩲 Culote corto');
+  if      (wc < 5)  items.push('🧤 Guantes gruesos');
+  else if (wc < 14) items.push('🧤 Guantes finos');
+  if (wc < 8)       items.push('🪖 Gorro bajo el casco');
+  if (isRain)       { items.push('🌧️ Cortavientos impermeable'); items.push('👟 Fundas para zapatillas'); }
+  else if (wind>30) items.push('💨 Cortavientos ligero');
+  if (wc < 8)       items.push('🧦 Calcetines térmicos o fundas');
   return items;
 }
 
-function getWeatherRec(code, wind, precip, temp, todaySess) {
-  const isRain       = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
-  const isHeavyRain  = [65,82,95,96,99].includes(code) || precip > 2;
-  const isFog        = [45,48].includes(code);
-  const isSnow       = [71,73,75,85,86].includes(code);
-  const isStrongWind = wind > 40;
-  const isModWind    = wind > 25;
-  const isCold       = temp < 4;
-  const isPerfect    = !isRain && !isFog && !isSnow && !isStrongWind && temp >= 8;
+function getRouteRec(code, wind, precip, temp, sess) {
+  const isRain   = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
+  const isHeavy  = [65,82,95,96,99].includes(code) || precip > 2;
+  const isFog    = [45,48].includes(code);
+  const isSnow   = [71,73,75].includes(code);
+  const highWind = wind > 40;
+  const modWind  = wind > 25;
+  const cold     = temp < 4;
+  const lowInt   = ['z2','recovery','endurance'].some(t => (sess?.type||'').toLowerCase().includes(t)) || sess?.isRest;
 
-  // Determine session need (road bike, gravel/mtb, or indoor)
-  const sessType = (todaySess?.type || '').toLowerCase();
-  const isLowInt = ['z2','recovery','endurance'].some(t => sessType.includes(t)) || todaySess?.isRest;
-
-  if (isSnow || isHeavyRain || isCold) {
-    return {
-      icon: '🏠',
-      type: 'Rodillo',
-      color: '#6366f1',
-      msg: isSnow ? 'Nieve o temperatura muy baja. Rodillo hoy, sin dudarlo.' :
-           isCold  ? `${temp}°C — demasiado frío para una salida segura. Rodillo y música.` :
-                     'Lluvia intensa. Rodillo con la sesión planificada, sin excusas.',
-    };
-  }
-  if (isRain && isStrongWind) {
-    return {
-      icon: '🏠',
-      type: 'Rodillo',
-      color: '#6366f1',
-      msg: `Lluvia + ${wind.toFixed(0)} km/h de viento. Condiciones malas. Rodillo es la opción inteligente.`,
-    };
-  }
-  if (isRain) {
-    if (isLowInt) {
-      return {
-        icon: '🏔️',
-        type: 'MTB / Gravel',
-        color: '#10b981',
-        msg: `Lluvia ligera. Con una MTB o gravel en caminos de tierra puedes salir igual. O rodillo si prefieres.`,
-      };
-    }
-    return {
-      icon: '🏠',
-      type: 'Rodillo',
-      color: '#6366f1',
-      msg: `Lluvia — no ideal para carretera. Rodillo para la sesión de hoy.`,
-    };
-  }
-  if (isStrongWind) {
-    return {
-      icon: '🏔️',
-      type: 'MTB / Gravel',
-      color: '#10b981',
-      msg: `Viento fuerte (${wind.toFixed(0)} km/h). Evita carretera — MTB o gravel por senderos protegidos es más seguro y disfrutable.`,
-    };
-  }
-  if (isModWind) {
-    return {
-      icon: '🪨',
-      type: 'Gravel',
-      color: '#f59e0b',
-      msg: `Viento de ${wind.toFixed(0)} km/h. Considera gravel o rutas más resguardadas. La carretera es viable pero incómoda.`,
-    };
-  }
-  if (isFog) {
-    return {
-      icon: '🏔️',
-      type: 'MTB / Gravel',
-      color: '#94a3b8',
-      msg: `Niebla — reduce visibilidad en carretera. MTB o gravel por caminos tranquilos es más seguro hoy.`,
-    };
-  }
-  if (isPerfect) {
-    return {
-      icon: '🚴',
-      type: 'Carretera',
-      color: '#9ED62B',
-      msg: `Condiciones perfectas para salir en carretera. ¡Aprovéchalo, no siempre es así!`,
-    };
-  }
-  return {
-    icon: '🚴',
-    type: 'Carretera / Gravel',
-    color: '#9ED62B',
-    msg: `Condiciones aceptables. Carretera o gravel según tu preferencia de hoy.`,
-  };
+  if (isSnow || cold)
+    return { icon:'🏠', type:'Rodillo', color:'#6366f1', msg: cold ? `${temp}°C — demasiado frío para salir. Rodillo y música a tope.` : 'Nevada. Sin debate: rodillo hoy.' };
+  if (isHeavy || (isRain && highWind))
+    return { icon:'🏠', type:'Rodillo', color:'#6366f1', msg:'Condiciones malas (lluvia fuerte o lluvia + viento). El rodillo es la opción inteligente hoy.' };
+  if (isRain && lowInt)
+    return { icon:'🏔️', type:'MTB / Gravel', color:'#10b981', msg:'Lluvia ligera. Una MTB o gravel en tierra firme te permite salir igualmente. Rodillo también vale.' };
+  if (isRain)
+    return { icon:'🏠', type:'Rodillo', color:'#6366f1', msg:'Lluvia activa. Para sesiones de intensidad, el rodillo te da más control y menos riesgo.' };
+  if (highWind)
+    return { icon:'🏔️', type:'MTB / Gravel', color:'#10b981', msg:`Viento fuerte (${wind.toFixed(0)} km/h). Evita carretera — MTB o gravel por senderos protegidos es más seguro y disfrutable.` };
+  if (modWind)
+    return { icon:'🪨', type:'Gravel', color:'#f59e0b', msg:`Viento de ${wind.toFixed(0)} km/h. Considera gravel o rutas resguardadas. Carretera posible pero incómoda.` };
+  if (isFog)
+    return { icon:'🏔️', type:'MTB / Gravel', color:'#94a3b8', msg:'Niebla — visibilidad reducida en carretera. MTB o gravel por caminos tranquilos es más seguro.' };
+  return { icon:'🚴', type:'Carretera', color:'#9ED62B', msg:'Condiciones perfectas para carretera. ¡Aprovéchalo!' };
 }
 
 async function fetchWeather() {
-  const el = document.getElementById('weather-content');
-
+  const el = document.getElementById('wx-content');
   if (!navigator.geolocation) {
-    el.innerHTML = `<div class="empty-state"><i class="fas fa-map-marker-alt"></i> Geolocalización no disponible en este navegador</div>`;
+    el.innerHTML = `<div class="empty-state"><i class="fas fa-map-marker-alt"></i> Geolocalización no disponible</div>`;
     return;
   }
-
   navigator.geolocation.getCurrentPosition(async pos => {
-    const { latitude: lat, longitude: lon } = pos.coords;
     try {
+      const { latitude: lat, longitude: lon } = pos.coords;
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&wind_speed_unit=kmh&timezone=auto`;
-      const res  = await fetch(url);
-      const data = await res.json();
-      const cur  = data.current;
-
-      const code   = cur.weather_code;
-      const temp   = Math.round(cur.temperature_2m);
-      const feels  = Math.round(cur.apparent_temperature);
-      const wind   = cur.wind_speed_10m;
-      const precip = cur.precipitation;
-      const wx     = WX_CODES[code] || { label: 'Variable', emoji: '🌥️' };
-
-      const todaySess = dashPlan?.sessions?.[todayIdx];
-      const rec      = getWeatherRec(code, wind, precip, temp, todaySess);
-      const clothing = getClothingRec(temp, wind, precip, code);
+      const data = await fetch(url).then(r => r.json());
+      const c    = data.current;
+      const code = c.weather_code;
+      const temp = Math.round(c.temperature_2m);
+      const feels= Math.round(c.apparent_temperature);
+      const wind = c.wind_speed_10m;
+      const prec = c.precipitation;
+      const wx   = WX[code] || { l:'Variable', e:'🌥️' };
+      const sess = dashPlan?.sessions?.[todayIdx];
+      const rec  = getRouteRec(code, wind, prec, temp, sess);
+      const clothes = getClothing(temp, wind, prec, code);
 
       el.innerHTML = `
-        <div class="weather-main">
-          <div class="weather-emoji">${wx.emoji}</div>
+        <div class="wx-main">
+          <div class="wx-emoji">${wx.e}</div>
           <div>
-            <div class="weather-temp">${temp}°C</div>
-            <div class="weather-desc">${wx.label} · Sensación ${feels}°C</div>
+            <div class="wx-temp">${temp}°<span style="font-size:22px;font-weight:400;opacity:.5">C</span></div>
+            <div class="wx-sub">${wx.l} · Sensación ${feels}°C</div>
           </div>
         </div>
-        <div class="weather-stats">
-          <div class="weather-stat"><i class="fas fa-wind" style="color:#60a5fa"></i> ${wind.toFixed(0)} km/h</div>
-          <div class="weather-stat"><i class="fas fa-tint" style="color:#38bdf8"></i> ${precip.toFixed(1)} mm</div>
+        <div class="wx-stats">
+          <div class="wx-stat"><i class="fas fa-wind" style="color:#60a5fa"></i> ${wind.toFixed(0)} km/h</div>
+          <div class="wx-stat"><i class="fas fa-tint" style="color:#38bdf8"></i> ${prec.toFixed(1)} mm</div>
         </div>
-        <div class="weather-rec" style="border-color:${rec.color}40;background:${rec.color}08;margin-bottom:10px">
-          <div class="weather-rec-label" style="color:${rec.color}">RECOMENDACIÓN DE HOY</div>
-          <div class="weather-rec-text">${rec.icon} <strong>${rec.type}</strong></div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.45">${rec.msg}</div>
+        <div class="rec-box" style="border-color:${rec.color}35;background:${rec.color}0a;margin-bottom:10px">
+          <div class="rec-box-label" style="color:${rec.color}">Ruta recomendada</div>
+          <div class="rec-box-title">${rec.icon} ${rec.type}</div>
+          <div class="rec-box-desc">${rec.msg}</div>
         </div>
-        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:11px 13px">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:8px">👗 ROPA RECOMENDADA</div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            ${clothing.map(item => `<div style="font-size:12px;line-height:1.4">${item}</div>`).join('')}
+        <div class="clothes-box">
+          <div class="clothes-label">Ropa para hoy</div>
+          <div class="clothes-items">
+            ${clothes.map(i => `<div class="clothes-item">${i}</div>`).join('')}
           </div>
         </div>`;
-
     } catch {
       el.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> No se pudo obtener el tiempo</div>`;
     }
   }, () => {
-    el.innerHTML = `
-      <div class="empty-state" style="padding:16px 0">
-        <i class="fas fa-map-marker-slash"></i>
-        Permite el acceso a tu ubicación para ver el tiempo y la recomendación de ruta.
-      </div>`;
+    el.innerHTML = `<div class="empty-state" style="padding:16px 0"><i class="fas fa-map-marker-slash"></i> Permite el acceso a tu ubicación para ver el tiempo y la ropa recomendada</div>`;
   });
 }
 
-/* ── FTP Readiness ──────────────────────────────────────── */
-function renderFTPReadiness(pmcMetrics) {
+/* ── FTP READINESS ──────────────────────────────────────── */
+function renderFTP(metrics) {
   const el = document.getElementById('ftp-banner');
-  if (!pmcMetrics) { el.className = 'ftp-banner not-yet'; return; }
-
-  const { ctl, atl, tsb } = pmcMetrics;
-
-  if (ctl < 25) {
-    el.className = 'ftp-banner not-yet';
-    return;
-  }
-
+  if (!metrics || metrics.ctl < 25) { el.className = 'ftp-banner'; return; }
+  const { ctl, tsb } = metrics;
   if (tsb > 10) {
-    el.className = 'ftp-banner ready';
-    document.getElementById('ftp-banner-emoji').textContent = '🎯';
-    document.getElementById('ftp-banner-title').textContent = '¡Momento ideal para un test de FTP!';
-    document.getElementById('ftp-banner-msg').textContent = `Tu TSB está en +${tsb.toFixed(0)} — estás fresco y con buena forma base (CTL ${ctl.toFixed(0)}). Esta semana es perfecta para hacer un test y actualizar tus zonas.`;
+    el.className = 'ftp-banner ready show';
+    document.getElementById('ftp-icon').textContent  = '🎯';
+    document.getElementById('ftp-title').textContent = '¡Momento ideal para un test de FTP!';
+    document.getElementById('ftp-msg').textContent   = `TSB en +${tsb.toFixed(0)} — estás fresco y con buena forma base (CTL ${ctl.toFixed(0)}). Esta semana es perfecta para testear y actualizar tus zonas.`;
   } else if (tsb > 3) {
-    el.className = 'ftp-banner soon';
-    document.getElementById('ftp-banner-emoji').textContent = '📈';
-    document.getElementById('ftp-banner-title').textContent = 'Casi listo para test de FTP';
-    document.getElementById('ftp-banner-msg').textContent = `TSB en ${tsb > 0 ? '+' : ''}${tsb.toFixed(0)}, forma base sólida (CTL ${ctl.toFixed(0)}). Con 1-2 días más de recuperación estarás en el punto óptimo para un test.`;
+    el.className = 'ftp-banner soon show';
+    document.getElementById('ftp-icon').textContent  = '📈';
+    document.getElementById('ftp-title').textContent = 'Casi listo para test de FTP';
+    document.getElementById('ftp-msg').textContent   = `TSB en +${tsb.toFixed(0)} y base sólida (CTL ${ctl.toFixed(0)}). Con 1-2 días más de recuperación estarás en el punto óptimo.`;
   } else {
-    el.className = 'ftp-banner not-yet';
+    el.className = 'ftp-banner';
   }
 }
 
-/* ── Weekly compliance ──────────────────────────────────── */
-function renderWeekCompliance(plan) {
-  const el = document.getElementById('week-compliance-content');
+/* ── SEMANA ──────────────────────────────────────────────── */
+function renderWeek(plan) {
+  const el = document.getElementById('week-content');
   if (!plan?.sessions) return;
 
-  const sessions = plan.sessions;
-
-  const mondayDate = new Date();
-  mondayDate.setDate(mondayDate.getDate() - (mondayDate.getDay() || 7) + 1);
-  mondayDate.setHours(0, 0, 0, 0);
+  const monday = new Date();
+  monday.setDate(monday.getDate() - (monday.getDay()||7) + 1);
+  monday.setHours(0,0,0,0);
   const activeDays = new Set();
-  (AppState.activities || []).forEach(a => {
-    const dateStr = a.date?.slice(0, 10);
+  (AppState.activities||[]).forEach(a => {
+    const dateStr = a.date?.slice(0,10);
     if (!dateStr) return;
-    const d = new Date(dateStr + 'T00:00:00');
-    const idx = Math.round((d - mondayDate) / 86400000);
+    const idx = Math.round((new Date(dateStr+'T00:00:00') - monday) / 86400000);
     if (idx >= 0 && idx <= 6) activeDays.add(idx);
   });
 
-  const nonRest       = sessions.filter(s => !s.isRest);
-  let donePlannedCount = 0;
-  sessions.forEach((s, i) => { if (!s.isRest && activeDays.has(i)) donePlannedCount++; });
-  const totalDone = activeDays.size;
-  const pct       = nonRest.length ? Math.round((donePlannedCount / nonRest.length) * 100) : 0;
-  const pctColor  = pct >= 80 ? '#10b981' : pct >= 50 ? 'var(--primary)' : 'var(--text-muted)';
+  const nonRest = plan.sessions.filter(s => !s.isRest);
+  let done = 0;
+  plan.sessions.forEach((s,i) => { if (!s.isRest && activeDays.has(i)) done++; });
+  const total = activeDays.size;
+  const pct   = nonRest.length ? Math.round((done / nonRest.length) * 100) : 0;
+  const pctColor = pct >= 80 ? '#10b981' : pct >= 50 ? '#9ED62B' : 'var(--text-muted)';
 
-  const dots = sessions.map((s, i) => {
-    const hasActivity = activeDays.has(i);
-    const isToday     = i === todayIdx;
+  const cols = plan.sessions.map((s, i) => {
+    const has   = activeDays.has(i);
+    const isToday = i === todayIdx;
     let cls = '';
-    if (!hasActivity && s.isRest) cls = 'rest';
-    else if (hasActivity)         cls = 'done';
-    else if (isToday)             cls = 'today';
-    const title = `${DAY_NAMES[i]}${hasActivity ? ' ✓' : s.isRest ? ' · Descanso' : ''}`;
+    if (!has && s.isRest) cls = 'rest';
+    else if (has)         cls = 'done';
+    else if (isToday)     cls = 'today';
+    const fill = has ? 100 : isToday ? 50 : 0;
     return `
-      <div class="week-day-item">
-        <div class="week-day-bar ${cls}" title="${title}"></div>
-        <span class="week-day-bar-label" style="${isToday ? 'color:var(--primary)' : ''}">${DAY_NAMES[i]}</span>
+      <div class="week-day-col">
+        <div class="week-day-bar-outer ${cls}">
+          ${has ? `<div class="week-day-bar-inner" style="height:${fill}%"></div>` : ''}
+        </div>
+        <span class="week-day-name ${isToday?'today':''}">${DAY_NAMES[i]}</span>
       </div>`;
   }).join('');
 
   el.innerHTML = `
-    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px">
+    <div class="week-header">
       <div>
-        <div class="week-compliance-pct">${totalDone}<span style="font-size:14px;font-weight:400;color:var(--text-muted)"> / ${nonRest.length}</span></div>
-        <div style="font-size:12px;color:var(--text-muted)">sesiones completadas</div>
+        <div class="week-pct" style="color:${pctColor}">${pct}%</div>
+        <div class="week-pct-sub">cumplimiento semanal</div>
       </div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:800;color:${pctColor}">${pct}%</div>
+      <div>
+        <div class="week-sessions-done" style="color:${pctColor}">${total} <span style="font-size:15px;font-weight:400;color:var(--text-muted)">/ ${nonRest.length}</span></div>
+        <div class="week-sessions-sub">sesiones completadas</div>
+      </div>
     </div>
-    <div class="week-days">${dots}</div>`;
+    <div class="week-days-row">${cols}</div>`;
 }
 
-/* ── PMC form state ─────────────────────────────────────── */
-function renderPMCCard() {
-  const el = document.getElementById('pmc-content');
-  if (!AppState.pmcData?.length) return;
-
-  const { ctl, atl, tsb } = AppState.getCurrentMetrics();
-  const status = Utils.getTSBStatus(tsb);
-
-  const tsbDesc = tsb > 25  ? 'Muy descansado. Buen momento para competir o test de FTP.'
-                : tsb > 5   ? 'Fresco. Puedes apretar un poco más hoy.'
-                : tsb > -10 ? 'Carga óptima. Tu rendimiento está en el punto ideal.'
-                : tsb > -20 ? 'Carga alta. Mantén la intensidad con cuidado.'
-                : tsb > -30 ? 'Fatiga notable. Considera reducir la carga esta semana.'
-                :             'Posible sobreentrenamiento. Prioriza el descanso.';
-
-  el.innerHTML = `
-    <div class="form-state-badge" style="background:${status.color}18;border:1px solid ${status.color}40;color:${status.color}">
-      ${status.icon} ${status.label}
-    </div>
-    <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:14px">${tsbDesc}</div>
-    <div class="pmc-metrics">
-      <div class="pmc-metric">
-        <div class="val" style="color:#3B82F6">${ctl.toFixed(1)}</div>
-        <div class="lbl">CTL fitness</div>
-      </div>
-      <div class="pmc-metric">
-        <div class="val" style="color:#EF4444">${atl.toFixed(1)}</div>
-        <div class="lbl">ATL fatiga</div>
-      </div>
-      <div class="pmc-metric">
-        <div class="val" style="color:${status.color}">${tsb > 0 ? '+' : ''}${tsb.toFixed(1)}</div>
-        <div class="lbl">TSB forma</div>
-      </div>
-    </div>
-    <div style="margin-top:14px">
-      <a href="analytics.html" style="font-size:12px;color:var(--primary);text-decoration:none;font-weight:600">
-        Ver PMC completo <i class="fas fa-arrow-right"></i>
-      </a>
-    </div>`;
-
-  renderFTPReadiness({ ctl, atl, tsb });
-}
-
-/* ── Last activity ──────────────────────────────────────── */
-function renderLastActivity() {
-  const el = document.getElementById('last-activity-content');
+/* ── ÚLTIMA ACTIVIDAD ────────────────────────────────────── */
+function renderLastAct() {
+  const el = document.getElementById('last-act-content');
   if (!AppState.activities?.length) return;
-
-  const sorted = [...AppState.activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  const act    = sorted[0];
+  const sorted = [...AppState.activities].sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
+  const act = sorted[0];
   if (!act) return;
-
-  const daysAgo = Utils.daysAgo(act.date?.substring(0, 10));
-  const daysStr = daysAgo === 0 ? 'Hoy' : daysAgo === 1 ? 'Ayer' : `Hace ${daysAgo} días`;
-  const actId   = act.id || act.strava_id || '';
-  const actUrl  = actId ? `activities.html?id=${actId}` : 'activities.html';
-
+  const daysAgo = Utils.daysAgo(act.date?.substring(0,10));
+  const when = daysAgo===0?'Hoy':daysAgo===1?'Ayer':`Hace ${daysAgo} días`;
+  const url  = (act.id||act.strava_id) ? `activities.html?id=${act.id||act.strava_id}` : 'activities.html';
   el.innerHTML = `
-    <a href="${actUrl}" style="display:block;text-decoration:none;color:inherit" title="Ver actividad">
+    <a href="${url}" style="display:block;text-decoration:none;color:inherit">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
         <div>
-          <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">${act.name || 'Actividad'}</div>
-          <div style="font-size:12px;color:var(--text-muted)">${daysStr} · ${Utils.formatDate(act.date?.substring(0,10))}</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">${act.name||'Actividad'}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${when} · ${Utils.formatDate(act.date?.substring(0,10))}</div>
         </div>
-        <span style="font-size:12px;color:var(--primary);font-weight:600">
-          Ver actividad <i class="fas fa-arrow-right"></i>
-        </span>
+        <span style="font-size:12px;color:var(--primary);font-weight:600">Ver actividad <i class="fas fa-arrow-right"></i></span>
       </div>
       <div class="last-act-metrics">
-        <div class="last-act-metric">
-          <div class="val">${Utils.formatDistance(act.distance)}</div>
-          <div class="lbl">Distancia</div>
-        </div>
-        <div class="last-act-metric">
-          <div class="val">${Utils.formatDuration(act.duration)}</div>
-          <div class="lbl">Duración</div>
-        </div>
-        <div class="last-act-metric">
-          <div class="val">${act.tss ? Math.round(act.tss) : '--'}</div>
-          <div class="lbl">TSS</div>
-        </div>
+        <div class="last-act-metric"><div class="val">${Utils.formatDistance(act.distance)}</div><div class="lbl">Distancia</div></div>
+        <div class="last-act-metric"><div class="val">${Utils.formatDuration(act.duration)}</div><div class="lbl">Duración</div></div>
+        <div class="last-act-metric"><div class="val">${act.tss?Math.round(act.tss):'--'}</div><div class="lbl">TSS</div></div>
       </div>
     </a>`;
 }
 
-/* ── Load training plan ─────────────────────────────────── */
-async function loadDashPlan() {
+/* ── LOAD PLAN ───────────────────────────────────────────── */
+async function loadPlan() {
   try {
-    const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan') || '{}');
+    const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan')||'{}');
     if (local?.sessions) {
-      dashPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {} };
-      renderTodayBig(dashPlan, AppState.athlete);
-      renderWeekCompliance(dashPlan);
+      dashPlan = { sessions:local.sessions, phase:local.phase, targetTSS:local.tss_target, advice:local.advice||{} };
+      renderToday(dashPlan, AppState.athlete);
+      renderWeek(dashPlan);
       renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
     }
   } catch {}
-
   try {
-    const res  = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() });
-    const data = await res.json();
+    const data = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() }).then(r=>r.json());
     if (data?.sessions) {
-      if (dashPlan?.sessions) {
-        data.sessions.forEach((s, i) => { if (dashPlan.sessions[i]?.completed) s.completed = true; });
-      }
-      dashPlan = { sessions: data.sessions, phase: data.phase, targetTSS: data.tss_target, advice: data.advice || {} };
-      localStorage.setItem('cyclocoach_training_plan', JSON.stringify({
-        week_start: data.week_start || new Date().toISOString().substring(0, 10),
-        sessions:   data.sessions,
-        tss_target: data.tss_target,
-        phase:      data.phase,
-        advice:     data.advice,
-        savedAt:    Date.now()
-      }));
-      renderTodayBig(dashPlan, AppState.athlete);
-      renderWeekCompliance(dashPlan);
+      if (dashPlan?.sessions) data.sessions.forEach((s,i)=>{ if (dashPlan.sessions[i]?.completed) s.completed=true; });
+      dashPlan = { sessions:data.sessions, phase:data.phase, targetTSS:data.tss_target, advice:data.advice||{} };
+      localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ week_start:data.week_start||new Date().toISOString().substring(0,10), sessions:data.sessions, tss_target:data.tss_target, phase:data.phase, advice:data.advice, savedAt:Date.now() }));
+      renderToday(dashPlan, AppState.athlete);
+      renderWeek(dashPlan);
       renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
     }
   } catch {}
 }
 
-/* ── Init ───────────────────────────────────────────────── */
+/* ── INIT ────────────────────────────────────────────────── */
 (async function init() {
   await AppState.init();
 
-  renderHero(AppState.athlete, null, null);
-  renderPMCCard();
-  renderLastActivity();
-  renderTodayBig(null, AppState.athlete);
+  const metrics = AppState.pmcData?.length ? AppState.getCurrentMetrics() : null;
+  renderHero(AppState.athlete, metrics, null);
+  renderLastAct();
+  renderToday(null, AppState.athlete);
+  if (metrics) renderFTP(metrics);
 
   if (AppState.athlete) {
-    const a       = AppState.athlete;
-    const avatarEl = document.getElementById('athlete-avatar');
-    const nameEl   = document.getElementById('athlete-name');
-    const ftpEl    = document.getElementById('athlete-ftp');
-    if (avatarEl) avatarEl.textContent = (a.name || '?')[0].toUpperCase();
-    if (nameEl)   nameEl.textContent   = a.name || 'Atleta';
-    if (ftpEl)    ftpEl.textContent    = `FTP: ${a.ftp || '--'} W`;
+    const a = AppState.athlete;
+    const av = document.getElementById('athlete-avatar');
+    const nm = document.getElementById('athlete-name');
+    const ft = document.getElementById('athlete-ftp');
+    if (av) av.textContent = (a.name||'?')[0].toUpperCase();
+    if (nm) nm.textContent = a.name||'Atleta';
+    if (ft) ft.textContent = `FTP: ${a.ftp||'--'} W`;
   }
 
   fetchWeather();
-  await loadDashPlan();
+  await loadPlan();
 
   BackendSync.loadActivities().then(() => {
-    renderPMCCard();
-    renderLastActivity();
-    autoMarkTodayFromActivities();
-    if (dashPlan) renderWeekCompliance(dashPlan);
-    renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
+    const m = AppState.pmcData?.length ? AppState.getCurrentMetrics() : null;
+    renderLastAct();
+    autoMarkToday();
+    if (dashPlan) renderWeek(dashPlan);
+    renderHero(AppState.athlete, m, dashPlan);
+    if (m) renderFTP(m);
   });
 
   BackendSync.loadProfile().then(profile => {
-    if (profile) {
-      const a       = AppState.athlete;
-      const avatarEl = document.getElementById('athlete-avatar');
-      const nameEl   = document.getElementById('athlete-name');
-      const ftpEl    = document.getElementById('athlete-ftp');
-      if (avatarEl) avatarEl.textContent = (a?.name || '?')[0].toUpperCase();
-      if (nameEl)   nameEl.textContent   = a?.name || 'Atleta';
-      if (ftpEl)    ftpEl.textContent    = `FTP: ${a?.ftp || '--'} W`;
-      renderHero(a, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
-    }
+    if (!profile) return;
+    const a = AppState.athlete;
+    const av = document.getElementById('athlete-avatar');
+    const nm = document.getElementById('athlete-name');
+    const ft = document.getElementById('athlete-ftp');
+    if (av) av.textContent = (a?.name||'?')[0].toUpperCase();
+    if (nm) nm.textContent = a?.name||'Atleta';
+    if (ft) ft.textContent = `FTP: ${a?.ftp||'--'} W`;
+    renderHero(a, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
   });
 
   requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
