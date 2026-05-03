@@ -802,21 +802,25 @@ function renderHero(athlete, metrics, plan) {
   if (sess?.isRest) {
     state = metrics ? state : 'rest';
     deco = '😴';
-    chips.push('😴 Día de descanso');
+    chips.push('<i class="fas fa-bed" style="color:#9ca3af"></i> Día de descanso');
   } else if (sess && !sess.isRest) {
-    const wt  = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || {};
-    const raw = sess.emoji || wt.emoji || '🚴';
-    const em  = (raw && /\p{Emoji}/u.test(raw)) ? raw : '🚴';
-    deco = em;
-    chips.push(`${em} ${sess.name || wt.label || 'Sesión de hoy'}`);
+    const wt   = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || {};
+    const fa   = sessFA(sess.type);
+    chips.push(`<i class="fas ${fa.icon}" style="color:${fa.color}"></i> ${sess.name || wt.label || 'Sesión de hoy'}`);
   }
 
-  const stateLabel = { fresh:'🟢 Fresco', optimal:'🟡 En carga', loaded:'🔴 Fatigado', rest:'😴 Descanso', no_data:'🚴 Empecemos' }[state];
+  const stateLabel = {
+    fresh:   '<i class="fas fa-circle" style="color:#10b981;font-size:8px;vertical-align:middle"></i> Fresco',
+    optimal: '<i class="fas fa-circle" style="color:#f59e0b;font-size:8px;vertical-align:middle"></i> En carga',
+    loaded:  '<i class="fas fa-circle" style="color:#ef4444;font-size:8px;vertical-align:middle"></i> Fatigado',
+    rest:    '<i class="fas fa-bed" style="color:#6b7280"></i> Descanso',
+    no_data: '<i class="fas fa-bicycle" style="color:#9ED62B"></i> Empecemos',
+  }[state];
 
   const heroEl = document.getElementById('coach-hero');
   heroEl.className = `coach-hero ${state}`;
   document.getElementById('hero-deco').innerHTML = `<i class="fas ${STATE_FA[state] || 'fa-dumbbell'}"></i>`;
-  document.getElementById('hero-eyebrow').textContent = `${greet} · ${stateLabel}`;
+  document.getElementById('hero-eyebrow').innerHTML = `${greet} &nbsp;·&nbsp; ${stateLabel}`;
   document.getElementById('hero-greeting').textContent = `${firstName}, ${
     state === 'fresh'   ? 'estás listo para dar el 100%' :
     state === 'optimal' ? 'sigues construyendo rendimiento' :
