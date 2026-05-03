@@ -71,9 +71,10 @@
       transform: translateY(-50%);
       font-size: 88px;
       line-height: 1;
-      opacity: .22;
+      opacity: .38;
       user-select: none;
       pointer-events: none;
+      font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
     }
     .hero-content { position: relative; z-index: 1; max-width: calc(100% - 130px); }
     .hero-eyebrow {
@@ -162,6 +163,7 @@
       line-height: 1;
       margin-bottom: 10px;
       display: block;
+      font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
     }
     .session-title {
       font-family: 'Space Grotesk', sans-serif;
@@ -759,10 +761,11 @@ function renderHero(athlete, metrics, plan) {
   if (sess?.isRest) {
     state = metrics ? state : 'rest';
     deco = '😴';
-    chips.push('Día de descanso');
+    chips.push('😴 Día de descanso');
   } else if (sess && !sess.isRest) {
-    const wt = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || {};
-    const em = sess.emoji || wt.emoji || '🚴';
+    const wt  = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || {};
+    const raw = sess.emoji || wt.emoji || '🚴';
+    const em  = (raw && /\p{Emoji}/u.test(raw)) ? raw : '🚴';
     deco = em;
     chips.push(`${em} ${sess.name || wt.label || 'Sesión de hoy'}`);
   }
@@ -831,7 +834,9 @@ function renderToday(plan, athlete) {
   }
 
   const wt    = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || { label: sess.type, color:'#9ED62B', emoji:'🚴' };
-  const emoji = sess.emoji || wt.emoji || '🚴';
+  // Ensure emoji is a real multi-codepoint emoji, not an empty/box char
+  const rawEmoji = sess.emoji || wt.emoji || '🚴';
+  const emoji = (rawEmoji && rawEmoji.trim().length > 0 && /\p{Emoji}/u.test(rawEmoji)) ? rawEmoji : '🚴';
   const color = wt.color || '#9ED62B';
   const tss   = Math.round((sess.tssShare||0)*(plan.targetTSS||0)) || sess.tss || 0;
   const dur   = sess.durationMin ? `${sess.durationMin} min` : '';
