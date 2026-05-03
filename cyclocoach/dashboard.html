@@ -63,22 +63,19 @@
         radial-gradient(ellipse 55% 90% at 92% 50%, rgba(158,214,43,.08) 0%, transparent 68%),
         linear-gradient(135deg, #0c1008 0%, #090d06 100%);
     }
-    /* Gran emoji decorativo — fijo, sin animación de movimiento */
+    /* Icono decorativo grande — usa Font Awesome, siempre renderiza */
     .hero-deco {
       position: absolute;
-      right: 32px;
+      right: 36px;
       top: 50%;
       transform: translateY(-50%);
-      width: 90px;
-      height: 90px;
-      opacity: .40;
+      font-size: 80px;
+      opacity: .18;
+      color: var(--hero-accent, #9ED62B);
       user-select: none;
       pointer-events: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      line-height: 1;
     }
-    .hero-deco img { width: 90px; height: 90px; display: block; }
     .hero-content { position: relative; z-index: 1; max-width: calc(100% - 130px); }
     .hero-eyebrow {
       font-size: 11px;
@@ -161,13 +158,18 @@
     /* ─────────────────────────────────────────────────────────
        SESIÓN DE HOY
     ───────────────────────────────────────────────────────── */
-    .session-emoji-big {
-      display: block;
-      width: 54px;
-      height: 54px;
-      margin-bottom: 12px;
+    /* Icono de sesión — caja coloreada con FA icon */
+    .session-icon-box {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      margin-bottom: 14px;
+      font-size: 26px;
+      flex-shrink: 0;
     }
-    .session-emoji-big img { width: 54px; height: 54px; display: block; }
     .session-title {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 22px;
@@ -249,7 +251,16 @@
       gap: 16px;
       margin-bottom: 12px;
     }
-    .wx-emoji { font-size: 54px; line-height: 1; flex-shrink: 0; }
+    .wx-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      flex-shrink: 0;
+    }
     .wx-temp {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 42px;
@@ -565,10 +576,10 @@
 
       .main-grid    { gap: 12px; margin-bottom: 12px; }
       .card         { padding: 16px 16px 14px; border-radius: 12px; }
-      .session-emoji-big { font-size: 40px; }
+      .session-icon-box { width: 48px; height: 48px; font-size: 22px; }
       .session-title     { font-size: 18px; }
 
-      .wx-emoji { font-size: 40px; }
+      .wx-icon { width: 48px; height: 48px; font-size: 20px; }
       .wx-temp  { font-size: 32px; }
 
       .ftp-banner {
@@ -732,17 +743,32 @@ const PHRASES = {
 };
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
-/* Convierte un emoji en <img> desde Twemoji CDN — evita el recuadro
-   de fallback que muestran algunos navegadores con emojis grandes */
-function bigEmoji(char, sizePx) {
-  const codepoints = [...(char || '🚴')]
-    .map(c => c.codePointAt(0).toString(16))
-    .filter(cp => cp !== 'fe0f')   // elimina variation selector
-    .join('-');
-  const url = `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/${codepoints}.png`;
-  // onerror: si el CDN falla, muestra el carácter directamente
-  return `<img src="${url}" width="${sizePx}" height="${sizePx}" draggable="false" alt="${char}" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=\\"font-size:${sizePx * 0.9}px;line-height:1\\">${char}</span>')">`;
+/* Mapeo de tipo de sesión → icono FA + color */
+const SESSION_FA = {
+  z2:        { icon: 'fa-bicycle',      color: '#3B82F6' },
+  endurance: { icon: 'fa-bicycle',      color: '#3B82F6' },
+  long:      { icon: 'fa-route',        color: '#8B5CF6' },
+  tempo:     { icon: 'fa-fire',         color: '#F59E0B' },
+  threshold: { icon: 'fa-fire',         color: '#F59E0B' },
+  vo2max:    { icon: 'fa-bolt',         color: '#EF4444' },
+  sprint:    { icon: 'fa-forward-fast', color: '#EF4444' },
+  recovery:  { icon: 'fa-heart-pulse',  color: '#10B981' },
+  rest:      { icon: 'fa-bed',          color: '#6B7280' },
+  default:   { icon: 'fa-bicycle',      color: '#9ED62B' },
+};
+function sessFA(type) {
+  const k = Object.keys(SESSION_FA).find(k => (type||'').toLowerCase().includes(k)) || 'default';
+  return SESSION_FA[k];
 }
+
+/* Icono FA para el hero-deco según estado */
+const STATE_FA = {
+  fresh:   'fa-dumbbell',
+  optimal: 'fa-dumbbell',
+  loaded:  'fa-battery-half',
+  rest:    'fa-bed',
+  no_data: 'fa-bicycle',
+};
 
 /* ── HERO ────────────────────────────────────────────────── */
 function renderHero(athlete, metrics, plan) {
@@ -789,7 +815,7 @@ function renderHero(athlete, metrics, plan) {
 
   const heroEl = document.getElementById('coach-hero');
   heroEl.className = `coach-hero ${state}`;
-  document.getElementById('hero-deco').innerHTML = bigEmoji(deco, 90);
+  document.getElementById('hero-deco').innerHTML = `<i class="fas ${STATE_FA[state] || 'fa-dumbbell'}"></i>`;
   document.getElementById('hero-eyebrow').textContent = `${greet} · ${stateLabel}`;
   document.getElementById('hero-greeting').textContent = `${firstName}, ${
     state === 'fresh'   ? 'estás listo para dar el 100%' :
@@ -838,7 +864,9 @@ function renderToday(plan, athlete) {
 
   if (sess.isRest) {
     wrap.innerHTML = eyebrow + `
-      <span class="session-emoji-big">${bigEmoji('😴', 54)}</span>
+      <div class="session-icon-box" style="background:rgba(107,114,128,.15);color:#9ca3af">
+        <i class="fas fa-bed"></i>
+      </div>
       <div class="session-title">Día de descanso</div>
       <div class="why-block">
         <b>Por qué importa</b>
@@ -848,10 +876,7 @@ function renderToday(plan, athlete) {
     return;
   }
 
-  const wt    = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || { label: sess.type, color:'#9ED62B', emoji:'🚴' };
-  // Ensure emoji is a real multi-codepoint emoji, not an empty/box char
-  const rawEmoji = sess.emoji || wt.emoji || '🚴';
-  const emoji = (rawEmoji && rawEmoji.trim().length > 0 && /\p{Emoji}/u.test(rawEmoji)) ? rawEmoji : '🚴';
+  const wt    = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || { label: sess.type, color:'#9ED62B' };
   const color = wt.color || '#9ED62B';
   const tss   = Math.round((sess.tssShare||0)*(plan.targetTSS||0)) || sess.tss || 0;
   const dur   = sess.durationMin ? `${sess.durationMin} min` : '';
@@ -861,24 +886,27 @@ function renderToday(plan, athlete) {
   const whyKey   = Object.keys(WHY).find(k => sessType.includes(k));
   const why      = plan.advice?.today || (whyKey ? WHY[whyKey] : 'Esta sesión encaja en tu bloque actual para progresar de forma continua.');
 
+  const fa = sessFA(sess.type);
   wrap.innerHTML = eyebrow + `
-    <span class="session-emoji-big">${bigEmoji(emoji, 54)}</span>
+    <div class="session-icon-box" style="background:${fa.color}18;color:${fa.color}">
+      <i class="fas ${fa.icon}"></i>
+    </div>
     <div class="session-title" style="${isDone ? 'opacity:.5' : ''}">
       ${sess.name || wt.label}
-      ${isDone ? '<span style="font-size:13px;font-weight:600;color:#10b981;margin-left:6px">✓ Hecha</span>' : ''}
+      ${isDone ? '<span style="font-size:13px;font-weight:600;color:#10b981;margin-left:6px">&#10003; Hecha</span>' : ''}
     </div>
     <div class="session-pills">
-      ${dur  ? `<span class="session-pill"><i class="fas fa-clock" style="color:${color}"></i> ${dur}</span>` : ''}
-      ${tss  ? `<span class="session-pill"><i class="fas fa-bolt" style="color:${color}"></i> ${tss} TSS</span>` : ''}
-      ${wt.label ? `<span class="session-pill" style="color:${color}">${wt.label}</span>` : ''}
+      ${dur ? '<span class="session-pill"><i class="fas fa-clock" style="color:' + color + '"></i> ' + dur + '</span>' : ''}
+      ${tss ? '<span class="session-pill"><i class="fas fa-bolt" style="color:' + color + '"></i> ' + tss + ' TSS</span>' : ''}
+      ${wt.label ? '<span class="session-pill" style="color:' + color + '">' + wt.label + '</span>' : ''}
     </div>
     <div class="why-block" style="border-left-color:${color}">
-      <b>¿Por qué hoy este entreno?</b>
+      <b>&#191;Por qu&#233; hoy este entreno?</b>
       ${why}
     </div>
-    <button class="btn-done${isDone?' done':''}" onclick="toggleTodayDone()">
-      <i class="fas ${isDone?'fa-circle-check':'fa-circle'}"></i>
-      ${isDone ? 'Sesión completada' : 'Marcar como hecha'}
+    <button class="btn-done${isDone ? ' done' : ''}" onclick="toggleTodayDone()">
+      <i class="fas ${isDone ? 'fa-circle-check' : 'fa-circle'}"></i>
+      ${isDone ? 'Sesi&#243;n completada' : 'Marcar como hecha'}
     </button>`;
 }
 
@@ -922,13 +950,27 @@ function autoMarkToday() {
 
 /* ── TIEMPO + ROPA ───────────────────────────────────────── */
 const WX = {
-  0:{l:'Despejado',e:'☀️'}, 1:{l:'Principalmente despejado',e:'🌤️'}, 2:{l:'Parcialmente nublado',e:'⛅'},
-  3:{l:'Nublado',e:'☁️'}, 45:{l:'Niebla',e:'🌫️'}, 48:{l:'Niebla con escarcha',e:'🌫️'},
-  51:{l:'Llovizna ligera',e:'🌦️'}, 53:{l:'Llovizna',e:'🌦️'}, 55:{l:'Llovizna densa',e:'🌧️'},
-  61:{l:'Lluvia ligera',e:'🌧️'}, 63:{l:'Lluvia moderada',e:'🌧️'}, 65:{l:'Lluvia intensa',e:'🌧️'},
-  71:{l:'Nieve ligera',e:'❄️'}, 73:{l:'Nieve',e:'❄️'}, 75:{l:'Nevada intensa',e:'❄️'},
-  80:{l:'Chubascos ligeros',e:'🌦️'}, 81:{l:'Chubascos',e:'🌧️'}, 82:{l:'Chubascos fuertes',e:'⛈️'},
-  95:{l:'Tormenta',e:'⛈️'}, 96:{l:'Tormenta con granizo',e:'⛈️'}, 99:{l:'Tormenta',e:'⛈️'},
+  0: {l:'Despejado',          i:'fa-sun',                  c:'#FBBF24'},
+  1: {l:'Principalmente despejado', i:'fa-sun',            c:'#FBBF24'},
+  2: {l:'Parcialmente nublado',i:'fa-cloud-sun',           c:'#93C5FD'},
+  3: {l:'Nublado',            i:'fa-cloud',                c:'#94A3B8'},
+  45:{l:'Niebla',             i:'fa-smog',                 c:'#9CA3AF'},
+  48:{l:'Niebla con escarcha',i:'fa-smog',                 c:'#9CA3AF'},
+  51:{l:'Llovizna ligera',    i:'fa-cloud-rain',           c:'#60A5FA'},
+  53:{l:'Llovizna',           i:'fa-cloud-rain',           c:'#60A5FA'},
+  55:{l:'Llovizna densa',     i:'fa-cloud-rain',           c:'#3B82F6'},
+  61:{l:'Lluvia ligera',      i:'fa-cloud-rain',           c:'#3B82F6'},
+  63:{l:'Lluvia moderada',    i:'fa-cloud-showers-heavy',  c:'#2563EB'},
+  65:{l:'Lluvia intensa',     i:'fa-cloud-showers-heavy',  c:'#1D4ED8'},
+  71:{l:'Nieve ligera',       i:'fa-snowflake',            c:'#BAE6FD'},
+  73:{l:'Nieve',              i:'fa-snowflake',            c:'#7DD3FC'},
+  75:{l:'Nevada intensa',     i:'fa-snowflake',            c:'#38BDF8'},
+  80:{l:'Chubascos ligeros',  i:'fa-cloud-rain',           c:'#60A5FA'},
+  81:{l:'Chubascos',          i:'fa-cloud-showers-heavy',  c:'#3B82F6'},
+  82:{l:'Chubascos fuertes',  i:'fa-cloud-bolt',           c:'#8B5CF6'},
+  95:{l:'Tormenta',           i:'fa-cloud-bolt',           c:'#7C3AED'},
+  96:{l:'Tormenta con granizo',i:'fa-cloud-bolt',          c:'#6D28D9'},
+  99:{l:'Tormenta',           i:'fa-cloud-bolt',           c:'#6D28D9'},
 };
 
 function getClothing(temp, wind, precip, code) {
@@ -1002,7 +1044,9 @@ async function fetchWeather() {
 
       el.innerHTML = `
         <div class="wx-main">
-          <div class="wx-emoji">${wx.e}</div>
+          <div class="wx-icon" style="background:${wx.c}18;color:${wx.c}">
+            <i class="fas ${wx.i}"></i>
+          </div>
           <div>
             <div class="wx-temp">${temp}°<span style="font-size:22px;font-weight:400;opacity:.5">C</span></div>
             <div class="wx-sub">${wx.l} · Sensación ${feels}°C</div>
