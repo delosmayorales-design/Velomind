@@ -1961,37 +1961,64 @@ Si el plan ya es óptimo → devolver "modifications": []`;
     }
 
     // ── Fallback determinista anti-descansos consecutivos ──────────────
-    for (let i = 0; i < 6; i++) {
-      if (newSessions[i].isRest && newSessions[i+1].isRest) {
-        let swapped = false;
-        // 1. Intentar mover el segundo descanso hacia adelante
-        for (let j = i + 2; j <= 6; j++) {
-          if (!newSessions[j].isRest) {
-            const jPrevRest = j > 0 ? newSessions[j-1].isRest : false;
-            const jNextRest = j < 6 ? newSessions[j+1].isRest : false;
-            if (!jNextRest && (j - 1 === i + 1 || !jPrevRest)) {
-              const tempDay1 = newSessions[i+1].day;
-              const tempDay2 = newSessions[j].day;
-              const tempSess1 = { ...newSessions[i+1], day: tempDay2 };
-              const tempSess2 = { ...newSessions[j], day: tempDay1 };
-              newSessions[i+1] = tempSess2;
-              newSessions[j] = tempSess1;
-              swapped = true;
-              break;
-            }
-          }
-        }
-        // 2. Si no, intentar mover el primer descanso hacia atrás (solo a días futuros al de HOY)
-        if (!swapped && i > todayIdx) {
-          for (let j = i - 1; j > todayIdx; j--) {
+    let resolved = false;
+    let loopCount = 0;
+
+    // Realizamos hasta 5 pasadas para desenredar los bloques de descansos
+    while (!resolved && loopCount < 5) {
+      resolved = true;
+      for (let i = 0; i < 6; i++) {
+        if (newSessions[i].isRest && newSessions[i+1].isRest) {
+          resolved = false;
+          let swapped = false;
+          
+          // 1. Intentar mover el segundo descanso hacia adelante (a un hueco perfecto aislado)
+          for (let j = i + 2; j <= 6; j++) {
             if (!newSessions[j].isRest) {
               const jPrevRest = j > 0 ? newSessions[j-1].isRest : false;
-              if (!jPrevRest) {
-                const tempDay1 = newSessions[i].day;
+              const jNextRest = j < 6 ? newSessions[j+1].isRest : false;
+              if (!jNextRest && (j - 1 === i + 1 || !jPrevRest)) {
+                const tempDay1 = newSessions[i+1].day;
                 const tempDay2 = newSessions[j].day;
-                const tempSess1 = { ...newSessions[i], day: tempDay2 };
+                const tempSess1 = { ...newSessions[i+1], day: tempDay2 };
                 const tempSess2 = { ...newSessions[j], day: tempDay1 };
-                newSessions[i] = tempSess2;
+                newSessions[i+1] = tempSess2;
+                newSessions[j] = tempSess1;
+                swapped = true;
+                break;
+              }
+            }
+          }
+          
+          // 2. Si no, intentar mover el primer descanso hacia atrás a días futuros
+          if (!swapped && i > todayIdx) {
+            for (let j = i - 1; j > todayIdx; j--) {
+              if (!newSessions[j].isRest) {
+                const jPrevRest = j > 0 ? newSessions[j-1].isRest : false;
+                if (!jPrevRest) {
+                  const tempDay1 = newSessions[i].day;
+                  const tempDay2 = newSessions[j].day;
+                  const tempSess1 = { ...newSessions[i], day: tempDay2 };
+                  const tempSess2 = { ...newSessions[j], day: tempDay1 };
+                  newSessions[i] = tempSess2;
+                  newSessions[j] = tempSess1;
+                  swapped = true;
+                  break;
+                }
+              }
+            }
+          }
+
+          // 3. MODO DESESPERADO: Forzar el intercambio con el primer día de entreno disponible
+          // Esto rompe la "parálisis" cuando hay 3 o 4 descansos agrupados por la IA o por el Límite de Días
+          if (!swapped) {
+            for (let j = i + 2; j <= 6; j++) {
+              if (!newSessions[j].isRest) {
+                const tempDay1 = newSessions[i+1].day;
+                const tempDay2 = newSessions[j].day;
+                const tempSess1 = { ...newSessions[i+1], day: tempDay2 };
+                const tempSess2 = { ...newSessions[j], day: tempDay1 };
+                newSessions[i+1] = tempSess2;
                 newSessions[j] = tempSess1;
                 swapped = true;
                 break;
@@ -2000,10 +2027,7 @@ Si el plan ya es óptimo → devolver "modifications": []`;
           }
         }
       }
-    }
-          }
-        }
-      }
+      loopCount++;
     }
 
     // ── Fallback determinista escenario 1: si la IA ignoró la regla ──────────────
