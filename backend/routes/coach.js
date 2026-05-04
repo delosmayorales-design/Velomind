@@ -1794,24 +1794,34 @@ router.post('/recalculate-week', async (req, res) => {
       ? `HOY (índice ${todayIdx}) PUEDE ser modificado (puedes cambiar de descanso a entreno o viceversa). NO modifiques índices anteriores a ${todayIdx}.`
       : `🛑 NUNCA modifiques HOY (índice ${todayIdx}) ni días anteriores. Solo días FUTUROS (índice > ${todayIdx}).`;
 
-    const systemPrompt = 'Eres un coach ciclista experto. Responde SOLO con JSON válido, sin markdown ni texto extra.';
-    const userMsg = `Plan semanal:
+    const systemPrompt = 'Actúa como un entrenador experto en ciclismo basado en métricas (TSS, CTL, ATL, IF, FTP) y planificación tipo TrainingPeaks. Responde SOLO con JSON válido, sin markdown ni texto extra.';
+    const userMsg = `INPUT:
+Plan semanal actual:
 ${JSON.stringify(planResumido, null, 2)}
 
-HOY = índice ${todayIdx} (0=Lunes, 6=Domingo).
-${feedback}${scenario1Hint}
+Día modificado por el usuario (HOY = índice ${todayIdx}):
+"${feedback}"${scenario1Hint}
 
-REGLAS:
-1. ${hoyRegla}
-2. LÍMITE DE DÍAS: El plan actual tiene ${totalTrainingDays} días de entrenamiento en la semana. BAJO NINGÚN CONCEPTO el nuevo plan puede tener más de ${totalTrainingDays} días con "isRest": false en total (contando días pasados y futuros). Si cambias hoy de descanso a entrenamiento, debes obligatoriamente cambiar un día de entrenamiento futuro a descanso ("isRest": true) para compensar y mantener el número de días.
-3. "type" debe ser uno de: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength". Incluye siempre "name" y "emoji".
-4. COHERENCIA FISIOLÓGICA: NUNCA pongas dos días de alta intensidad seguidos ("vo2max", "threshold", "sprint", "race"). Después de un día intenso, debe haber "recovery", "endurance" o "isRest": true. Tampoco pongas dos días de descanso consecutivos.
-5. Variación TSS por sesión: máximo ±30%, salvo si conviertes un día de descanso a entreno o viceversa.
-6. Si el feedback indica que el atleta se EXCEDIÓ del TSS planificado (>115%), REDUCE el TSS de los días futuros pendientes para compensar el exceso de carga acumulada y prevenir sobreentrenamiento.
+OBJETIVO:
+Recalcular la semana completa de forma óptima manteniendo el estímulo fisiológico clave y evitando acumulación de fatiga innecesaria.
 
+REGLAS CLAVE (FISIOLOGÍA Y RENDIMIENTO):
+1. Mantener los días clave de calidad ("vo2max", "threshold", "sprint") → NO degradar intensidad, solo volumen si es necesario.
+2. Si se añade carga en un día de descanso: Ajustar los días siguientes (especialmente el primer día de intensidad). Reducir TSS principalmente recortando volumen, no intensidad.
+3. Priorizar la calidad sobre la cantidad: Es mejor hacer menos TSS pero mantener estímulo correcto.
+4. Evitar fatiga residual en sesiones clave: El día previo a "vo2max" o "threshold" debe llegar con fatiga controlada (día suave o descanso).
+5. Mantener coherencia fisiológica: Z2 = recuperación/base, Sweetspot/tempo = acumulación, Threshold = mejora de umbral, VO2max = potencia aeróbica máxima. NUNCA pongas dos días de alta intensidad seguidos.
+
+REGLAS DE LA APLICACIÓN (ESTRICTAS):
+A. ${hoyRegla}
+B. LÍMITE DE DÍAS: El plan actual tiene ${totalTrainingDays} días de entrenamiento. BAJO NINGÚN CONCEPTO superes los ${totalTrainingDays} días de entrenamiento en total. Si cambias hoy de descanso a entrenamiento, DEBES OBLIGATORIAMENTE cambiar un día de entrenamiento futuro a descanso ("isRest": true), sacrificando la sesión más suave disponible (ej. "endurance" o "recovery").
+C. "type" debe ser uno de: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength". Incluye "name" y "emoji".
+D. EXTRA (IMPORTANTE): Si detectas que el usuario está comprometiendo sesiones clave por exceso de carga, indícalo de forma directa en el "mensaje_coach" y propón alternativa óptima.
+
+OUTPUT:
 Devuelve EXACTAMENTE este JSON:
 {
-  "mensaje_coach": "Frase corta explicando los cambios.",
+  "mensaje_coach": "Explicación clara, estructurada y accionable de los cambios (por qué y para qué). Sin explicaciones genéricas, enfocado a rendimiento real.",
   "modifications": [
     { "dayIndex": 3, "changes": { "isRest": false, "type": "endurance", "name": "Rodaje Z2 extendido", "emoji": "🔵", "durationMin": 75, "tss": 55, "ifTarget": 0.72, "advice": "Carga redistribuida." } }
   ]
