@@ -175,19 +175,25 @@ router.get('/recommendations', async (req, res) => {
   const nutrition = buildNutritionRecommendation({ ftp, weight, goal, phase, form,
     avgTSS, training, user });
 
-  res.json({
-    summary: {
-      rides: acts.length,
-      avgTSS, totalTSS, avgDurMin, avgDistKm, avgNP, wkg,
-      phase, form,
-      pmc: { ctl: Math.round(ctl), atl: Math.round(atl), tsb: Math.round(tsb) },
-      zones: { z1: zonePct[1], z2: zonePct[2], z3: zonePct[3], z4: zonePct[4], z5: zonePct[5], z6: zonePct[6], z7: zonePct[7] },
-      polarization: { low: lowPct, mid: midPct, high: hiPct },
-      trend: { tssGrowth, recentAvgTSS, prevAvgTSS },
-    },
-    training,
-    nutrition,
-  });
+  try {
+    const weeklyPlan = recalculateWeeklyPlan(acts, ftp);
+    res.json({
+      summary: {
+        rides: acts.length,
+        avgTSS, totalTSS, avgDurMin, avgDistKm, avgNP, wkg,
+        phase, form,
+        pmc: { ctl: Math.round(ctl), atl: Math.round(atl), tsb: Math.round(tsb) },
+        zones: { z1: zonePct[1], z2: zonePct[2], z3: zonePct[3], z4: zonePct[4], z5: zonePct[5], z6: zonePct[6], z7: zonePct[7] },
+        polarization: { low: lowPct, mid: midPct, high: hiPct },
+        trend: { tssGrowth, recentAvgTSS, prevAvgTSS },
+      },
+      training,
+      nutrition,
+      weeklyPlan,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // ── GET /api/coach/power-curve ────────────────────────────────
@@ -638,7 +644,7 @@ async function analyzeBiomechanicsWithAI(photos, rider, userPoints = {}) {
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'Contexto del atleta: ' + riderCtx + userPointsCtx },
+            { type: 'text', text: 'Contexto del atleta: ' + riderCtx + userPointsCtx + '\n\nAnaliza la imagen y devuelve SOLO el JSON, sin texto adicional.' },
             ...photos.flatMap(p => [
               { type: 'text', text: `VISTA: ${p.view}` },
               { type: 'image_url', image_url: { url: p.dataUrl, detail: 'high' } },
@@ -671,7 +677,7 @@ async function analyzeBiomechanicsWithAI(photos, rider, userPoints = {}) {
     try {
       const client = new Anthropic({ apiKey: anthropicKey });
       const content = [
-        { type: 'text', text: 'Contexto del atleta: ' + riderCtx + userPointsCtx },
+        { type: 'text', text: 'Contexto del atleta: ' + riderCtx + userPointsCtx + '\n\nAnaliza la imagen y devuelve SOLO el JSON, sin texto adicional.' },
         ...photos.flatMap(p => {
           const [header, b64] = p.dataUrl.split(';base64,');
           return [
@@ -713,7 +719,7 @@ async function analyzeBiomechanicsWithAI(photos, rider, userPoints = {}) {
           {
             role: 'user',
             content: [
-              { type: 'text', text: 'Contexto del atleta: ' + riderCtx + userPointsCtx },
+              { type: 'text', text: 'Contexto del atleta: ' + riderCtx + userPointsCtx + '\n\nAnaliza la imagen y devuelve SOLO el JSON, sin texto adicional.' },
               ...groqPhotos.flatMap(p => [
                 { type: 'text', text: `VISTA: ${p.view}` },
                 { type: 'image_url', image_url: { url: p.dataUrl } },
@@ -1007,14 +1013,14 @@ function buildDeloadWeek(ftp, goal) {
 
 function buildPeakWeek(ftp, goal) {
   return [
-    { day: 'Lunes',     type: 'Descanso',    duration: 0,  tss: 0,  description: 'Descanso' },
+    { day: 'Lunes',     type: 'Descanso',   duration: 0,  tss: 0, description: 'Descanso' },
     { day: 'Martes',    type: 'Activación',  duration: 60, tss: 55, key: true,
       description: `60min con 2×8min a ${Math.round(ftp*0.97)}W. Mantener calidad, reducir volumen.` },
     { day: 'Miércoles', type: 'Suave',       duration: 40, tss: 25, description: `Z1/Z2, 40min. Piernas activas sin fatiga.` },
     { day: 'Jueves',    type: 'Velocidad',   duration: 50, tss: 45, description: `6×30s sprints a potencia máxima. Rec: 5min. Sentir las piernas explosivas.` },
-    { day: 'Viernes',   type: 'Descanso',    duration: 0,  tss: 0,  description: 'Descanso total o rodillo 20min Z1' },
+    { day: 'Viernes',   type: 'Descanso',    duration: 0,  tss: 0, description: 'Descanso total o rodillo 20min Z1' },
     { day: 'Sábado',    type: 'Pre-evento',  duration: 45, tss: 35, description: `45min Z1/Z2 con 3×1min al 110% FTP. Activar sin vaciar.` },
-    { day: 'Domingo',   type: 'COMPETICIÓN', duration: 0,  tss: 0,  description: '🏆 Día de competición o rodada objetivo.' },
+    { day: 'Domingo',   type: 'COMPETICIÓN', duration: 0,  tss: 0, description: '🏆 Día de competición o rodada objetivo.' },
   ];
 }
 
@@ -1367,8 +1373,8 @@ Devuelve EXACTAMENTE este JSON (sin markdown, sin texto extra):
     { "dia":"Martes","tipo":"Descanso","duracion_min":0,"tss_objetivo":0,"potencia_objetivo":"","descripcion":"Recuperación activa","key":false,"emoji":"😴" }
   ],
   "nutricion": {
-    "dia_entrenamiento": {"calorias":N,"carbos_g":N,"proteina_g":N,"grasa_g":N},
-    "dia_descanso":      {"calorias":N,"carbos_g":N,"proteina_g":N,"grasa_g":N},
+    "dia_entrenamiento": {"calorias":N,"carbos_g":N,"proteína_g":N,"grasa_g":N},
+    "dia_descanso":      {"calorias":N,"carbos_g":N,"proteína_g":N,"grasa_g":N},
     "hidratacion_ml": N,
     "timing": {"pre":"string","durante":"string","post":"string"}
   },
@@ -1633,7 +1639,7 @@ MÓDULO 1 — DIAGNÓSTICO DE RENDIMIENTO (siempre primero)
 1. Estado de forma TSB: >25 Muy fresco | 5-25 Fresco | -10 a 5 En forma | -20 a -10 Cansado | -30 a -20 Fatigado | <-30 Sobreentrenado
 2. Análisis de polarización (Modelo Seiler):
    - Óptimo: 75-80% baja intensidad (Z1/Z2) + 15-20% alta intensidad (Z5+) + <10% zona media
-   - Si Z3+Z4 > 40%: PROBLEMA — zona gris acumula fatiga sin estímulo óptimo
+   - Si Z3+Z4 > 40%: PROBLEMA — zona gris acumula fatiga sin el estímulo óptimo
    - Si Z2 < 40%: base aeróbica insuficiente
 3. DIAGNÓSTICO DE PUNTOS DÉBILES (obligatorio, basado en datos reales):
    - Compara distribución de zonas real vs óptima para el objetivo
@@ -1736,8 +1742,8 @@ Devuelve ÚNICAMENTE JSON válido con esta estructura exacta:
   ],
   "nutricion": {
     "objetivo_calorico_tipo": "superavit|mantenimiento|deficit",
-    "dia_entrenamiento": { "calorias": number, "carbos_g": number, "proteina_g": number, "grasa_g": number, "nota": "string" },
-    "dia_descanso": { "calorias": number, "carbos_g": number, "proteina_g": number, "grasa_g": number, "nota": "string" },
+    "dia_entrenamiento": { "calorias": number, "carbos_g": number, "proteína_g": number, "grasa_g": number, "nota": "string" },
+    "dia_descanso": { "calorias": number, "carbos_g": number, "proteína_g": number, "grasa_g": number, "nota": "string" },
     "hidratacion_ml": number,
     "timing": {
       "pre": "string con alimentos y cantidades concretas",
