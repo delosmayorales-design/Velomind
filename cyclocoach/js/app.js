@@ -2066,7 +2066,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { name: 'Métricas',    icon: 'fa-chart-bar',      href: 'analytics.html' },
       { name: 'Mi Plan',     icon: 'fa-calendar-check', href: 'training-plan.html' },
       { name: 'Actividades', icon: 'fa-history',        href: 'activities.html' },
-      { name: 'Garaje',      icon: 'fa-warehouse',      href: 'garaje.html' },
+      { name: 'Nutrición',   icon: 'fa-apple-alt',      href: 'nutrition.html' },
       { name: 'Menú',        icon: 'fa-bars',           href: '#', isMenu: true }
     ];
 
