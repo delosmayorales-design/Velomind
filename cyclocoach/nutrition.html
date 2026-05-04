@@ -1,4 +1,5 @@
-﻿﻿﻿﻿htl lang="es">
+﻿﻿<!DOCTYPE html>
+<html lang="es">
 <head>
   <script>
     (function() {
@@ -520,7 +521,8 @@ async function initNutrition() {
     const pr = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() });
     if (pr.ok) {
       const saved = await pr.json();
-      if (saved?.sessions && saved.
+      if (saved?.sessions && saved.week_start === currentWeekStart) currentTrainingPlan = saved;
+    }
   } catch(e) {
   }
   if (!currentTrainingPlan) {
@@ -528,6 +530,7 @@ async function initNutrition() {
       const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan') || 'null');
       if (local?.sessions && local.week_start === currentWeekStart) currentTrainingPlan = local;
     } catch(_) {}
+  }
 
   // Si no hay plan guardado, generar uno por defecto según el perfil del atleta
   if (!currentTrainingPlan && typeof TrainingPlanGenerator !== 'undefined') {
