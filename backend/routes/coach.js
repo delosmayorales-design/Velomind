@@ -1807,45 +1807,96 @@ router.post('/recalculate-week', async (req, res) => {
       ? `HOY (índice ${todayIdx}) PUEDE ser modificado (puedes cambiar de descanso a entreno o viceversa). NO modifiques índices anteriores a ${todayIdx}.`
       : `🛑 NUNCA modifiques HOY (índice ${todayIdx}) ni días anteriores. Solo días FUTUROS (índice > ${todayIdx}).`;
 
-    const systemPrompt = 'Actúa como un entrenador experto en ciclismo basado en métricas (TSS, CTL, ATL, IF, FTP) y planificación tipo TrainingPeaks. Responde SOLO con JSON válido, sin markdown ni texto extra.';
+    const systemPrompt = 'Actúa como un entrenador experto en ciclismo basado en métricas (TSS, CTL, ATL, TSB, IF, FTP) y planificación tipo TrainingPeaks/WKO. Responde SOLO con JSON válido, sin markdown ni texto extra.';
     const userMsg = `INPUT:
-Plan semanal actual:
+* Semana actual:
 ${JSON.stringify(planResumido, null, 2)}
 
-Día modificado por el usuario (HOY = índice ${todayIdx}):
+"* Día modificado por el usuario (HOY = índice ${todayIdx}):
 "${feedback}"${scenario1Hint}
 
 OBJETIVO:
-Recalcular la semana completa de forma óptima manteniendo el estímulo fisiológico clave y evitando acumulación de fatiga innecesaria.
+Recalcular la semana optimizando rendimiento (NO solo fatiga), manteniendo estímulos fisiológicos clave y una distribución realista de carga.
 
-CONSTRAINTS OBLIGATORIOS (NO ROMPER):
-1. CONTINUIDAD DEL ESTÍMULO: ABSOLUTAMENTE PROHIBIDO poner dos o más días de descanso ("isRest": true) consecutivos. Intercala siempre los descansos para mantener la alternancia carga-recuperación.
-2. RESOLUCIÓN DE FATIGA: No agrupes descansos para "resolver fatiga". Si el atleta está fatigado, REDUCE el volumen o baja el TSS de los días cercanos, pero mantén la sesión de entrenamiento.
-3. FRECUENCIA MÍNIMA: El plan debe ser realista para un ciclista y tener al menos 4 días de actividad ("isRest": false) en la semana.
-4. DISTRIBUCIÓN MÍNIMA: Debe haber al menos 1 sesión de alta intensidad o "vo2max", 1 sesión "threshold" o "tempo" (sweet spot), y 1 sesión de fondo ("long") o "endurance".
+════════════════════════════════════
+CONSTRAINTS DUROS (OBLIGATORIOS)
+════════════════════════════════════
+1. PROHIBIDO más de 1 día de descanso consecutivo.
+2. Mínimo 4 días de entrenamiento en la semana.
+3. Debe existir al menos:
+   * 1 sesión VO2max o alta intensidad
+   * 1 sesión threshold/tempo/sweetspot
+   * 1 sesión endurance o long
+4. PROHIBIDO 2 días consecutivos de alta intensidad (vo2max, threshold, sprint).
+5. Mantener alternancia carga–recuperación (estructura realista de ciclista).
+6. NO eliminar sesiones clave salvo fatiga extrema (TSB < -30).
 
-REGLAS CLAVE (FISIOLOGÍA Y RENDIMIENTO):
-1. Mantener los días clave de calidad ("vo2max", "threshold", "sprint") → NO degradar intensidad, solo volumen si es necesario.
-2. Si se añade carga en un día de descanso: Ajustar los días siguientes (especialmente el primer día de intensidad). Reducir TSS principalmente recortando volumen, no intensidad.
-3. Priorizar la calidad sobre la cantidad: Es mejor hacer menos TSS pero mantener estímulo correcto.
-4. Evitar fatiga residual en sesiones clave: El día previo a "vo2max" o "threshold" debe llegar con fatiga controlada (día suave o descanso).
-5. Mantener coherencia fisiológica: Z2 = recuperación/base, Sweetspot/tempo = acumulación, Threshold = mejora de umbral, VO2max = potencia aeróbica máxima. NUNCA pongas dos días de alta intensidad seguidos.
+════════════════════════════════════
+REGLAS DE ENTRENAMIENTO (CRÍTICAS)
+════════════════════════════════════
+1. Priorizar calidad sobre cantidad:
+   * NO reducir intensidad de sesiones clave
+   * SI reducir volumen si hay fatiga
+2. Si el usuario añade carga (ej: entrenar en día de descanso):
+   * NO compensar con descansos en bloque
+   * Ajustar reduciendo TSS en 2–3 días cercanos (−10% a −25%)
+3. Resolver fatiga SIEMPRE con micro-ajustes:
+   ✔ reducir duración
+   ✔ reducir TSS
+   ❌ NO eliminar días completos
+4. El día previo a VO2max o threshold:
+   * debe ser descanso o Z2 suave
+5. Identificar automáticamente sesiones clave:
+   * VO2max
+   * Threshold / Sweetspot
+   * Long ride
+   → Estas sesiones deben PROTEGERSE
 
-REGLAS DE LA APLICACIÓN (ESTRICTAS):
-A. ${hoyRegla}
-B. LÍMITE DE DÍAS: El plan actual tiene ${totalTrainingDays} días de entrenamiento. BAJO NINGÚN CONCEPTO superes los ${totalTrainingDays} días de entrenamiento en total. Si cambias hoy de descanso a entrenamiento, DEBES OBLIGATORIAMENTE cambiar un día de entrenamiento futuro a descanso ("isRest": true), sacrificando la sesión más suave disponible (ej. "endurance" o "recovery"), pero respetando SIEMPRE la regla de NO descansos consecutivos.
-C. "type" debe ser uno de: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength". Incluye "name" y "emoji".
-D. EXTRA: Si detectas que el usuario está comprometiendo sesiones clave por exceso de carga, indícalo de forma directa en el "mensaje_coach" y propón alternativa óptima.
+════════════════════════════════════
+LÓGICA DE REPLANIFICACIÓN
+════════════════════════════════════
+* Pensar como un entrenador real, no como un optimizador matemático.
+* Penalizar soluciones con:
+  * descansos consecutivos
+  * pérdida de frecuencia semanal
+  * eliminación de sesiones importantes
+* Favorecer:
+  * distribución homogénea
+  * consistencia semanal
+  * estímulo fisiológico correcto
+* Si hay conflicto:
+  → ajustar volumen antes que eliminar sesiones
 
-OUTPUT:
-Devuelve EXACTAMENTE este JSON:
+════════════════════════════════════
+REGLAS DE LA APP (IMPORTANTES)
+════════════════════════════════════
+* ${hoyRegla}
+* LÍMITE DE DÍAS: El plan actual tiene ${totalTrainingDays} días de entrenamiento. BAJO NINGÚN CONCEPTO superes los ${totalTrainingDays} días de entrenamiento en total. Si cambias hoy de descanso a entrenamiento, DEBES OBLIGATORIAMENTE cambiar un día de entrenamiento futuro a descanso ("isRest": true), sacrificando la sesión más suave, pero respetando SIEMPRE la regla de NO descansos consecutivos.
+* Mantener tipos válidos: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength"
+
+════════════════════════════════════
+OUTPUT (JSON EXACTO)
+════════════════════════════════════
 {
-  "mensaje_coach": "Explicación clara, estructurada y accionable de los cambios (por qué y para qué). Sin explicaciones genéricas, enfocado a rendimiento real.",
+  "mensaje_coach": "Explicación clara y directa de los cambios (por qué y para qué). Enfocado a rendimiento real.",
   "modifications": [
-    { "dayIndex": 3, "changes": { "isRest": false, "type": "endurance", "name": "Rodaje Z2 extendido", "emoji": "🔵", "durationMin": 75, "tss": 55, "ifTarget": 0.72, "advice": "Carga redistribuida." } }
+    {
+      "dayIndex": number,
+      "changes": {
+        "isRest": boolean,
+        "type": "string",
+        "name": "string",
+        "emoji": "string",
+        "durationMin": number,
+        "tss": number,
+        "ifTarget": number,
+        "advice": "string breve"
+      }
+    }
   ]
 }
-Si no hay cambios, devuelve "modifications": [].`;
+
+Si el plan ya es óptimo → devolver "modifications": []`;
 
     const result = await callAI(systemPrompt, userMsg, { max_tokens: 1500, temperature: 0.3 });
     if (!result || !Array.isArray(result.modifications)) return res.status(500).json({ error: 'La IA no devolvió un plan válido.' });
