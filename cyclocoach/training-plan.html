@@ -875,6 +875,15 @@ let progressionChart = null;
 const _adaptCache = {}; // { [idx]: adaptation data from AI }
 let _bgSyncToken = 0; // se incrementa al guardar localmente para invalidar GETs en vuelo
 
+function getMondayString() {
+  const d = new Date();
+  d.setDate(d.getDate() - (d.getDay() || 7) + 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // ── Sync Strava ─────────────────────────────────────────────
 async function syncStrava() {
   const btn = document.getElementById('sync-strava-btn');
@@ -1043,13 +1052,21 @@ async function initTrainingPlan() {
     await AppState.init();
     console.log('[TP] AppState ready, athlete:', AppState.athlete?.name);
     
+    const currentWeekStart = getMondayString();
+
     // 1. RENDERIZADO INMEDIATO (Optimistic UI)
     // Cargar plan desde caché local súper rápido para no bloquear la pantalla
     try {
       const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan'));
-      if (local?.sessions) currentPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {} };
+      if (local?.sessions) {
+        if (local.week_start === currentWeekStart) {
+          currentPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {} };
+        }
+      }
     } catch(_) {}
-    _patchSegmentDistances(currentPlan);
+    if (currentPlan) {
+      _patchSegmentDistances(currentPlan);
+    }
 
     renderAthleteSidebar();
     renderWeekDates();
@@ -1064,6 +1081,7 @@ async function initTrainingPlan() {
         renderPlan(currentPlan, AppState.athlete);
       } else {
         generatePlan();
+        silentSavePlan();
       }
     }
 
@@ -1092,6 +1110,10 @@ async function initTrainingPlan() {
       .then(savedPlan => {
         if (_fetchToken !== _bgSyncToken) return; // El usuario ya guardó localmente — ignorar respuesta antigua
         
+        if (savedPlan?.week_start && savedPlan.week_start !== currentWeekStart) {
+          return; // Plan remoto es de otra semana
+        }
+
         const localStr = localStorage.getItem('cyclocoach_training_plan');
         if (localStr) {
           try {
@@ -2035,10 +2057,8 @@ async function silentSavePlan() {
   if (!currentPlan) return;
   _bgSyncToken++; // invalida cualquier GET en vuelo — el plan local es ahora la fuente de verdad
   try {
-    const monday = new Date();
-    monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
     const planData = {
-      week_start:      monday.toISOString().substring(0, 10),
+      week_start:      getMondayString(),
       sessions:        currentPlan.sessions,
       tss_target:      currentPlan.targetTSS || null,
       phase:           currentPlan.phase     || null,
@@ -2888,10 +2908,8 @@ async function savePlan() {
   const btn = document.getElementById('btn-save-plan');
   btn.innerHTML = '<i class="fas fa-spinner spinning"></i> Guardando...';
   try {
-    const monday = new Date();
-    monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
     const planData = {
-      week_start:       monday.toISOString().substring(0, 10),
+      week_start:       getMondayString(),
       sessions:         currentPlan.sessions,
       tss_target:       currentPlan.targetTSS   || null,
       phase:            currentPlan.phase        || null,

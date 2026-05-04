@@ -924,18 +924,25 @@ function toggleTodayDone() {
   renderWeek(dashPlan);
 }
 
+function getMondayString() {
+  const d = new Date();
+  d.setDate(d.getDate() - (d.getDay() || 7) + 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function saveDashPlan() {
   if (!dashPlan) return;
   const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan') || '{}');
   local.sessions = dashPlan.sessions;
   local.savedAt  = Date.now();
   localStorage.setItem('cyclocoach_training_plan', JSON.stringify(local));
-  const monday = new Date();
-  monday.setDate(monday.getDate() - (monday.getDay()||7) + 1);
   fetch(`${window.API_URL}/plans/training`, {
     method: 'POST',
     headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ week_start: monday.toISOString().substring(0,10), sessions: dashPlan.sessions, phase: dashPlan.phase, tss_target: dashPlan.targetTSS, advice: dashPlan.advice||{} }),
+    body: JSON.stringify({ week_start: getMondayString(), sessions: dashPlan.sessions, phase: dashPlan.phase, tss_target: dashPlan.targetTSS, advice: dashPlan.advice||{} }),
   }).catch(()=>{});
 }
 
@@ -1182,9 +1189,10 @@ function renderLastAct() {
 
 /* ── LOAD PLAN ───────────────────────────────────────────── */
 async function loadPlan() {
+  const currentWeekStart = getMondayString();
   try {
     const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan')||'{}');
-    if (local?.sessions) {
+    if (local?.sessions && local.week_start === currentWeekStart) {
       dashPlan = { sessions:local.sessions, phase:local.phase, targetTSS:local.tss_target, advice:local.advice||{} };
       renderToday(dashPlan, AppState.athlete);
       renderWeek(dashPlan);
@@ -1193,10 +1201,10 @@ async function loadPlan() {
   } catch {}
   try {
     const data = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() }).then(r=>r.json());
-    if (data?.sessions) {
+    if (data?.sessions && data.week_start === currentWeekStart) {
       if (dashPlan?.sessions) data.sessions.forEach((s,i)=>{ if (dashPlan.sessions[i]?.completed) s.completed=true; });
       dashPlan = { sessions:data.sessions, phase:data.phase, targetTSS:data.tss_target, advice:data.advice||{} };
-      localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ week_start:data.week_start||new Date().toISOString().substring(0,10), sessions:data.sessions, tss_target:data.tss_target, phase:data.phase, advice:data.advice, savedAt:Date.now() }));
+      localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ week_start:data.week_start||getMondayString(), sessions:data.sessions, tss_target:data.tss_target, phase:data.phase, advice:data.advice, savedAt:Date.now() }));
       renderToday(dashPlan, AppState.athlete);
       renderWeek(dashPlan);
       renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);

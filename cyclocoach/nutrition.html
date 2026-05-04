@@ -1,5 +1,4 @@
-﻿﻿﻿﻿<!DOCTYPE html>
-<html lang="es">
+﻿﻿﻿﻿htl lang="es">
 <head>
   <script>
     (function() {
@@ -506,19 +505,29 @@ async function initNutrition() {
   if (typeof BackendSync !== 'undefined') {
     await Promise.allSettled([BackendSync.loadProfile(), BackendSync.loadActivities()]);
   }
+
+  const currentWeekStart = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - (d.getDay() || 7) + 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  })();
+
   // Load training plan
   try {
     const pr = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() });
     if (pr.ok) {
       const saved = await pr.json();
-      if (saved?.sessions) currentTrainingPlan = saved;
-    }
+      if (saved?.sessions && saved.
   } catch(e) {
+  }
+  if (!currentTrainingPlan) {
     try {
       const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan') || 'null');
-      if (local?.sessions) currentTrainingPlan = local;
+      if (local?.sessions && local.week_start === currentWeekStart) currentTrainingPlan = local;
     } catch(_) {}
-  }
 
   // Si no hay plan guardado, generar uno por defecto según el perfil del atleta
   if (!currentTrainingPlan && typeof TrainingPlanGenerator !== 'undefined') {
