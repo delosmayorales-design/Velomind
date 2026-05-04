@@ -1774,6 +1774,8 @@ router.post('/recalculate-week', async (req, res) => {
       tss: s.tss
     }));
 
+    const totalTrainingDays = plan.sessions.filter(s => !s.isRest).length;
+
     // ── Escenario 1: sesión tempo/threshold cancelada + siguiente día = long ──────
     const INTENSAS = ['tempo', 'threshold', 'sweet_spot'];
     const nextDayIdx = cancelledIdx + 1;
@@ -1801,7 +1803,7 @@ ${feedback}${scenario1Hint}
 
 REGLAS:
 1. ${hoyRegla}
-2. REPROGRAMACIÓN: Si el usuario quiere entrenar hoy y era descanso, asigna "isRest": false para hoy y mueve el descanso a un día futuro para mantener el equilibrio.
+2. LÍMITE DE DÍAS: El plan actual tiene ${totalTrainingDays} días de entrenamiento en la semana. BAJO NINGÚN CONCEPTO el nuevo plan puede tener más de ${totalTrainingDays} días con "isRest": false en total (contando días pasados y futuros). Si cambias hoy de descanso a entrenamiento, debes obligatoriamente cambiar un día de entrenamiento futuro a descanso ("isRest": true) para compensar y mantener el número de días.
 3. "type" debe ser uno de: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength". Incluye siempre "name" y "emoji".
 4. COHERENCIA FISIOLÓGICA: NUNCA pongas dos días de alta intensidad seguidos ("vo2max", "threshold", "sprint", "race"). Después de un día intenso, debe haber "recovery", "endurance" o "isRest": true. Tampoco pongas dos días de descanso consecutivos.
 5. Variación TSS por sesión: máximo ±30%, salvo si conviertes un día de descanso a entreno o viceversa.
@@ -1826,6 +1828,31 @@ Si no hay cambios, devuelve "modifications": [].`;
       const allowed = allowToday ? idx >= todayIdx : idx > todayIdx;
       if (allowed && idx < 7 && mod.changes) {
         newSessions[idx] = { ...newSessions[idx], ...mod.changes };
+      }
+    }
+
+    // ── Fallback determinista Límite de Días ──────────────
+    const finalTrainingDays = newSessions.filter(s => !s.isRest).length;
+    if (finalTrainingDays > totalTrainingDays) {
+      let excess = finalTrainingDays - totalTrainingDays;
+      const PRIORITIES = ['recovery', 'endurance', 'tempo', 'long', 'strength', 'threshold', 'vo2max', 'sprint', 'race'];
+      
+      for (const p of PRIORITIES) {
+        if (excess <= 0) break;
+        // Busca quitar entrenamientos futuros, priorizando los más suaves
+        for (let i = 6; i > todayIdx; i--) {
+          if (!newSessions[i].isRest && newSessions[i].type === p) {
+            newSessions[i] = {
+              ...newSessions[i],
+              isRest: true, durationMin: 0, tss: 0,
+              type: 'recovery', name: 'Descanso', emoji: '😴',
+              advice: 'Descanso reasignado automáticamente para mantener el límite de días de tu perfil.',
+              description: 'Día de descanso.'
+            };
+            excess--;
+            if (excess <= 0) break;
+          }
+        }
       }
     }
 
