@@ -1810,11 +1810,11 @@ REGLAS CLAVE (FISIOLOGÍA Y RENDIMIENTO):
 2. Si se añade carga en un día de descanso: Ajustar los días siguientes (especialmente el primer día de intensidad). Reducir TSS principalmente recortando volumen, no intensidad.
 3. Priorizar la calidad sobre la cantidad: Es mejor hacer menos TSS pero mantener estímulo correcto.
 4. Evitar fatiga residual en sesiones clave: El día previo a "vo2max" o "threshold" debe llegar con fatiga controlada (día suave o descanso).
-5. Mantener coherencia fisiológica: Z2 = recuperación/base, Sweetspot/tempo = acumulación, Threshold = mejora de umbral, VO2max = potencia aeróbica máxima. NUNCA pongas dos días de alta intensidad seguidos.
+5. Mantener coherencia fisiológica: Z2 = recuperación/base, Sweetspot/tempo = acumulación, Threshold = mejora de umbral, VO2max = potencia aeróbica máxima. NUNCA pongas dos días de alta intensidad seguidos. ABSOLUTAMENTE PROHIBIDO poner dos o más días de descanso ("isRest": true) seguidos.
 
 REGLAS DE LA APLICACIÓN (ESTRICTAS):
 A. ${hoyRegla}
-B. LÍMITE DE DÍAS: El plan actual tiene ${totalTrainingDays} días de entrenamiento. BAJO NINGÚN CONCEPTO superes los ${totalTrainingDays} días de entrenamiento en total. Si cambias hoy de descanso a entrenamiento, DEBES OBLIGATORIAMENTE cambiar un día de entrenamiento futuro a descanso ("isRest": true), sacrificando la sesión más suave disponible (ej. "endurance" o "recovery").
+B. LÍMITE DE DÍAS: El plan actual tiene ${totalTrainingDays} días de entrenamiento. BAJO NINGÚN CONCEPTO superes los ${totalTrainingDays} días de entrenamiento en total. Si cambias hoy de descanso a entrenamiento, DEBES OBLIGATORIAMENTE cambiar un día de entrenamiento futuro a descanso ("isRest": true), sacrificando la sesión más suave disponible (ej. "endurance" o "recovery"), pero NUNCA creando dos días de descanso consecutivos.
 C. "type" debe ser uno de: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength". Incluye "name" y "emoji".
 D. EXTRA (IMPORTANTE): Si detectas que el usuario está comprometiendo sesiones clave por exceso de carga, indícalo de forma directa en el "mensaje_coach" y propón alternativa óptima.
 
@@ -1849,18 +1849,88 @@ Si no hay cambios, devuelve "modifications": [].`;
       
       for (const p of PRIORITIES) {
         if (excess <= 0) break;
-        // Busca quitar entrenamientos futuros, priorizando los más suaves
+        // Busca quitar entrenamientos futuros, priorizando los más suaves, EVITANDO descansos consecutivos
         for (let i = 6; i > todayIdx; i--) {
           if (!newSessions[i].isRest && newSessions[i].type === p) {
-            newSessions[i] = {
-              ...newSessions[i],
-              isRest: true, durationMin: 0, tss: 0,
-              type: 'recovery', name: 'Descanso', emoji: '😴',
-              advice: 'Descanso reasignado automáticamente para mantener el límite de días de tu perfil.',
-              description: 'Día de descanso.'
-            };
-            excess--;
-            if (excess <= 0) break;
+            const prevRest = i > 0 ? newSessions[i-1].isRest : false;
+            const nextRest = i < 6 ? newSessions[i+1].isRest : false;
+            if (!prevRest && !nextRest) {
+              newSessions[i] = {
+                ...newSessions[i],
+                isRest: true, durationMin: 0, tss: 0,
+                type: 'recovery', name: 'Descanso', emoji: '😴',
+                advice: 'Descanso reasignado automáticamente para mantener el límite de días de tu perfil.',
+                description: 'Día de descanso.'
+              };
+              excess--;
+              if (excess <= 0) break;
+            }
+          }
+        }
+      }
+      
+      // Si aún hay exceso, ignoramos la regla de consecutivos para cumplir el límite
+      if (excess > 0) {
+        for (const p of PRIORITIES) {
+          if (excess <= 0) break;
+          for (let i = 6; i > todayIdx; i--) {
+            if (!newSessions[i].isRest && newSessions[i].type === p) {
+              newSessions[i] = {
+                ...newSessions[i],
+                isRest: true, durationMin: 0, tss: 0,
+                type: 'recovery', name: 'Descanso', emoji: '😴',
+                advice: 'Descanso reasignado automáticamente para mantener el límite de días.',
+                description: 'Día de descanso.'
+              };
+              excess--;
+              if (excess <= 0) break;
+            }
+          }
+        }
+      }
+    }
+
+    // ── Fallback determinista anti-descansos consecutivos ──────────────
+    for (let i = 0; i < 6; i++) {
+      if (newSessions[i].isRest && newSessions[i+1].isRest) {
+        let swapped = false;
+        // 1. Intentar mover el segundo descanso hacia adelante
+        for (let j = i + 2; j <= 6; j++) {
+          if (!newSessions[j].isRest) {
+            const jPrevRest = j > 0 ? newSessions[j-1].isRest : false;
+            const jNextRest = j < 6 ? newSessions[j+1].isRest : false;
+            if (!jNextRest && (j - 1 === i + 1 || !jPrevRest)) {
+              const tempDay1 = newSessions[i+1].day;
+              const tempDay2 = newSessions[j].day;
+              const tempSess1 = { ...newSessions[i+1], day: tempDay2 };
+              const tempSess2 = { ...newSessions[j], day: tempDay1 };
+              newSessions[i+1] = tempSess2;
+              newSessions[j] = tempSess1;
+              swapped = true;
+              break;
+            }
+          }
+        }
+        // 2. Si no, intentar mover el primer descanso hacia atrás (solo a días futuros al de HOY)
+        if (!swapped && i > todayIdx) {
+          for (let j = i - 1; j > todayIdx; j--) {
+            if (!newSessions[j].isRest) {
+              const jPrevRest = j > 0 ? newSessions[j-1].isRest : false;
+              if (!jPrevRest) {
+                const tempDay1 = newSessions[i].day;
+                const tempDay2 = newSessions[j].day;
+                const tempSess1 = { ...newSessions[i], day: tempDay2 };
+                const tempSess2 = { ...newSessions[j], day: tempDay1 };
+                newSessions[i] = tempSess2;
+                newSessions[j] = tempSess1;
+                swapped = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
           }
         }
       }
