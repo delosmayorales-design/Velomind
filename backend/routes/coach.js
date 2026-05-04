@@ -1805,18 +1805,24 @@ Día modificado por el usuario (HOY = índice ${todayIdx}):
 OBJETIVO:
 Recalcular la semana completa de forma óptima manteniendo el estímulo fisiológico clave y evitando acumulación de fatiga innecesaria.
 
+CONSTRAINTS OBLIGATORIOS (NO ROMPER):
+1. CONTINUIDAD DEL ESTÍMULO: ABSOLUTAMENTE PROHIBIDO poner dos o más días de descanso ("isRest": true) consecutivos. Intercala siempre los descansos para mantener la alternancia carga-recuperación.
+2. RESOLUCIÓN DE FATIGA: No agrupes descansos para "resolver fatiga". Si el atleta está fatigado, REDUCE el volumen o baja el TSS de los días cercanos, pero mantén la sesión de entrenamiento.
+3. FRECUENCIA MÍNIMA: El plan debe ser realista para un ciclista y tener al menos 4 días de actividad ("isRest": false) en la semana.
+4. DISTRIBUCIÓN MÍNIMA: Debe haber al menos 1 sesión de alta intensidad o "vo2max", 1 sesión "threshold" o "tempo" (sweet spot), y 1 sesión de fondo ("long") o "endurance".
+
 REGLAS CLAVE (FISIOLOGÍA Y RENDIMIENTO):
 1. Mantener los días clave de calidad ("vo2max", "threshold", "sprint") → NO degradar intensidad, solo volumen si es necesario.
 2. Si se añade carga en un día de descanso: Ajustar los días siguientes (especialmente el primer día de intensidad). Reducir TSS principalmente recortando volumen, no intensidad.
 3. Priorizar la calidad sobre la cantidad: Es mejor hacer menos TSS pero mantener estímulo correcto.
 4. Evitar fatiga residual en sesiones clave: El día previo a "vo2max" o "threshold" debe llegar con fatiga controlada (día suave o descanso).
-5. Mantener coherencia fisiológica: Z2 = recuperación/base, Sweetspot/tempo = acumulación, Threshold = mejora de umbral, VO2max = potencia aeróbica máxima. NUNCA pongas dos días de alta intensidad seguidos. ABSOLUTAMENTE PROHIBIDO poner dos o más días de descanso ("isRest": true) seguidos.
+5. Mantener coherencia fisiológica: Z2 = recuperación/base, Sweetspot/tempo = acumulación, Threshold = mejora de umbral, VO2max = potencia aeróbica máxima. NUNCA pongas dos días de alta intensidad seguidos.
 
 REGLAS DE LA APLICACIÓN (ESTRICTAS):
 A. ${hoyRegla}
-B. LÍMITE DE DÍAS: El plan actual tiene ${totalTrainingDays} días de entrenamiento. BAJO NINGÚN CONCEPTO superes los ${totalTrainingDays} días de entrenamiento en total. Si cambias hoy de descanso a entrenamiento, DEBES OBLIGATORIAMENTE cambiar un día de entrenamiento futuro a descanso ("isRest": true), sacrificando la sesión más suave disponible (ej. "endurance" o "recovery"), pero NUNCA creando dos días de descanso consecutivos.
+B. LÍMITE DE DÍAS: El plan actual tiene ${totalTrainingDays} días de entrenamiento. BAJO NINGÚN CONCEPTO superes los ${totalTrainingDays} días de entrenamiento en total. Si cambias hoy de descanso a entrenamiento, DEBES OBLIGATORIAMENTE cambiar un día de entrenamiento futuro a descanso ("isRest": true), sacrificando la sesión más suave disponible (ej. "endurance" o "recovery"), pero respetando SIEMPRE la regla de NO descansos consecutivos.
 C. "type" debe ser uno de: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength". Incluye "name" y "emoji".
-D. EXTRA (IMPORTANTE): Si detectas que el usuario está comprometiendo sesiones clave por exceso de carga, indícalo de forma directa en el "mensaje_coach" y propón alternativa óptima.
+D. EXTRA: Si detectas que el usuario está comprometiendo sesiones clave por exceso de carga, indícalo de forma directa en el "mensaje_coach" y propón alternativa óptima.
 
 OUTPUT:
 Devuelve EXACTAMENTE este JSON:
