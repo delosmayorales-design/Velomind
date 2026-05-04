@@ -1365,9 +1365,15 @@ Devuelve EXACTAMENTE este JSON (sin markdown, sin texto extra):
     "puntos_fuertes": ["string"],
     "puntos_debiles": [{"titulo":"string","detalle":"string","impacto":"string"}],
     "alertas": ["string"],
+    "distribucion_zonas": {
+      "z1_pct": number, "z2_pct": number, "z3_pct": number, "z4_pct": number,
+      "z5_pct": number, "z6_pct": number, "z7_pct": number,
+      "comentario_polarizacion": "string con diagnóstico de polarización"
+    },
     "tendencia_ctl": "subiendo|estable|bajando",
     "consistencia": "alta|media|baja",
-    "wkg": N
+    "wkg": number,
+    "nivel_estimado": "principiante|intermedio|avanzado|élite"
   },
   "plan_semanal": [
     { "dia":"Lunes","tipo":"Z2 Resistencia","duracion_min":90,"tss_objetivo":65,"potencia_objetivo":"160-185W","descripcion":"string","key":false,"emoji":"🚴" },
@@ -1514,7 +1520,7 @@ APLICA LA PRIMERA REGLA QUE COINCIDA CON EL INPUT:
 ❌ IMPEDIMENTO ("no puedo salir", "evento", "viaje", "trabajo", "compromiso", "no entreno"):
    → recomendacion:"descanso", duracion_min:0, tss_estimado:0, if_estimado:0.
 
-🚫 FATIGA EXTREMA ("estoy muerto", "no puedo", "muy mal", "lesionado", "fiebre"):
+🚫 FATIGA EXTREMA ("estoy muerto", "no puedo", "muy mal", "no me puedo mover", "fiebre"):
    → recomendacion:"descanso", duracion_min:0, tss_estimado:0, if_estimado:0.
 
 🔴 FATIGA MODERADA ("cansado", "mal dormido", "dolor de cabeza", "piernas pesadas", "no me encuentro bien", "poco sueño"):
