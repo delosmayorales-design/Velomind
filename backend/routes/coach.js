@@ -176,7 +176,8 @@ router.get('/recommendations', async (req, res) => {
     avgTSS, training, user });
 
   try {
-    const weeklyPlan = recalculateWeeklyPlan(acts, ftp);
+    const userOverride = req.query.override ? JSON.parse(req.query.override) : {};
+    const weeklyPlan = recalculateWeeklyPlan(acts, ftp, userOverride);
     res.json({
       summary: {
         rides: acts.length,
