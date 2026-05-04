@@ -1789,7 +1789,7 @@ router.post('/recalculate-week', async (req, res) => {
       : '';
 
     const hoyRegla = allowToday
-      ? `HOY (índice ${todayIdx}) PUEDE ser modificado. NO modifiques índices anteriores a ${todayIdx}.`
+      ? `HOY (índice ${todayIdx}) PUEDE ser modificado (puedes cambiar de descanso a entreno o viceversa). NO modifiques índices anteriores a ${todayIdx}.`
       : `🛑 NUNCA modifiques HOY (índice ${todayIdx}) ni días anteriores. Solo días FUTUROS (índice > ${todayIdx}).`;
 
     const systemPrompt = 'Eres un coach ciclista experto. Responde SOLO con JSON válido, sin markdown ni texto extra.';
@@ -1801,10 +1801,10 @@ ${feedback}${scenario1Hint}
 
 REGLAS:
 1. ${hoyRegla}
-2. Días con "isRest": true son INTOCABLES — no los conviertas en entrenamiento.
+2. REPROGRAMACIÓN: Si el usuario quiere entrenar hoy y era descanso, asigna "isRest": false para hoy y mueve el descanso a un día futuro para mantener el equilibrio.
 3. "type" debe ser uno de: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength". Incluye siempre "name" y "emoji".
-4. No pongas dos sesiones de alta intensidad consecutivas.
-5. Variación TSS por sesión: máximo ±30%.
+4. COHERENCIA FISIOLÓGICA: NUNCA pongas dos días de alta intensidad seguidos ("vo2max", "threshold", "sprint", "race"). Después de un día intenso, debe haber "recovery", "endurance" o "isRest": true. Tampoco pongas dos días de descanso consecutivos.
+5. Variación TSS por sesión: máximo ±30%, salvo si conviertes un día de descanso a entreno o viceversa.
 6. Si el feedback indica que el atleta se EXCEDIÓ del TSS planificado (>115%), REDUCE el TSS de los días futuros pendientes para compensar el exceso de carga acumulada y prevenir sobreentrenamiento.
 
 Devuelve EXACTAMENTE este JSON:

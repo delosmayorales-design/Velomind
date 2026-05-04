@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -3756,6 +3756,12 @@ async function _recalcFromModal() {
         s.advice = s.advice || 'Día de descanso. Escucha a tu cuerpo y prioriza la recuperación.';
       } else if (window.TrainingPlanGenerator) {
         const ifT = s.ifTarget || 0.75;
+        if (!s.name || s.name.includes('Descanso')) s.name = (window.WORKOUT_TYPES && window.WORKOUT_TYPES[s.type]?.label) || s.type;
+        if (window.WORKOUT_TYPES && window.WORKOUT_TYPES[s.type]) {
+          s.emoji = window.WORKOUT_TYPES[s.type].emoji;
+        } else {
+          s.emoji = '🚴';
+        }
         s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'main');
         s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'alt');
         const buildDesc = ivs => {
