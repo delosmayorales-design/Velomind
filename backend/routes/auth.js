@@ -8,7 +8,10 @@ const { requireAuth, signToken } = require('../middleware/auth');
 const router  = express.Router();
 
 const mailer = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  family: 4,
   auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
   connectionTimeout: 8000,
   greetingTimeout: 8000,
