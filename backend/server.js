@@ -59,6 +59,14 @@ app.use((err, req, res, next) => {
 // Push reminders scheduler
 if (process.env.NODE_ENV !== 'test') require('./services/pushScheduler').start();
 
+// Keepalive: evita que Render free tier duerma el servidor
+if (process.env.NODE_ENV === 'production') {
+  const SELF = process.env.RENDER_EXTERNAL_URL || 'https://velomind-backend.onrender.com';
+  setInterval(() => {
+    fetch(`${SELF}/api/auth/verify`).catch(() => {});
+  }, 14 * 60 * 1000); // cada 14 minutos
+}
+
 if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log('');
