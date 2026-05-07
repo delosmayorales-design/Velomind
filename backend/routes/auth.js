@@ -2,21 +2,12 @@ const express = require('express');
 const bcrypt  = require('bcryptjs');
 const crypto  = require('crypto');
 const multer  = require('multer');
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 const supabase = require('../db'); // Ahora db es el cliente de Supabase
 const { requireAuth, signToken } = require('../middleware/auth');
 const router  = express.Router();
 
-const mailer = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  family: 4,
-  auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-  connectionTimeout: 8000,
-  greetingTimeout: 8000,
-  socketTimeout: 10000
-});
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const avatarUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
@@ -167,8 +158,8 @@ router.post('/forgot-password', async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8085';
     const resetUrl = `${frontendUrl}/reset-password.html?token=${token}`;
 
-    await mailer.sendMail({
-      from: `VeloMind <${process.env.GMAIL_USER}>`,
+    await sgMail.send({
+      from: { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || process.env.GMAIL_USER },
       to: emailNorm,
       subject: 'Recupera tu contraseña — VeloMind',
       html: `
