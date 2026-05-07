@@ -927,9 +927,24 @@ async function loadCoachData() {
     renderCoachAlerts(rec.training.alerts);
     if (rec.training.insights?.length) renderInsights(rec.training.insights);
   } catch(e) {
-    // Backend no disponible: ocultar loading, no mostrar error
-    document.getElementById('form-state-loading').style.display = 'none';
     console.info('[Coach] Backend no disponible, modo offline:', e.message);
+    // Renderizar con datos locales para que la tarjeta no quede vacía
+    const metrics = AppState.getCurrentMetrics() || { ctl: 0, atl: 0, tsb: 0 };
+    const cutoff  = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+    const recent  = (AppState.activities || []).filter(a => new Date(a.date + 'T00:00:00') >= cutoff);
+    const avgTSS  = recent.length ? Math.round(recent.reduce((s, a) => s + (a.tss || 0), 0) / recent.length) : 0;
+    const athlete = AppState.athlete || {};
+    const wkg     = athlete.ftp && athlete.weight ? (athlete.ftp / athlete.weight).toFixed(2) : null;
+    const tsb     = metrics.tsb;
+    const phase   = tsb > 5 ? 'base' : tsb > -10 ? 'build' : tsb > -20 ? 'peak' : 'recovery';
+    renderFormState({
+      pmc: metrics,
+      phase,
+      form: { color: tsb > 5 ? 'green' : tsb > -10 ? 'lime' : tsb > -20 ? 'yellow' : 'orange' },
+      rides: recent.length,
+      avgTSS,
+      wkg
+    }, { alerts: [] });
   }
 }
 

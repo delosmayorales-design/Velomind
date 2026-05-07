@@ -339,6 +339,19 @@
     .form-panel { display: none; }
     .form-panel.active { display: block; }
 
+    .forgot-link {
+      display: block;
+      text-align: right;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-top: -10px;
+      margin-bottom: 18px;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .forgot-link:hover { color: var(--primary); }
+
     .terms {
       font-size: 12px;
       color: var(--text-muted);
@@ -429,6 +442,8 @@
         </div>
       </div>
 
+      <a class="forgot-link" onclick="showForgotPanel()">¿Olvidaste tu contraseña?</a>
+
       <button class="btn-primary" id="btn-login" onclick="doLogin(event)">
         <div class="spinner" id="spinner-login"></div>
         <span id="login-label"><i class="fas fa-arrow-right"></i> Entrar</span>
@@ -444,6 +459,31 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#007AC7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
         Continuar con Garmin
       </button>
+    </div>
+
+    <!-- FORGOT PASSWORD PANEL -->
+    <div class="form-panel" id="panel-forgot">
+      <h2 class="form-title">Recuperar contraseña</h2>
+      <p class="form-subtitle">Te enviamos un enlace a tu email</p>
+
+      <div class="alert hidden" id="forgot-alert"></div>
+
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <div class="input-with-icon">
+          <i class="fas fa-envelope input-icon"></i>
+          <input type="email" class="form-input" id="forgot-email" placeholder="tu@email.com" autocomplete="email">
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btn-forgot" onclick="doForgot(event)">
+        <div class="spinner" id="spinner-forgot"></div>
+        <span id="forgot-label"><i class="fas fa-paper-plane"></i> Enviar enlace</span>
+      </button>
+
+      <a class="forgot-link" style="text-align:center;margin-top:16px;margin-bottom:0" onclick="switchTab('login')">
+        <i class="fas fa-arrow-left"></i> Volver al login
+      </a>
     </div>
 
     <!-- REGISTER PANEL -->
@@ -540,6 +580,7 @@
     });
     document.getElementById('panel-login').classList.toggle('active', tab === 'login');
     document.getElementById('panel-register').classList.toggle('active', tab === 'register');
+    document.getElementById('panel-forgot').classList.remove('active');
     document.getElementById('auth-alert').classList.add('hidden');
   }
 
@@ -701,11 +742,50 @@
     localStorage.removeItem('velomind_user');
   })();
 
+  // ── Forgot password ─────────────────────────────────────────
+  function showForgotPanel() {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-forgot').classList.add('active');
+    document.getElementById('auth-alert').classList.add('hidden');
+  }
+
+  async function doForgot(e) {
+    e.preventDefault();
+    const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+    if (!email) { showForgotAlert('Ingresá tu email.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showForgotAlert('Email no válido.'); return; }
+
+    setLoading('spinner-forgot', 'forgot-label', 'btn-forgot', true);
+
+    try {
+      const res = await fetch(window.API_URL + '/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      showForgotAlert(data.message || 'Si el email está registrado, recibirás el enlace pronto.', 'success');
+    } catch {
+      showForgotAlert('Error de conexión. Intentá de nuevo.');
+    } finally {
+      setLoading('spinner-forgot', 'forgot-label', 'btn-forgot', false);
+    }
+  }
+
+  function showForgotAlert(msg, type = 'error') {
+    const el = document.getElementById('forgot-alert');
+    el.className = `alert alert-${type}`;
+    el.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${msg}`;
+    el.classList.remove('hidden');
+  }
+
   // Enter key support
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       const panel = document.querySelector('.form-panel.active').id;
       if (panel === 'panel-login') doLogin(e);
+      else if (panel === 'panel-forgot') doForgot(e);
       else doRegister(e);
     }
   });

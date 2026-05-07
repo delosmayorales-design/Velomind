@@ -1,9 +1,13 @@
 const express = require('express');
 const bcrypt  = require('bcryptjs');
+const crypto  = require('crypto');
 const multer  = require('multer');
+const { Resend } = require('resend');
 const supabase = require('../db'); // Ahora db es el cliente de Supabase
 const { requireAuth, signToken } = require('../middleware/auth');
 const router  = express.Router();
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const avatarUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
@@ -123,6 +127,106 @@ router.put('/profile', requireAuth, async (req, res) => {
 
   const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
   res.json({ message: 'Perfil actualizado', user: safeUser(user) });
+});
+
+// Solicitar recuperación de contraseña
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email requerido' });
+
+    const emailNorm = email.trim().toLowerCase();
+    const { data: user } = await supabase.from('users').select('id, name').eq('email', emailNorm).maybeSingle();
+
+    // Siempre responder igual para no revelar si el email existe
+    const ok = { message: 'Si el email está registrado, recibirás un correo con el enlace de recuperación.' };
+    if (!user) return res.json(ok);
+
+    // Borrar tokens anteriores del mismo usuario
+    await supabase.from('password_reset_tokens').delete().eq('user_id', user.id);
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+    const { error: insertErr } = await supabase.from('password_reset_tokens').insert({
+      user_id: user.id,
+      token,
+      expires_at: expiresAt.toISOString()
+    });
+    if (insertErr) throw insertErr;
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8085';
+    const resetUrl = `${frontendUrl}/reset-password.html?token=${token}`;
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@velomind.app';
+
+    await resend.emails.send({
+      from: fromEmail,
+      to: emailNorm,
+      subject: 'Recupera tu contraseña — VeloMind',
+      html: `
+        <div style="font-family:'DM Sans',Arial,sans-serif;max-width:520px;margin:0 auto;background:#0a0b0f;color:#f0f2f5;border-radius:16px;overflow:hidden">
+          <div style="background:linear-gradient(135deg,#1a1d26,#0a0b0f);padding:40px 40px 32px;border-bottom:1px solid rgba(255,255,255,0.06)">
+            <div style="font-size:28px;font-weight:800;font-family:'Space Grotesk',Arial,sans-serif">
+              🚴 VeloMind
+            </div>
+          </div>
+          <div style="padding:40px">
+            <h2 style="margin:0 0 12px;font-size:22px;font-weight:700">Hola, ${user.name || 'ciclista'}</h2>
+            <p style="color:#9ca3af;line-height:1.6;margin:0 0 28px">
+              Recibimos una solicitud para restablecer la contraseña de tu cuenta.
+              El enlace es válido por <strong style="color:#f0f2f5">1 hora</strong>.
+            </p>
+            <a href="${resetUrl}" style="display:inline-block;background:#9ED62B;color:#111;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px;font-family:'Space Grotesk',Arial,sans-serif">
+              Restablecer contraseña
+            </a>
+            <p style="color:#6b7280;font-size:13px;margin:28px 0 0;line-height:1.5">
+              Si no solicitaste este cambio, podés ignorar este correo. Tu contraseña no cambiará.
+            </p>
+          </div>
+          <div style="padding:20px 40px;background:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.06)">
+            <p style="color:#4b5563;font-size:12px;margin:0">
+              VeloMind — Tu entrenador de ciclismo con IA
+            </p>
+          </div>
+        </div>
+      `
+    });
+
+    res.json(ok);
+  } catch (e) {
+    console.error('[auth/forgot-password]', e.message);
+    res.status(500).json({ error: 'Error al procesar la solicitud' });
+  }
+});
+
+// Confirmar nueva contraseña con token
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ error: 'Token y contraseña requeridos' });
+    if (password.length < 6) return res.status(400).json({ error: 'Contraseña mínimo 6 caracteres' });
+
+    const { data: resetToken } = await supabase
+      .from('password_reset_tokens')
+      .select('*')
+      .eq('token', token)
+      .eq('used', false)
+      .maybeSingle();
+
+    if (!resetToken) return res.status(400).json({ error: 'Enlace inválido o ya utilizado.' });
+    if (new Date(resetToken.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'El enlace expiró. Solicitá uno nuevo.' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    await supabase.from('users').update({ password: hash, updated_at: new Date().toISOString() }).eq('id', resetToken.user_id);
+    await supabase.from('password_reset_tokens').update({ used: true }).eq('id', resetToken.id);
+
+    res.json({ message: 'Contraseña actualizada correctamente. Ya podés iniciar sesión.' });
+  } catch (e) {
+    console.error('[auth/reset-password]', e.message);
+    res.status(500).json({ error: 'Error al restablecer la contraseña' });
+  }
 });
 
 function safeUser(u) {
