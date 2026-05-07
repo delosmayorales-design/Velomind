@@ -13,7 +13,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({
   origin: true,
   credentials: true,
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
 }));
+app.options('*', cors());
 
 // Body parser (necesario para POST con JSON)
 app.use(express.json());
