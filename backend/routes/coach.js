@@ -2160,4 +2160,80 @@ Devuelve un JSON con esta estructura exacta:
   }
 });
 
+// ── POST /api/coach/session-guidance ─────────────────────────
+// Planifica una sesión personalizada desde cero (NO adapta una existente).
+// El usuario describe lo que quiere hacer y la IA devuelve plan completo.
+router.post('/session-guidance', async (req, res) => {
+  try {
+    const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const description = (req.body?.description || '').trim();
+    if (!description) return res.status(400).json({ error: 'Descripción requerida' });
+
+    const ftp    = user.ftp    || 200;
+    const weight = user.weight || 70;
+    const goal   = user.goal   || 'resistencia';
+    const wkg    = ftp && weight ? (ftp / weight).toFixed(2) : '—';
+
+    const metrics = req.body?.metrics || {};
+    const ctl = Math.round(metrics.ctl || 0);
+    const atl = Math.round(metrics.atl || 0);
+    const tsb = Math.round(metrics.tsb || 0);
+
+    // Estado de forma para contexto
+    const fs = formState(tsb);
+
+    const systemPrompt = 'Eres un coach de ciclismo experto. Responde SOLO con JSON válido, sin markdown ni texto extra.';
+
+    const userMsg = `Atleta: FTP ${ftp}W, peso ${weight}kg, W/kg: ${wkg}, objetivo: ${goal}.
+Estado de forma hoy: CTL=${ctl}, ATL=${atl}, TSB=${tsb} (${fs.label}).
+
+El atleta describe la salida que quiere hacer este fin de semana:
+"${description}"
+
+Analiza la descripción e infiere duración real, terreno, distancia y desnivel (si se mencionan).
+Calcula TSS e IF reales para ESTA salida específica — no uses la sesión planificada anterior.
+
+Reglas:
+- Para salidas con desnivel (puertos, col, montaña): pacing conservador en los primeros puertos, Z2-Z3 en general con picos Z4-Z5 en subidas. TSS suele ser alto (200-400 para 4-5h con desnivel).
+- Para "3-4 horas puertos 2000m+": duracion_min entre 180 y 240, tss_estimado entre 220 y 350 según FTP.
+- Usa siempre vatios reales basados en FTP=${ftp}W.
+- Si TSB < -15 (fatigado): reducir 10% la intensidad, pacing más conservador.
+- Si TSB > 10 (fresco): puede apretar más en los últimos puertos.
+
+Devuelve SOLO este JSON (sin texto adicional):
+{
+  "titulo": "nombre descriptivo de la salida en 5-8 palabras",
+  "duracion_min": number,
+  "distancia_km": number | null,
+  "tss_estimado": number,
+  "if_estimado": number,
+  "intensidad": "zonas de potencia principales con vatios reales",
+  "pacing": "estrategia de ritmo detallada: cómo atacar la salida según el terreno descrito, vatios en subidas y llano",
+  "nutricion_pre": "qué comer y cuánto tiempo antes de salir",
+  "nutricion_durante": "plan de alimentación durante la salida: frecuencia, cantidades, tipo (geles, barritas, plátano...)",
+  "nutricion_post": "ventana de recuperación: qué comer en los primeros 30-60 min post-salida",
+  "hidratacion": "litros por hora, cuándo beber, si necesitas electrolitos",
+  "advertencias": "alerta breve si el TSB indica fatiga o si la salida es muy exigente respecto al estado de forma"
+}`;
+
+    const result = await callAI(systemPrompt, userMsg, { max_tokens: 900, temperature: 0.35 });
+
+    if (!result || !result.titulo) {
+      const nested = result ? Object.values(result).find(v => v && typeof v === 'object' && v.titulo) : null;
+      const out    = nested || result;
+      if (!out?.titulo) return res.status(500).json({ error: 'La IA no devolvió un plan válido.' });
+      return res.json({ ok: true, guidance: out });
+    }
+
+    console.log('[Session Guidance]', JSON.stringify(result));
+    return res.json({ ok: true, guidance: result });
+
+  } catch (e) {
+    console.error('[Session Guidance]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

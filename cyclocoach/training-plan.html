@@ -1985,57 +1985,81 @@ async function planCustomSession(idx) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Planificando...';
 
   try {
-    const sess   = currentPlan.sessions[idx];
-    const ftp    = AppState.athlete?.ftp || 200;
-    const tssVal = Math.round((sess.tssShare || 0.1) * (currentPlan.targetTSS || 300));
-    const durMin = sess.durationMin || Math.round(tssVal / Math.pow(sess.ifTarget || 0.65, 2));
-
-    const res = await fetch(`${API}/coach/today-adaptation`, {
+    const res = await fetch(`${API}/coach/session-guidance`, {
       method: 'POST',
       headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        estado_usuario: { chips: [], contexto_libre: text },
-        sesion_original: {
-          name: sess.name, type: sess.type, durationMin: durMin,
-          ifTarget: sess.ifTarget, targetWatts: Math.round(ftp * (sess.ifTarget || 0.75)),
-          description: sess.description, tss: tssVal,
-        },
-        es_manana: true,
+        description: text,
         metrics: AppState.getCurrentMetrics()
       }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
-    if (!data.today) throw new Error('El coach no devolvió recomendación.');
+    if (!data.guidance) throw new Error('El coach no devolvió un plan.');
 
-    const t = data.today;
-    // Guardar en la sesión
+    const g = data.guidance;
+    const sess = currentPlan.sessions[idx];
+
+    // Guardar la sesión original y actualizar con los datos del plan
     if (!sess._origSession) {
       sess._origSession = { type: sess.type, name: sess.name, emoji: sess.emoji, isRest: sess.isRest, description: sess.description };
     }
-    sess._adapted = true;
-    sess.advice = [t.descripcion, t.nutricion].filter(Boolean).join(' · ');
-    if (t.duracion_min > 0) sess.durationMin = t.duracion_min;
-    if (t.tss_estimado > 0) sess.tssShare = t.tss_estimado / (currentPlan.targetTSS || 300);
-    if (t.if_estimado > 0) sess.ifTarget = t.if_estimado;
+    sess._adapted  = true;
+    sess.name      = g.titulo || sess.name;
+    sess.emoji     = '🏔️';
+    sess.type      = 'long';
+    sess.advice    = g.pacing || '';
+    if (g.duracion_min  > 0) sess.durationMin = g.duracion_min;
+    if (g.tss_estimado  > 0) sess.tssShare    = g.tss_estimado / (currentPlan.targetTSS || 300);
+    if (g.if_estimado   > 0) sess.ifTarget    = g.if_estimado;
     silentSavePlan();
 
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const card    = (label, icon, color, text) => text ? `
+      <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid ${isLight ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.05)'}">
+        <i class="fas ${icon}" style="color:${color};font-size:12px;margin-top:2px;flex-shrink:0;width:14px;text-align:center"></i>
+        <div>
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${color};margin-bottom:2px">${label}</div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${text}</div>
+        </div>
+      </div>` : '';
+
     result.innerHTML = `
-      <div style="background:${isLight ? 'rgba(99,102,241,.06)' : 'rgba(0,0,0,.2)'};border:1px solid ${isLight ? 'rgba(99,102,241,.2)' : 'rgba(255,255,255,.06)'};border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px">
-        <div style="font-size:13px;font-weight:700;color:var(--text-primary)">${t.titulo || 'Sesión personalizada'}</div>
-        ${t.duracion_min > 0 ? `<div style="font-size:11px;color:var(--text-muted)"><i class="fas fa-clock" style="margin-right:4px"></i>${t.duracion_min} min · TSS ~${t.tss_estimado}</div>` : ''}
-        ${t.intensidad ? `<div style="font-size:11px;color:var(--primary);font-weight:600"><i class="fas fa-bolt" style="margin-right:4px"></i>${t.intensidad}</div>` : ''}
-        ${t.descripcion ? `<p style="margin:0;font-size:12px;color:var(--text-secondary);line-height:1.55">${t.descripcion}</p>` : ''}
-        ${t.razon ? `<p style="margin:0;font-size:11px;color:${isLight ? '#6366f1' : 'rgba(196,239,68,.75)'};line-height:1.45;font-style:italic"><i class="fas fa-lightbulb" style="margin-right:4px"></i>${t.razon}</p>` : ''}
-        ${t.nutricion ? `<p style="margin:0;font-size:11px;color:rgba(16,185,129,.9);line-height:1.45"><i class="fas fa-utensils" style="margin-right:4px"></i>${t.nutricion}</p>` : ''}
-        <button onclick="undoOverrideRest(${idx});document.getElementById('override-result-${idx}').style.display='none'" style="margin-top:4px;padding:6px 10px;background:none;border:1px solid rgba(100,116,139,.25);border-radius:6px;color:var(--text-muted);font-size:11px;cursor:pointer;font-family:inherit">
-          <i class="fas fa-rotate-left"></i> Descartar
-        </button>
+      <div style="background:${isLight ? 'rgba(0,0,0,.02)' : 'rgba(0,0,0,.25)'};border:1px solid ${isLight ? 'rgba(0,0,0,.1)' : 'rgba(255,255,255,.08)'};border-radius:10px;overflow:hidden">
+        <!-- Cabecera -->
+        <div style="padding:12px 14px;border-bottom:1px solid ${isLight ? 'rgba(0,0,0,.07)' : 'rgba(255,255,255,.07)'}">
+          <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:4px">🏔️ ${g.titulo || 'Salida personalizada'}</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            ${g.duracion_min  > 0  ? `<span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-clock" style="margin-right:3px"></i>${Math.round(g.duracion_min/60*10)/10}h (${g.duracion_min} min)</span>` : ''}
+            ${g.distancia_km       ? `<span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-road" style="margin-right:3px"></i>${g.distancia_km} km</span>` : ''}
+            ${g.tss_estimado  > 0  ? `<span style="font-size:11px;color:var(--accent)"><i class="fas fa-star" style="margin-right:3px"></i>TSS ~${g.tss_estimado}</span>` : ''}
+            ${g.if_estimado   > 0  ? `<span style="font-size:11px;color:var(--primary)"><i class="fas fa-bolt" style="margin-right:3px"></i>IF ${g.if_estimado}</span>` : ''}
+          </div>
+          ${g.intensidad ? `<div style="font-size:11px;color:var(--primary);font-weight:600;margin-top:5px"><i class="fas fa-gauge-high" style="margin-right:4px"></i>${g.intensidad}</div>` : ''}
+        </div>
+        <!-- Detalles -->
+        <div style="padding:6px 14px 10px">
+          ${card('Estrategia de ritmo', 'fa-route', '#38BDF8', g.pacing)}
+          ${card('Antes de salir', 'fa-egg', '#F97316', g.nutricion_pre)}
+          ${card('Durante la salida', 'fa-candy-cane', '#10b981', g.nutricion_durante)}
+          ${card('Recuperación post', 'fa-drumstick-bite', '#a78bfa', g.nutricion_post)}
+          ${card('Hidratación', 'fa-droplet', '#60a5fa', g.hidratacion)}
+          ${g.advertencias ? `
+          <div style="margin-top:8px;padding:7px 10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:7px;font-size:11px;color:#fbbf24;line-height:1.45">
+            <i class="fas fa-triangle-exclamation" style="margin-right:5px"></i>${g.advertencias}
+          </div>` : ''}
+        </div>
+        <!-- Descartar -->
+        <div style="padding:8px 14px;border-top:1px solid ${isLight ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.05)'}">
+          <button onclick="undoOverrideRest(${idx});document.getElementById('override-result-${idx}').style.display='none';document.getElementById('override-btn-${idx}').style.display='';document.getElementById('override-input-${idx}').style.display=''"
+            style="padding:5px 12px;background:none;border:1px solid rgba(100,116,139,.25);border-radius:6px;color:var(--text-muted);font-size:11px;cursor:pointer;font-family:inherit">
+            <i class="fas fa-rotate-left"></i> Descartar
+          </button>
+        </div>
       </div>`;
     result.style.display = '';
-    btn.style.display = 'none';
-    input.style.display = 'none';
+    btn.style.display    = 'none';
+    input.style.display  = 'none';
 
   } catch(e) {
     console.error('[planCustomSession]', e);
