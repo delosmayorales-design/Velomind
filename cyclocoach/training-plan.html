@@ -270,6 +270,7 @@
     .day-badge .dd { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; color: var(--text-primary); line-height: 1; }
 
     .session-content { flex: 1; min-width: 0; }
+    .session-tap-hint { display: none; }
     .session-meta { display: flex; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
     .meta-tag { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); }
 
@@ -1749,9 +1750,10 @@ function renderPlan(plan, athlete) {
               ${sess._sweetSpotBlocks ? `<span style="background:rgba(255,200,60,.15);color:#FFD93D;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:700;text-transform:none">🔁 Redistribuida</span>` : ''}
               ${sess.completed ? `<span class="done-badge"><i class="fas fa-check"></i> Hecha</span>` : ''}
             </div>
+            <div class="session-tap-hint">Pulsa para ver el entreno →</div>
               <div class="session-objective" style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:2px">🎯 ${objective}</div>
               <div class="session-wksummary" style="font-size:12px;color:var(--text-muted);margin-bottom:4px;line-height:1.5">${wkSummary}</div>
-              ${sess.terrain ? `<div style="font-size:11px;color:${color};margin-bottom:4px;font-weight:600;opacity:.9">${sess.terrain}</div>` : ''}
+              ${sess.terrain ? `<div class="session-terrain" style="font-size:11px;color:${color};margin-bottom:4px;font-weight:600;opacity:.9">${sess.terrain}</div>` : ''}
               <div class="session-meta" style="align-items:center; width:100%; flex-wrap:wrap;">
               ${tssVal > 0 ? `<span class="meta-tag meta-tag-tss"><i class="fas fa-star" style="color:${color}"></i> TSS ${tssVal}</span>` : ''}
               ${durMin > 0 ? `<span class="meta-tag"><i class="fas fa-clock"></i> ${durMin} min</span>` : ''}
@@ -1767,7 +1769,7 @@ function renderPlan(plan, athlete) {
                 ${actionButtons}
             </div>
           </div>
-          <div style="text-align:right;padding:8px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;flex-shrink:0">
+          <div class="session-tss-col" style="text-align:right;padding:8px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;flex-shrink:0">
             <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:${color};line-height:1">${tssVal}</div>
             <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">TSS</div>
           </div>

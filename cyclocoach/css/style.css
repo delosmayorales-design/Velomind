@@ -910,22 +910,20 @@ select.form-input option {
   .day-badge .dn { font-size: 10px; }
   .day-badge .dd { font-size: 18px; }
 
-  /* Ocultar elementos redundantes: objetivo (repetido en nombre) y export */
-  .session-objective { display: none; }
-  .session-action-btns { display: none; }
+  /* Tarjetas estilo nutrición: solo nombre + hint, todo el detalle en la modal */
+  .session-objective  { display: none; }
+  .session-action-btns{ display: none; }
+  .session-wksummary  { display: none !important; }
+  .session-terrain    { display: none; }
+  .session-meta       { display: none !important; }
+  .session-tss-col    { display: none; }
 
-  /* Descripción oculta en móvil — se ve al abrir la tarjeta */
-  .session-wksummary { display: none !important; }
-
-  /* Nombre de sesión: truncar en 1 línea */
+  /* Nombre truncado en 1 línea */
   .session-content { overflow: hidden; }
   .session-content > div:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
-  /* Meta-tags compactos bajo el nombre */
-  .session-meta { margin-top: 2px !important; gap: 6px; flex-wrap: nowrap; }
-  .meta-tag { font-size: 10px; white-space: nowrap; }
-  .meta-tag-tss { display: none; }
-  .meta-tag-if  { display: none; }
+  /* Hint "pulsa para ver" visible solo en móvil */
+  .session-tap-hint { display: block; font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 
   /* Modal de sesión: métricas en 2 cols (no 4) */
   .session-metrics-grid { grid-template-columns: 1fr 1fr !important; }
