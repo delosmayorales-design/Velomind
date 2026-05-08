@@ -2187,35 +2187,38 @@ router.post('/session-guidance', async (req, res) => {
     const systemPrompt = 'Eres un coach de ciclismo experto. Responde SOLO con JSON válido, sin markdown ni texto extra.';
 
     const userMsg = `Atleta: FTP ${ftp}W, peso ${weight}kg, W/kg: ${wkg}, objetivo: ${goal}.
-Estado de forma hoy: CTL=${ctl}, ATL=${atl}, TSB=${tsb} (${fs.label}).
+Estado de forma: CTL=${ctl}, ATL=${atl}, TSB=${tsb} (${fs.label}).
 
-El atleta describe la salida que quiere hacer este fin de semana:
+El atleta quiere hacer:
 "${description}"
 
-Analiza la descripción e infiere duración real, terreno, distancia y desnivel (si se mencionan).
-Calcula TSS e IF reales para ESTA salida específica — no uses la sesión planificada anterior.
+INSTRUCCIÓN PRINCIPAL: Genera un plan EXACTAMENTE para lo que el atleta describe. No uses datos de sesiones anteriores. Infiere duración, terreno y distancia SOLO desde la descripción.
 
-Reglas:
-- Para salidas con desnivel (puertos, col, montaña): pacing conservador en los primeros puertos, Z2-Z3 en general con picos Z4-Z5 en subidas. TSS suele ser alto (200-400 para 4-5h con desnivel).
-- Para "3-4 horas puertos 2000m+": duracion_min entre 180 y 240, tss_estimado entre 220 y 350 según FTP.
+REGLAS (aplica ÚNICAMENTE la que corresponda al tipo de salida descrito):
+- Montaña / puertos / desnivel / col: Z2-Z3 general, picos Z4-Z5 en subidas. TSS 150-350 según horas y desnivel. IF ~0.65-0.75.
+- Llano / rodaje / llanear / fácil: Z2-Z3, cadencia alta. TSS 60-130 para 1.5-3h. IF ~0.60-0.70.
+- Suave / recuperación activa / corto: Z1-Z2, máximo 90 min. TSS 30-65. IF ~0.50-0.60.
+- Intervalos / umbral / potencia: describe bloques específicos. TSS 80-140. IF ~0.80-0.95.
+- VO2max / alta intensidad: bloques cortos, descansos largos. TSS 80-120. IF ~0.90-1.05.
+- Si TSB < -15: reducir 10% la intensidad indicada. Pacing más conservador.
+- Si TSB > 10: puede ir algo más fuerte en los tramos finales.
 - Usa siempre vatios reales basados en FTP=${ftp}W.
-- Si TSB < -15 (fatigado): reducir 10% la intensidad, pacing más conservador.
-- Si TSB > 10 (fresco): puede apretar más en los últimos puertos.
 
-Devuelve SOLO este JSON (sin texto adicional):
+Devuelve SOLO este JSON:
 {
-  "titulo": "nombre descriptivo de la salida en 5-8 palabras",
+  "titulo": "nombre que refleje EXACTAMENTE lo que el atleta describió (5-8 palabras)",
+  "tipo": "montana|llano|recuperacion|suave|umbral|vo2",
   "duracion_min": number,
   "distancia_km": number | null,
   "tss_estimado": number,
   "if_estimado": number,
-  "intensidad": "zonas de potencia principales con vatios reales",
-  "pacing": "estrategia de ritmo detallada: cómo atacar la salida según el terreno descrito, vatios en subidas y llano",
-  "nutricion_pre": "qué comer y cuánto tiempo antes de salir",
-  "nutricion_durante": "plan de alimentación durante la salida: frecuencia, cantidades, tipo (geles, barritas, plátano...)",
-  "nutricion_post": "ventana de recuperación: qué comer en los primeros 30-60 min post-salida",
-  "hidratacion": "litros por hora, cuándo beber, si necesitas electrolitos",
-  "advertencias": "alerta breve si el TSB indica fatiga o si la salida es muy exigente respecto al estado de forma"
+  "intensidad": "zonas y vatios reales para ESTE tipo de salida",
+  "pacing": "estrategia específica para el terreno/tipo descrito — no genérica",
+  "nutricion_pre": "qué comer antes según la duración e intensidad",
+  "nutricion_durante": "plan durante la salida adaptado a la duración real",
+  "nutricion_post": "recuperación post adaptada a la carga real",
+  "hidratacion": "cantidad y frecuencia según la duración y temperatura estimada",
+  "advertencias": "solo si el TSB indica riesgo real o la salida es muy exigente"
 }`;
 
     const result = await callAI(systemPrompt, userMsg, { max_tokens: 900, temperature: 0.35 });

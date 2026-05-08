@@ -1693,26 +1693,32 @@ function renderPlan(plan, athlete) {
     const isFuture = i > todayIdx;
     const overrideZone = (isFuture && !sess.completed) ? `
       <div class="adapt-zone" style="background:rgba(158,214,43,.02);border-top:1px solid rgba(158,214,43,.08)" onclick="event.stopPropagation()">
+        ${sess._overriddenToRest ? `
+        <div class="adapt-trigger" style="color:#38BDF8;cursor:pointer" onclick="event.stopPropagation();undoOverrideRest(${i})">
+          <i class="fas fa-rotate-left" style="font-size:10px"></i>
+          <span>Restaurar sesión original</span>
+        </div>
+        <div class="adapt-trigger" onclick="toggleOverrideForm(${i})" style="border-top:1px solid rgba(158,214,43,.06)">
+          <i class="fas fa-pencil" style="font-size:10px"></i>
+          <span>Cambiar a otra sesión</span>
+          <i class="fas fa-chevron-down" id="override-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
+        </div>` : `
         <div class="adapt-trigger" onclick="toggleOverrideForm(${i})">
           <i class="fas fa-pencil" style="font-size:10px"></i>
           <span>Modificar esta sesión</span>
           <i class="fas fa-chevron-down" id="override-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
-        </div>
+        </div>`}
         <div id="override-body-${i}" class="adapt-body" style="display:none">
+          ${!sess._overriddenToRest ? `
           <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
             <button onclick="event.stopPropagation();overrideToRest(${i})"
               style="flex:1;min-width:120px;padding:9px 14px;background:rgba(100,116,139,.1);border:1px solid rgba(100,116,139,.25);color:var(--text-secondary);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s"
               onmouseover="this.style.background='rgba(100,116,139,.2)'" onmouseout="this.style.background='rgba(100,116,139,.1)'">
               🛌 Cambiar a descanso
             </button>
-            ${sess._overriddenToRest ? `
-            <button onclick="event.stopPropagation();undoOverrideRest(${i})"
-              style="flex:1;min-width:120px;padding:9px 14px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.25);color:#38BDF8;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s">
-              ↩ Restaurar sesión
-            </button>` : ''}
-          </div>
-          <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">O describe tu sesión personalizada:</div>
-          <textarea class="adapt-input" id="override-input-${i}" placeholder="Ej: quiero hacer puertos, 125km con 2000m+, sale en grupo..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px;width:100%;box-sizing:border-box"></textarea>
+          </div>` : ''}
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Describe tu sesión:</div>
+          <textarea class="adapt-input" id="override-input-${i}" placeholder="Ej: puertos 125km 2000m+, rodaje llano 2h, salida suave recuperación..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px;width:100%;box-sizing:border-box"></textarea>
           <button class="adapt-submit" id="override-btn-${i}" onclick="planCustomSession(${i})">
             <i class="fas fa-magic"></i> Planificar esta salida
           </button>
@@ -1941,15 +1947,17 @@ function overrideToRest(idx) {
   if (!currentPlan?.sessions?.[idx]) return;
   const sess = currentPlan.sessions[idx];
   if (!sess._origSession) {
-    sess._origSession = { type: sess.type, name: sess.name, emoji: sess.emoji, isRest: sess.isRest, description: sess.description };
+    sess._origSession = { type: sess.type, name: sess.name, emoji: sess.emoji, isRest: sess.isRest, description: sess.description, durationMin: sess.durationMin, tssShare: sess.tssShare, ifTarget: sess.ifTarget };
   }
   sess._overriddenToRest = true;
-  sess.isRest = true;
-  sess.name = 'Descanso (modificado)';
-  sess.type = 'recovery';
-  sess.emoji = '🛌';
-  sess._adapted = true;
-  sess.advice = 'Día cambiado a descanso según tu preferencia.';
+  sess.isRest  = true;
+  sess.name    = 'Descanso';
+  sess.type    = 'recovery';
+  sess.emoji   = '🛌';
+  sess._adapted = false;
+  delete sess.advice;
+  sess.description = 'Descanso activo · caminar, estiramientos suaves, movilidad. Sin carga de entrenamiento.';
+  sess.durationMin = 0;
   silentSavePlan();
   renderPlan(currentPlan, AppState.athlete);
   showToast('🛌 Día cambiado a descanso', 'var(--text-muted)');
@@ -1977,6 +1985,17 @@ async function planCustomSession(idx) {
   const text   = input?.value?.trim();
   if (!text) { input?.focus(); return; }
 
+  // Detección rápida de descanso en el cliente — sin llamar a la IA
+  const restWords = ['descanso', 'descansar', 'no salgo', 'no entreno', 'rest day', 'día libre'];
+  if (restWords.some(w => text.toLowerCase().includes(w))) {
+    overrideToRest(idx);
+    const body = document.getElementById(`override-body-${idx}`);
+    if (body) body.style.display = 'none';
+    const chev = document.getElementById(`override-chev-${idx}`);
+    if (chev) chev.style.transform = '';
+    return;
+  }
+
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Planificando...';
 
@@ -1998,12 +2017,15 @@ async function planCustomSession(idx) {
 
     // Guardar la sesión original y actualizar con los datos del plan
     if (!sess._origSession) {
-      sess._origSession = { type: sess.type, name: sess.name, emoji: sess.emoji, isRest: sess.isRest, description: sess.description };
+      sess._origSession = { type: sess.type, name: sess.name, emoji: sess.emoji, isRest: sess.isRest, description: sess.description, durationMin: sess.durationMin, tssShare: sess.tssShare, ifTarget: sess.ifTarget };
     }
+    const tipoEmoji = { montana:'🏔️', llano:'🚴', recuperacion:'🛌', suave:'🚴', umbral:'⚡', vo2:'🔥' };
+    const tipoType  = { montana:'long', llano:'endurance', recuperacion:'recovery', suave:'recovery', umbral:'threshold', vo2:'vo2max' };
+    const tipo = g.tipo || 'llano';
     sess._adapted  = true;
     sess.name      = g.titulo || sess.name;
-    sess.emoji     = '🏔️';
-    sess.type      = 'long';
+    sess.emoji     = tipoEmoji[tipo] || '🚴';
+    sess.type      = tipoType[tipo]  || 'endurance';
     sess.advice    = g.pacing || '';
     if (g.duracion_min  > 0) sess.durationMin = g.duracion_min;
     if (g.tss_estimado  > 0) sess.tssShare    = g.tss_estimado / (currentPlan.targetTSS || 300);
@@ -2024,7 +2046,7 @@ async function planCustomSession(idx) {
       <div style="background:${isLight ? 'rgba(0,0,0,.02)' : 'rgba(0,0,0,.25)'};border:1px solid ${isLight ? 'rgba(0,0,0,.1)' : 'rgba(255,255,255,.08)'};border-radius:10px;overflow:hidden">
         <!-- Cabecera -->
         <div style="padding:12px 14px;border-bottom:1px solid ${isLight ? 'rgba(0,0,0,.07)' : 'rgba(255,255,255,.07)'}">
-          <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:4px">🏔️ ${g.titulo || 'Salida personalizada'}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:4px">${tipoEmoji[tipo] || '🚴'} ${g.titulo || 'Salida personalizada'}</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
             ${g.duracion_min  > 0  ? `<span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-clock" style="margin-right:3px"></i>${Math.round(g.duracion_min/60*10)/10}h (${g.duracion_min} min)</span>` : ''}
             ${g.distancia_km       ? `<span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-road" style="margin-right:3px"></i>${g.distancia_km} km</span>` : ''}
