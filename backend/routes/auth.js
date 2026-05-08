@@ -159,7 +159,7 @@ router.post('/forgot-password', async (req, res) => {
     const resetUrl = `${frontendUrl}/reset-password.html?token=${token}`;
 
     await sgMail.send({
-      from: { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || process.env.GMAIL_USER },
+      from: { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || 'delosmayorales@gmail.com' },
       to: emailNorm,
       subject: 'Recupera tu contraseña — VeloMind',
       html: `
@@ -193,7 +193,8 @@ router.post('/forgot-password', async (req, res) => {
 
     res.json(ok);
   } catch (e) {
-    console.error('[auth/forgot-password]', e.message);
+    const detail = e.response?.body || e.message;
+    console.error('[auth/forgot-password]', JSON.stringify(detail));
     res.status(500).json({ error: 'Error al procesar la solicitud' });
   }
 });
