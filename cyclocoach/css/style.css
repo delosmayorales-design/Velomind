@@ -92,8 +92,10 @@ body {
   font-size: 14px;
   line-height: 1.6;
   min-height: 100vh;
+  min-height: 100dvh; /* Android: evita que el chrome del browser corte contenido */
   display: flex;
   overflow-x: hidden;
+  overflow-y: auto;   /* Android: garantiza scroll vertical */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -874,6 +876,28 @@ select.form-input option {
 @media (max-width: 600px) {
   .sidebar { transform: translateX(-100%); }
   .main-content { margin-left: 0; }
+}
+
+/* ─── Android / pequeño móvil ──────────────────────────────── */
+@media (max-width: 480px) {
+  /* Header: oculta botones secundarios para evitar desbordamiento */
+  .header-actions .btn-secondary { display: none; }
+  .header-actions { gap: 6px; }
+  .page-header { padding: 6px 10px; flex-wrap: wrap; }
+  .page-body { padding: 12px; }
+
+  /* Grids 2-col → 1-col en móvil pequeño */
+  [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+  /* Tarjetas de sesión: texto más compacto */
+  .session-row { gap: 10px; padding: 10px 12px; }
+  .day-badge .dd { font-size: 20px; }
+}
+
+@media (max-width: 360px) {
+  .header-actions .btn-ai { padding: 6px 10px; font-size: 12px; }
+  .page-title h1 { font-size: 13px; }
+  .page-title p { display: none; }
 }
 
 /* ─── Utilities ────────────────────────────────────────────── */
