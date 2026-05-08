@@ -917,9 +917,12 @@ select.form-input option {
   /* Descripción oculta en móvil — se ve al abrir la tarjeta */
   .session-wksummary { display: none !important; }
 
-  /* session-content en fila: nombre a la izquierda, métricas a la derecha */
-  .session-content { display: flex; flex-direction: row; align-items: center; gap: 6px; }
-  .session-meta { margin-top: 0 !important; margin-left: auto; flex-shrink: 0; gap: 8px; flex-wrap: nowrap; }
+  /* Nombre de sesión: truncar en 1 línea */
+  .session-content { overflow: hidden; }
+  .session-content > div:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+  /* Meta-tags compactos bajo el nombre */
+  .session-meta { margin-top: 2px !important; gap: 6px; flex-wrap: nowrap; }
   .meta-tag { font-size: 10px; white-space: nowrap; }
   .meta-tag-tss { display: none; }
   .meta-tag-if  { display: none; }

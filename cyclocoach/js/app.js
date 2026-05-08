@@ -2070,11 +2070,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const currentPath = window.location.pathname;
     const navItems = [
-      { name: 'Métricas',    icon: 'fa-chart-bar',      href: 'analytics.html' },
-      { name: 'Mi Plan',     icon: 'fa-calendar-check', href: 'training-plan.html' },
-      { name: 'Actividades', icon: 'fa-history',        href: 'activities.html' },
-      { name: 'Nutrición',   icon: 'fa-apple-alt',      href: 'nutrition.html' },
-      { name: 'Menú',        icon: 'fa-bars',           href: '#', isMenu: true }
+      { name: 'Inicio',    icon: 'fa-home',           href: 'dashboard.html' },
+      { name: 'Plan',      icon: 'fa-calendar-check', href: 'training-plan.html' },
+      { name: 'Nutrición', icon: 'fa-apple-alt',      href: 'nutrition.html' },
+      { name: 'Métricas',  icon: 'fa-chart-bar',      href: 'analytics.html' },
+      { name: 'Menú',      icon: 'fa-bars',           href: '#', isMenu: true }
     ];
 
     bottomNav.innerHTML = navItems.map(item => {
