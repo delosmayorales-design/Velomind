@@ -594,6 +594,118 @@
     .ac-btn-stop:hover { background:rgba(255,71,87,.22); }
     .ac-btn-skip { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); color:var(--text-muted); }
     .ac-btn-skip:hover { background:rgba(255,255,255,.1); }
+
+    /* ══ HEADER BUTTONS — uniformes ═══════════════════════════════ */
+    .plan-header-btns {
+      display: flex; align-items: center; gap: 5px;
+      flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+      padding-bottom: 2px; /* espacio para el scroll en iOS */
+    }
+    .plan-header-btns::-webkit-scrollbar { display: none; }
+
+    .phb {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px; height: 28px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-secondary);
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+      cursor: pointer; font-family: inherit; flex-shrink: 0;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+    .phb:hover { border-color: var(--border-light); color: var(--text-primary); }
+    .phb svg   { flex-shrink: 0; }
+
+    /* Strava */
+    #sync-strava-btn { color: #FC4C02; border-color: rgba(252,76,2,.28); background: rgba(252,76,2,.07); }
+    #sync-strava-btn:hover { background: rgba(252,76,2,.14); }
+
+    /* AI */
+    .phb-ai { color: var(--primary); border-color: var(--border-light); background: var(--primary-glow); }
+    .phb-ai:hover { background: rgba(158,214,43,.2); }
+
+    /* Guardar */
+    .phb-save { color: #111 !important; background: var(--primary) !important; border-color: var(--primary) !important; font-weight: 700; }
+    .phb-save:hover { background: var(--primary-dark) !important; }
+
+    /* Título */
+    .header-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    /* ══ TOP DASHBOARD ════════════════════════════════════════════ */
+    .top-dashboard {
+      display: flex; flex-direction: column; gap: 10px;
+      margin-bottom: 16px;
+    }
+    .top-row-main {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .top-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); overflow: hidden;
+    }
+    .top-card-hd {
+      display: flex; align-items: center; gap: 7px;
+      padding: 8px 12px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .top-card-toggle { cursor: pointer; user-select: none; }
+    .top-card-toggle:hover { color: var(--text-primary); }
+    .top-card-loading {
+      display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+    }
+    .top-card-body { padding: 12px 14px; }
+    .top-card-config-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .top-card-config-grid .params-field label {
+      font-size: 9px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .4px; display: block; margin-bottom: 3px;
+    }
+    .top-card-config-grid .params-input {
+      height: 26px; font-size: 11px; padding: 0 8px; width: 100%;
+    }
+    .top-card-update-btn {
+      grid-column: span 2; height: 28px; font-size: 11px;
+      justify-content: center; width: 100%; margin-top: 2px;
+    }
+    /* Estado de forma: quita padding extra heredado */
+    #form-state-content.top-card-body { padding: 10px 12px; }
+
+    /* Modo claro overrides para nuevos elementos */
+    html[data-theme="light"] .top-card,
+    html.light-theme .top-card { box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    html[data-theme="light"] .phb,
+    html.light-theme .phb { background: #f1f5f9; border-color: rgba(0,0,0,.12); color: #475569; }
+    html[data-theme="light"] .phb:hover,
+    html.light-theme .phb:hover { background: #e2e8f0; color: #1e293b; }
+    html[data-theme="light"] .phb-save,
+    html.light-theme .phb-save { color: #fff !important; }
+
+    /* ══ RESPONSIVO MÓVIL (≤ 600px) ══════════════════════════════ */
+    @media (max-width: 600px) {
+      /* Header: etiquetas de texto ocultas, solo iconos */
+      .phb span { display: none; }
+      .phb { width: 32px; justify-content: center; padding: 5px; }
+      .header-subtitle { display: none; }
+      .page-header { gap: 8px; }
+
+      /* Top dashboard: fila principal en 1 col */
+      .top-row-main { grid-template-columns: 1fr; }
+
+      /* Config colapsada por defecto en móvil */
+      #config-body { display: none; }
+      #config-chev { transform: rotate(0deg); }
+    }
+
+    @media (min-width: 601px) {
+      /* Desktop/tablet: config siempre visible */
+      #config-body { display: grid !important; }
+      #config-chev { transform: rotate(180deg); }
+      .top-card-toggle { cursor: default; }
+      .top-card-toggle .fa-chevron-down { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -651,77 +763,81 @@
   <header class="page-header">
     <div class="page-title">
       <h1><i class="fas fa-dumbbell" style="color:var(--primary)"></i> Mi Entrenamiento</h1>
-      <p>Estado de forma, plan semanal y análisis de rendimiento basados en tus salidas reales</p>
+      <p class="header-subtitle">Plan semanal · Estado de forma</p>
     </div>
-    <div class="header-actions" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <button class="sync-btn" id="sync-strava-btn" onclick="syncStrava()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
-        Sincronizar Strava
+    <div class="plan-header-btns">
+      <button class="phb" id="sync-strava-btn" onclick="syncStrava()" title="Sincronizar Strava">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+        <span>Strava</span>
       </button>
-      <button class="btn btn-ai btn-sm" id="btn-ai-coach" onclick="runAICoach()">
-        <i class="fas fa-chart-line"></i> Diagnóstico
+      <button class="phb phb-ai" id="btn-ai-coach" onclick="runAICoach()" title="Diagnóstico IA">
+        <i class="fas fa-chart-line"></i><span>Diagnóstico</span>
       </button>
-      <button class="btn btn-secondary btn-sm" onclick="exportWeekToGarmin()" style="background:rgba(52,211,153,0.12);border-color:rgba(52,211,153,0.35);color:var(--success);" title="Exporta todos los entrenamientos como .tcx para Garmin Connect">
-        <i class="fas fa-watch"></i> Garmin
+      <button class="phb" onclick="exportWeekToGarmin()" title="Exportar semana a Garmin">
+        <i class="fas fa-watch"></i><span>Garmin</span>
       </button>
-      <button class="btn btn-secondary btn-sm" onclick="exportWeekToZwift()" style="background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.35);color:#818cf8;" title="Exporta todos los entrenamientos como .zwo para Zwift/rodillo">
-        <i class="fas fa-bolt"></i> Zwift
+      <button class="phb" onclick="exportWeekToZwift()" title="Exportar semana a Zwift">
+        <i class="fas fa-bolt"></i><span>Zwift</span>
       </button>
-      <button class="btn btn-secondary btn-sm" onclick="regeneratePlan()">
-        <i class="fas fa-sync-alt"></i> Regenerar
+      <button class="phb" onclick="regeneratePlan()" title="Regenerar plan">
+        <i class="fas fa-sync-alt"></i><span>Regenerar</span>
       </button>
-      <button class="btn btn-primary btn-sm" id="btn-save-plan" onclick="savePlan()">
-        <i class="fas fa-save"></i> Guardar plan
+      <button class="phb phb-save" id="btn-save-plan" onclick="savePlan()" title="Guardar plan">
+        <i class="fas fa-save"></i><span>Guardar</span>
       </button>
     </div>
   </header>
 
   <div class="page-body">
 
-    <!-- ══ DASHBOARD ESTRATÉGICO: DISTRIBUCIÓN 2x2 UNIFICADA ════ -->
-    <div class="mb-6" style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch;">
-      
-      <!-- 1. Datos PMC (Superior Izquierda) -->
-      <div id="form-state-section" class="card" style="display:flex; flex-direction:column; min-height:160px">
-        <div class="card-header" style="padding:8px 12px; border-bottom:1px solid var(--border)">
-          <div class="card-title" style="font-size:11px"><i class="fas fa-chart-line" style="color:var(--primary)"></i> Estado de Forma</div>
+    <!-- ══ DASHBOARD SUPERIOR ════════════════════════════════════ -->
+    <div class="top-dashboard">
+
+      <!-- Fila 1: Estado de Forma + Diagnóstico Coach -->
+      <div class="top-row-main">
+
+        <!-- Estado de Forma (PMC) -->
+        <div id="form-state-section" class="top-card">
+          <div class="top-card-hd">
+            <i class="fas fa-chart-line" style="color:var(--primary)"></i> Estado de Forma
+          </div>
+          <div id="form-state-loading" class="top-card-loading">
+            <span class="loading-pulse">🧠</span>
+            <span style="font-size:11px;color:var(--text-muted)">Analizando...</span>
+          </div>
+          <div id="form-state-content" class="hidden top-card-body"></div>
         </div>
-        <div id="form-state-loading" style="flex:1; display:flex; align-items:center; justify-content:center">
-          <div style="text-align:center">
-            <div class="loading-pulse" style="font-size:20px">🧠</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Analizando...</div>
+
+        <!-- Diagnóstico Coach -->
+        <div id="insights-section" class="top-card hidden">
+          <div class="top-card-hd">
+            <i class="fas fa-lightbulb" style="color:#FFC800"></i> Diagnóstico Coach
+          </div>
+          <div class="top-card-body" style="overflow-y:auto;max-height:180px">
+            <div id="insights-content"></div>
           </div>
         </div>
-        <div id="form-state-content" class="hidden" style="flex:1; padding:15px"></div>
+
       </div>
 
-      <!-- 2. Diagnóstico Coach (Superior Derecha) -->
-      <div id="insights-section" class="card hidden" style="display:flex; flex-direction:column; min-height:160px">
-        <div class="card-header" style="padding:8px 12px; border-bottom:1px solid var(--border)">
-          <div class="card-title" style="font-size:11px"><i class="fas fa-lightbulb" style="color:#FFC800"></i> Diagnóstico Coach</div>
+      <!-- Fila 2: Configuración Plan (colapsable en móvil) -->
+      <div class="top-card top-card-config">
+        <div class="top-card-hd top-card-toggle" onclick="toggleTopCard('config-body','config-chev')">
+          <i class="fas fa-sliders-h" style="color:var(--primary)"></i> Configuración Plan
+          <i class="fas fa-chevron-down" id="config-chev" style="font-size:10px;margin-left:auto;transition:transform .2s"></i>
         </div>
-        <div class="card-body" style="padding:12px; flex:1; overflow-y:auto; max-height:160px">
-          <div id="insights-content"></div>
-        </div>
-      </div>
-
-      <!-- 3. Parámetros (Inferior Izquierda) -->
-      <div class="card" style="display:flex; flex-direction:column; min-height:160px">
-        <div class="card-header" style="padding:8px 12px; border-bottom:1px solid var(--border)">
-          <div class="card-title" style="font-size:11px"><i class="fas fa-sliders-h" style="color:var(--primary)"></i> Configuración Plan</div>
-        </div>
-        <div class="card-body" style="padding:12px; display:grid; grid-template-columns:1fr 1fr; gap:10px; flex:1">
+        <div id="config-body" class="top-card-body top-card-config-grid">
           <div class="params-field">
-            <label style="font-size:8px; font-weight:700; color:var(--text-muted); text-transform:uppercase">Horas semanales</label>
-            <input type="number" id="adj-hours" class="params-input" value="8" style="height:24px; font-size:11px; padding:0 8px; width:100%">
+            <label>Horas / semana</label>
+            <input type="number" id="adj-hours" class="params-input" value="8">
           </div>
           <div class="params-field">
-            <label style="font-size:8px; font-weight:700; color:var(--text-muted); text-transform:uppercase">FTP (W)</label>
-            <input type="number" id="adj-ftp" class="params-input" placeholder="200" style="height:24px; font-size:11px; padding:0 8px; width:100%">
+            <label>FTP (W)</label>
+            <input type="number" id="adj-ftp" class="params-input" placeholder="200">
           </div>
-          <div class="params-field" style="grid-column: span 1">
-            <label style="font-size:8px; font-weight:700; color:var(--text-muted); text-transform:uppercase">Objetivo</label>
-            <select id="adj-goal" class="params-input params-select" style="height:24px; font-size:11px; padding:0 8px; width:100%">
+          <div class="params-field">
+            <label>Objetivo</label>
+            <select id="adj-goal" class="params-input params-select">
               <option value="resistencia">Resistencia</option>
               <option value="ftp">Subir FTP</option>
               <option value="vo2max">VO2 Max</option>
@@ -731,21 +847,22 @@
             </select>
           </div>
           <div class="params-field">
-            <label style="font-size:8px; font-weight:700; color:var(--text-muted); text-transform:uppercase">Peso (kg)</label>
-            <input type="number" id="adj-weight" class="params-input" placeholder="70" style="height:24px; font-size:11px; padding:0 8px; width:100%">
+            <label>Peso (kg)</label>
+            <input type="number" id="adj-weight" class="params-input" placeholder="70">
           </div>
-          <button class="params-apply-btn" onclick="applyAdjustments()" style="grid-column: span 2; height:28px; margin-top:4px; font-size:11px; justify-content:center; width:100%">
-            <i class="fas fa-sync-alt"></i> Actualizar
+          <button class="params-apply-btn top-card-update-btn" onclick="applyAdjustments()">
+            <i class="fas fa-sync-alt"></i> Actualizar plan
           </button>
         </div>
       </div>
 
-      <!-- 4. Principios (Inferior Derecha) -->
-      <div class="card" id="principles-card" style="display:flex; flex-direction:column; min-height:160px">
-        <div class="card-header" style="padding:8px 12px; border-bottom:1px solid var(--border)">
-          <div class="card-title" style="font-size:11px"><i class="fas fa-graduation-cap" style="color:var(--accent)"></i> Principios de Fase</div>
+      <!-- Fila 3: Principios de Fase (colapsable) -->
+      <div class="top-card" id="principles-card">
+        <div class="top-card-hd top-card-toggle" onclick="toggleTopCard('principles-body','principles-chev')">
+          <i class="fas fa-graduation-cap" style="color:var(--accent)"></i> Principios de Fase
+          <i class="fas fa-chevron-down" id="principles-chev" style="font-size:10px;margin-left:auto;transition:transform .2s"></i>
         </div>
-        <div class="card-body" style="padding:12px; flex:1; overflow-y:auto; max-height:160px">
+        <div id="principles-body" class="top-card-body" style="display:none">
           <div id="training-principles"></div>
         </div>
       </div>
@@ -878,6 +995,18 @@
 <script>
 const API = window.API_URL;
 let currentPlan = null;
+
+// Colapsar / expandir tarjetas del dashboard superior
+function toggleTopCard(bodyId, chevId) {
+  // En desktop no hacemos nada (CSS lo controla)
+  if (window.innerWidth > 600) return;
+  const body = document.getElementById(bodyId);
+  const chev = document.getElementById(chevId);
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  if (chev) chev.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+}
 let progressionChart = null;
 const _adaptCache = {}; // { [idx]: adaptation data from AI }
 let _bgSyncToken = 0; // se incrementa al guardar localmente para invalidar GETs en vuelo
