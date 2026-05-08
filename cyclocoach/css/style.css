@@ -930,6 +930,9 @@ select.form-input option {
   .meta-tag { font-size: 10px; white-space: nowrap; }
   .meta-tag-tss { display: none; }
   .meta-tag-if  { display: none; }
+
+  /* Modal de sesión: métricas en 2 cols (no 4) */
+  .session-metrics-grid { grid-template-columns: 1fr 1fr !important; }
 }
 
 @media (max-width: 360px) {

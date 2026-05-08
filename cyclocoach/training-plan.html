@@ -269,7 +269,7 @@
     .day-badge .dn { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); }
     .day-badge .dd { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; color: var(--text-primary); line-height: 1; }
 
-    .session-content { flex: 1; }
+    .session-content { flex: 1; min-width: 0; }
     .session-meta { display: flex; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
     .meta-tag { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); }
 
@@ -1736,7 +1736,7 @@ function renderPlan(plan, athlete) {
             <div class="dn">${sess.day.substring(0, 3)}</div>
             <div class="dd" style="color:${color}">${sessDate.getDate()}</div>
           </div>
-            <div style="width:1px;height:40px;background:${color}44"></div>
+            <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;opacity:.85"></div>
           <div style="font-size:22px">${sess.emoji}</div>
           <div class="session-content">
               <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${color};margin-bottom:2px;display:flex;align-items:center;flex-wrap:wrap;gap:5px">
@@ -2976,7 +2976,7 @@ function showSessionDetail(idx, showAlt = false) {
       <div class="badge" style="background:${color}22;color:${color};margin-bottom:16px">${sess.type || ''} — ${sess.name || 'Sesión'}</div>
       ${sess.advice ? `<p style="color:var(--text-primary);font-size:14px;font-weight:600;margin-bottom:8px">${sess.advice}</p>` : ''}
       <p style="color:var(--text-secondary);font-size:13px;line-height:1.5;margin-bottom:20px">${currentDesc}</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+      <div class="session-metrics-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:20px">
         <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);text-align:center">
           <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:${color}">${tss}</div>
           <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">TSS objetivo</div>
