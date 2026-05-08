@@ -903,9 +903,33 @@ select.form-input option {
   /* Grids 2-col → 1-col en móvil pequeño */
   [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
 
-  /* Tarjetas de sesión: texto más compacto */
-  .session-row { gap: 10px; padding: 10px 12px; }
-  .day-badge .dd { font-size: 20px; }
+  /* Tarjetas de sesión: compactas en móvil */
+  .session-cards-grid { gap: 6px; }
+  .session-row { gap: 8px; padding: 8px 10px; }
+  .day-badge { min-width: 40px; }
+  .day-badge .dn { font-size: 10px; }
+  .day-badge .dd { font-size: 18px; }
+
+  /* Ocultar elementos redundantes: objetivo (repetido en nombre) y export */
+  .session-objective { display: none; }
+  .session-action-btns { display: none; }
+
+  /* Truncar descripción a 1 línea — el detalle se ve al expandir */
+  .session-wksummary {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.4 !important;
+    margin-bottom: 2px !important;
+  }
+
+  /* Meta-tags: solo duración y vatios — TSS ya está a la derecha, IF es técnico */
+  .session-meta { margin-top: 3px !important; gap: 6px; flex-wrap: nowrap; }
+  .meta-tag { font-size: 10px; white-space: nowrap; }
+  .meta-tag-tss { display: none; }
+  .meta-tag-if  { display: none; }
 }
 
 @media (max-width: 360px) {

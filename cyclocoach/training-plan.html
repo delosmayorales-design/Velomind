@@ -1518,7 +1518,7 @@ function renderPlan(plan, athlete) {
             <div style="font-size:20px">😴</div>
             <div>
               <div style="font-size:15px;font-weight:600;color:var(--text-secondary)">Descanso</div>
-              <div style="font-size:12px;color:var(--text-muted)">${sess.description}</div>
+              <div class="session-wksummary" style="font-size:12px;color:var(--text-muted)">${sess.description}</div>
             </div>
           </div>
           ${sess._trainedOnRest ? `
@@ -1715,7 +1715,7 @@ function renderPlan(plan, athlete) {
       </div>` : '');
 
     const actionButtons = `
-      <div style="width:100%; display:flex; gap:6px; align-items:center; margin-top:10px; flex-wrap:wrap">
+      <div class="session-action-btns" style="width:100%; display:flex; gap:6px; align-items:center; margin-top:10px; flex-wrap:wrap">
         <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-right:2px; white-space:nowrap;"><i class="fas fa-download"></i> Exportar:</span>
         <div style="display:flex; gap:4px; flex-wrap:wrap;">
           <button onclick="event.stopPropagation();exportSessionToGarmin(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">TCX</button>
@@ -1745,13 +1745,13 @@ function renderPlan(plan, athlete) {
               ${sess._sweetSpotBlocks ? `<span style="background:rgba(255,200,60,.15);color:#FFD93D;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:700;text-transform:none">🔁 Redistribuida</span>` : ''}
               ${sess.completed ? `<span class="done-badge"><i class="fas fa-check"></i> Hecha</span>` : ''}
             </div>
-              <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:2px">🎯 ${objective}</div>
-              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;line-height:1.5">${wkSummary}</div>
+              <div class="session-objective" style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:2px">🎯 ${objective}</div>
+              <div class="session-wksummary" style="font-size:12px;color:var(--text-muted);margin-bottom:4px;line-height:1.5">${wkSummary}</div>
               ${sess.terrain ? `<div style="font-size:11px;color:${color};margin-bottom:4px;font-weight:600;opacity:.9">${sess.terrain}</div>` : ''}
               <div class="session-meta" style="align-items:center; width:100%; flex-wrap:wrap;">
-              ${tssVal > 0 ? `<span class="meta-tag"><i class="fas fa-star" style="color:${color}"></i> TSS ${tssVal}</span>` : ''}
+              ${tssVal > 0 ? `<span class="meta-tag meta-tag-tss"><i class="fas fa-star" style="color:${color}"></i> TSS ${tssVal}</span>` : ''}
               ${durMin > 0 ? `<span class="meta-tag"><i class="fas fa-clock"></i> ${durMin} min</span>` : ''}
-              ${ifVal > 0 ? `<span class="meta-tag"><i class="fas fa-bolt" style="color:var(--primary)"></i> IF ${ifVal.toFixed(2)}</span>` : ''}
+              ${ifVal > 0 ? `<span class="meta-tag meta-tag-if"><i class="fas fa-bolt" style="color:var(--primary)"></i> IF ${ifVal.toFixed(2)}</span>` : ''}
               ${_cardWatts > 0 ? `<span class="meta-tag"><i class="fas fa-tachometer-alt"></i> ~${_cardWatts}W</span>` : ''}
                 
                 <div style="flex:1; min-width:10px"></div>
