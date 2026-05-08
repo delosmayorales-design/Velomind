@@ -1514,7 +1514,7 @@ function renderPlan(plan, athlete) {
               <div class="dn">${sess.day.substring(0, 3)}</div>
               <div class="dd">${sessDate.getDate()}</div>
             </div>
-            <div style="width:36px;height:36px;border-radius:50%;background:var(--bg-input);border:2px solid var(--border);flex-shrink:0"></div>
+            <div style="font-size:20px;flex-shrink:0">😴</div>
             <div>
               <div style="font-size:15px;font-weight:600;color:var(--text-secondary)">Descanso</div>
               <div class="session-wksummary" style="font-size:12px;color:var(--text-muted)">${sess.description}</div>
@@ -1735,7 +1735,7 @@ function renderPlan(plan, athlete) {
             <div class="dn">${sess.day.substring(0, 3)}</div>
             <div class="dd" style="color:${color}">${sessDate.getDate()}</div>
           </div>
-          <div style="width:36px;height:36px;border-radius:50%;background:${color}22;border:2px solid ${color};flex-shrink:0"></div>
+          <div style="font-size:22px;flex-shrink:0">${sess.emoji}</div>
           <div class="session-content">
               <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${color};margin-bottom:2px;display:flex;align-items:center;flex-wrap:wrap;gap:5px">
               ${sess.name || sess.type || 'Sesión'}
