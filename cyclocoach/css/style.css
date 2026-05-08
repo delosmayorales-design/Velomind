@@ -1310,6 +1310,8 @@ html.light-theme [style*="background-color: darkgreen" i], html.light-theme [sty
 html.light-theme .btn-full,
 html.light-theme .calc-btn,
 html.light-theme .btn-checkin,
+html.light-theme .dt-btn.save,
+html.light-theme .modal-btn-save,
 html.light-theme [style*="background: var(--primary)" i],
 html.light-theme [style*="background:var(--primary)" i],
 html.light-theme [style*="background-color: var(--primary)" i],
