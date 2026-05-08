@@ -1165,6 +1165,11 @@ html.light-theme .sidebar-logo { border-bottom-color: rgba(45,80,22,0.15) !impor
 html.light-theme .sidebar-logo img { filter: brightness(0.72) saturate(1.15); }
 html.light-theme .page-header { background: rgba(244,248,236,0.94) !important; border-bottom-color: rgba(0,0,0,0.08) !important; }
 
+html.light-theme {
+  background-color: #f1f5f9 !important;
+  color-scheme: light;
+}
+
 html.light-theme .card,
 html.light-theme .mod-card,
 html.light-theme .session-card-item,
@@ -1302,6 +1307,7 @@ html.light-theme [style*="background: green" i], html.light-theme [style*="backg
 html.light-theme [style*="background-color: green" i], html.light-theme [style*="background-color: green" i] *,
 html.light-theme [style*="background: darkgreen" i], html.light-theme [style*="background: darkgreen" i] *,
 html.light-theme [style*="background-color: darkgreen" i], html.light-theme [style*="background-color: darkgreen" i] *,
+html.light-theme .btn-full,
 html.light-theme .calc-btn,
 html.light-theme .btn-checkin,
 html.light-theme [style*="background: var(--primary)" i],
