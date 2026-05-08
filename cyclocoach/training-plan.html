@@ -368,31 +368,31 @@
     .zone-bar-fill  { height:100%; border-radius:3px; transition:width .6s; }
 
     /* ── Estado de Forma ─────────────────────────────────────── */
-    .fs-header { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
-    .fs-date { margin-left:auto; font-size:10px; color:var(--text-muted); font-weight:600;
+    .fs-header { display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap; }
+    .fs-date { margin-left:auto; font-size:9px; color:var(--text-muted); font-weight:600;
                text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; }
     .fs-pmc-grid {
       display:grid; grid-template-columns:1fr 1px 1fr 1px 1fr;
-      gap:0; margin-bottom:11px;
+      gap:0; margin-bottom:5px;
     }
     .fs-vdiv { background:rgba(255,255,255,.07); }
-    .fs-metric { display:flex; flex-direction:column; align-items:center; padding:4px 8px; gap:2px; }
-    .fs-val { font-size:26px; font-weight:800; font-family:'Space Grotesk',sans-serif; line-height:1; }
+    .fs-metric { display:flex; flex-direction:column; align-items:center; padding:2px 4px; gap:1px; }
+    .fs-val { font-size:18px; font-weight:800; font-family:'Space Grotesk',sans-serif; line-height:1; }
     .fs-name { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.7px;
                color:var(--text-muted); display:flex; gap:3px; align-items:center; }
     .fs-name span { font-weight:400; opacity:.65; }
-    .fs-bar-track { width:72px; height:3px; background:rgba(255,255,255,.08); border-radius:2px;
-                    overflow:hidden; margin:3px 0 1px; }
+    .fs-bar-track { width:44px; height:2px; background:rgba(255,255,255,.08); border-radius:2px;
+                    overflow:hidden; margin:2px 0 0; }
     .fs-bar-fill  { height:100%; border-radius:2px; transition:width .7s ease; }
-    .fs-period { font-size:9px; color:var(--text-muted); opacity:.55; }
-    .fs-tsb-chip { font-size:10px; font-weight:700; padding:2px 9px; border-radius:8px;
-                   margin:3px 0 1px; }
+    .fs-period { display:none; }
+    .fs-tsb-chip { font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px;
+                   margin:1px 0 0; }
     .fs-secondary {
-      display:flex; align-items:center; gap:14px; flex-wrap:wrap;
-      padding-top:9px; border-top:1px solid rgba(255,255,255,.06);
-      font-size:11px; color:var(--text-muted);
+      display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+      padding-top:5px; border-top:1px solid rgba(255,255,255,.06);
+      font-size:10px; color:var(--text-muted);
     }
-    .fs-secondary i { margin-right:3px; opacity:.7; }
+    .fs-secondary i { margin-right:2px; opacity:.7; }
 
 
     /* ── Helpers ─────────────────────────────────────────────── */
@@ -633,45 +633,46 @@
 
     /* ══ TOP DASHBOARD ════════════════════════════════════════════ */
     .top-dashboard {
-      display: flex; flex-direction: column; gap: 10px;
-      margin-bottom: 16px;
+      display: flex; flex-direction: column; gap: 8px;
+      margin-bottom: 14px;
     }
     .top-row-main {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      align-items: start;
     }
     .top-card {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: var(--radius-md); overflow: hidden;
     }
     .top-card-hd {
-      display: flex; align-items: center; gap: 7px;
-      padding: 8px 12px;
-      font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .5px; color: var(--text-secondary);
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--text-muted);
       border-bottom: 1px solid var(--border);
     }
     .top-card-toggle { cursor: pointer; user-select: none; }
     .top-card-toggle:hover { color: var(--text-primary); }
     .top-card-loading {
-      display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
     }
-    .top-card-body { padding: 12px 14px; }
+    .top-card-body { padding: 8px 10px; }
     .top-card-config-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
     }
     .top-card-config-grid .params-field label {
       font-size: 9px; font-weight: 700; color: var(--text-muted);
-      text-transform: uppercase; letter-spacing: .4px; display: block; margin-bottom: 3px;
+      text-transform: uppercase; letter-spacing: .4px; display: block; margin-bottom: 2px;
     }
     .top-card-config-grid .params-input {
-      height: 26px; font-size: 11px; padding: 0 8px; width: 100%;
+      height: 22px; font-size: 10px; padding: 0 6px; width: 100% !important;
     }
     .top-card-update-btn {
-      grid-column: span 2; height: 28px; font-size: 11px;
-      justify-content: center; width: 100%; margin-top: 2px;
+      grid-column: span 2; height: 24px; font-size: 10px;
+      justify-content: center; width: 100%; margin-top: 1px;
     }
     /* Estado de forma: quita padding extra heredado */
-    #form-state-content.top-card-body { padding: 10px 12px; }
+    #form-state-content.top-card-body { padding: 8px 10px; }
 
     /* Modo claro overrides para nuevos elementos */
     html[data-theme="light"] .top-card,
@@ -683,6 +684,10 @@
     html[data-theme="light"] .phb-save,
     html.light-theme .phb-save { color: #fff !important; }
 
+    /* Config: siempre visible, no colapsar */
+    #config-body { display: grid; }
+    #config-chev { display: none; }
+
     /* ══ RESPONSIVO MÓVIL (≤ 600px) ══════════════════════════════ */
     @media (max-width: 600px) {
       /* Header: etiquetas de texto ocultas, solo iconos */
@@ -691,19 +696,11 @@
       .header-subtitle { display: none; }
       .page-header { gap: 8px; }
 
-      /* Top dashboard: fila principal en 1 col */
+      /* Top dashboard: fila principal en 1 col en móvil pequeño */
       .top-row-main { grid-template-columns: 1fr; }
-
-      /* Config colapsada por defecto en móvil */
-      #config-body { display: none; }
-      #config-chev { transform: rotate(0deg); }
     }
 
     @media (min-width: 601px) {
-      /* Desktop/tablet: config siempre visible */
-      #config-body { display: grid !important; }
-      #config-chev { transform: rotate(180deg); }
-      .top-card-toggle { cursor: default; }
       .top-card-toggle .fa-chevron-down { display: none; }
     }
   </style>
@@ -793,7 +790,7 @@
     <!-- ══ DASHBOARD SUPERIOR ════════════════════════════════════ -->
     <div class="top-dashboard">
 
-      <!-- Fila 1: Estado de Forma + Diagnóstico Coach -->
+      <!-- Fila 1: Estado de Forma + Configuración Plan -->
       <div class="top-row-main">
 
         <!-- Estado de Forma (PMC) -->
@@ -803,56 +800,55 @@
           </div>
           <div id="form-state-loading" class="top-card-loading">
             <span class="loading-pulse">🧠</span>
-            <span style="font-size:11px;color:var(--text-muted)">Analizando...</span>
+            <span style="font-size:10px;color:var(--text-muted)">Analizando...</span>
           </div>
           <div id="form-state-content" class="hidden top-card-body"></div>
         </div>
 
-        <!-- Diagnóstico Coach -->
-        <div id="insights-section" class="top-card hidden">
+        <!-- Configuración Plan -->
+        <div class="top-card top-card-config">
           <div class="top-card-hd">
-            <i class="fas fa-lightbulb" style="color:#FFC800"></i> Diagnóstico Coach
+            <i class="fas fa-sliders-h" style="color:var(--primary)"></i> Configuración
           </div>
-          <div class="top-card-body" style="overflow-y:auto;max-height:180px">
-            <div id="insights-content"></div>
+          <div id="config-body" class="top-card-body top-card-config-grid">
+            <div class="params-field">
+              <label>Horas / sem</label>
+              <input type="number" id="adj-hours" class="params-input" value="8">
+            </div>
+            <div class="params-field">
+              <label>FTP (W)</label>
+              <input type="number" id="adj-ftp" class="params-input" placeholder="200">
+            </div>
+            <div class="params-field">
+              <label>Objetivo</label>
+              <select id="adj-goal" class="params-input params-select">
+                <option value="resistencia">Resistencia</option>
+                <option value="ftp">Subir FTP</option>
+                <option value="vo2max">VO2 Max</option>
+                <option value="sprint">Sprint</option>
+                <option value="gran_fondo">Gran Fondo</option>
+                <option value="perdida_peso">Bajar peso</option>
+              </select>
+            </div>
+            <div class="params-field">
+              <label>Peso (kg)</label>
+              <input type="number" id="adj-weight" class="params-input" placeholder="70">
+            </div>
+            <button class="params-apply-btn top-card-update-btn" onclick="applyAdjustments()">
+              <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
           </div>
         </div>
 
       </div>
 
-      <!-- Fila 2: Configuración Plan (colapsable en móvil) -->
-      <div class="top-card top-card-config">
-        <div class="top-card-hd top-card-toggle" onclick="toggleTopCard('config-body','config-chev')">
-          <i class="fas fa-sliders-h" style="color:var(--primary)"></i> Configuración Plan
-          <i class="fas fa-chevron-down" id="config-chev" style="font-size:10px;margin-left:auto;transition:transform .2s"></i>
+      <!-- Diagnóstico Coach (oculto hasta tener contenido) -->
+      <div id="insights-section" class="top-card hidden">
+        <div class="top-card-hd">
+          <i class="fas fa-lightbulb" style="color:#FFC800"></i> Diagnóstico Coach
         </div>
-        <div id="config-body" class="top-card-body top-card-config-grid">
-          <div class="params-field">
-            <label>Horas / semana</label>
-            <input type="number" id="adj-hours" class="params-input" value="8">
-          </div>
-          <div class="params-field">
-            <label>FTP (W)</label>
-            <input type="number" id="adj-ftp" class="params-input" placeholder="200">
-          </div>
-          <div class="params-field">
-            <label>Objetivo</label>
-            <select id="adj-goal" class="params-input params-select">
-              <option value="resistencia">Resistencia</option>
-              <option value="ftp">Subir FTP</option>
-              <option value="vo2max">VO2 Max</option>
-              <option value="sprint">Sprint / Velocidad</option>
-              <option value="gran_fondo">Gran Fondo / Marchas</option>
-              <option value="perdida_peso">Perder peso</option>
-            </select>
-          </div>
-          <div class="params-field">
-            <label>Peso (kg)</label>
-            <input type="number" id="adj-weight" class="params-input" placeholder="70">
-          </div>
-          <button class="params-apply-btn top-card-update-btn" onclick="applyAdjustments()">
-            <i class="fas fa-sync-alt"></i> Actualizar plan
-          </button>
+        <div class="top-card-body" style="overflow-y:auto;max-height:160px">
+          <div id="insights-content"></div>
         </div>
       </div>
 
