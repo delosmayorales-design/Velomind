@@ -871,6 +871,20 @@ select.form-input option {
   .page-body { padding: 16px; }
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
   .card-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+
+  /* Fix para solapamiento de botones "Volver" y "Continuar" en Android */
+  .modal-row, 
+  .form-actions, 
+  .profile-footer,
+  div[style*="display: flex"][style*="border-top"],
+  div[style*="display:flex"][style*="border-top"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    height: auto !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+  .btn-full, .modal-btn { width: 100% !important; margin: 0 !important; }
 }
 
 @media (max-width: 600px) {
@@ -1158,7 +1172,8 @@ html.light-theme .top-card,
 html.light-theme .ai-section,
 html.light-theme .coach-message,
 html.light-theme .weekly-highlight-card,
-html.light-theme .metric-card {
+html.light-theme .metric-card,
+html.light-theme .week-card { 
   background: var(--bg-card) !important;
   border-color: var(--border) !important;
   color: var(--text-primary) !important;
@@ -1169,7 +1184,8 @@ html.light-theme .wc-grid,
 html.light-theme .ai-card,
 html.light-theme .intensity-card,
 html.light-theme .interval-block,
-html.light-theme .bg-input-override { 
+html.light-theme .bg-input-override,
+html.light-theme .prefs-panel { 
   background: var(--bg-input) !important; 
   border-color: var(--border) !important;
   color: var(--text-primary) !important;

@@ -1926,23 +1926,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
       /* ── ARREGLO PARA INTEGRACIONES Y PANELES FLEXIBLES ── */
       /* Aplica a cualquier fila flex anidada en tarjetas para que no se escapen (Strava/Garmin) */
-      .card-body [style*="display: flex"],
-      .card-body [style*="display:flex"],
-      .card-body [style*="justify-content: space-between"],
+      .card [style*="display: flex"],
+      .card [style*="display:flex"],
+      .card [style*="justify-content: space-between"],
+      .modal-body [style*="display: flex"],
+      .modal-body [style*="display:flex"],
       .integration-card {
         flex-direction: column !important;
         align-items: stretch !important;
-        gap: 16px !important;
+        gap: 12px !important;
         text-align: center !important;
+        height: auto !important;
       }
       /* Forzar que todos los botones en las tarjetas móviles ocupen el 100% */
-      .card-body .btn, .card-body button, .card-body a.btn, .integration-card .btn {
+      .card .btn, .card button, .card a.btn, .integration-card .btn, .modal-body .btn {
         width: 100% !important;
         justify-content: center !important;
-        margin: 8px 0 0 0 !important;
+        margin: 0 0 8px 0 !important;
         white-space: normal !important;
         height: auto !important;
       }
+      .card .btn:last-child { margin-bottom: 0 !important; }
       .card-body svg, .card-body img { margin: 0 auto; max-width: 100%; }
 
       /* Arreglo de Tablas para que hagan scroll interno y no rompan la app */
