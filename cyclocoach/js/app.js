@@ -20,12 +20,12 @@ const ZONES_COGGAN = [
 /* Tipos de sesión con etiquetas */
 const WORKOUT_TYPES = {
   recovery:  { label: 'Recuperación Activa', color: '#6B7280', emoji: '😴' },
-  endurance: { label: 'Resistencia Z2',      color: '#3B82F6', emoji: '🔵' },
-  tempo:     { label: 'Tempo Z3',            color: '#10B981', emoji: '🟢' },
-  threshold: { label: 'Umbral (FTP)',         color: '#F59E0B', emoji: '🟡' },
-  vo2max:    { label: 'VO₂ Max',             color: '#EF4444', emoji: '🔴' },
-  sprint:    { label: 'Sprints / Poten.',    color: '#8B5CF6', emoji: '🟣' },
-  long:      { label: 'Fondón Z1-Z2',        color: '#00D4FF', emoji: '🔵' },
+  endurance: { label: 'Resistencia Z2',      color: '#3B82F6', emoji: '🚴' },
+  tempo:     { label: 'Tempo Z3',            color: '#10B981', emoji: '⚡' },
+  threshold: { label: 'Umbral (FTP)',         color: '#F59E0B', emoji: '🎯' },
+  vo2max:    { label: 'VO₂ Max',             color: '#EF4444', emoji: '🔥' },
+  sprint:    { label: 'Sprints / Poten.',    color: '#8B5CF6', emoji: '💨' },
+  long:      { label: 'Fondón Z1-Z2',        color: '#00D4FF', emoji: '🚴' },
   race:      { label: 'Activación Carrera',  color: '#EC4899', emoji: '🏁' },
   strength:  { label: 'Fuerza (Baja cadencia)',color:'#A855F7',emoji: '💪' },
 };

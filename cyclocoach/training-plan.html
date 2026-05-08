@@ -1421,6 +1421,12 @@ function renderPlan(plan, athlete) {
   const metrics = AppState.getCurrentMetrics();
   const ftp = athlete.ftp || 200;
 
+  // Normalizar emoji de cada sesión — sobrescribe lo que venga del plan guardado
+  (plan.sessions || []).forEach(s => {
+    if (s.isRest) { s.emoji = '😴'; return; }
+    s.emoji = (window.WORKOUT_TYPES && window.WORKOUT_TYPES[s.type]?.emoji) || '🚴';
+  });
+
   // Reconstruir intervalos con FTP actual para que vatios mostrados sean siempre consistentes
   if (window.TrainingPlanGenerator) {
     (plan.sessions || []).forEach(s => {
