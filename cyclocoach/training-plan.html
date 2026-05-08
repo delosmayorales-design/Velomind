@@ -1514,8 +1514,7 @@ function renderPlan(plan, athlete) {
               <div class="dn">${sess.day.substring(0, 3)}</div>
               <div class="dd">${sessDate.getDate()}</div>
             </div>
-            <div style="width:10px;height:10px;border-radius:50%;background:var(--border);flex-shrink:0;opacity:.85"></div>
-            <div style="font-size:20px">😴</div>
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--bg-input);border:2px solid var(--border);flex-shrink:0"></div>
             <div>
               <div style="font-size:15px;font-weight:600;color:var(--text-secondary)">Descanso</div>
               <div class="session-wksummary" style="font-size:12px;color:var(--text-muted)">${sess.description}</div>
@@ -1736,8 +1735,7 @@ function renderPlan(plan, athlete) {
             <div class="dn">${sess.day.substring(0, 3)}</div>
             <div class="dd" style="color:${color}">${sessDate.getDate()}</div>
           </div>
-            <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;opacity:.85"></div>
-          <div style="font-size:22px">${sess.emoji}</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:${color}22;border:2px solid ${color};flex-shrink:0"></div>
           <div class="session-content">
               <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${color};margin-bottom:2px;display:flex;align-items:center;flex-wrap:wrap;gap:5px">
               ${sess.name || sess.type || 'Sesión'}
@@ -2973,7 +2971,10 @@ function showSessionDetail(idx, showAlt = false) {
     const _mn = NutritionPlanner.generate(_ma, _mact);
     const _mwn = _mn.workoutNutrition;
     document.getElementById('modal-content').innerHTML = `
-      <div class="badge" style="background:${color}22;color:${color};margin-bottom:16px">${sess.type || ''} — ${sess.name || 'Sesión'}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">${sess.type || ''} — ${sess.name || 'Sesión'}</span>
+      </div>
       ${sess.advice ? `<p style="color:var(--text-primary);font-size:14px;font-weight:600;margin-bottom:8px">${sess.advice}</p>` : ''}
       <p style="color:var(--text-secondary);font-size:13px;line-height:1.5;margin-bottom:20px">${currentDesc}</p>
       <div class="session-metrics-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:20px">
