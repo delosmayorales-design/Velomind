@@ -1170,6 +1170,14 @@ html.light-theme {
   color-scheme: light;
 }
 
+html.light-theme .modal-overlay,
+html.light-theme #session-modal,
+html.light-theme #post-modal-overlay,
+html.light-theme #menus-modal {
+  background: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
 html.light-theme .card,
 html.light-theme .mod-card,
 html.light-theme .session-card-item,
@@ -1178,8 +1186,14 @@ html.light-theme .ai-section,
 html.light-theme .coach-message,
 html.light-theme .weekly-highlight-card,
 html.light-theme .metric-card,
-html.light-theme .week-card { 
-  background: var(--bg-card) !important;
+html.light-theme .week-card,
+html.light-theme .menu-card,
+html.light-theme .meal-card,
+html.light-theme .ac-panel,
+html.light-theme #session-modal > div,
+html.light-theme #post-modal-box,
+html.light-theme .modal-box { 
+  background: #ffffff !important;
   border-color: var(--border) !important;
   color: var(--text-primary) !important;
   box-shadow: var(--shadow-md) !important;
@@ -1190,8 +1204,13 @@ html.light-theme .ai-card,
 html.light-theme .intensity-card,
 html.light-theme .interval-block,
 html.light-theme .bg-input-override,
-html.light-theme .prefs-panel { 
-  background: var(--bg-input) !important; 
+html.light-theme .prefs-panel,
+html.light-theme .food-item,
+html.light-theme .menu-food-row,
+html.light-theme .menu-total-pill,
+html.light-theme .last-act-metric,
+html.light-theme .ac-block-card { 
+  background: #f8fafc !important; 
   border-color: var(--border) !important;
   color: var(--text-primary) !important;
 }
@@ -1233,8 +1252,14 @@ html.light-theme [style*="color: #FFC800" i], html.light-theme [style*="color:#F
 html.light-theme [style*="color: #EF4444" i], html.light-theme [style*="color:#EF4444" i], html.light-theme [style*="color: #ff4757" i], html.light-theme [style*="color:#ff4757" i], html.light-theme [style*="color: var(--danger)"], html.light-theme [style*="color:var(--danger)"] { color: #b91c1c !important; }
 html.light-theme [style*="color: #8B5CF6" i], html.light-theme [style*="color:#8B5CF6" i], html.light-theme [style*="color: #EC4899" i], html.light-theme [style*="color:#EC4899" i] { color: #6d28d9 !important; }
 
-html.light-theme [style*="background: var(--bg-input)"], html.light-theme [style*="background:var(--bg-input)"] { background: #f9fafb !important; }
-html.light-theme [style*="background: var(--bg-card)"], html.light-theme [style*="background:var(--bg-card)"] { background: #ffffff !important; }
+html.light-theme [style*="background: var(--bg-input)" i], html.light-theme [style*="background:var(--bg-input)" i] { background: #f8fafc !important; }
+html.light-theme [style*="background: var(--bg-card)" i], html.light-theme [style*="background:var(--bg-card)" i] { background: #ffffff !important; }
+
+/* Arreglo para bloques con fondo blanco-transparente que se ven grises en modo claro */
+html.light-theme [style*="background: rgba(255,255,255"] { background: rgba(0,0,0,0.04) !important; }
+html.light-theme [style*="background:rgba(255,255,255"] { background: rgba(0,0,0,0.04) !important; }
+html.light-theme [style*="background: rgba(255, 255, 255"] { background: rgba(0,0,0,0.04) !important; }
+html.light-theme .why-block, html.light-theme .meal-card { background: #f1f5f9 !important; border-color: rgba(0,0,0,0.08) !important; color: #334155 !important; }
 
 html.light-theme .form-input, html.light-theme select, html.light-theme textarea, html.light-theme .mechanic-textarea { background: #ffffff !important; color: #111827 !important; border-color: rgba(0,0,0,0.15) !important; }
 html.light-theme .tab-btn { color: #4b5563 !important; }
