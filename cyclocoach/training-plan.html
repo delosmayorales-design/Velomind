@@ -2744,8 +2744,8 @@ async function recalculateWeek(idx) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recalculando semana...';
   result.style.display = 'none';
 
-  try {
-    const res = await fetch(`${API}/coach/recalculate-week`, {
+    try { // `res` is the raw response from the backend.
+      const res = await fetch(`${API}/coach/recalculate-week`, { // Calls the backend to recalculate the week.
       method: 'POST', headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ plan: currentPlan, todayIdx: idx, feedback, allowToday: true })
     });
@@ -2753,7 +2753,7 @@ async function recalculateWeek(idx) {
     if (!res.ok) throw new Error(data.error || 'Error al recalcular la semana');
 
         // Reconstruir intervalos para que coincidan visualmente con el nuevo tiempo/tipo dictado por la IA
-        const ftp = AppState.athlete?.ftp || 200;
+        const ftp = AppState.athlete?.ftp || 200; // Get the current FTP from the athlete's state.
         data.newPlan.sessions.forEach(s => {
           if (s.isRest) {
             s.intervals = []; s.alt_intervals = [];
@@ -4159,4 +4159,3 @@ function closePostModal() {
 </div>
 </body>
 </html>
-
