@@ -1628,7 +1628,7 @@ const DashboardUI = {
           background: linear-gradient(145deg, #1a1d26 0%, #13151c 100%);
           border: 1px solid rgba(255, 107, 53, 0.3);
           border-radius: 16px;
-          padding: 16px;
+          padding: 14px;
           position: relative;
           overflow: hidden;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 107, 53, 0.05);
@@ -1657,15 +1657,15 @@ const DashboardUI = {
         }
         .weekly-tss { text-align: center; flex: 1; min-width: 120px; }
         .weekly-tss-val {
-          font-size: 2.8rem; font-family: 'Space Grotesk', sans-serif; font-weight: 800;
+          font-size: 2.4rem; font-family: 'Space Grotesk', sans-serif; font-weight: 800;
           background: linear-gradient(135deg, #FF6B35 0%, #FFB088 100%);
           -webkit-background-clip: text; -webkit-text-fill-color: transparent;
           line-height: 1; margin-bottom: 5px; text-shadow: 0px 4px 15px rgba(255, 107, 53, 0.3);
         }
-        .weekly-stats { display: flex; flex-direction: column; gap: 12px; flex: 2; min-width: 180px; }
+        .weekly-stats { display: flex; flex-direction: column; gap: 10px; flex: 2; min-width: 180px; }
         .weekly-stat-item {
           display: flex; align-items: center; gap: 15px; background: rgba(255, 255, 255, 0.03);
-          padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);
+          padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);
           transition: transform 0.2s ease, background 0.2s ease;
         }
         .weekly-stat-item:hover { transform: translateX(5px); background: rgba(255, 255, 255, 0.06); }
@@ -1700,7 +1700,7 @@ const DashboardUI = {
             </div>
           </div>
         </div>
-        <div style="margin-top: 22px;">
+        <div style="margin-top: 18px;">
           <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #9ca3af; margin-bottom: 8px; font-weight: 500;">
             <span>Progreso objetivo semanal</span>
             <span id="ui-week-progress-text" style="color: #00D4FF;">0%</span>
@@ -1897,12 +1897,15 @@ document.addEventListener('DOMContentLoaded', () => {
       /* Arreglo de Botones en Cabecera (Para que no se salgan de la pantalla) */
       .header-actions { 
         width: 100% !important; 
-        display: grid !important; 
-        grid-template-columns: 1fr 1fr; 
+        display: flex !important; 
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        padding-bottom: 4px;
         gap: 8px !important; 
       }
       .header-actions .btn, .header-actions button, .header-actions select { 
-        width: 100% !important; 
+        flex: 0 0 auto !important;
+        width: auto !important;
         margin: 0 !important;
         padding: 10px 8px !important; 
         font-size: 11px !important; 

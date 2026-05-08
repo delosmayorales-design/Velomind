@@ -69,7 +69,7 @@
 
   /* ── Layout ──────────────────────────────────────────────── */
   --sidebar-w: 240px;
-  --header-h:  52px;
+  --header-h:  48px;
 
   /* ── Transitions ─────────────────────────────────────────── */
   --transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
@@ -255,18 +255,18 @@ input, select, textarea, button { font-family: inherit; }
   background: rgba(5,7,10,0.92);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  padding: 8px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding: 6px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   z-index: 90;
-  gap: 16px;
+  gap: 12px;
 }
 
 .page-title h1 {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
@@ -281,7 +281,7 @@ input, select, textarea, button { font-family: inherit; }
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: wrap;
 }
 
@@ -296,25 +296,25 @@ input, select, textarea, button { font-family: inherit; }
   background: rgba(14, 17, 23, 0.6);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: 0 4px 20px -5px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   transition: var(--transition);
 }
 
 .card:hover {
-  border-color: rgba(158,214,43,0.3);
+  border-color: rgba(158,214,43,0.4);
   transform: translateY(-2px);
-  box-shadow: 0 12px 25px -10px rgba(0,0,0,0.6), 0 0 15px rgba(158,214,43,0.05);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.5);
 }
 
 .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  gap: 10px;
 }
 
 .card-title {
@@ -333,7 +333,7 @@ input, select, textarea, button { font-family: inherit; }
   margin-top: 2px;
 }
 
-.card-body { padding: 14px; }
+.card-body { padding: 12px; }
 
 /* ─── Metric Cards ─────────────────────────────────────────── */
 .metric-card {
@@ -392,8 +392,8 @@ input, select, textarea, button { font-family: inherit; }
   margin-bottom: 16px;
 }
 
-.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-bottom: 12px; }
-.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 12px; }
 
 .mb-6 { margin-bottom: 24px; }
 .hidden { display: none !important; }
@@ -403,8 +403,8 @@ input, select, textarea, button { font-family: inherit; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 7px 14px;
+  gap: 4px;
+  padding: 6px 12px;
   border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 600;
