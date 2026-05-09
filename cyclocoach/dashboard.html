@@ -799,17 +799,22 @@ function renderHero(athlete, metrics, plan) {
 
   if (metrics) {
     const { ctl, atl, tsb } = metrics;
-    if      (tsb > 5)   state = 'fresh';
-    else if (tsb > -15) state = 'optimal';
-    else                state = 'loaded';
+    // Umbrales alineados con TrainingPlanGenerator para consistencia entre páginas
+    if      (tsb > 20)  state = 'fresh';    // Forma óptima / pico
+    else if (tsb > 5)   state = 'fresh';    // Fresco y listo
+    else if (tsb > -10) state = 'optimal';  // En forma (equilibrio carga/fitness)
+    else if (tsb > -20) state = 'loaded';   // En carga / fatiga moderada
+    else                state = 'loaded';   // Fatigado / sobrecarga
 
     const tsbSign = tsb >= 0 ? '+' : '';
     chips.push(`💪 CTL ${ctl.toFixed(0)}`);
     chips.push(`⚡ ATL ${atl.toFixed(0)}`);
     chips.push(
-      state === 'fresh'   ? `✅ Fresco (TSB ${tsbSign}${tsb.toFixed(0)})` :
-      state === 'optimal' ? `🟡 Cargado (TSB ${tsbSign}${tsb.toFixed(0)})` :
-                            `🔴 Fatigado (TSB ${tsbSign}${tsb.toFixed(0)})`
+      tsb > 20  ? `🚀 Forma óptima (TSB ${tsbSign}${tsb.toFixed(0)})` :
+      tsb > 5   ? `✅ Fresco (TSB ${tsbSign}${tsb.toFixed(0)})` :
+      tsb > -10 ? `💪 En forma (TSB ${tsbSign}${tsb.toFixed(0)})` :
+      tsb > -20 ? `🟡 En carga (TSB ${tsbSign}${tsb.toFixed(0)})` :
+                  `🔴 Fatigado (TSB ${tsbSign}${tsb.toFixed(0)})`
     );
   }
 
@@ -824,13 +829,17 @@ function renderHero(athlete, metrics, plan) {
     chips.push(`<i class="fas ${fa.icon}" style="color:${fa.color}"></i> ${sess.name || wt.label || 'Sesión de hoy'}`);
   }
 
-  const stateLabel = {
-    fresh:   '<i class="fas fa-circle" style="color:#10b981;font-size:8px;vertical-align:middle"></i> Fresco',
-    optimal: '<i class="fas fa-circle" style="color:#f59e0b;font-size:8px;vertical-align:middle"></i> En carga',
-    loaded:  '<i class="fas fa-circle" style="color:#ef4444;font-size:8px;vertical-align:middle"></i> Fatigado',
-    rest:    '<i class="fas fa-bed" style="color:#6b7280"></i> Descanso',
-    no_data: '<i class="fas fa-bicycle" style="color:#9ED62B"></i> Empecemos',
-  }[state];
+  const tsbNow = metrics?.tsb ?? null;
+  const stateLabelText =
+    tsbNow === null       ? '<i class="fas fa-bicycle" style="color:#9ED62B"></i> Empecemos' :
+    tsbNow > 20           ? '<i class="fas fa-circle" style="color:#64a0ff;font-size:8px;vertical-align:middle"></i> Forma óptima' :
+    tsbNow > 5            ? '<i class="fas fa-circle" style="color:#10b981;font-size:8px;vertical-align:middle"></i> Fresco' :
+    tsbNow > -10          ? '<i class="fas fa-circle" style="color:#9ED62B;font-size:8px;vertical-align:middle"></i> En forma' :
+    tsbNow > -20          ? '<i class="fas fa-circle" style="color:#f59e0b;font-size:8px;vertical-align:middle"></i> En carga' :
+                            '<i class="fas fa-circle" style="color:#ef4444;font-size:8px;vertical-align:middle"></i> Fatigado';
+  const stateLabelRest   = '<i class="fas fa-bed" style="color:#6b7280"></i> Descanso';
+  const stateLabelNoData = '<i class="fas fa-bicycle" style="color:#9ED62B"></i> Empecemos';
+  const stateLabel = state === 'rest' ? stateLabelRest : state === 'no_data' ? stateLabelNoData : stateLabelText;
 
   const heroEl = document.getElementById('coach-hero');
   heroEl.className = `coach-hero ${state}`;
