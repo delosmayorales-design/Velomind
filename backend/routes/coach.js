@@ -2260,7 +2260,11 @@ Estado de forma: CTL=${ctl}, ATL=${atl}, TSB=${tsb} (${fs.label}).
 El atleta quiere hacer:
 "${description}"
 
-INSTRUCCIÓN PRINCIPAL: Genera un plan EXACTAMENTE para lo que el atleta describe. No uses datos de sesiones anteriores. Infiere duración, terreno y distancia SOLO desde la descripción.
+INSTRUCCIÓN PRINCIPAL: Genera un plan EXACTAMENTE para lo que el atleta describe. 
+REGLA MATEMÁTICA DE TIEMPO: Calcula la 'duracion_min' de forma realista. 
+- Para rutas llanas: usa una velocidad media de 30 km/h.
+- Para rutas de montaña: añade 1 minuto por cada 15 metros de desnivel positivo al tiempo del llano.
+- El tiempo resultante DEBE ser coherente con la distancia mencionada.
 
 REGLAS (aplica ÚNICAMENTE la que corresponda al tipo de salida descrito):
 - Montaña / puertos / desnivel / col: Z2-Z3 general, picos Z4-Z5 en subidas. TSS 150-350 según horas y desnivel. IF ~0.65-0.75.

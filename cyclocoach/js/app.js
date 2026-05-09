@@ -117,6 +117,19 @@ const Utils = {
     } else {
       window.location.href = 'dashboard.html';
     }
+  },
+
+  /** Estima el tiempo de ciclismo basado en distancia, desnivel y FTP relativo */
+  estimateCyclingTime(distM, elevM, ftp, weight) {
+    if (!distM) return 0;
+    const wkg = ftp / (weight || 70);
+    // Velocidad base según nivel (W/kg)
+    let baseSpeed = 18 + (wkg * 2); // Un ciclista de 4w/kg va a ~26km/h base
+    if (baseSpeed > 32) baseSpeed = 32;
+    
+    const flatTimeHrs = (distM / 1000) / baseSpeed;
+    const climbingPenaltyHrs = (elevM / 400) * (1 / Math.max(0.5, wkg * 0.4)); // Penalización por cada 400m de desnivel
+    return Math.round((flatTimeHrs + climbingPenaltyHrs) * 3600);
   }
 };
 
@@ -1255,9 +1268,26 @@ const FileParser = {
       };
     });
 
-    const date = points[0].time.toISOString().substring(0, 10);
-    const durationSec = (points[points.length - 1].time - points[0].time) / 1000;
+    const date = points[0].time.getTime() > 0 ? points[0].time.toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10);
     const distance = this._calcDistance(points);
+    const elevation = this._calcElevation(points);
+    
+    // 1. Intentar sacar tiempo real de los puntos
+    const startTime = points[0].time.getTime();
+    const endTime = points[points.length - 1].time.getTime();
+    let durationSec = (startTime > 0 && endTime > startTime) ? (endTime - startTime) / 1000 : 0;
+
+    // 2. Fallback: Si no hay tiempo en los puntos (es una ruta planificada), buscar en metadatos o estimar
+    if (durationSec <= 0) {
+      const metaTime = doc.querySelector('metadata > time, metadata duration');
+      if (metaTime) {
+        durationSec = parseFloat(metaTime.textContent) || 0;
+      }
+      if (durationSec <= 0) {
+        durationSec = Utils.estimateCyclingTime(distance, elevation, AppState.athlete?.ftp || 200, AppState.athlete?.weight || 70);
+      }
+    }
+
     const maxPowerCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
     const validPowers = points.filter(p => p.power != null && p.power >= 0 && p.power <= maxPowerCap);
     const avgPower = validPowers.length
@@ -1291,7 +1321,7 @@ const FileParser = {
       max_hr: maxHR || null,
       avg_cadence: avgCad,
       avg_speed: durationSec > 0 ? Math.round((distance / durationSec) * 36) / 10 : null,
-      elevation: this._calcElevation(points),
+      elevation: elevation,
       tss: 0,
       if_value: 0,
     };
