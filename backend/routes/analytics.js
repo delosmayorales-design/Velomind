@@ -211,4 +211,106 @@ router.get('/weekly', async (req, res) => {
   res.json({ weeks });
 });
 
+// ── Decoupling aeróbico (HR drift) ───────────────────────────────
+// El decoupling mide la relación potencia/FC a lo largo del tiempo.
+// Un factor de eficiencia (EF = NP/avgHR) que decrece indica fatiga acumulada.
+// Se analiza sobre sesiones Z2 para eliminar el efecto de la intensidad.
+router.get('/decoupling', async (req, res) => {
+  const uid = req.user.id;
+  const { data: user } = await supabase.from('users').select('ftp').eq('id', uid).single();
+  const ftp = user?.ftp || 200;
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90);
+
+  // Solo actividades con potencia Y frecuencia cardíaca registradas
+  const { data: acts } = await supabase.from('activities')
+    .select('date, np, avg_power, avg_hr, duration, tss, name')
+    .eq('user_id', uid)
+    .gte('date', cutoff.toISOString().split('T')[0])
+    .gt('avg_hr', 0)
+    .order('date', { ascending: true });
+
+  if (!acts || acts.length < 3) {
+    return res.json({ status: 'insuficiente', message: 'Se necesitan al menos 3 actividades con HR y potencia para calcular el decoupling.', data: [] });
+  }
+
+  // Filtrar sesiones en rango Z2 (56-75% FTP) para análisis de eficiencia aeróbica
+  // y sesiones con duración > 30 min para que la muestra sea válida
+  const z2Acts = acts.filter(a => {
+    const power = a.np || a.avg_power;
+    if (!power || !a.avg_hr || a.duration < 1800) return false;
+    const pct = power / ftp;
+    return pct >= 0.50 && pct <= 0.82; // incluir Z1-Z3 para tener suficientes datos
+  });
+
+  if (z2Acts.length < 3) {
+    return res.json({
+      status: 'pocos_datos_z2',
+      message: 'Pocas sesiones en Z2 con datos de HR y potencia. Sincroniza más actividades para un análisis preciso.',
+      data: [],
+      all_acts_analyzed: acts.length,
+    });
+  }
+
+  // Calcular efficiency factor (EF) para cada sesión: NP o avg_power / avgHR
+  // Un EF más alto = más potencia por latido = mejor eficiencia aeróbica
+  const efData = z2Acts.map(a => ({
+    date:     a.date,
+    name:     a.name || 'Sesión sin nombre',
+    ef:       Math.round(((a.np || a.avg_power) / a.avg_hr) * 100) / 100,
+    power:    Math.round(a.np || a.avg_power),
+    hr:       Math.round(a.avg_hr),
+    pctFTP:   Math.round((a.np || a.avg_power) / ftp * 100),
+    duration: Math.round(a.duration / 60),
+    tss:      a.tss || 0,
+  }));
+
+  // Tendencia: comparar EF primeras 3 sesiones vs últimas 3 sesiones
+  const efValues = efData.map(d => d.ef);
+  const avgEFEarly = efValues.slice(0, Math.ceil(efValues.length / 2))
+    .reduce((s, v) => s + v, 0) / Math.ceil(efValues.length / 2);
+  const avgEFRecent = efValues.slice(-Math.ceil(efValues.length / 2))
+    .reduce((s, v) => s + v, 0) / Math.ceil(efValues.length / 2);
+
+  const efTrend = avgEFEarly > 0
+    ? Math.round((avgEFRecent - avgEFEarly) / avgEFEarly * 100)
+    : 0;
+
+  // Calcular decoupling como variación porcentual del EF
+  // Un decoupling negativo (EF bajando) es la señal de alarma
+  let status, message, recommendation;
+  const currentEF = efData[efData.length - 1]?.ef || 0;
+
+  if (efTrend > 5) {
+    status = 'mejorando';
+    message = `Tu eficiencia aeróbica mejoró un +${efTrend}% en las últimas ${z2Acts.length} sesiones comparables.`;
+    recommendation = 'Excelente progreso. Puedes empezar a añadir más sesiones de calidad (umbral, VO₂Max) sobre esta base aeróbica.';
+  } else if (efTrend >= -5) {
+    status = 'estable';
+    message = `Tu eficiencia aeróbica está estable (variación: ${efTrend > 0 ? '+' : ''}${efTrend}%).`;
+    recommendation = 'Consistencia mantenida. Continúa con el plan actual.';
+  } else if (efTrend >= -15) {
+    status = 'atencion';
+    message = `Tu eficiencia aeróbica bajó un ${efTrend}% en las últimas sesiones. Posible señal de fatiga acumulada.`;
+    recommendation = 'Considera reducir la carga esta semana y priorizar el sueño. Monitorea la variación antes de añadir más intensidad.';
+  } else {
+    status = 'alerta';
+    message = `Caída significativa del ${efTrend}% en la eficiencia aeróbica. Señal de sobrecarga o fatiga crónica.`;
+    recommendation = 'Semana de recuperación recomendada. Revisa también tus datos de sueño y estrés. Evita sesiones de alta intensidad hasta que la tendencia se estabilice.';
+  }
+
+  res.json({
+    status,
+    message,
+    recommendation,
+    ef_trend_pct: efTrend,
+    ef_current: currentEF,
+    ef_early_avg: Math.round(avgEFEarly * 100) / 100,
+    ef_recent_avg: Math.round(avgEFRecent * 100) / 100,
+    sessions_analyzed: z2Acts.length,
+    data: efData,
+  });
+});
+
 module.exports = router;

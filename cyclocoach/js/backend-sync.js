@@ -274,6 +274,16 @@ function isLegacyDemoActivity(a) {
     }
   }
 
+  /** Carga el análisis de decoupling aeróbico (HR drift vs potencia) */
+  async function loadDecoupling() {
+    try {
+      return await apiFetch(`/analytics/decoupling?_t=${Date.now()}`);
+    } catch (e) {
+      console.warn('[BackendSync] loadDecoupling offline:', e.message);
+      return null;
+    }
+  }
+
   // ── Sincronización con providers (Strava / Garmin) ───────────
 
   /** Sincroniza actividades de Strava vía backend */
@@ -473,6 +483,9 @@ function isLegacyDemoActivity(a) {
   /**
    * Carga todos los datos del usuario desde el backend.
    * Llamar al inicio de cada página protegida.
+   * IMPORTANTE: loadPMC debe ejecutarse DESPUÉS de loadActivities para tener
+   * el PMC del backend como fuente de verdad (incluye actividades de todos los
+   * dispositivos y el cálculo correcto con decaimiento día a día).
    */
   async function loadAll() {
     await Promise.allSettled([
@@ -481,6 +494,9 @@ function isLegacyDemoActivity(a) {
       loadWeightLog(),
       loadGarage(),
     ]);
+    // PMC del backend sobreescribe el calculado localmente por el frontend.
+    // Si el backend no responde, AppState.pmcData mantiene el cálculo local como fallback.
+    await loadPMC(120);
   }
 
   // ── API pública ───────────────────────────────────────────────
@@ -496,6 +512,7 @@ function isLegacyDemoActivity(a) {
     loadSummary,
     loadRecords,
     loadPowerCurve,
+    loadDecoupling,
     syncStrava,
     syncGarmin,
     autoSyncIfNeeded,

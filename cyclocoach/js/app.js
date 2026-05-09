@@ -278,65 +278,237 @@ const TrainingPlanGenerator = {
     const exp    = athlete.experience || 'intermedio';
     const days_per_week = Math.max(1, Math.min(7, athlete.days_per_week || 5));
 
-    // Determinar fase (si hay fecha objetivo)
-    const phase = this._detectPhase(athlete.event_date);
-
-    // TSB/CTL actuales
-    const pmcArr = PMC.compute(activities, 120);
+    // TSB/CTL actuales — usar pmcData del AppState (fuente backend) si está disponible
+    // Si no, calcular localmente como fallback offline
+    const pmcArr = (AppState.pmcData && AppState.pmcData.length >= 7)
+      ? AppState.pmcData
+      : PMC.compute(activities, 120);
     const current = pmcArr.length ? pmcArr[pmcArr.length - 1] : { ctl: 30, atl: 30, tsb: 0 };
     const { ctl, atl, tsb } = current;
 
-    // TSS objetivo semanal según horas y experiencia
+    // ── Fase unificada (combina fecha de evento + ramp rate CTL) ──
+    const effectivePhase = this._detectPhase(athlete.event_date, pmcArr, tsb);
+
+    // ── Adherencia real: compara TSS completado vs esperado en últimas 4 semanas ──
+    const adherence = this._calculateAdherence(activities, hours);
+
+    // ── Ciclo 3:1 — detectar semana del microciclo desde historial TSS ──
+    const cycleInfo = this._detectCycleWeek(activities);
+
+    // ── TSS objetivo semanal ──
     const baseIF = { principiante: 0.60, intermedio: 0.68, avanzado: 0.74 }[exp] || 0.68;
     let targetTSS = Math.round(hours * 3600 * Math.pow(baseIF, 2) / 36);
     if (goal === 'perdida_peso') targetTSS = Math.round(targetTSS * 0.9);
 
-    // ── Ajuste automático de carga según TSB ──────────────────────
+    // Aplicar multiplicador de ciclo (semana 4 = recuperación)
+    targetTSS = Math.round(targetTSS * cycleInfo.loadMultiplier);
+
+    // Ajustar por adherencia real (baja adherencia → reducir carga para ser alcanzable)
+    if (adherence < 0.6) {
+      targetTSS = Math.round(targetTSS * 0.80);
+    } else if (adherence < 0.75) {
+      targetTSS = Math.round(targetTSS * 0.90);
+    }
+
+    // ── Macrociclo: contexto de posición hacia el evento ──
+    const macrocycle = this._getMacrocycleContext(athlete.event_date, ctl, ftp, weight);
+
+    // Si el macrociclo recomienda una carga específica, usarla como referencia
+    if (macrocycle.weeklyTSSTarget && effectivePhase !== 'recovery' && tsb > -20) {
+      const macroTSS = macrocycle.weeklyTSSTarget;
+      // Tomar el que sea más conservador entre el calculado y el del macrociclo
+      // (evitar saltos bruscos de carga)
+      const maxAllowedJump = targetTSS * 1.10; // máximo +10% respecto al calculado por perfil
+      targetTSS = Math.min(maxAllowedJump, Math.max(targetTSS * 0.85, macroTSS));
+      targetTSS = Math.round(targetTSS);
+    }
+
+    // ── Ajuste automático de carga según TSB (override final de seguridad) ──
     let adaptation = null;
-    let effectivePhase = phase;
     const tsbRound = Math.round(tsb);
 
     if (tsb < -30) {
-      effectivePhase = 'recovery';
       targetTSS = Math.round(targetTSS * 0.60);
       adaptation = { level: 'danger', icon: '🛑', title: 'Semana de recuperación forzada',
-        text: `Tu TSB actual es ${tsbRound}. Estás en zona de sobreentrenamiento. El plan ha sido sustituido por una semana de recuperación activa para proteger tu salud y evitar lesiones.` };
+        text: `TSB actual: ${tsbRound}. Zona de sobreentrenamiento. Plan sustituido por semana de recuperación activa.` };
     } else if (tsb < -20) {
       targetTSS = Math.round(targetTSS * 0.75);
       adaptation = { level: 'warning', icon: '⚠️', title: 'Plan aligerado — Fatiga alta',
-        text: `Tu TSB actual es ${tsbRound}. Tienes fatiga acumulada alta. El volumen semanal se ha reducido un 25% y las sesiones más duras se han suavizado. Prioriza el sueño y la nutrición.` };
+        text: `TSB: ${tsbRound}. Volumen reducido un 25%. Prioriza el sueño y la nutrición.` };
     } else if (tsb < -10) {
       targetTSS = Math.round(targetTSS * 0.85);
       adaptation = { level: 'caution', icon: '⚖️', title: 'Plan ajustado — Fatiga moderada',
-        text: `Tu TSB actual es ${tsbRound}. Hay fatiga moderada. El volumen se ha reducido un 15% para que puedas asimilar bien la carga sin acumular más estrés.` };
+        text: `TSB: ${tsbRound}. Volumen reducido un 15% para asimilar carga sin acumular más estrés.` };
+    } else if (cycleInfo.isRecoveryWeek) {
+      adaptation = { level: 'info', icon: '🔄', title: `Semana ${cycleInfo.weekInCycle} — Recuperación programada`,
+        text: `Llevas ${cycleInfo.weekInCycle - 1} semanas de carga progresiva. Esta semana es de recuperación activa (carga −25%) para que el cuerpo asimile las adaptaciones. La próxima semana retomará la carga completa.` };
     } else if (tsb >= -10 && tsb <= 5) {
-      adaptation = { level: 'ok', icon: '💪', title: 'En forma — Plan estándar',
-        text: `Tu TSB actual es ${tsbRound}. Estás en equilibrio entre fitness y fatiga. El plan sigue la carga planificada para tu objetivo.` };
+      adaptation = { level: 'ok', icon: '💪', title: `Semana ${cycleInfo.weekInCycle} — En forma`,
+        text: `TSB: ${tsbRound}. Equilibrio entre fitness y fatiga. ${macrocycle.blockLabel ? `Bloque actual: ${macrocycle.blockLabel}.` : 'Plan estándar.'}` };
     } else if (tsb > 5 && tsb <= 20) {
-      adaptation = { level: 'good', icon: '✅', title: 'Fresco y listo — Plan completo',
-        text: `Tu TSB actual es ${tsbRound}. Estás fresco con buen nivel de fitness. El plan incluye la carga completa para aprovechar tu estado de forma.` };
+      adaptation = { level: 'good', icon: '✅', title: `Semana ${cycleInfo.weekInCycle} — Fresco y listo`,
+        text: `TSB: ${tsbRound}. Fresco con buen fitness. ${macrocycle.blockLabel ? `Bloque: ${macrocycle.blockLabel}.` : ''} Carga completa planificada.` };
     } else if (tsb > 20) {
-      adaptation = { level: 'peak', icon: '🚀', title: 'Forma óptima — Plan de calidad',
-        text: `Tu TSB actual es ${tsbRound}. Estás en pico de forma. El plan prioriza sesiones de calidad para convertir esa frescura en rendimiento.` };
+      adaptation = { level: 'peak', icon: '🚀', title: 'Forma óptima — Sesiones de calidad',
+        text: `TSB: ${tsbRound}. Pico de forma. Plan prioriza calidad sobre volumen.` };
     }
 
-    // Consejo según TSB
+    if (adherence < 0.65 && !adaptation) {
+      adaptation = { level: 'caution', icon: '📉', title: 'Adherencia baja — Plan ajustado',
+        text: `Has completado el ${Math.round(adherence * 100)}% de la carga esperada en las últimas 4 semanas. El plan se ha reducido para hacerlo más alcanzable. Cuando la consistencia mejore, la carga aumentará automáticamente.` };
+    }
+
     const advice = this._getAdvice(tsb, ctl, effectivePhase);
+    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week, athlete.segments);
 
-    // Sesiones según goal y phase (con carga ya ajustada)
-    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week);
-
-    return { phase: effectivePhase, targetTSS, advice, adaptation, sessions, ctl: Math.round(ctl), tsb: tsbRound };
+    return {
+      phase: effectivePhase,
+      targetTSS,
+      advice,
+      adaptation,
+      sessions,
+      ctl: Math.round(ctl),
+      tsb: tsbRound,
+      cycleInfo,
+      macrocycle,
+      adherence: Math.round(adherence * 100),
+    };
   },
 
-  _detectPhase(eventDate) {
-    if (!eventDate) return 'base';
-    const daysUntil = Math.floor((new Date(eventDate) - new Date()) / 86400000);
-    if (daysUntil < 0)   return 'recovery';
-    if (daysUntil < 7)   return 'race';
-    if (daysUntil < 21)  return 'peak';
-    if (daysUntil < 70)  return 'build';
+  // ── Detección de fase unificada ──────────────────────────────────
+  // Combina fecha de evento + ramp rate CTL + TSB para una fase coherente
+  _detectPhase(eventDate, pmcArr, tsb) {
+    // Override crítico: sobreentrenamiento o fatiga extrema
+    if (tsb < -30) return 'recovery';
+
+    // Con fecha de evento configurada
+    if (eventDate) {
+      const daysUntil = Math.floor((new Date(eventDate) - new Date()) / 86400000);
+      if (daysUntil < 0)  return 'recovery'; // evento pasado → recuperación post-evento
+      if (daysUntil < 7)  return 'race';
+      if (daysUntil < 21) return 'peak';
+      if (daysUntil < 70) return 'build';
+      // > 70 días: caer al análisis de ramp rate
+    }
+
+    // Sin evento o evento muy lejano: usar tendencia CTL (ramp rate últimas 2 semanas)
+    if (pmcArr && pmcArr.length >= 14) {
+      const recent = pmcArr.slice(-7).reduce((s, p) => s + p.ctl, 0) / 7;
+      const before = pmcArr.slice(-14, -7).reduce((s, p) => s + p.ctl, 0) / 7;
+      const ramp = recent - before; // CTL ganado/perdido por semana
+
+      if (ramp > 3)                        return 'build';    // CTL subiendo activamente
+      if (ramp < -3 && tsb > -15)          return 'peak';     // CTL bajando, TSB positivo → tapering
+      if (ramp < -3 && tsb <= -15)         return 'recovery'; // CTL bajando, muy fatigado
+    }
+
     return 'base';
+  },
+
+  // ── Adherencia real de las últimas 4 semanas ────────────────────
+  _calculateAdherence(activities, weeklyHoursTarget) {
+    const now = new Date();
+    const fourWeeksAgo = new Date(now.getTime() - 28 * 86400000);
+    const recentActs = activities.filter(a => {
+      const d = new Date((a.date || '1970-01-01') + 'T00:00:00');
+      return d >= fourWeeksAgo && d <= now && (a.tss || 0) > 0;
+    });
+
+    const actualTSS4w = recentActs.reduce((s, a) => s + (a.tss || 0), 0);
+
+    // TSS esperado en 4 semanas basado en el perfil del atleta
+    const expectedWeeklyTSS = Math.round(weeklyHoursTarget * 3600 * 0.68 * 0.68 / 36);
+    const expectedTSS4w = expectedWeeklyTSS * 4;
+
+    if (expectedTSS4w === 0) return 1.0;
+    return Math.min(1.20, actualTSS4w / expectedTSS4w);
+  },
+
+  // ── Ciclo 3:1: detectar semana del microciclo desde historial ────
+  _detectCycleWeek(activities) {
+    const now = new Date();
+    // TSS de cada una de las últimas 4 semanas
+    const weekTSS = [];
+    for (let w = 0; w < 4; w++) {
+      const end   = new Date(now.getTime() - w * 7 * 86400000);
+      const start = new Date(now.getTime() - (w + 1) * 7 * 86400000);
+      const tss = activities
+        .filter(a => {
+          const d = new Date((a.date || '1970-01-01') + 'T00:00:00');
+          return d >= start && d < end;
+        })
+        .reduce((s, a) => s + (a.tss || 0), 0);
+      weekTSS.unshift(tss); // índice 0 = hace 4 semanas, índice 3 = semana actual
+    }
+
+    // Determinar si la semana pasada fue de recuperación
+    const prevWeek = weekTSS[2]; // semana pasada
+    const avg3w = (weekTSS[0] + weekTSS[1] + weekTSS[2]) / 3;
+    const lastWasRecovery = avg3w > 10 && prevWeek < avg3w * 0.55;
+
+    // Contar semanas consecutivas de carga (sin recuperación)
+    let consecLoadWeeks = 0;
+    for (let i = 3; i >= 0; i--) {
+      const ref = i > 0 ? weekTSS[i - 1] : weekTSS[0] * 0.9;
+      if (weekTSS[i] >= ref * 0.70) consecLoadWeeks++;
+      else break;
+    }
+
+    // Semana en el ciclo
+    let weekInCycle, loadMultiplier, isRecoveryWeek;
+    if (lastWasRecovery) {
+      weekInCycle = 1; loadMultiplier = 1.00; isRecoveryWeek = false;
+    } else if (consecLoadWeeks >= 3) {
+      // 3 semanas de carga → esta semana es recuperación
+      weekInCycle = 4; loadMultiplier = 0.75; isRecoveryWeek = true;
+    } else if (consecLoadWeeks === 2) {
+      weekInCycle = 3; loadMultiplier = 1.10; isRecoveryWeek = false;
+    } else if (consecLoadWeeks === 1) {
+      weekInCycle = 2; loadMultiplier = 1.05; isRecoveryWeek = false;
+    } else {
+      weekInCycle = 1; loadMultiplier = 1.00; isRecoveryWeek = false;
+    }
+
+    return { weekInCycle, loadMultiplier, isRecoveryWeek, weeklyTSS: weekTSS };
+  },
+
+  // ── Macrociclo: contexto de posición hacia el evento ────────────
+  _getMacrocycleContext(eventDate, currentCTL, ftp, weight) {
+    if (!eventDate) return { blockLabel: null, weeklyTSSTarget: null, weeksToEvent: null };
+
+    const daysToEvent = Math.floor((new Date(eventDate) - new Date()) / 86400000);
+    if (daysToEvent < 0) return { blockLabel: 'Post-evento — Recuperación', weeklyTSSTarget: null, weeksToEvent: 0 };
+
+    const weeksToEvent = Math.ceil(daysToEvent / 7);
+    const wkg = ftp / (weight || 70);
+
+    // CTL objetivo en el evento: estimado según W/kg y objetivo
+    // Un CTL de ~65-85 es típico para competidores recreativos, >85 para avanzados
+    const targetCTLAtEvent = wkg < 2.5 ? 45 : wkg < 3.5 ? 65 : wkg < 4.5 ? 85 : 100;
+    const ctlGap = Math.max(0, targetCTLAtEvent - currentCTL);
+
+    // Ramp rate necesario para llegar al objetivo (máximo recomendado: 5-6 CTL/semana)
+    const maxRamp = 5;
+    const neededRamp = weeksToEvent > 0 ? ctlGap / weeksToEvent : 0;
+    const feasibleRamp = Math.min(neededRamp, maxRamp);
+
+    // Bloque actual basado en semanas al evento
+    let blockLabel, blockWeeks;
+    if (weeksToEvent <= 1)       { blockLabel = 'Semana de carrera';      blockWeeks = 1; }
+    else if (weeksToEvent <= 3)  { blockLabel = 'Taper — Puesta a punto'; blockWeeks = weeksToEvent; }
+    else if (weeksToEvent <= 8)  { blockLabel = 'Bloque Build';           blockWeeks = weeksToEvent - 3; }
+    else if (weeksToEvent <= 16) { blockLabel = 'Bloque Build (inicio)';  blockWeeks = weeksToEvent - 8; }
+    else                         { blockLabel = 'Bloque Base';            blockWeeks = weeksToEvent - 8; }
+
+    // TSS objetivo esta semana basado en ramp deseado
+    // CTL_next = CTL_current + (weeklyTSS/7 - CTL_current) × (7/42)
+    // → weeklyTSS = (CTL_current + feasibleRamp) × 42 - CTL_current × 41
+    // Simplificado: weeklyTSS ≈ (CTL_current + feasibleRamp) × 7
+    const weeklyTSSTarget = weeksToEvent > 3
+      ? Math.round((currentCTL + feasibleRamp) * 7)
+      : null; // en taper: no prescribir carga del macrociclo
+
+    return { blockLabel, blockWeeks, weeksToEvent, targetCTLAtEvent, currentCTL: Math.round(currentCTL), weeklyTSSTarget };
   },
 
   _getAdvice(tsb, ctl, phase) {
@@ -377,7 +549,21 @@ const TrainingPlanGenerator = {
     return parts.join(' + ');
   },
 
-  _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week = 5) {
+  _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week = 5, userSegments = null) {
+    // Cargar segmentos configurados por el usuario (o usar los por defecto hardcoded como fallback)
+    if (userSegments && Array.isArray(userSegments) && userSegments.length > 0) {
+      this._activeSegments = userSegments.map(s => ({
+        name: s.name || 'Subida local',
+        km: Number(s.km) || 2,
+        grad: Number(s.grad) || 5,
+        // Estimar tiempos a partir de la geometría del segmento
+        // Velocidad típica al umbral en subida ≈ 18 km/h en 5%; ajustar por pendiente
+        minThresh: Math.round((s.km / Math.max(12, 22 - s.grad * 0.8)) * 60),
+        minVO2:    Math.round((s.km / Math.max(14, 24 - s.grad * 0.8)) * 60),
+      }));
+    } else {
+      this._activeSegments = this._LOCAL_SEGMENTS;
+    }
     // ── Selección de plantilla según goal y phase ──
     let templates = this._getTemplate(goal, phase, exp, tsb);
 
@@ -452,7 +638,8 @@ const TrainingPlanGenerator = {
       // ── Consejo de terreno con segmentos locales ──
       let terrainAdvice = '';
       if (t.type === 'sprint') {
-        const seg = this._LOCAL_SEGMENTS[0];
+        const segs = this._activeSegments || this._LOCAL_SEGMENTS;
+        const seg = segs[0] || { name: 'una subida corta', km: 1, grad: 5 };
         terrainAdvice = ` ⚡ Terreno ideal: ${seg.name} (${seg.km} km / ${seg.grad}%) — arranca en la entrada y da todo.`;
       } else if (t.type === 'vo2max') {
         const repDur = intervals.find(iv => iv.label.includes('VO₂') || iv.label.includes('Micro'))?.dur;
@@ -667,9 +854,13 @@ const TrainingPlanGenerator = {
     { name: 'Los Chozos',  km: 3.9, grad: 4,   minThresh: 9,   minVO2: 6.5 },
   ],
 
-  /** Devuelve el segmento cuya duración estimada más se acerca a targetMin */
+  /** Devuelve el segmento configurado cuya duración estimada más se acerca a targetMin */
   _pickSegment(targetMin, intensityKey = 'minThresh') {
-    const segs = this._LOCAL_SEGMENTS;
+    const segs = this._activeSegments || this._LOCAL_SEGMENTS;
+    if (!segs || segs.length === 0) {
+      // Sin segmentos configurados: devolver descripción genérica
+      return { name: 'una subida local', km: 2, grad: 5, minThresh: targetMin, minVO2: targetMin };
+    }
     return segs.reduce((best, s) =>
       Math.abs(s[intensityKey] - targetMin) < Math.abs(best[intensityKey] - targetMin) ? s : best
     );
@@ -817,7 +1008,8 @@ const TrainingPlanGenerator = {
       }
 
       case 'sprint': {
-        const sprintSeg = this._LOCAL_SEGMENTS[0]; // El Angel: corta y empinada
+        const segsArr = this._activeSegments || this._LOCAL_SEGMENTS;
+        const sprintSeg = segsArr[0] || { name: 'una subida corta', km: 1, grad: 5, minThresh: 3.5, minVO2: 2.5 };
         intervals.push({ label: 'Calentamiento extenso', dur: `${warm} min`, watts: `${pct(0.55)}–${pct(0.70)} W`, rpm: '88-95 rpm', desc: 'Activación completa.' });
         if (variant === 'main') {
           let sprintReps = Math.floor(main / 3);

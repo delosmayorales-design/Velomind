@@ -90,23 +90,38 @@ router.get('/recommendations', async (req, res) => {
 
   let latest = pmc[pmc.length - 1];
 
-  // Fallback: Si la tabla PMC está vacía o tiene valores a 0, calculamos el estado actual al vuelo usando las actividades
+  // Fallback: Si la tabla PMC está vacía o tiene valores a 0, calculamos el estado actual al vuelo
+  // CRÍTICO: la fórmula EWMA debe iterar DÍA A DÍA (incluyendo días sin entrenamiento con TSS=0)
+  // para que el decaimiento de CTL/ATL sea correcto. Iterar solo por actividades produce CTL inflado.
   if ((!latest || (latest.ctl === 0 && latest.atl === 0)) && acts && acts.length > 0) {
-    let c_ctl = 0, c_atl = 0;
-    // Ordenamos cronológicamente para el cálculo de la media móvil
+    // Construir mapa fecha → TSS total del día
+    const tssByDay = {};
     const sorted = [...acts].sort((a, b) => new Date(a.date) - new Date(b.date));
     sorted.forEach(a => {
+      const dateKey = String(a.date || '').substring(0, 10);
+      if (!dateKey) return;
       let t = Number(a.tss) || 0;
-      // Si el TSS es 0, intentamos estimarlo si hay potencia y duración
       if (t === 0 && ftp && a.duration) {
         const power = Number(a.np || a.avg_power || 0);
         if (power > 0) t = calcTSS(power, a.duration, ftp);
       }
-      // Fórmulas de TrainingPeaks (CTL: 42 días, ATL: 7 días)
-      c_ctl = c_ctl + (t - c_ctl) / 42;
-      c_atl = c_atl + (t - c_atl) / 7;
+      tssByDay[dateKey] = (tssByDay[dateKey] || 0) + t;
     });
-    latest = { ctl: c_ctl, atl: c_atl, tsb: c_ctl - c_atl };
+
+    const allDates = Object.keys(tssByDay).sort();
+    if (allDates.length > 0) {
+      let c_ctl = 0, c_atl = 0;
+      const startDate = new Date(allDates[0]);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().substring(0, 10);
+        const t = tssByDay[key] || 0;
+        c_ctl = c_ctl + (t - c_ctl) / 42;
+        c_atl = c_atl + (t - c_atl) / 7;
+      }
+      latest = { ctl: c_ctl, atl: c_atl, tsb: c_ctl - c_atl };
+    }
   }
 
   if (!latest) latest = { ctl: 0, atl: 0, tsb: 0 };
@@ -134,18 +149,32 @@ router.get('/recommendations', async (req, res) => {
     ? Math.round(acts.filter(a => a.np > 0).reduce((s, a) => s + a.np, 0) / acts.filter(a => a.np > 0).length)
     : 0;
 
-  // Distribución de zonas ponderada por duración (minutos en cada zona)
+  // Distribución de zonas: usa zone_times reales cuando existen (datos de streams Strava/Garmin)
+  // Fallback: clasifica por avg_power de la actividad completa (aproximación menos precisa)
   const zoneMins = [0, 0, 0, 0, 0, 0, 0, 0]; // índice 1-7
+  let realZoneCount = 0, estimZoneCount = 0;
   acts.forEach(a => {
-    const power = Number(a.np || a.avg_power || 0);
-    const dur   = Number(a.duration || 0) / 60; // minutos
-    if (power > 0 && ftp && dur > 0) {
-      const z = powerZone(power, ftp);
-      if (z >= 1 && z <= 7) zoneMins[z] += dur;
+    if (a.zone_times) {
+      // Datos reales segundo a segundo — distribución exacta por zona
+      const zt = typeof a.zone_times === 'string' ? JSON.parse(a.zone_times) : a.zone_times;
+      for (let i = 1; i <= 7; i++) {
+        zoneMins[i] += (zt[`z${i}`] || 0) / 60; // convertir segundos a minutos
+      }
+      realZoneCount++;
+    } else {
+      // Fallback: toda la duración va a la zona del avg_power (impreciso pero mejor que nada)
+      const power = Number(a.np || a.avg_power || 0);
+      const dur   = Number(a.duration || 0) / 60;
+      if (power > 0 && ftp && dur > 0) {
+        const z = powerZone(power, ftp);
+        if (z >= 1 && z <= 7) zoneMins[z] += dur;
+        estimZoneCount++;
+      }
     }
   });
   const totalMins = zoneMins.slice(1).reduce((s, c) => s + c, 0);
   const zonePct = zoneMins.map(c => totalMins ? Math.round(c / totalMins * 100) : 0);
+  const zoneDataQuality = realZoneCount > estimZoneCount ? 'real' : 'estimated';
 
   // Diagnóstico de polarización
   const lowPct = zonePct[1] + zonePct[2]; // Z1+Z2
@@ -184,7 +213,7 @@ router.get('/recommendations', async (req, res) => {
         avgTSS, totalTSS, avgDurMin, avgDistKm, avgNP, wkg,
         phase, form,
         pmc: { ctl: Math.round(ctl), atl: Math.round(atl), tsb: Math.round(tsb) },
-        zones: { z1: zonePct[1], z2: zonePct[2], z3: zonePct[3], z4: zonePct[4], z5: zonePct[5], z6: zonePct[6], z7: zonePct[7] },
+        zones: { z1: zonePct[1], z2: zonePct[2], z3: zonePct[3], z4: zonePct[4], z5: zonePct[5], z6: zonePct[6], z7: zonePct[7], data_quality: zoneDataQuality },
         polarization: { low: lowPct, mid: midPct, high: hiPct },
         trend: { tssGrowth, recentAvgTSS, prevAvgTSS },
       },
@@ -1082,26 +1111,56 @@ function buildNutritionRecommendation({ ftp, weight, goal, phase, form, avgTSS, 
 
   const tdee = Math.round(bmr * 1.55); // Factor actividad moderada
 
-  // Gasto calórico estimado por TSS (aprox 1 TSS ≈ 1 kcal/kg * factor)
+  // Gasto calórico del entrenamiento: fórmula basada en trabajo mecánico real
+  // Trabajo externo (kJ) ≈ TSS × FTP × 36 / 1000 (para IF promedio típico)
+  // Gasto metabólico ≈ trabajo_externo / eficiencia(22%) → en kcal ÷ 4.184
+  // Simplificado: trainCal ≈ TSS × FTP × 0.039
   const dailyTSS   = avgTSS || 60;
-  const trainCal   = Math.round(dailyTSS * weight * 0.012);
+  const trainCal   = Math.round(dailyTSS * ftp * 0.039);
 
-  // Ajuste según objetivo
-  const goalCalAdj = { resistencia: 0, ftp: 100, vo2max: 150, sprint: 50, gran_fondo: 200 }[goal] || 0;
+  // Periodización nutricional por fase: carbos más altos en build, más bajos en base/recovery
+  const phaseNutritionFactor = { base: 1.0, build: 1.10, peak: 0.95, recovery: 0.85 }[phase] || 1.0;
+
+  // Ajuste calórico por objetivo (carbos extra para resistencia larga, deficit para pérdida peso)
+  const goalCalAdj = { resistencia: 0, ftp: 80, vo2max: 120, sprint: 50, gran_fondo: 200, perdida_peso: -200 }[goal] || 0;
 
   // Día de entrenamiento vs descanso
-  const trainDayTotal = tdee + trainCal + goalCalAdj;
-  const restDayTotal  = tdee - 150;
+  const trainDayTotal = Math.round((tdee + trainCal + goalCalAdj) * phaseNutritionFactor);
+  const restDayTotal  = goal === 'perdida_peso'
+    ? Math.round(tdee * 0.85) // déficit controlado del 15% en días descanso si objetivo es composición
+    : tdee - 150;
 
-  // Macros día entrenamiento
-  const carbsG_train   = Math.round((trainDayTotal * 0.58) / 4);
-  const proteinG_train = Math.round((trainDayTotal * 0.18) / 4);
-  const fatG_train     = Math.round((trainDayTotal * 0.24) / 9);
+  // ── Macros periodizados por fase ──
+  // Build: más carbos para sostener alta intensidad
+  // Base: mix equilibrado
+  // Recovery: más proteína, menos carbos
+  const phaseMacros = {
+    base:     { cT: 0.55, pT: 0.20, fT: 0.25,  cR: 0.45, pR: 0.22, fR: 0.33 },
+    build:    { cT: 0.60, pT: 0.18, fT: 0.22,  cR: 0.48, pR: 0.22, fR: 0.30 },
+    peak:     { cT: 0.58, pT: 0.20, fT: 0.22,  cR: 0.42, pR: 0.25, fR: 0.33 },
+    recovery: { cT: 0.50, pT: 0.25, fT: 0.25,  cR: 0.40, pR: 0.28, fR: 0.32 },
+  };
+  const pm = phaseMacros[phase] || phaseMacros.base;
 
-  // Macros día descanso
-  const carbsG_rest    = Math.round((restDayTotal * 0.45) / 4);
-  const proteinG_rest  = Math.round((restDayTotal * 0.22) / 4);
-  const fatG_rest      = Math.round((restDayTotal * 0.33) / 9);
+  const carbsG_train_calc   = Math.round((trainDayTotal * pm.cT) / 4);
+  const proteinG_train_calc = Math.round((trainDayTotal * pm.pT) / 4);
+  const fatG_train     = Math.round((trainDayTotal * pm.fT) / 9);
+
+  const carbsG_rest_calc    = Math.round((restDayTotal * pm.cR) / 4);
+  const proteinG_rest_calc  = Math.round((restDayTotal * pm.pR) / 4);
+  const fatG_rest      = Math.round((restDayTotal * pm.fR) / 9);
+
+  // Proteína mínima por kg de peso corporal (no puede caer por debajo del umbral fisiológico)
+  const proteinMinTrain = Math.round(weight * (goal === 'perdida_peso' ? 2.0 : 1.6));
+  const proteinMinRest  = Math.round(weight * (goal === 'perdida_peso' ? 2.2 : 1.8));
+  const proteinG_train = Math.max(proteinG_train_calc, proteinMinTrain);
+  const proteinG_rest  = Math.max(proteinG_rest_calc,  proteinMinRest);
+
+  // Si la proteína forzó un incremento, ajustar carbos para compensar (no aumentar calorías)
+  const proteinAdjTrain = (proteinG_train - proteinG_train_calc) * 4; // kcal extra de proteína
+  const proteinAdjRest  = (proteinG_rest  - proteinG_rest_calc)  * 4;
+  const carbsG_train = Math.max(30, carbsG_train_calc - Math.round(proteinAdjTrain / 4));
+  const carbsG_rest  = Math.max(30, carbsG_rest_calc  - Math.round(proteinAdjRest  / 4));
 
   // Hidratación
   const hydration = Math.round(weight * 35 + (dailyTSS > 60 ? 500 : 0));
@@ -1207,15 +1266,20 @@ router.post('/ai-analysis', async (req, res) => {
 
     const latestPMC = pmc[pmc.length - 1] || { ctl: 0, atl: 0, tsb: 0 };
 
-    // Compute zone distribution weighted by duration
+    // Distribución de zonas: usa zone_times reales cuando disponibles
     const ftp = user.ftp || 200;
     const zoneMins2 = [0, 0, 0, 0, 0, 0, 0, 0];
     activities.forEach(a => {
-      const p   = Number(a.np || a.avg_power || 0);
-      const dur = Number(a.duration || 0) / 60;
-      if (p > 0 && ftp && dur > 0) {
-        const z = powerZone(p, ftp);
-        if (z >= 1 && z <= 7) zoneMins2[z] += dur;
+      if (a.zone_times) {
+        const zt = typeof a.zone_times === 'string' ? JSON.parse(a.zone_times) : a.zone_times;
+        for (let i = 1; i <= 7; i++) zoneMins2[i] += (zt[`z${i}`] || 0) / 60;
+      } else {
+        const p   = Number(a.np || a.avg_power || 0);
+        const dur = Number(a.duration || 0) / 60;
+        if (p > 0 && ftp && dur > 0) {
+          const z = powerZone(p, ftp);
+          if (z >= 1 && z <= 7) zoneMins2[z] += dur;
+        }
       }
     });
     const totalMins2 = zoneMins2.slice(1).reduce((s, c) => s + c, 0);

@@ -164,6 +164,10 @@
           <strong><i class="fas fa-chart-pie"></i> Volumen e Intensidad</strong>
           <p style="margin:6px 0 0;color:var(--text-muted)">Resumen del periodo seleccionado: horas totales, kilómetros, desnivel, TSS acumulado, potencia normalizada media (NP) e IF medio. El <strong>IF (Intensity Factor)</strong> = NP÷FTP, indica cuán exigentes fueron las sesiones (1.0 = al FTP).</p>
         </div>
+        <div style="padding:12px;background:var(--bg-input);border-radius:8px">
+          <strong style="color:#10B981"><i class="fas fa-heart-pulse"></i> Desacoplamiento Aeróbico (EF)</strong>
+          <p style="margin:6px 0 0;color:var(--text-muted)"><strong>EF (Efficiency Factor)</strong> = NP ÷ FC media. Mide cuánta potencia produces por latido. Si el EF aumenta con el tiempo, tu sistema aeróbico es más eficiente. Si cae, puede indicar fatiga acumulada, sobreentrenamiento o base aeróbica insuficiente. Solo se analiza en sesiones Z1–Z3.</p>
+        </div>
       </div>
   </div>
 
@@ -416,6 +420,15 @@
     </div></div>
     </div>
 
+    <!-- ROW 8: Desacoplamiento Aeróbico -->
+    <div class="card mb-6" id="decoupling-card" style="display:none">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-heart-pulse" style="color:#10B981"></i> Desacoplamiento Aeróbico (EF)</div>
+        <span id="decoupling-badge" class="badge"></span>
+      </div>
+      <div id="decoupling-content"></div>
+    </div>
+
   </div>
 </main>
 
@@ -537,6 +550,7 @@ async function init() {
   render();
   renderZones();
   loadPowerCurve();
+  loadDecouplingCard();
 }
 
 async function recalculate() {
@@ -569,6 +583,7 @@ async function recalculate() {
     if (period) period.value = currentPeriod;
     render();
     renderZones();
+    loadDecouplingCard();
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '⟳ Actualizar'; }
   }
@@ -1896,6 +1911,59 @@ function renderPowerCurve(pc) {
   }
 
   document.getElementById('power-curve-section').classList.remove('hidden');
+}
+
+// ─── DESACOPLAMIENTO AERÓBICO ──────────────────────────────
+async function loadDecouplingCard() {
+  if (typeof BackendSync === 'undefined') return;
+  var data;
+  try { data = await BackendSync.loadDecoupling(); } catch(e) { return; }
+  if (!data || !data.sessions_analyzed) return;
+
+  var STATUS = {
+    mejorando: { label: '▲ Mejorando',  color: '#10B981' },
+    estable:   { label: '— Estable',    color: '#3B82F6' },
+    atencion:  { label: '⚠ Atención',   color: '#F59E0B' },
+    alerta:    { label: '🛑 Alerta',     color: '#EF4444' },
+  };
+  var st = STATUS[data.status] || { label: data.status || '—', color: '#9CA3AF' };
+  var sign = (data.ef_trend_pct || 0) >= 0 ? '+' : '';
+  var trendColor = data.status === 'mejorando' ? '#10B981'
+                 : data.status === 'alerta'    ? '#EF4444' : '#F59E0B';
+
+  var badge = document.getElementById('decoupling-badge');
+  if (badge) {
+    badge.textContent = st.label;
+    badge.style.cssText = 'color:' + st.color + ';background:' + st.color + '22;border:1px solid ' + st.color + '55';
+  }
+
+  document.getElementById('decoupling-content').innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;padding:4px 0 16px">' +
+      '<div style="text-align:center;padding:14px;background:var(--bg-input);border-radius:10px">' +
+        '<div style="font-size:22px;font-weight:800;color:' + trendColor + '">' + sign + (data.ef_trend_pct || 0).toFixed(1) + '%</div>' +
+        '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-top:3px">Tendencia EF</div>' +
+      '</div>' +
+      '<div style="text-align:center;padding:14px;background:var(--bg-input);border-radius:10px">' +
+        '<div style="font-size:22px;font-weight:800;color:var(--text)">' + (data.ef_recent || 0).toFixed(2) + '</div>' +
+        '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-top:3px">EF Reciente</div>' +
+      '</div>' +
+      '<div style="text-align:center;padding:14px;background:var(--bg-input);border-radius:10px">' +
+        '<div style="font-size:22px;font-weight:800;color:var(--text)">' + (data.ef_early || 0).toFixed(2) + '</div>' +
+        '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-top:3px">EF Inicial</div>' +
+      '</div>' +
+      '<div style="text-align:center;padding:14px;background:var(--bg-input);border-radius:10px">' +
+        '<div style="font-size:22px;font-weight:800;color:#3B82F6">' + (data.sessions_analyzed || 0) + '</div>' +
+        '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-top:3px">Sesiones Z1–Z3</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="padding:11px 14px;background:' + st.color + '18;border-left:3px solid ' + st.color + ';border-radius:0 8px 8px 0;font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:10px">' +
+      (data.recommendation || '') +
+    '</div>' +
+    '<div style="font-size:11px;color:var(--text-muted)">' +
+      '<i class="fas fa-info-circle"></i> EF&nbsp;=&nbsp;NP&nbsp;÷&nbsp;FC&nbsp;media. Un EF creciente indica mejor eficiencia aeróbica (más vatios por latido).' +
+    '</div>';
+
+  document.getElementById('decoupling-card').style.display = '';
 }
 </script>
 </body>

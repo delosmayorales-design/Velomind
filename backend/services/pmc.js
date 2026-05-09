@@ -59,19 +59,29 @@ const recalculatePMC = async (userId) => {
     const { data: user } = await supabase.from('users').select('ftp').eq('id', userId).single();
     const ftp = user?.ftp || 200;
 
-    // 2. Obtener todas las actividades ordenadas
+    // 2. Obtener todas las actividades ordenadas (incluir campos de potencia para estimación TSS)
     const { data: activities } = await supabase
       .from('activities')
-      .select('date, tss')
+      .select('date, tss, np, avg_power, duration')
       .eq('user_id', userId)
       .order('date', { ascending: true });
 
     if (!activities || activities.length === 0) return;
 
     // 3. Agrupar TSS por día
+    // Si una actividad no tiene TSS pero tiene potencia + duración, estimar TSS
     const tssByDay = {};
     activities.forEach(a => {
-      tssByDay[a.date] = (tssByDay[a.date] || 0) + (Number(a.tss) || 0);
+      let tss = Number(a.tss) || 0;
+      if (tss === 0 && ftp > 0 && a.duration > 0) {
+        const power = Number(a.np || a.avg_power || 0);
+        if (power > 0) {
+          const ifv = power / ftp;
+          tss = Math.round((a.duration * power * ifv) / (ftp * 3600) * 100);
+        }
+      }
+      const dateKey = String(a.date || '').substring(0, 10);
+      if (dateKey) tssByDay[dateKey] = (tssByDay[dateKey] || 0) + tss;
     });
 
     // 4. Calcular evolución día a día desde la primera actividad hasta hoy

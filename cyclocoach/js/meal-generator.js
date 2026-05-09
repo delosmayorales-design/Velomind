@@ -437,23 +437,115 @@ const LocalMenuGenerator = (() => {
     };
   }
 
+  // ── Timing nutricional pre/durante/post entrenamiento ──────────
+  function buildTimingRecommendations({ sessionType, sessionTime, tss, durationMin, weight, phase }) {
+    const w = weight || 70;
+    const dur = durationMin || 60;
+    const isHard = ['threshold', 'vo2max', 'sprint'].includes(sessionType);
+    const isLong = sessionType === 'long' || dur >= 90;
+    const sessTSS = tss || 0;
+
+    // Pre-entrenamiento: timing y cantidad según intensidad
+    let preWorkout;
+    if (isHard) {
+      preWorkout = {
+        timing: '2-3 h antes',
+        foods:  `Avena (80g) + plátano + café. ~${Math.round(w * 0.8)}g carbos de fácil digestión, bajo en fibra y grasa.`,
+        note:   'Evita alimentos de alto índice glucémico justo antes — provocan hipoglucemia reactiva al inicio.',
+      };
+    } else if (isLong) {
+      preWorkout = {
+        timing: '1.5-2 h antes',
+        foods:  `Arroz blanco (100g) + miel + café. ~${Math.round(w * 0.6)}g carbos.`,
+        note:   'Sesión larga: carga de glucógeno completa. Asegúrate de haber bebido al menos 500ml de agua.',
+      };
+    } else {
+      preWorkout = {
+        timing: '1-2 h antes (o en ayunas si es Z1/Z2 < 75 min)',
+        foods:  `Tostada integral + mermelada o plátano. ~${Math.round(w * 0.4)}g carbos.`,
+        note:   phase === 'base' ? 'Considera entrenar en ayunas 1-2 veces/semana a baja intensidad para mejorar la oxidación de grasas.' : '',
+      };
+    }
+
+    // Durante: fuente y frecuencia de carbohidratos en ruta
+    let duringWorkout;
+    if (dur < 60) {
+      duringWorkout = {
+        strategy: 'Solo agua',
+        foods:    'Sesión < 60 min: agua sola suficiente. Añade electrolitos si hay calor intenso (>28°C).',
+        carbsPerHour: 0,
+      };
+    } else if (dur < 90) {
+      duringWorkout = {
+        strategy: 'Agua + electrolitos opcionales',
+        foods:    `1 bidón (500ml) con electrolitos. ${isHard ? 'Puedes añadir 1 gel (25g carbos) si la intensidad es muy alta.' : 'No necesitas sólidos.'}`,
+        carbsPerHour: isHard ? 30 : 0,
+      };
+    } else {
+      const carbsH = isHard ? 75 : 60; // g/h (máximo absorbible ~90g/h con ratio 2:1 glucosa:fructosa)
+      const totalCarbsDuring = Math.round(carbsH * (dur / 60));
+      duringWorkout = {
+        strategy: `${carbsH}g carbos/hora`,
+        foods:    `Cada 20-25 min: gel (25g) + agua, o plátano (30g carbos), o barritas energéticas. Total: ~${totalCarbsDuring}g carbos. Beber 500-750ml/h.`,
+        carbsPerHour: carbsH,
+        note: dur >= 150 ? `Sesión larga: usa mix glucosa+fructosa (ratio 2:1) para absorber hasta 90g/h y evitar problemas GI.` : '',
+      };
+    }
+
+    // Post-entrenamiento: ventana anabólica (0-30 min) + comida de recuperación
+    const protPost = Math.round(w * 0.3); // 0.3g/kg en ventana inmediata
+    const carbPost = Math.round(w * (isHard ? 1.2 : 0.8)); // g/kg según intensidad
+    const postWorkout = {
+      timing_inmediato: '0-30 min post-entrenamiento (ventana anabólica)',
+      foods_inmediatos: `${protPost}g proteína + ${Math.round(carbPost * 0.5)}g carbos rápidos. Ejemplo: batido (30g whey + plátano) o yogur griego + miel.`,
+      timing_comida:    '1-2 h después',
+      foods_comida:     `${Math.round(protPost * 1.5)}g proteína + ${carbPost}g carbos + verduras. Ejemplo: arroz (150g) + pollo (150g) + brócoli.`,
+      note:             sessTSS > 80 ? 'Sesión exigente: prioriza la recuperación. No entrenes duro mañana sin antes reponer glucógeno.' : '',
+    };
+
+    return { preWorkout, duringWorkout, postWorkout };
+  }
+
   // ── Generador principal ────────────────────────────────────────
-  function generate({ calories, carbs, protein, fat, preferences, dislikes, sessionType, tss }) {
+  function generate({ calories, carbs, protein, fat, preferences, dislikes, sessionType, tss, sessionTime, durationMin, weight, phase }) {
     const pref    = preferences || 'normal';
     const sessTSS = tss || 0;
 
-    // Distribución de calorías según tipo de sesión
-    // Días de carga: más carbos en desayuno y mediodía
+    // Distribución calórica del día ajustada al HORARIO de la sesión
+    // Si la sesión es de mañana temprana: el desayuno es post-entreno, no pre
+    // Si la sesión es de tarde: la comida del mediodía es la carga pre-sesión
     const isHard    = ['threshold', 'vo2max', 'sprint'].includes(sessionType);
     const isRest    = !sessionType || sessionType === 'recovery';
-    const isMed     = ['endurance', 'long', 'tempo', 'strength'].includes(sessionType);
 
-    // Reparto calórico del día
-    const dist = isHard
-      ? { desayuno: 0.28, comida: 0.38, cena: 0.20, snack: 0.14 }
-      : isRest
-      ? { desayuno: 0.25, comida: 0.35, cena: 0.25, snack: 0.15 }
-      : { desayuno: 0.26, comida: 0.36, cena: 0.22, snack: 0.16 };
+    const hour = sessionTime ? parseInt(String(sessionTime).split(':')[0]) : null;
+    const isMorningSession = hour !== null && hour < 10;
+    const isAfternoonSession = hour !== null && hour >= 14 && hour < 20;
+    const isEveningSession = hour !== null && hour >= 20;
+
+    // Reparto calórico según horario y tipo de sesión
+    let dist;
+    if (isMorningSession && isHard) {
+      // Sesión de alta intensidad por la mañana: desayuno muy ligero pre-sesión,
+      // la comida del mediodía es la principal recuperación
+      dist = { desayuno: 0.18, comida: 0.42, cena: 0.22, snack: 0.18 };
+    } else if (isMorningSession) {
+      // Sesión moderada de mañana: desayuno ligero pre, comida principal
+      dist = { desayuno: 0.20, comida: 0.40, cena: 0.22, snack: 0.18 };
+    } else if (isAfternoonSession && isHard) {
+      // Sesión dura de tarde: cargar carbos en la comida del mediodía
+      dist = { desayuno: 0.25, comida: 0.42, cena: 0.20, snack: 0.13 };
+    } else if (isAfternoonSession) {
+      dist = { desayuno: 0.25, comida: 0.38, cena: 0.22, snack: 0.15 };
+    } else if (isEveningSession) {
+      // Sesión nocturna: la cena es post-entreno, priorizar proteína nocturna
+      dist = { desayuno: 0.27, comida: 0.37, cena: 0.24, snack: 0.12 };
+    } else if (isHard) {
+      dist = { desayuno: 0.28, comida: 0.38, cena: 0.20, snack: 0.14 };
+    } else if (isRest) {
+      dist = { desayuno: 0.25, comida: 0.35, cena: 0.25, snack: 0.15 };
+    } else {
+      dist = { desayuno: 0.26, comida: 0.36, cena: 0.22, snack: 0.16 };
+    }
 
     const kcalD = Math.round(calories * dist.desayuno);
     const kcalC = Math.round(calories * dist.comida);
@@ -513,7 +605,12 @@ const LocalMenuGenerator = (() => {
       };
     });
 
-    return { menus };
+    // Generar recomendaciones de timing pre/durante/post si no es día de descanso
+    const timing = (!isRest && sessionType)
+      ? buildTimingRecommendations({ sessionType, sessionTime, tss: sessTSS, durationMin, weight, phase })
+      : null;
+
+    return { menus, timing };
   }
 
   return { generate };

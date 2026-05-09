@@ -465,7 +465,16 @@
     .main-grid   { animation: fadeUp .35s ease .08s both; }
     .ftp-banner  { animation: fadeUp .35s ease .13s both; }
     .week-card   { animation: fadeUp .35s ease .16s both; }
-    .last-act-card { animation: fadeUp .35s ease .2s both; }
+    #training-ctx-card { animation: fadeUp .35s ease .19s both; }
+    .last-act-card { animation: fadeUp .35s ease .22s both; }
+
+    /* Training context chips */
+    .ctx-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:12px; }
+    .ctx-item { background:var(--bg-input); border-radius:10px; padding:12px 12px 10px; text-align:center; }
+    .ctx-val  { font-size:20px; font-weight:800; line-height:1; margin-bottom:3px; font-variant-numeric:tabular-nums; }
+    .ctx-lbl  { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); }
+    .ctx-adaptation { font-size:12px; line-height:1.55; color:var(--text-secondary);
+      padding:10px 12px; border-radius:0 8px 8px 0; border-left:3px solid var(--border); background:rgba(255,255,255,.025); }
 
     /* ─────────────────────────────────────────────────────────
        LIGHT MODE  — hero y componentes del dashboard
@@ -690,6 +699,12 @@
       <div id="week-content">
         <div class="empty-state"><i class="fas fa-calendar"></i> Sin plan activo</div>
       </div>
+    </div>
+
+    <!-- ── CONTEXTO DE ENTRENAMIENTO ── -->
+    <div class="card" id="training-ctx-card" style="margin-bottom:16px;display:none">
+      <div class="card-eyebrow"><i class="fas fa-layer-group" style="color:var(--primary)"></i> Contexto de entrenamiento</div>
+      <div id="training-ctx-content"></div>
     </div>
 
     <!-- ── ÚLTIMA ACTIVIDAD ── -->
@@ -1212,6 +1227,68 @@ async function loadPlan() {
   } catch {}
 }
 
+/* ── CONTEXTO DE ENTRENAMIENTO ──────────────────────────── */
+function renderMacrocycle() {
+  const el   = document.getElementById('training-ctx-content');
+  const card = document.getElementById('training-ctx-card');
+  if (!el || !card) return;
+
+  const athlete = AppState.athlete;
+  if (!athlete || !athlete.ftp) return;
+
+  let plan;
+  try { plan = TrainingPlanGenerator.generate(athlete, AppState.activities); } catch(e) { return; }
+  if (!plan) return;
+
+  const PHASE_LABELS = {
+    base:     { label: 'Base',      color: '#3B82F6' },
+    build:    { label: 'Build',     color: '#F59E0B' },
+    peak:     { label: 'Peak',      color: '#EF4444' },
+    race:     { label: 'Carrera',   color: '#EC4899' },
+    recovery: { label: 'Recuperación', color: '#10B981' },
+    taper:    { label: 'Taper',     color: '#8B5CF6' },
+  };
+  const ph = PHASE_LABELS[plan.phase] || { label: plan.phase || '—', color: '#9CA3AF' };
+  const adherenceColor = plan.adherence >= 85 ? '#10B981'
+                       : plan.adherence >= 65 ? '#F59E0B' : '#EF4444';
+  const cycleWeekColor = plan.cycleInfo?.isRecoveryWeek ? '#10B981' : '#9ED62B';
+  const macroBlock     = plan.macrocycle?.blockLabel || '';
+  const weeksToEvent   = plan.macrocycle?.weeksToEvent;
+  const eventChip      = (weeksToEvent && weeksToEvent > 0 && weeksToEvent < 52)
+    ? `<div class="ctx-item"><div class="ctx-val" style="color:#EC4899">${weeksToEvent}</div><div class="ctx-lbl">Sem. a evento</div></div>`
+    : '';
+
+  el.innerHTML =
+    `<div class="ctx-grid">
+      <div class="ctx-item">
+        <div class="ctx-val" style="color:${ph.color}">${ph.label}</div>
+        <div class="ctx-lbl">Fase${macroBlock ? ' · ' + macroBlock : ''}</div>
+      </div>
+      <div class="ctx-item">
+        <div class="ctx-val" style="color:${cycleWeekColor}">${plan.cycleInfo?.weekInCycle || 1}/4</div>
+        <div class="ctx-lbl">${plan.cycleInfo?.isRecoveryWeek ? 'Semana recuperación' : 'Semana de carga'}</div>
+      </div>
+      <div class="ctx-item">
+        <div class="ctx-val" style="color:#F59E0B">${plan.targetTSS || '--'}</div>
+        <div class="ctx-lbl">TSS objetivo semanal</div>
+      </div>
+      <div class="ctx-item">
+        <div class="ctx-val" style="color:${adherenceColor}">${plan.adherence != null ? plan.adherence + '%' : '--'}</div>
+        <div class="ctx-lbl">Adherencia (4 sem.)</div>
+      </div>
+      ${eventChip}
+    </div>` +
+    (plan.adaptation
+      ? `<div class="ctx-adaptation" style="border-color:${
+          plan.adaptation.level === 'danger'  ? '#EF4444' :
+          plan.adaptation.level === 'warning' ? '#F59E0B' :
+          plan.adaptation.level === 'good'    ? '#10B981' : 'var(--border)'
+        }"><strong>${plan.adaptation.icon} ${plan.adaptation.title}</strong><br>${plan.adaptation.text}</div>`
+      : '');
+
+  card.style.display = '';
+}
+
 /* ── INIT ────────────────────────────────────────────────── */
 (async function init() {
   await AppState.init();
@@ -1234,6 +1311,7 @@ async function loadPlan() {
 
   fetchWeather();
   await loadPlan();
+  renderMacrocycle();
 
   BackendSync.loadActivities().then(() => {
     const m = AppState.pmcData?.length ? AppState.getCurrentMetrics() : null;
@@ -1242,6 +1320,7 @@ async function loadPlan() {
     if (dashPlan) renderWeek(dashPlan);
     renderHero(AppState.athlete, m, dashPlan);
     if (m) renderFTP(m);
+    renderMacrocycle();
   });
 
   BackendSync.loadProfile().then(profile => {
