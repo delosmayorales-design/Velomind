@@ -1540,9 +1540,10 @@ APLICA LA PRIMERA REGLA QUE COINCIDA CON EL INPUT:
 
 ⚙️ ESPECIFICIDAD ("quiero hacer Z3", "quiero series de umbral", "prefiero rodillo"):
    → Diseña exactamente ese tipo. Respeta FTP=${ftp}W.
-   → Si es rodillo: REDUCE drásticamente la duración (ej: de 180min a 60-90min) y el TSS. La descripción DEBE ser específica de indoor (cadencia, control de sudor) y EVITAR menciones al exterior.
-   → REGLA MATEMÁTICA OBLIGATORIA E INNEGOCIABLE: El desglose de minutos en 'descripcion' (ej: "X min calentamiento + Y min Z2 + Z min calma") DEBE RECALCULARSE para que su suma sea EXACTAMENTE IGUAL a 'duracion_min'. Está TERMINANTEMENTE PROHIBIDO usar los minutos de la sesión original (como los 172 min que mencionaste).
-   → Ejemplo: Si 'duracion_min' es 87, la descripción DEBE ser algo como "15 min calentamiento + 60 min bloque Z2 + 12 min vuelta a la calma" (15+60+12=87).
+   → Si es rodillo: REDUCE la duración (ej: de 180 a 60-90 min) y el TSS. La descripción DEBE ser para rodillo (cadencia, ventilación).
+   → PROHIBICIÓN ABSOLUTA: No puedes usar los minutos de la sesión original (ej: no uses 172 min si la nueva duración es 87).
+   → REGLA MATEMÁTICA OBLIGATORIA: Los bloques detallados en la 'descripcion' DEBEN sumar EXACTAMENTE 'duracion_min'.
+   → EJEMPLO: Si duracion_min=87, escribe "15m Calentamiento + 60m Z2 + 12m Vuelta a la calma".
 
 Devuelve SOLO este JSON (sin texto adicional):
 {
@@ -1552,7 +1553,7 @@ Devuelve SOLO este JSON (sin texto adicional):
   "tss_estimado": number,
   "if_estimado": number,
   "intensidad": "ej: Z2 ${Math.round(ftp*0.65)}-${Math.round(ftp*0.75)}W o Umbral ${Math.round(ftp*0.95)}W",
-  "descripcion": "2-3 frases con vatios reales (FTP=${ftp}W). Asegura que el desglose de minutos sume exactamente 'duracion_min'.",
+  "descripcion": "2-3 frases con vatios reales (FTP=${ftp}W). El desglose de minutos DEBE sumar exactamente el valor de duracion_min.",
   "razon": "1 frase explicando el cambio según el estado del atleta",
   "nutricion": "1 frase sobre qué comer/beber ${diaRef.toLowerCase()}"
 }`;

@@ -907,7 +907,7 @@
   <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xl);max-width:560px;width:100%;max-height:80vh;overflow-y:auto;padding:28px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <h2 id="modal-title" style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:var(--text-primary)">Sesión</h2>
-      <button onclick="closeModal()" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
+      <button onclick="closeSessionModal()" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
     </div>
     <div id="modal-content"></div>
   </div>
@@ -1720,21 +1720,20 @@ function renderPlan(plan, athlete) {
         </div>
       </div>` : '');
 
-    const actionButtons = `
-      <div class="session-action-btns" style="width:100%; display:flex; gap:6px; align-items:center; margin-top:10px; flex-wrap:wrap">
-        <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-right:2px; white-space:nowrap;"><i class="fas fa-download"></i> Exportar:</span>
-        <div style="display:flex; gap:4px; flex-wrap:wrap;">
-          <button onclick="event.stopPropagation();exportSessionToGarmin(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">TCX</button>
-          <button onclick="event.stopPropagation();exportSessionToZwift(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">ZWO</button>
-          <button onclick="event.stopPropagation();exportSessionToERG(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">ERG</button>
-          <button onclick="event.stopPropagation();exportSessionToGPX(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">GPX</button>
+    const actionButtons = !sess.isRest ? `
+      <div class="session-action-btns" style="border-top:1px solid var(--border);padding:8px 16px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:rgba(0,0,0,0.08)">
+        <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap"><i class="fas fa-download"></i> Exportar:</span>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button onclick="exportSessionToGarmin(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">TCX</button>
+          <button onclick="exportSessionToZwift(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">ZWO</button>
+          <button onclick="exportSessionToERG(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">ERG</button>
+          <button onclick="exportSessionToGPX(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">GPX</button>
         </div>
-        
-        <div style="flex:1;min-width:10px"></div>
-        <button onclick="event.stopPropagation();adaptToRoller(${i})" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);color:#6366f1;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'"><i class="fas fa-home"></i> Rodillo</button>
-        <button onclick="event.stopPropagation();startAudioCoach(${i})" style="background:rgba(196,239,68,0.1);border:1px solid rgba(196,239,68,0.3);color:#C4EF44;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;" onmouseover="this.style.background='rgba(196,239,68,0.2)'" onmouseout="this.style.background='rgba(196,239,68,0.1)'"><i class="fas fa-headphones"></i> Audio</button>
+        <div style="flex:1;min-width:8px"></div>
+        <button onclick="adaptToRoller(${i})" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#818cf8;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent"><i class="fas fa-home"></i> Rodillo</button>
+        <button onclick="startAudioCoach(${i})" style="background:rgba(196,239,68,0.15);border:1px solid rgba(196,239,68,0.4);color:#C4EF44;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent"><i class="fas fa-headphones"></i> Audio</button>
       </div>
-    `;
+    ` : '';
 
     return `
       <div class="session-card-item${sess.completed ? ' completed' : ''}${isToday ? ' today-card' : ''}">
@@ -1767,7 +1766,6 @@ function renderPlan(plan, athlete) {
                     <i class="fas ${sess.completed ? 'fa-check-circle' : 'fa-circle'}"></i> ${sess.completed ? 'Realizada' : 'Marcar'}
                   </button>
                 ` : ''}
-                ${actionButtons}
             </div>
           </div>
           <div class="session-tss-col" style="text-align:right;padding:8px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;flex-shrink:0">
@@ -1776,6 +1774,7 @@ function renderPlan(plan, athlete) {
           </div>
           <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:12px;flex-shrink:0"></i>
         </div>
+        ${actionButtons}
         ${adaptBanner}
         ${execBadge}
         ${adaptZone}
@@ -3168,7 +3167,7 @@ function getSessionTip(type) {
   return tips[type] || 'Escucha a tu cuerpo y adapta la intensidad a cómo te sientes.';
 }
 
-function closeModal() { document.getElementById('session-modal').style.display = 'none'; }
+function closeSessionModal() { document.getElementById('session-modal').style.display = 'none'; }
 
 function showToast(text, color = 'var(--primary)') {
   const t = document.createElement('div');
@@ -4171,8 +4170,11 @@ function adaptToRoller(idx) {
             <div style="font-size:16px;font-weight:700;color:#6366f1">${rollerTSS}</div>
           </div>
         </div>
-        <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:12px">
+        <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px">
           ${sess.description || 'Entrenamiento adaptado para condiciones de rodillo estático.'}
+        </div>
+        <div style="font-size:12px;background:rgba(99,102,241,0.1);border-left:3px solid #6366f1;border-radius:0 6px 6px 0;padding:8px 10px;color:#818cf8;margin-bottom:12px">
+          ⏱️ En rodillo harás <strong>${rollerDur} min</strong> en lugar de los ${originalDur} min originales (75% de la duración para compensar el mayor esfuerzo térmico).
         </div>
       </div>
       <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:16px;margin-bottom:16px">
@@ -4229,6 +4231,7 @@ function showModal(content, id) {
 }
 
 function closeModal(id) {
+  if (!id) { closeSessionModal(); return; }
   const overlay = document.getElementById(id + '-overlay');
   if (overlay) overlay.style.display = 'none';
   document.body.style.overflow = '';

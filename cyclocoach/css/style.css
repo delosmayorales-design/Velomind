@@ -1295,22 +1295,13 @@ html.light-theme .btn-secondary {
   color: #111827 !important; 
   background: #ffffff !important;
   border: 1px solid rgba(0,0,0,0.25) !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
 }
 html.light-theme .chip {
   background: #ffffff !important;
-  color: #334155 !important;
-  border: 1px solid rgba(0,0,0,0.2) !important;
-  font-weight: 600 !important;
-}
-html.light-theme .btn-secondary:hover {
-  background: #f8fafc !important;
-  border-color: rgba(0,0,0,0.3) !important;
-}
-html.light-theme .chip {
-  background: #ffffff !important;
-  color: #334155 !important;
-  border: 1px solid rgba(0,0,0,0.12) !important;
+  color: #111827 !important;
+  border: 1px solid rgba(0,0,0,0.18) !important;
+  font-weight: 500 !important;
 }
 html.light-theme .btn-secondary.active,
 html.light-theme .chip.active {
