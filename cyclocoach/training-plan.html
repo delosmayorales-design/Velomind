@@ -34,8 +34,9 @@
       gap: 0;
       overflow: hidden;
       transition: var(--transition);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.35);
     }
-    .session-card-item:hover { border-color: var(--border-light); }
+    .session-card-item:hover { border-color: var(--border-light); box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
     .session-card-item.rest { opacity: 0.6; }
     .session-card-item.completed { border-color: var(--border); filter: grayscale(0.9); }
     .session-card-item.completed .session-row { opacity: 0.45; }
@@ -209,6 +210,7 @@
       background: var(--bg-card); border-radius: 16px;
       max-width: 460px; width: 100%; max-height: 85vh;
       overflow-y: auto; border: 1px solid var(--border);
+      position: relative;
       animation: modalIn .2s ease;
     }
     @keyframes modalIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
@@ -904,11 +906,9 @@
 
 <!-- SESSION DETAIL MODAL -->
 <div id="session-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;padding:20px">
-  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xl);max-width:560px;width:100%;max-height:80vh;overflow-y:auto;padding:28px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h2 id="modal-title" style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:var(--text-primary)">Sesión</h2>
-      <button onclick="closeSessionModal()" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
-    </div>
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xl);max-width:560px;width:100%;max-height:80vh;overflow-y:auto;padding:28px;position:relative">
+    <button onclick="closeSessionModal()" class="modal-close-x" aria-label="Cerrar"><i class="fas fa-times"></i></button>
+    <h2 id="modal-title" style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:var(--text-primary);padding-right:36px;margin-bottom:20px">Sesión</h2>
     <div id="modal-content"></div>
   </div>
 </div>
@@ -3974,18 +3974,14 @@ function openPostEntrenoModal(sessIdx) {
   };
 
   document.getElementById('post-modal-content').innerHTML = `
+    <button onclick="closePostModal()" class="modal-close-x" aria-label="Cerrar"><i class="fas fa-times"></i></button>
     <div class="post-modal-header" style="border-bottom:1px solid ${divider}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:3px">
-            ${sessDate.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})}
-          </div>
-          <div style="font-size:16px;font-weight:700;color:${isLight ? '#0f172a' : 'var(--text-primary)'};line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${actName}</div>
-          ${distKm > 0 ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px"><i class="fas fa-route" style="margin-right:4px"></i>${distKm} km</div>` : ''}
+      <div style="padding-right:36px">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:3px">
+          ${sessDate.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})}
         </div>
-        <button onclick="closePostModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:0 0 0 12px;line-height:1;flex-shrink:0">
-          <i class="fas fa-xmark"></i>
-        </button>
+        <div style="font-size:16px;font-weight:700;color:${isLight ? '#0f172a' : 'var(--text-primary)'};line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${actName}</div>
+        ${distKm > 0 ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px"><i class="fas fa-route" style="margin-right:4px"></i>${distKm} km</div>` : ''}
       </div>
 
       <div style="margin-top:14px;padding:12px 14px;background:${statusColor}18;border-radius:12px;border-left:3px solid ${statusColor}">
@@ -4147,7 +4143,7 @@ function adaptToRoller(idx) {
   ];
 
   const modalContent = `
-    <div style="padding:20px;max-width:min(500px, 90vw);width:100%;box-sizing:border-box">
+    <div style="padding:20px;padding-top:52px;max-width:min(500px, 90vw);width:100%;box-sizing:border-box">
       <h3 style="margin:0 0 16px 0;font-size:18px;color:var(--text-primary);display:flex;align-items:center;gap:8px">
         <i class="fas fa-home" style="color:#6366f1"></i>
         Entrenamiento adaptado para rodillo
@@ -4226,7 +4222,7 @@ function showModal(content, id) {
     overlay.onclick = () => closeModal(id);
     document.body.appendChild(overlay);
   }
-  overlay.innerHTML = `<div class="modal-box" onclick="event.stopPropagation()" style="background:var(--bg-primary);border-radius:16px;max-width:90vw;max-height:90vh;overflow-y:auto">${content}</div>`;
+  overlay.innerHTML = `<div class="modal-box" onclick="event.stopPropagation()" style="background:var(--bg-primary);border-radius:16px;max-width:90vw;max-height:90vh;overflow-y:auto;position:relative"><button class="modal-close-x" onclick="closeModal('${id}')" aria-label="Cerrar"><i class="fas fa-times"></i></button>${content}</div>`;
   overlay.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 }

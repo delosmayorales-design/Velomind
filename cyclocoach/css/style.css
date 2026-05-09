@@ -40,7 +40,7 @@
   /* ── Backgrounds — obsidian scale ──────────────────────── */
   --bg:           #05070a;
   --bg-card:      #0E1117;
-  --bg-card-hover:#0B0E13;
+  --bg-card-hover:#141920;
   --bg-input:     #161B24;
   --bg-modal:     rgba(3,5,10,0.95);
   --bg-sidebar:   #060C08;   /* obsidian con leve tono verde oscuro del logo */
@@ -51,7 +51,7 @@
   --text-muted:     #64748B;
 
   /* ── Borders ─────────────────────────────────────────────── */
-  --border:        rgba(255,255,255,0.055);
+  --border:        rgba(255,255,255,0.08);
   --border-light:  rgba(158,214,43,0.22);   /* lime tint on focus/hover */
   --border-focus:  rgba(158,214,43,0.55);
 
@@ -709,6 +709,37 @@ select.form-input option {
 .loading-pulse { animation: pulse 1.5s ease infinite; }
 .fade-in { animation: fadeIn 0.3s ease forwards; }
 
+/* ─── Modal close button ──────────────────────────────────── */
+.modal-close-x {
+  position: absolute;
+  top: 12px; right: 12px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  z-index: 2;
+  flex-shrink: 0;
+}
+.modal-close-x:hover {
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.10);
+  color: var(--text-primary);
+}
+html.light-theme .modal-close-x {
+  background: rgba(0,0,0,0.04);
+  color: #6b7280;
+}
+html.light-theme .modal-close-x:hover {
+  background: rgba(0,0,0,0.09);
+  color: #111827;
+}
+
 /* ─── Modal ────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0;
@@ -1152,8 +1183,10 @@ html.light-theme body {
   --bg-card: #ffffff;
   --bg-input: #f8fafc;
   --bg-sidebar: #ffffff;
-  --border: rgba(0,0,0,0.08);
-  --border-light: rgba(0,0,0,0.12);
+  --border: rgba(0,0,0,0.09);
+  --border-light: rgba(0,0,0,0.14);
+  --border-focus: rgba(77,122,0,0.50);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
   --text: #0f172a;
   --text-primary: #0f172a;
   --text-secondary: #334155;
@@ -1195,6 +1228,13 @@ html.light-theme #post-modal-overlay,
 html.light-theme #menus-modal {
   background: rgba(15, 23, 42, 0.4) !important;
   backdrop-filter: blur(8px) !important;
+}
+
+html.light-theme .session-card-item {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07) !important;
+}
+html.light-theme .session-card-item:hover {
+  box-shadow: 0 3px 10px rgba(0,0,0,0.10) !important;
 }
 
 html.light-theme .card,
