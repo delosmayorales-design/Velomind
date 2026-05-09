@@ -1207,6 +1207,12 @@ function startDrawing() {
 }
 
 async function onMapClick(e) {
+  // Si el drawer de tiempo está abierto, el clic carga el tiempo en ese punto
+  if (_wdOpen) {
+    const { lat, lng } = e.latlng;
+    _wdRevGeo(lat, lng).then(name => _loadWd(lat, lng, name));
+    return;
+  }
   if (!drawingActive) return;
   const { lat, lng } = e.latlng;
   waypoints.push({ lat, lng });
@@ -2445,71 +2451,29 @@ function switchWdDay(day, btn) {
   if (_wdData) _renderWd(_wdData, _wdName, _wdLat, _wdLng);
 }
 
-// Clic en el mapa carga tiempo cuando el drawer está abierto
-map.on('click', async (e) => {
-  if (!_wdOpen) return;
-  const { lat, lng } = e.latlng;
-  const name = await _wdRevGeo(lat, lng);
-  _loadWd(lat, lng, name);
-});
 
-async function _wdRevGeo(lat, lng) {
-  try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-      { headers: { 'Accept-Language': 'es' } });
-    const d = await r.json(), a = d.address || {};
-    return a.village||a.town||a.city||a.county||a.state||`${lat.toFixed(3)},${lng.toFixed(3)}`;
-  } catch { return `${lat.toFixed(3)},${lng.toFixed(3)}`; }
-}
-
-// Buscador
-const _wdInput = document.getElementById('wd-search-input');
-const _wdDrop  = document.getElementById('wd-dropdown');
-
-_wdInput.addEventListener('input', () => {
-  clearTimeout(_wdTimer);
-  const q = _wdInput.value.trim();
-  if (q.length < 2) { _wdDrop.classList.remove('open'); return; }
-  _wdTimer = setTimeout(() => _wdSearch(q), 380);
-});
-_wdInput.addEventListener('keydown', e => { if (e.key==='Escape') _wdDrop.classList.remove('open'); });
-document.addEventListener('click', e => { if (!e.target.closest('.wd-search-box')) _wdDrop.classList.remove('open'); });
-
-async function _wdSearch(q) {
-  try {
-    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=es&format=json`);
-    const results = (await r.json()).results || [];
-    if (!results.length) {
-      _wdDrop.innerHTML = `<div class="wd-res"><div class="wd-res-name" style="color:var(--text-muted)">Sin resultados</div></div>`;
-    } else {
-      _wdDrop.innerHTML = results.map(x => {
-        const sub = [x.admin1, x.country].filter(Boolean).join(', ');
-        return `<div class="wd-res" data-lat="${x.latitude}" data-lng="${x.longitude}" data-name="${x.name}">
-          <i class="fas fa-map-pin" style="color:var(--primary);font-size:11px;flex-shrink:0"></i>
-          <div><div class="wd-res-name">${x.name}</div><div class="wd-res-sub">${sub}</div></div>
-        </div>`;
-      }).join('');
-      _wdDrop.querySelectorAll('.wd-res[data-lat]').forEach(el => {
-        el.addEventListener('click', () => {
-          const lat = +el.dataset.lat, lng = +el.dataset.lng, name = el.dataset.name;
-          _wdInput.value = name;
-          _wdDrop.classList.remove('open');
-          map.setView([lat, lng], 12);
-          _loadWd(lat, lng, name);
-        });
-      });
-    }
-    _wdDrop.classList.add('open');
-  } catch {}
-}
-
-document.getElementById('wd-geolocate').addEventListener('click', () => {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(async pos => {
-    const { latitude: lat, longitude: lng } = pos.coords;
-    const name = await _wdRevGeo(lat, lng);
-    map.setView([lat, lng], 12);
-    _loadWd(lat, lng, name);
+// Buscador e init del drawer (DOMContentLoaded: map no existe aun en scope global)
+let _wdInput, _wdDrop;
+document.addEventListener('DOMContentLoaded', () => {
+  _wdInput = document.getElementById('wd-search-input');
+  _wdDrop  = document.getElementById('wd-dropdown');
+  if (!_wdInput) return;
+  _wdInput.addEventListener('input', () => {
+    clearTimeout(_wdTimer);
+    const q = _wdInput.value.trim();
+    if (q.length < 2) { _wdDrop.classList.remove('open'); return; }
+    _wdTimer = setTimeout(() => _wdSearch(q), 380);
+  });
+  _wdInput.addEventListener('keydown', e => { if (e.key==='Escape') _wdDrop.classList.remove('open'); });
+  document.addEventListener('click', e => { if (!e.target.closest('.wd-search-box')) _wdDrop.classList.remove('open'); });
+  document.getElementById('wd-geolocate').addEventListener('click', () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      const name = await _wdRevGeo(lat, lng);
+      map.setView([lat, lng], 12);
+      _loadWd(lat, lng, name);
+    });
   });
 });
 
