@@ -537,6 +537,9 @@
       .routes-panel.mob-expanded { height: 200px; }
       .routes-panel-top { padding: 8px 10px; }
       .routes-panel-toggle { display: flex; }
+      #mob-panel-toggle { display: flex !important; }
+      .routes-panel-top { cursor: pointer; }
+      .routes-panel.mob-expanded #mob-panel-chevron { transform: rotate(180deg); }
 
       .routes-list {
         display: flex;
@@ -685,12 +688,17 @@
 
     <!-- Panel izquierdo: lista de rutas guardadas -->
     <div class="routes-panel" id="routes-panel">
-      <div class="routes-panel-top">
+      <div class="routes-panel-top" onclick="if(window.innerWidth<=768)toggleRoutesPanel()" style="cursor:default">
         <div class="filter-tabs">
-          <button class="filter-tab active" onclick="filterRoutes('all',this)">Todas</button>
-          <button class="filter-tab"        onclick="filterRoutes('road',this)">Road</button>
-          <button class="filter-tab"        onclick="filterRoutes('gravel',this)">Gravel</button>
-          <button class="filter-tab"        onclick="filterRoutes('mtb',this)">MTB</button>
+          <button class="filter-tab active" onclick="event.stopPropagation();filterRoutes('all',this)">Todas</button>
+          <button class="filter-tab"        onclick="event.stopPropagation();filterRoutes('road',this)">Road</button>
+          <button class="filter-tab"        onclick="event.stopPropagation();filterRoutes('gravel',this)">Gravel</button>
+          <button class="filter-tab"        onclick="event.stopPropagation();filterRoutes('mtb',this)">MTB</button>
+          <button id="mob-panel-toggle" onclick="event.stopPropagation();toggleRoutesPanel()" title="Ver rutas"
+            style="display:none;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);padding:4px 8px;cursor:pointer;font-size:11px;align-items:center;gap:4px;flex-shrink:0;">
+            <i class="fas fa-map" style="font-size:10px"></i>
+            <i class="fas fa-chevron-down" id="mob-panel-chevron" style="font-size:9px;transition:transform .25s"></i>
+          </button>
         </div>
       </div>
       <div class="routes-list" id="routes-list">
@@ -2072,6 +2080,9 @@ function toggleRoutesPanel() {
   const label = document.getElementById('routes-toggle-label');
   const expanded = panel.classList.toggle('mob-expanded');
   if (label) label.textContent = expanded ? 'Ocultar rutas' : 'Ver rutas';
+  // Sincronizar chevron del botón inline
+  const chev = document.getElementById('mob-panel-chevron');
+  if (chev) chev.style.transform = expanded ? 'rotate(180deg)' : '';
 }
 
 // ── Bounding box para detectar si hay que re-fetch ───────────────
