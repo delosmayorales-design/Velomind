@@ -1539,9 +1539,9 @@ APLICA LA PRIMERA REGLA QUE COINCIDA CON EL INPUT:
    → Ignora intervalos. Consejos tácticos para esa salida según TSB=${Math.round(latestPMC.tsb)}. recomendacion:"adaptado".
 
 ⚙️ ESPECIFICIDAD ("quiero hacer Z3", "quiero series de umbral", "prefiero rodillo"):
-   → Diseña exactamente ese tipo. Respeta FTP=${ftp}W y mantén TSS en rango ${tssMin}-${tssMax}.
-   → Si es rodillo: la duración suele ser mucho menor (ej: de 180min a 60-90min). La descripción DEBE enfocarse en indoor (cadencia) y EVITAR menciones al exterior.
-   → IMPORTANTE: Los bloques de tiempo (Calentamiento + Trabajo + Vuelta calma) en la 'descripcion' DEBEN sumar exactamente 'duracion_min'.
+   → Diseña exactamente ese tipo. Respeta FTP=${ftp}W.
+   → Si es rodillo: REDUCE la duración (ej: de 180min a 60-90min) y el TSS proporcionalmente. La descripción DEBE enfocarse en indoor (cadencia) y EVITAR menciones al exterior.
+   → REGLA MATEMÁTICA OBLIGATORIA: El desglose de tiempos en el texto de 'descripcion' (ej: "X min calentamiento + Y min Z2...") DEBE sumar exactamente el valor de 'duracion_min'. No puedes dejar los tiempos de la sesión original si has reducido la duración total.
 
 Devuelve SOLO este JSON (sin texto adicional):
 {
@@ -1551,7 +1551,7 @@ Devuelve SOLO este JSON (sin texto adicional):
   "tss_estimado": number,
   "if_estimado": number,
   "intensidad": "ej: Z2 ${Math.round(ftp*0.65)}-${Math.round(ftp*0.75)}W o Umbral ${Math.round(ftp*0.95)}W",
-  "descripcion": "2-3 frases con vatios reales (FTP=${ftp}W). RECALCULA los bloques (minutos) para que coincidan con la nueva duracion_min.",
+  "descripcion": "2-3 frases con vatios reales (FTP=${ftp}W). ASEGURA que el desglose de minutos en el texto sume exactamente el valor de 'duracion_min'.",
   "razon": "1 frase explicando el cambio según el estado del atleta",
   "nutricion": "1 frase sobre qué comer/beber ${diaRef.toLowerCase()}"
 }`;
