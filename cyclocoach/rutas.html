@@ -764,28 +764,39 @@ function calcElevGain(elevs, threshold = 3) {
   return Math.round(gain);
 }
 
-// Velocidades planas realistas para ciclista amateur (km/h)
-const SPEED_BY_TYPE = { road: 22, gravel: 16, mtb: 12 };
+// Parámetros por nivel de experiencia y tipo de terreno
+// flatSpeed → velocidad media en llano (km/h)
+// vam       → metros ascendidos por hora en los repechos (m/h)
+const RIDER_PROFILES = {
+  //              road              gravel           mtb
+  principiante: { road:{flat:18,vam:500}, gravel:{flat:13,vam:360}, mtb:{flat:9, vam:250} },
+  intermedio:   { road:{flat:22,vam:700}, gravel:{flat:16,vam:520}, mtb:{flat:12,vam:370} },
+  avanzado:     { road:{flat:25,vam:900}, gravel:{flat:19,vam:680}, mtb:{flat:15,vam:480} },
+};
 
-// Estima el tiempo de rodadura teniendo en cuenta el desnivel.
-// Separa la distancia en "tramos de subida" y "tramos llanos/bajada"
-// para no doble-contar: no suma tiempo de subida SOBRE el tiempo plano.
-//   flatSpeed  → velocidad en llano (km/h)
-//   VAM        → metros por hora ascendidos en los repechos
-//   avgGrad    → pendiente media estimada de las subidas (~6 %)
+function getRiderExperience() {
+  try {
+    const a = JSON.parse(localStorage.getItem('velomind_athlete'));
+    return a?.experience || 'intermedio';
+  } catch { return 'intermedio'; }
+}
+
+// Estima el tiempo de rodadura teniendo en cuenta el desnivel y el nivel del ciclista.
+// Separa la distancia en tramos de subida y tramos llanos para no doble-contar.
 function estimateRideTime(distKm, elevGainM, type) {
-  const flatSpeed = SPEED_BY_TYPE[type] || 18;
-  const vam       = { road: 750, gravel: 550, mtb: 380 }[type] || 600;
-  const avgGrad   = 0.065; // 6.5 % pendiente media en los ascensos
+  const exp      = getRiderExperience();
+  const profile  = (RIDER_PROFILES[exp] || RIDER_PROFILES.intermedio)[type]
+                   || RIDER_PROFILES.intermedio.road;
+  const avgGrad  = 0.065; // pendiente media estimada en los ascensos (~6.5 %)
 
-  // Distancia horizontal cubierta durante las subidas
-  const climbKm   = Math.min(distKm * 0.85, elevGainM / 1000 / avgGrad);
-  const flatKm    = Math.max(0, distKm - climbKm);
+  // Distancia horizontal cubierta durante los ascensos
+  const climbKm  = Math.min(distKm * 0.85, (elevGainM / 1000) / avgGrad);
+  const flatKm   = Math.max(0, distKm - climbKm);
 
   // Velocidad horizontal en subida: VAM (m/h) ÷ gradiente → km/h
-  const climbKmh  = (vam / 1000) / avgGrad;
+  const climbKmh = (profile.vam / 1000) / avgGrad;
 
-  return Math.round((flatKm / flatSpeed + climbKm / climbKmh) * 60);
+  return Math.round((flatKm / profile.flat + climbKm / climbKmh) * 60);
 }
 
 // BRouter — perfil MTB real: usa tags OSM mtb:scale, evita carreteras asfaltadas
