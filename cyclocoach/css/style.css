@@ -895,7 +895,7 @@ select.form-input option {
 /* ─── Android / pequeño móvil ──────────────────────────────── */
 @media (max-width: 480px) {
   /* Header: permite que los botones se ajusten en lugar de ocultarse */
-  .header-actions { gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .header-actions { gap: 8px; flex-wrap: wrap; justify-content: flex-end; display: flex !important; }
   .page-header { padding: 6px 10px; flex-wrap: wrap; }
   .page-body { padding: 12px; }
 
@@ -1294,8 +1294,13 @@ html.light-theme .btn-ghost:hover { color: #111827 !important; background: rgba(
 html.light-theme .btn-secondary { 
   color: #111827 !important; 
   background: #ffffff !important;
-  border-color: rgba(0,0,0,0.25) !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+  border-color: rgba(0,0,0,0.22) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+html.light-theme .chip {
+  background: #ffffff !important;
+  color: #4b5563 !important;
+  border-color: rgba(0,0,0,0.15) !important;
 }
 html.light-theme .btn-secondary:hover { 
   background: #f1f5f9 !important;
