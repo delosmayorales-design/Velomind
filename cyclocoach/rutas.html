@@ -289,6 +289,8 @@
       display: none; flex-direction: column;
       font-family: 'Space Grotesk', sans-serif;
       user-select: none;
+      height: 100dvh;   /* cubre barra dinámica del navegador mobile */
+      touch-action: none;
     }
     #garmin-overlay.visible { display: flex; }
 
@@ -296,48 +298,49 @@
     .g-topbar {
       display: flex; align-items: center; justify-content: space-between;
       background: #111; border-bottom: 1px solid #222;
-      padding: 10px 16px; flex-shrink: 0;
+      padding: 8px 14px; flex-shrink: 0;
     }
-    .g-topbar-left  { display: flex; align-items: center; gap: 10px; }
-    .g-topbar-time  { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 1px; }
-    .g-rec-dot      { width: 10px; height: 10px; border-radius: 50%; background: #ff3b3b;
+    .g-topbar-left  { display: flex; align-items: center; gap: 8px; }
+    .g-topbar-time  { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: 1px; }
+    .g-rec-dot      { width: 9px; height: 9px; border-radius: 50%; background: #ff3b3b;
                       animation: trk-pulse 1.4s ease-in-out infinite; flex-shrink: 0; }
-    .g-topbar-dist  { font-size: 22px; font-weight: 800; color: #9ED62B; }
+    .g-topbar-dist  { font-size: 20px; font-weight: 800; color: #9ED62B; }
     .g-topbar-unit  { font-size: 11px; color: #555; margin-left: 3px; }
 
-    /* Grid de campos de datos */
+    /* Grid de campos: 5 filas explícitas que llenan el espacio disponible */
     .g-grid {
       flex: 1; display: grid;
       grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1.6fr 1fr 1fr 1fr 1fr;
       gap: 1px; background: #1a1a1a;
-      overflow: hidden;
+      overflow: hidden; min-height: 0;
     }
     .g-cell {
       background: #0a0a0a;
       display: flex; flex-direction: column;
       justify-content: center; align-items: center;
-      padding: 10px 8px; position: relative;
+      padding: 6px 4px; position: relative; overflow: hidden;
     }
     .g-cell.g-span2 { grid-column: span 2; }
     .g-cell-lbl {
-      font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
-      text-transform: uppercase; color: #444; margin-bottom: 4px;
+      font-size: clamp(8px, 1.8vw, 11px); font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: #444; margin-bottom: 2px; white-space: nowrap;
     }
     .g-cell-val {
-      font-size: 48px; font-weight: 900; color: #fff; line-height: 1;
+      font-size: clamp(32px, 9vw, 52px); font-weight: 900; color: #fff; line-height: 1;
     }
-    .g-cell-unit { font-size: 13px; color: #555; margin-top: 3px; }
+    .g-cell-unit { font-size: clamp(10px, 2vw, 13px); color: #555; margin-top: 2px; }
 
     /* Colores por tipo de dato */
-    .g-cell.g-speed   .g-cell-val { font-size: 72px; color: #fff; }
+    .g-cell.g-speed   .g-cell-val { font-size: clamp(56px, 17vw, 88px); color: #fff; }
     .g-cell.g-hr      .g-cell-val { color: #ff4757; }
     .g-cell.g-power   .g-cell-val { color: #9ED62B; }
     .g-cell.g-np      .g-cell-val { color: #9ED62B; }
     .g-cell.g-cad     .g-cell-val { color: #00D4FF; }
     .g-cell.g-elev    .g-cell-val { color: #F59E0B; }
     .g-cell.g-alt     .g-cell-val { color: #F59E0B; }
-    .g-cell.g-vmed    .g-cell-val { color: #aaa; font-size: 38px; }
-    .g-cell.g-vmax    .g-cell-val { color: #aaa; font-size: 38px; }
+    .g-cell.g-vmed    .g-cell-val { color: #aaa; }
+    .g-cell.g-vmax    .g-cell-val { color: #aaa; }
 
     /* Sensor sin datos: valor apagado */
     .g-cell-val.g-no-data { color: #2a2a2a !important; }
@@ -348,11 +351,11 @@
       border-top: 1px solid #1a1a1a;
     }
     .g-botbtn {
-      flex: 1; padding: 16px 8px;
+      flex: 1; padding: 14px 8px;
       background: #0d0d0d; border: none;
-      color: #888; font-size: 13px; font-weight: 700;
+      color: #888; font-size: 12px; font-weight: 700;
       cursor: pointer; font-family: inherit;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
       transition: background .18s;
       border-right: 1px solid #1a1a1a;
     }
