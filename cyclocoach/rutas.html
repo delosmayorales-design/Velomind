@@ -2452,6 +2452,39 @@ function switchWdDay(day, btn) {
 }
 
 
+async function _wdRevGeo(lat, lng) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+    const d = await r.json();
+    return d.address?.town || d.address?.city || d.address?.village || d.address?.municipality || d.display_name?.split(',')[0] || 'Zona seleccionada';
+  } catch { return 'Zona seleccionada'; }
+}
+
+async function _wdSearch(q) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=es`);
+    const results = await r.json();
+    _wdDrop.innerHTML = '';
+    if (!results.length) { _wdDrop.classList.remove('open'); return; }
+    results.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'wd-res';
+      div.textContent = item.display_name;
+      div.addEventListener('click', () => {
+        const lat = parseFloat(item.lat);
+        const lng = parseFloat(item.lon);
+        const name = item.address?.town || item.address?.city || item.address?.village || item.display_name.split(',')[0];
+        _wdInput.value = name;
+        _wdDrop.classList.remove('open');
+        map.setView([lat, lng], 12);
+        _loadWd(lat, lng, name);
+      });
+      _wdDrop.appendChild(div);
+    });
+    _wdDrop.classList.add('open');
+  } catch { _wdDrop.classList.remove('open'); }
+}
+
 // Buscador e init del drawer (DOMContentLoaded: map no existe aun en scope global)
 let _wdInput, _wdDrop;
 document.addEventListener('DOMContentLoaded', () => {
@@ -2489,6 +2522,7 @@ async function _loadWd(lat, lng, name) {
       +`&timezone=auto&forecast_days=2&wind_speed_unit=kmh`;
     _wdData = await (await fetch(url)).json();
     _renderWd(_wdData, name, lat, lng);
+    if (!windArrowsActive) toggleWindArrows();
   } catch {
     document.getElementById('wd-body').innerHTML =
       `<div class="wd-placeholder"><div style="font-size:36px">⚠️</div><p style="font-size:12px">Error al cargar. Comprueba tu conexión.</p></div>`;

@@ -932,8 +932,6 @@ let currentPlan = null;
 
 // Colapsar / expandir tarjetas del dashboard superior
 function toggleTopCard(bodyId, chevId) {
-  // En desktop no hacemos nada (CSS lo controla)
-  if (window.innerWidth > 600) return;
   const body = document.getElementById(bodyId);
   const chev = document.getElementById(chevId);
   if (!body) return;
