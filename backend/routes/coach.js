@@ -2260,37 +2260,8 @@ Estado de forma: CTL=${ctl}, ATL=${atl}, TSB=${tsb} (${fs.label}).
 El atleta quiere hacer:
 "${description}"
 
-INSTRUCCIÓN PRINCIPAL: Genera un plan EXACTAMENTE para lo que el atleta describe. 
-REGLA MATEMÁTICA DE TIEMPO: Calcula la 'duracion_min' de forma realista. 
-- Para rutas llanas: usa una velocidad media de 30 km/h.
-- Para rutas de montaña: añade 1 minuto por cada 15 metros de desnivel positivo al tiempo del llano.
-- El tiempo resultante DEBE ser coherente con la distancia mencionada.
 
-REGLAS (aplica ÚNICAMENTE la que corresponda al tipo de salida descrito):
-- Montaña / puertos / desnivel / col: Z2-Z3 general, picos Z4-Z5 en subidas. TSS 150-350 según horas y desnivel. IF ~0.65-0.75.
-- Llano / rodaje / llanear / fácil: Z2-Z3, cadencia alta. TSS 60-130 para 1.5-3h. IF ~0.60-0.70.
-- Suave / recuperación activa / corto: Z1-Z2, máximo 90 min. TSS 30-65. IF ~0.50-0.60.
-- Intervalos / umbral / potencia: describe bloques específicos. TSS 80-140. IF ~0.80-0.95.
-- VO2max / alta intensidad: bloques cortos, descansos largos. TSS 80-120. IF ~0.90-1.05.
-- Si TSB < -15: reducir 10% la intensidad indicada. Pacing más conservador.
-- Si TSB > 10: puede ir algo más fuerte en los tramos finales.
-- Usa siempre vatios reales basados en FTP=${ftp}W.
 
-Devuelve SOLO este JSON:
-{
-  "titulo": "nombre que refleje EXACTAMENTE lo que el atleta describió (5-8 palabras)",
-  "tipo": "montana|llano|recuperacion|suave|umbral|vo2",
-  "duracion_min": number,
-  "distancia_km": number | null,
-  "tss_estimado": number,
-  "if_estimado": number,
-  "intensidad": "zonas y vatios reales para ESTE tipo de salida",
-  "pacing": "estrategia específica para el terreno/tipo descrito — no genérica",
-  "nutricion_pre": "qué comer antes según la duración e intensidad",
-  "nutricion_durante": "plan durante la salida adaptado a la duración real",
-  "nutricion_post": "recuperación post adaptada a la carga real",
-  "hidratacion": "cantidad y frecuencia según la duración y temperatura estimada",
-  "advertencias": "solo si el TSB indica riesgo real o la salida es muy exigente"
 }`;
 
     const result = await callAI(systemPrompt, userMsg, { max_tokens: 900, temperature: 0.35 });

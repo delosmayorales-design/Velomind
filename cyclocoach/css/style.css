@@ -936,6 +936,19 @@ html.light-theme .modal-close-x:hover {
   /* Tarjetas de sesión: compactas en móvil */
   .session-cards-grid { gap: 6px; }
   .session-row { gap: 8px; padding: 8px 10px; }
+  .session-action-btns { 
+    display: flex !important; /* Asegurar visibilidad */
+    gap: 8px; 
+    margin-top: 12px; 
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .session-action-btns .btn {
+    flex: 1 1 45%; /* Dos botones por fila en móviles pequeños */
+    min-width: 120px;
+    padding: 12px 8px !important;
+    font-size: 12px !important;
+  }
   .day-badge { min-width: 40px; }
   .day-badge .dn { font-size: 10px; }
   .day-badge .dd { font-size: 18px; }
