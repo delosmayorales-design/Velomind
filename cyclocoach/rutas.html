@@ -3220,11 +3220,34 @@ async function saveTrackingActivity() {
 
 // ── Sensores Bluetooth ────────────────────────────────────────────
 
-// Estado de cada sensor
+// Config GATT por tipo (compartida entre connect y reconnect)
+const _BT_CFG = {
+  hr: {
+    filters:        [{ services: ['heart_rate'] }],
+    service:        'heart_rate',
+    characteristic: 'heart_rate_measurement',
+    label:          'Pulsómetro',
+  },
+  cadence: {
+    filters:        [{ services: ['cycling_speed_and_cadence'] }],
+    optionalServices: ['cycling_speed_and_cadence'],
+    service:        'cycling_speed_and_cadence',
+    characteristic: 'csc_measurement',
+    label:          'Sensor cadencia',
+  },
+  power: {
+    filters:        [{ services: ['cycling_power'] }],
+    service:        'cycling_power',
+    characteristic: 'cycling_power_measurement',
+    label:          'Potenciómetro',
+  },
+};
+
+// Estado de cada sensor  (intentional=true → desconexión manual, no reintentar)
 const _bt = {
-  hr:      { device: null, char: null, connected: false },
-  cadence: { device: null, char: null, connected: false },
-  power:   { device: null, char: null, connected: false },
+  hr:      { device: null, char: null, connected: false, intentional: false },
+  cadence: { device: null, char: null, connected: false, intentional: false },
+  power:   { device: null, char: null, connected: false, intentional: false },
 };
 
 // Acumuladores para calcular medias y NP al guardar
@@ -3257,29 +3280,7 @@ async function connectSensor(type) {
     return;
   }
 
-  const configs = {
-    hr: {
-      filters:       [{ services: ['heart_rate'] }],
-      service:       'heart_rate',
-      characteristic:'heart_rate_measurement',
-      label:         'Pulsómetro',
-    },
-    cadence: {
-      filters:       [{ services: ['cycling_speed_and_cadence'] }],
-      optionalServices: ['cycling_speed_and_cadence'],
-      service:       'cycling_speed_and_cadence',
-      characteristic:'csc_measurement',
-      label:         'Sensor cadencia',
-    },
-    power: {
-      filters:       [{ services: ['cycling_power'] }],
-      service:       'cycling_power',
-      characteristic:'cycling_power_measurement',
-      label:         'Potenciómetro',
-    },
-  };
-
-  const cfg = configs[type];
+  const cfg = _BT_CFG[type];
   _setSensorStatus(type, 'Buscando…', false);
 
   try {
@@ -3288,20 +3289,7 @@ async function connectSensor(type) {
       optionalServices: cfg.optionalServices || [],
     });
 
-    _setSensorStatus(type, 'Conectando…', false);
-    const server  = await device.gatt.connect();
-    const service = await server.getPrimaryService(cfg.service);
-    const char    = await service.getCharacteristic(cfg.characteristic);
-
-    await char.startNotifications();
-    char.addEventListener('characteristicvaluechanged', (e) => _onSensorData(type, e.target.value));
-
-    device.addEventListener('gattserverdisconnected', () => _onSensorDisconnected(type));
-
-    _bt[type] = { device, char, connected: true };
-    _setSensorStatus(type, device.name || cfg.label, true);
-    _updateSensorHUD(type, true);
-    _updateSensorsBtnHeader();
+    await _doConnect(type, device);
     showToast(`${cfg.label} conectado`, 'success');
 
   } catch(e) {
@@ -3314,20 +3302,76 @@ async function connectSensor(type) {
   }
 }
 
+// Conexión/suscripción GATT (usada por connect y reconnect)
+async function _doConnect(type, device) {
+  const cfg    = _BT_CFG[type];
+  const server = await device.gatt.connect();
+  const svc    = await server.getPrimaryService(cfg.service);
+  const char   = await svc.getCharacteristic(cfg.characteristic);
+
+  await char.startNotifications();
+  // Limpiar listeners anteriores clonando el characteristic (evitar duplicados)
+  char.oncharacteristicvaluechanged = (e) => _onSensorData(type, e.target.value);
+
+  // Registrar handler de desconexión solo la primera vez (evitar acumulación)
+  if (!_bt[type].device) {
+    device.addEventListener('gattserverdisconnected', () => _onSensorDisconnected(type));
+  }
+
+  _bt[type] = { device, char, connected: true, intentional: false };
+  _setSensorStatus(type, device.name || cfg.label, true);
+  _updateSensorHUD(type, true);
+  _updateSensorsBtnHeader();
+}
+
+// Reconexión silenciosa sin picker (usa el device guardado en memoria)
+async function _reconnectSensor(type) {
+  const dev = _bt[type].device;
+  if (!dev || _bt[type].intentional) return;
+  _setSensorStatus(type, 'Reconectando…', false);
+  try {
+    await _doConnect(type, dev);
+  } catch(e) {
+    _setSensorStatus(type, 'Sin señal', false);
+  }
+}
+
 function _disconnectSensor(type) {
+  _bt[type].intentional = true;   // marcar como voluntario
   try { _bt[type].device?.gatt?.disconnect(); } catch(_) {}
-  _bt[type] = { device: null, char: null, connected: false };
+  _bt[type] = { device: null, char: null, connected: false, intentional: false };
   _setSensorStatus(type, 'Sin conectar', false);
   _updateSensorHUD(type, false);
   _updateSensorsBtnHeader();
 }
 
 function _onSensorDisconnected(type) {
+  if (_bt[type].intentional) return;   // lo desconectó el usuario → no reintentar
   _bt[type].connected = false;
-  _setSensorStatus(type, 'Desconectado', false);
+  _setSensorStatus(type, 'Sin señal…', false);
   _updateSensorHUD(type, false);
   _updateSensorsBtnHeader();
+  // Reintento inmediato (el device sigue en memoria)
+  setTimeout(() => _reconnectSensor(type), 1500);
 }
+
+// Auto-reconexión cuando el usuario vuelve a la pantalla
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  for (const type of ['hr', 'cadence', 'power']) {
+    if (_bt[type].device && !_bt[type].connected && !_bt[type].intentional) {
+      _reconnectSensor(type);
+    }
+  }
+});
+
+// Aviso si intentan salir de la página con una grabación activa
+window.addEventListener('beforeunload', (e) => {
+  if (_trkActive) {
+    e.preventDefault();
+    return (e.returnValue = '¿Seguro? Hay una grabación GPS en curso.');
+  }
+});
 
 // ── Parseo de datos GATT ──────────────────────────────────────────
 
