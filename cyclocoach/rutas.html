@@ -282,6 +282,52 @@
     .modal-btn-save   { background:var(--primary);color:#111;font-weight:700;font-family:'Space Grotesk',sans-serif;border:none; }
     .modal-btn-save:hover { background:var(--primary-dark, #84B422);box-shadow:0 4px 16px rgba(158,214,43,0.3);transform:translateY(-1px); }
 
+    /* ── Sensores Bluetooth ─────────────────────────────────────── */
+    #btn-sensors.connected { background:rgba(0,212,100,0.15)!important; border-color:rgba(0,212,100,0.5)!important; color:#00d464!important; }
+    .sensor-modal-overlay {
+      position:fixed;inset:0;z-index:9999;
+      background:rgba(0,0,0,.65);backdrop-filter:blur(6px);
+      display:flex;align-items:center;justify-content:center;
+    }
+    .sensor-modal-box {
+      background:var(--bg-card);border:1px solid var(--border);
+      border-radius:16px;padding:22px;width:310px;
+    }
+    .sensor-modal-title { font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;display:flex;align-items:center;gap:8px; }
+    .sensor-modal-sub   { font-size:11px;color:var(--text-muted);margin-bottom:18px;line-height:1.5; }
+    .sensor-row {
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 12px;background:var(--bg-input);border-radius:10px;
+      margin-bottom:8px;gap:10px;
+    }
+    .sensor-info { display:flex;align-items:center;gap:10px;flex:1;min-width:0; }
+    .sensor-icon { font-size:18px;width:22px;text-align:center;flex-shrink:0; }
+    .sensor-name { font-size:13px;font-weight:600;color:var(--text-primary); }
+    .sensor-status { font-size:11px;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .sensor-status.ok  { color:#00d464; }
+    .sensor-status.err { color:#ff4757; }
+    .sensor-btn {
+      padding:5px 11px;border-radius:7px;font-size:11px;font-weight:700;
+      cursor:pointer;font-family:inherit;flex-shrink:0;border:1px solid;transition:all .18s;
+    }
+    .sensor-btn.connect    { background:rgba(158,214,43,.12);border-color:rgba(158,214,43,.4);color:var(--primary); }
+    .sensor-btn.connect:hover { background:rgba(158,214,43,.22); }
+    .sensor-btn.disconnect { background:rgba(255,71,87,.1);border-color:rgba(255,71,87,.4);color:#ff4757; }
+    .sensor-bt-note { font-size:10px;color:var(--text-muted);text-align:center;margin-top:10px;line-height:1.5; }
+
+    /* Fila de sensores en el HUD */
+    #trk-sensor-row {
+      display:none;width:100%;
+      border-top:1px solid rgba(255,255,255,0.08);
+      padding-top:8px;margin-top:4px;
+      justify-content:center;gap:18px;
+    }
+    #trk-sensor-row.visible { display:flex; }
+    .trk-s-stat { text-align:center; }
+    .trk-s-val  { font-size:15px;font-weight:800;color:#fff;font-family:'Space Grotesk',sans-serif;line-height:1; }
+    .trk-s-lbl  { font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.5px;margin-top:1px; }
+    .trk-s-sep  { width:1px;height:24px;background:rgba(255,255,255,0.08);flex-shrink:0;align-self:center; }
+
     /* ── GPS Tracking HUD ──────────────────────────────────────── */
     #tracking-hud {
       position: absolute;
@@ -655,6 +701,9 @@
       <button class="btn btn-secondary btn-sm" id="btn-track" onclick="toggleTracking()" style="background:rgba(255,59,59,0.12);border-color:rgba(255,59,59,0.4);color:#ff3b3b;">
         <i class="fas fa-circle" id="btn-track-icon"></i><span class="btn-label" id="btn-track-label"> Grabar</span>
       </button>
+      <button class="btn btn-secondary btn-sm" id="btn-sensors" onclick="openSensorsModal()" title="Conectar sensores Bluetooth">
+        <i class="fas fa-bluetooth"></i><span class="btn-label"> Sensores</span>
+      </button>
       <button class="btn btn-primary btn-sm" onclick="startDrawing()">
         <i class="fas fa-pencil-alt"></i><span class="btn-label"> Nueva ruta</span>
       </button>
@@ -717,18 +766,38 @@
     <div class="map-wrap">
 
       <!-- HUD GPS tracking en vivo -->
-      <div id="tracking-hud">
-        <div class="trk-dot"></div>
-        <div class="trk-stat"><div class="trk-val" id="trk-time">00:00</div><div class="trk-lbl">tiempo</div></div>
-        <div class="trk-sep"></div>
-        <div class="trk-stat"><div class="trk-val" id="trk-dist">0.00</div><div class="trk-lbl">km</div></div>
-        <div class="trk-sep"></div>
-        <div class="trk-stat"><div class="trk-val" id="trk-speed">0.0</div><div class="trk-lbl">km/h</div></div>
-        <div class="trk-sep"></div>
-        <div class="trk-stat"><div class="trk-val" id="trk-elev">0</div><div class="trk-lbl">D+ m</div></div>
-        <button onclick="toggleTracking()" style="background:rgba(255,59,59,0.15);border:1px solid rgba(255,59,59,0.4);border-radius:8px;color:#ff3b3b;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;margin-left:6px;">
-          <i class="fas fa-stop"></i> Detener
-        </button>
+      <div id="tracking-hud" style="flex-direction:column;align-items:center;">
+        <!-- Fila GPS -->
+        <div style="display:flex;align-items:center;gap:0;">
+          <div class="trk-dot" style="margin-right:14px;"></div>
+          <div class="trk-stat"><div class="trk-val" id="trk-time">00:00</div><div class="trk-lbl">tiempo</div></div>
+          <div class="trk-sep" style="margin:0 12px;"></div>
+          <div class="trk-stat"><div class="trk-val" id="trk-dist">0.00</div><div class="trk-lbl">km</div></div>
+          <div class="trk-sep" style="margin:0 12px;"></div>
+          <div class="trk-stat"><div class="trk-val" id="trk-speed">0.0</div><div class="trk-lbl">km/h</div></div>
+          <div class="trk-sep" style="margin:0 12px;"></div>
+          <div class="trk-stat"><div class="trk-val" id="trk-elev">0</div><div class="trk-lbl">D+ m</div></div>
+          <button onclick="toggleTracking()" style="background:rgba(255,59,59,0.15);border:1px solid rgba(255,59,59,0.4);border-radius:8px;color:#ff3b3b;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;margin-left:14px;">
+            <i class="fas fa-stop"></i> Detener
+          </button>
+        </div>
+        <!-- Fila sensores BT (aparece solo si hay alguno conectado) -->
+        <div id="trk-sensor-row">
+          <div class="trk-s-stat" id="trk-s-hr-wrap" style="display:none">
+            <div class="trk-s-val" id="trk-s-hr">--</div>
+            <div class="trk-s-lbl">❤️ bpm</div>
+          </div>
+          <div class="trk-s-sep" id="trk-s-sep1" style="display:none"></div>
+          <div class="trk-s-stat" id="trk-s-cad-wrap" style="display:none">
+            <div class="trk-s-val" id="trk-s-cad">--</div>
+            <div class="trk-s-lbl">⚡ rpm</div>
+          </div>
+          <div class="trk-s-sep" id="trk-s-sep2" style="display:none"></div>
+          <div class="trk-s-stat" id="trk-s-pow-wrap" style="display:none">
+            <div class="trk-s-val" id="trk-s-pow">--</div>
+            <div class="trk-s-lbl">💪 W</div>
+          </div>
+        </div>
       </div>
 
       <!-- Stats flotantes -->
@@ -835,6 +904,57 @@
 </div>
 
 <!-- Modal: Ruta por viento -->
+<!-- Modal sensores Bluetooth -->
+<div id="sensors-modal" style="display:none">
+  <div class="sensor-modal-overlay" onclick="if(event.target===this)closeSensorsModal()">
+    <div class="sensor-modal-box">
+      <div class="sensor-modal-title"><i class="fas fa-bluetooth" style="color:#0082fc"></i> Sensores Bluetooth</div>
+      <div class="sensor-modal-sub">Conectá tus sensores ANT+/BT antes de grabar.<br>Requiere Chrome en Android o Chrome desktop.</div>
+
+      <!-- Pulsómetro -->
+      <div class="sensor-row">
+        <div class="sensor-info">
+          <div class="sensor-icon">❤️</div>
+          <div>
+            <div class="sensor-name">Pulsómetro</div>
+            <div class="sensor-status" id="hr-status">Sin conectar</div>
+          </div>
+        </div>
+        <button class="sensor-btn connect" id="hr-btn" onclick="connectSensor('hr')">Conectar</button>
+      </div>
+
+      <!-- Sensor de cadencia -->
+      <div class="sensor-row">
+        <div class="sensor-info">
+          <div class="sensor-icon">⚡</div>
+          <div>
+            <div class="sensor-name">Cadencia</div>
+            <div class="sensor-status" id="cad-status">Sin conectar</div>
+          </div>
+        </div>
+        <button class="sensor-btn connect" id="cad-btn" onclick="connectSensor('cadence')">Conectar</button>
+      </div>
+
+      <!-- Potenciómetro -->
+      <div class="sensor-row">
+        <div class="sensor-info">
+          <div class="sensor-icon">💪</div>
+          <div>
+            <div class="sensor-name">Potenciómetro</div>
+            <div class="sensor-status" id="pow-status">Sin conectar</div>
+          </div>
+        </div>
+        <button class="sensor-btn connect" id="pow-btn" onclick="connectSensor('power')">Conectar</button>
+      </div>
+
+      <div class="sensor-bt-note">Los sensores permanecen conectados mientras grabás.<br>Podés conectar antes o durante la grabación.</div>
+      <div style="margin-top:14px;text-align:right">
+        <button class="modal-btn modal-btn-cancel" style="width:auto;padding:8px 20px" onclick="closeSensorsModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal guardar trayecto GPS -->
 <div id="track-modal" style="display:none">
   <div class="modal-overlay">
@@ -2873,6 +2993,7 @@ function _startTracking() {
       _trkMovingTime = 0;
       _trkLastTs     = null;
       _trkStartTime  = Date.now();
+      _resetSensorAccumulators();
 
       // Polyline roja en el mapa
       _trkPolyline = L.polyline([], { color: '#ff3b3b', weight: 4, opacity: 0.85 }).addTo(map);
@@ -2985,12 +3106,19 @@ function _stopTracking() {
   document.getElementById('trk-modal-name').value =
     `Salida ${now.toLocaleDateString('es', {weekday:'long'})} ${now.toLocaleDateString('es',{day:'numeric',month:'short'})}`;
 
-  document.getElementById('trk-modal-summary').innerHTML = `
+  const _avgHrPrev  = _avg(_btData.hrSamples);
+  const _avgPowPrev = _avg(_btData.powSamples);
+  const _npPrev     = _calcNP(_btData.powSamples);
+  let summaryHTML = `
     <div class="trk-card"><div class="trk-card-val">${distKm.toFixed(2)}</div><div class="trk-card-lbl">km</div></div>
     <div class="trk-card"><div class="trk-card-val">${_fmtTime(elapsed)}</div><div class="trk-card-lbl">tiempo</div></div>
     <div class="trk-card"><div class="trk-card-val">${avgSpeed.toFixed(1)}</div><div class="trk-card-lbl">km/h media</div></div>
-    <div class="trk-card"><div class="trk-card-val">${Math.round(_trkElevGain)}</div><div class="trk-card-lbl">D+ metros</div></div>
+    <div class="trk-card"><div class="trk-card-val">${Math.round(_trkElevGain)}</div><div class="trk-card-lbl">D+ m</div></div>
   `;
+  if (_avgHrPrev)  summaryHTML += `<div class="trk-card"><div class="trk-card-val">${_avgHrPrev}</div><div class="trk-card-lbl">❤️ bpm media</div></div>`;
+  if (_avgPowPrev) summaryHTML += `<div class="trk-card"><div class="trk-card-val">${_avgPowPrev}W</div><div class="trk-card-lbl">💪 potencia media</div></div>`;
+  if (_npPrev)     summaryHTML += `<div class="trk-card"><div class="trk-card-val">${_npPrev}W</div><div class="trk-card-lbl">NP</div></div>`;
+  document.getElementById('trk-modal-summary').innerHTML = summaryHTML;
 
   // Guardar estado para el modal
   document.getElementById('track-modal')._trkData = { elapsed, distKm, avgSpeed, dateStr };
@@ -3030,13 +3158,29 @@ async function saveTrackingActivity() {
   const type = document.getElementById('trk-modal-type').value;
   const calories = Math.round(distKm * 40);
 
+  // Métricas de sensores BT
+  const avgHr  = _avg(_btData.hrSamples);
+  const avgCad = _avg(_btData.cadSamples);
+  const avgPow = _avg(_btData.powSamples);
+  const np     = _calcNP(_btData.powSamples);
+  // Recalcular calorías si tenemos potencia (más preciso)
+  const calFinal = avgPow > 0
+    ? Math.round(avgPow * elapsed * 0.00024)  // W × s × eficiencia ~24%
+    : calories;
+
   const actPayload = {
     name, date: dateStr, source: 'GPS', type,
     duration: elapsed, distance: _trkDist,
     elevation: Math.round(_trkElevGain),
     avg_speed: Math.round(avgSpeed * 10) / 10,
     max_speed: Math.round(_trkMaxSpeed * 10) / 10,
-    calories,
+    calories: calFinal,
+    avg_hr:      avgHr  || undefined,
+    max_hr:      _btData.maxHr || undefined,
+    avg_cadence: avgCad || undefined,
+    avg_power:   avgPow || undefined,
+    max_power:   _btData.maxPow || undefined,
+    np:          np     || undefined,
     notes: `Trayecto grabado en VeloMind · ${_trkPoints.length} puntos GPS`,
   };
 
@@ -3072,6 +3216,250 @@ async function saveTrackingActivity() {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-check"></i> Guardar';
   }
+}
+
+// ── Sensores Bluetooth ────────────────────────────────────────────
+
+// Estado de cada sensor
+const _bt = {
+  hr:      { device: null, char: null, connected: false },
+  cadence: { device: null, char: null, connected: false },
+  power:   { device: null, char: null, connected: false },
+};
+
+// Acumuladores para calcular medias y NP al guardar
+const _btData = {
+  hrSamples:    [],   // bpm por segundo
+  cadSamples:   [],   // rpm por segundo
+  powSamples:   [],   // W por segundo (para NP y media)
+  maxHr:        0,
+  maxPow:       0,
+  // Para cadencia CSC (crank revolution data)
+  _lastCrankRev: null,
+  _lastCrankTs:  null,
+  // Para cadencia desde Power (crank revolution data en flags)
+  _lastPowCrankRev: null,
+  _lastPowCrankTs:  null,
+};
+
+function openSensorsModal()  { document.getElementById('sensors-modal').style.display = ''; }
+function closeSensorsModal() { document.getElementById('sensors-modal').style.display = 'none'; }
+
+async function connectSensor(type) {
+  if (!navigator.bluetooth) {
+    showToast('Web Bluetooth no disponible en este navegador. Usá Chrome en Android.', 'error');
+    return;
+  }
+
+  // Si ya está conectado, desconectar
+  if (_bt[type].connected) {
+    _disconnectSensor(type);
+    return;
+  }
+
+  const configs = {
+    hr: {
+      filters:       [{ services: ['heart_rate'] }],
+      service:       'heart_rate',
+      characteristic:'heart_rate_measurement',
+      label:         'Pulsómetro',
+    },
+    cadence: {
+      filters:       [{ services: ['cycling_speed_and_cadence'] }],
+      optionalServices: ['cycling_speed_and_cadence'],
+      service:       'cycling_speed_and_cadence',
+      characteristic:'csc_measurement',
+      label:         'Sensor cadencia',
+    },
+    power: {
+      filters:       [{ services: ['cycling_power'] }],
+      service:       'cycling_power',
+      characteristic:'cycling_power_measurement',
+      label:         'Potenciómetro',
+    },
+  };
+
+  const cfg = configs[type];
+  _setSensorStatus(type, 'Buscando…', false);
+
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      filters: cfg.filters,
+      optionalServices: cfg.optionalServices || [],
+    });
+
+    _setSensorStatus(type, 'Conectando…', false);
+    const server  = await device.gatt.connect();
+    const service = await server.getPrimaryService(cfg.service);
+    const char    = await service.getCharacteristic(cfg.characteristic);
+
+    await char.startNotifications();
+    char.addEventListener('characteristicvaluechanged', (e) => _onSensorData(type, e.target.value));
+
+    device.addEventListener('gattserverdisconnected', () => _onSensorDisconnected(type));
+
+    _bt[type] = { device, char, connected: true };
+    _setSensorStatus(type, device.name || cfg.label, true);
+    _updateSensorHUD(type, true);
+    _updateSensorsBtnHeader();
+    showToast(`${cfg.label} conectado`, 'success');
+
+  } catch(e) {
+    if (e.name === 'NotFoundError') {
+      _setSensorStatus(type, 'Sin conectar', false);
+    } else {
+      _setSensorStatus(type, 'Error: ' + e.message, false);
+      showToast('No se pudo conectar: ' + e.message, 'error');
+    }
+  }
+}
+
+function _disconnectSensor(type) {
+  try { _bt[type].device?.gatt?.disconnect(); } catch(_) {}
+  _bt[type] = { device: null, char: null, connected: false };
+  _setSensorStatus(type, 'Sin conectar', false);
+  _updateSensorHUD(type, false);
+  _updateSensorsBtnHeader();
+}
+
+function _onSensorDisconnected(type) {
+  _bt[type].connected = false;
+  _setSensorStatus(type, 'Desconectado', false);
+  _updateSensorHUD(type, false);
+  _updateSensorsBtnHeader();
+}
+
+// ── Parseo de datos GATT ──────────────────────────────────────────
+
+function _onSensorData(type, value) {
+  if (type === 'hr')      _parseHR(value);
+  if (type === 'cadence') _parseCSC(value);
+  if (type === 'power')   _parsePower(value);
+}
+
+function _parseHR(value) {
+  const flags = value.getUint8(0);
+  const bpm   = (flags & 0x1) ? value.getUint16(1, true) : value.getUint8(1);
+  document.getElementById('trk-s-hr').textContent = bpm;
+  if (bpm > _btData.maxHr) _btData.maxHr = bpm;
+  _btData.hrSamples.push(bpm);
+}
+
+function _parseCSC(value) {
+  const flags = value.getUint8(0);
+  // Bit 1 = Crank Revolution Data Present
+  if (!(flags & 0x2)) return;
+  let offset = 1;
+  if (flags & 0x1) offset += 4; // skip wheel revolution data (4 bytes)
+  const crankRev = value.getUint16(offset, true);
+  const crankTs  = value.getUint16(offset + 2, true); // 1/1024 s units
+
+  if (_btData._lastCrankRev !== null) {
+    let deltaRev = crankRev - _btData._lastCrankRev;
+    let deltaTs  = crankTs  - _btData._lastCrankTs;
+    if (deltaRev < 0) deltaRev += 65536;
+    if (deltaTs  < 0) deltaTs  += 65536;
+    if (deltaTs > 0) {
+      const rpm = Math.round((deltaRev / deltaTs) * 1024 * 60);
+      const clamped = Math.min(rpm, 200); // filtrar ruido
+      document.getElementById('trk-s-cad').textContent = clamped;
+      _btData.cadSamples.push(clamped);
+    }
+  }
+  _btData._lastCrankRev = crankRev;
+  _btData._lastCrankTs  = crankTs;
+}
+
+function _parsePower(value) {
+  const flags = value.getUint16(0, true);
+  const watts = value.getInt16(2, true);
+  const w = Math.max(0, watts);
+  document.getElementById('trk-s-pow').textContent = w;
+  if (w > _btData.maxPow) _btData.maxPow = w;
+  _btData.powSamples.push(w);
+
+  // Cadencia desde el potenciómetro (bit 4 = Crank Revolution Data)
+  if (flags & 0x10) {
+    let offset = 4;
+    if (flags & 0x1)  offset += 1; // pedal power balance
+    if (flags & 0x4)  offset += 2; // accumulated torque
+    const crankRev = value.getUint16(offset, true);
+    const crankTs  = value.getUint16(offset + 2, true);
+
+    if (_btData._lastPowCrankRev !== null) {
+      let deltaRev = crankRev - _btData._lastPowCrankRev;
+      let deltaTs  = crankTs  - _btData._lastPowCrankTs;
+      if (deltaRev < 0) deltaRev += 65536;
+      if (deltaTs  < 0) deltaTs  += 65536;
+      // Solo actualizar cadencia si el sensor CSC no está conectado
+      if (!_bt.cadence.connected && deltaTs > 0) {
+        const rpm = Math.round((deltaRev / deltaTs) * 1024 * 60);
+        const clamped = Math.min(rpm, 200);
+        document.getElementById('trk-s-cad').textContent = clamped;
+        _btData.cadSamples.push(clamped);
+        _updateSensorHUD('cadence', true); // mostrar columna cadencia
+      }
+    }
+    _btData._lastPowCrankRev = crankRev;
+    _btData._lastPowCrankTs  = crankTs;
+  }
+}
+
+// ── Normalized Power (NP) ─────────────────────────────────────────
+function _calcNP(samples) {
+  if (samples.length < 30) return 0;
+  const rolling = [];
+  for (let i = 29; i < samples.length; i++) {
+    const slice = samples.slice(i - 29, i + 1);
+    rolling.push(slice.reduce((a, b) => a + b, 0) / 30);
+  }
+  const mean4th = rolling.reduce((a, v) => a + v ** 4, 0) / rolling.length;
+  return Math.round(mean4th ** 0.25);
+}
+
+function _avg(arr) {
+  if (!arr.length) return 0;
+  return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
+}
+
+// ── UI helpers ────────────────────────────────────────────────────
+function _setSensorStatus(type, text, ok) {
+  const map = { hr: 'hr', cadence: 'cad', power: 'pow' };
+  const el  = document.getElementById(map[type] + '-status');
+  const btn = document.getElementById(map[type] + '-btn');
+  if (el) { el.textContent = text; el.className = 'sensor-status' + (ok ? ' ok' : ''); }
+  if (btn) { btn.textContent = ok ? 'Desconectar' : 'Conectar'; btn.className = 'sensor-btn ' + (ok ? 'disconnect' : 'connect'); }
+}
+
+function _updateSensorHUD(type, show) {
+  const map = { hr: 'hr', cadence: 'cad', power: 'pow' };
+  const key = map[type];
+  document.getElementById('trk-s-' + key + '-wrap').style.display = show ? '' : 'none';
+  // Separadores: mostrar si hay al menos dos stats visibles
+  const anyVisible = ['hr','cad','pow'].some(k => document.getElementById('trk-s-'+k+'-wrap').style.display !== 'none');
+  const row = document.getElementById('trk-sensor-row');
+  if (anyVisible) row.classList.add('visible'); else row.classList.remove('visible');
+  // Separadores entre los que están visibles
+  const visible = ['hr','cad','pow'].filter(k => document.getElementById('trk-s-'+k+'-wrap').style.display !== 'none');
+  document.getElementById('trk-s-sep1').style.display = visible.length >= 2 ? '' : 'none';
+  document.getElementById('trk-s-sep2').style.display = visible.length >= 3 ? '' : 'none';
+}
+
+function _updateSensorsBtnHeader() {
+  const anyConnected = Object.values(_bt).some(s => s.connected);
+  document.getElementById('btn-sensors').classList.toggle('connected', anyConnected);
+}
+
+function _resetSensorAccumulators() {
+  _btData.hrSamples  = [];
+  _btData.cadSamples = [];
+  _btData.powSamples = [];
+  _btData.maxHr      = 0;
+  _btData.maxPow     = 0;
+  _btData._lastCrankRev = null;
+  _btData._lastCrankTs  = null;
+  _btData._lastPowCrankRev = null;
+  _btData._lastPowCrankTs  = null;
 }
 
 // Revelar página tras renderizado inicial
