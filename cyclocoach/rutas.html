@@ -282,6 +282,34 @@
     .modal-btn-save   { background:var(--primary);color:#111;font-weight:700;font-family:'Space Grotesk',sans-serif;border:none; }
     .modal-btn-save:hover { background:var(--primary-dark, #84B422);box-shadow:0 4px 16px rgba(158,214,43,0.3);transform:translateY(-1px); }
 
+    /* ── Overlay iframe (navegación durante grabación) ─────────── */
+    #nav-iframe-overlay {
+      position: fixed; inset: 0; z-index: 3000;
+      display: none; flex-direction: column;
+      background: var(--bg-sidebar, #070A0E);
+    }
+    #nav-iframe-overlay.visible { display: flex; }
+    #nav-iframe-bar {
+      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+      background: rgba(10,11,15,0.98);
+      border-bottom: 1.5px solid rgba(255,59,59,0.45);
+      padding: 8px 16px;
+    }
+    #nav-iframe-bar .trk-dot { width:9px; height:9px; flex-shrink:0; }
+    #nav-iframe-bar .trk-lbl-rec {
+      font-size: 12px; font-weight: 700; color: #fff; letter-spacing: .3px;
+    }
+    #nav-iframe-bar .trk-lbl-rec span { color: rgba(255,255,255,.5); font-weight: 400; }
+    #nav-iframe-back {
+      margin-left: auto; background: rgba(255,59,59,0.15);
+      border: 1px solid rgba(255,59,59,0.45); border-radius: 8px;
+      color: #ff3b3b; padding: 5px 14px; cursor: pointer;
+      font-size: 12px; font-weight: 700; font-family: inherit;
+      display: flex; align-items: center; gap: 6px;
+    }
+    #nav-iframe-back:hover { background: rgba(255,59,59,0.25); }
+    #nav-iframe-frame { flex: 1; border: none; width: 100%; }
+
     /* ── Sensores Bluetooth ─────────────────────────────────────── */
     #btn-sensors.connected { background:rgba(0,212,100,0.15)!important; border-color:rgba(0,212,100,0.5)!important; color:#00d464!important; }
     .sensor-modal-overlay {
@@ -904,6 +932,18 @@
 </div>
 
 <!-- Modal: Ruta por viento -->
+<!-- Overlay iframe: permite navegar sin perder grabación ni sensores -->
+<div id="nav-iframe-overlay">
+  <div id="nav-iframe-bar">
+    <div class="trk-dot"></div>
+    <div class="trk-lbl-rec">Grabando &nbsp;<span id="nav-iframe-time">00:00</span> &nbsp;·&nbsp; <span id="nav-iframe-dist">0.00</span> km</div>
+    <button id="nav-iframe-back" onclick="closeNavIframe()">
+      <i class="fas fa-map-marked-alt"></i> Volver al mapa
+    </button>
+  </div>
+  <iframe id="nav-iframe-frame" src="" allow="geolocation"></iframe>
+</div>
+
 <!-- Modal aviso navegación durante grabación -->
 <div id="nav-warn-modal" style="display:none">
   <div class="modal-overlay">
@@ -3091,6 +3131,11 @@ function _onTrkErr(err) {
 function _trkTick() {
   const elapsed = Math.floor((Date.now() - _trkStartTime) / 1000);
   document.getElementById('trk-time').textContent = _fmtTime(elapsed);
+  // Actualizar también la barra del iframe si está abierto
+  const iframeTime = document.getElementById('nav-iframe-time');
+  const iframeDist = document.getElementById('nav-iframe-dist');
+  if (iframeTime) iframeTime.textContent = _fmtTime(elapsed);
+  if (iframeDist) iframeDist.textContent = (_trkDist / 1000).toFixed(2);
 }
 
 function _stopTracking() {
@@ -3382,36 +3427,29 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Interceptar navegación del sidebar mientras se graba
-let _pendingNavUrl = null;
-
+// Interceptar navegación del sidebar: abrir en iframe para no perder grabación
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.nav-item[href]').forEach(link => {
     link.addEventListener('click', (e) => {
-      if (!_trkActive) return;           // no hay grabación → dejar pasar
-      if (link.getAttribute('href') === 'rutas.html') return; // misma página
+      if (!_trkActive) return;
+      if (link.getAttribute('href') === 'rutas.html') return;
       e.preventDefault();
-      _pendingNavUrl = link.getAttribute('href');
-      document.getElementById('nav-warn-modal').style.display = '';
+      openNavIframe(link.getAttribute('href'));
     });
   });
 });
 
-function _confirmNavAway() {
-  // Detener grabación limpiamente antes de navegar
-  if (_trkWatchId != null) { navigator.geolocation.clearWatch(_trkWatchId); _trkWatchId = null; }
-  if (_trkTimer) { clearInterval(_trkTimer); _trkTimer = null; }
-  _trkActive = false;
-  _clearTrackLayers();
-  ['hr','cadence','power'].forEach(t => { try { _bt[t].device?.gatt?.disconnect(); } catch(_) {} });
-  document.getElementById('nav-warn-modal').style.display = 'none';
-  if (_pendingNavUrl) window.location.href = _pendingNavUrl;
+function openNavIframe(url) {
+  document.getElementById('nav-iframe-frame').src = url;
+  document.getElementById('nav-iframe-overlay').classList.add('visible');
 }
 
-// Fallback para navegación directa (URL bar, back button)
-window.addEventListener('beforeunload', (e) => {
-  if (_trkActive) { e.preventDefault(); return (e.returnValue = ''); }
-});
+function closeNavIframe() {
+  document.getElementById('nav-iframe-overlay').classList.remove('visible');
+  // Limpiar src para liberar memoria
+  setTimeout(() => { document.getElementById('nav-iframe-frame').src = ''; }, 300);
+}
+
 
 // ── Parseo de datos GATT ──────────────────────────────────────────
 
