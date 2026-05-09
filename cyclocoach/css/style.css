@@ -912,7 +912,6 @@ select.form-input option {
 
   /* Tarjetas estilo nutrición: solo nombre + hint, todo el detalle en la modal */
   .session-objective  { display: none; }
-  .session-action-btns{ display: none; }
   .session-wksummary  { display: none !important; }
   .session-terrain    { display: none; }
   .session-meta       { display: none !important; }

@@ -1540,7 +1540,8 @@ APLICA LA PRIMERA REGLA QUE COINCIDA CON EL INPUT:
 
 ⚙️ ESPECIFICIDAD ("quiero hacer Z3", "quiero series de umbral", "prefiero rodillo"):
    → Diseña exactamente ese tipo. Respeta FTP=${ftp}W y mantén TSS en rango ${tssMin}-${tssMax}.
-   → Si es rodillo: la descripción DEBE enfocarse en el entrenamiento indoor (cadencia, control de resistencia) y EVITAR menciones a terreno, tráfico o clima exterior.
+   → Si es rodillo: la duración suele ser mucho menor (ej: de 180min a 60-90min). La descripción DEBE enfocarse en indoor (cadencia) y EVITAR menciones al exterior.
+   → IMPORTANTE: Los bloques de tiempo (Calentamiento + Trabajo + Vuelta calma) en la 'descripcion' DEBEN sumar exactamente 'duracion_min'.
 
 Devuelve SOLO este JSON (sin texto adicional):
 {
@@ -1550,7 +1551,7 @@ Devuelve SOLO este JSON (sin texto adicional):
   "tss_estimado": number,
   "if_estimado": number,
   "intensidad": "ej: Z2 ${Math.round(ftp*0.65)}-${Math.round(ftp*0.75)}W o Umbral ${Math.round(ftp*0.95)}W",
-  "descripcion": "2-3 frases concretas con vatios reales (FTP=${ftp}W). Asegura que la duración y vatios en la descripción coincidan con duracion_min e intensidad.",
+  "descripcion": "2-3 frases con vatios reales (FTP=${ftp}W). RECALCULA los bloques (minutos) para que coincidan con la nueva duracion_min.",
   "razon": "1 frase explicando el cambio según el estado del atleta",
   "nutricion": "1 frase sobre qué comer/beber ${diaRef.toLowerCase()}"
 }`;
