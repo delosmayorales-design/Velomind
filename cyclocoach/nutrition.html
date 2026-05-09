@@ -356,6 +356,16 @@
 
       <!-- TAB: TIPS -->
       <div class="tab-content" id="tab-tips">
+
+        <!-- Timing dinámico del día seleccionado -->
+        <div id="timing-for-day" class="card mb-6" style="display:none">
+          <div class="card-header">
+            <div class="card-title"><i class="fas fa-clock" style="color:#F59E0B"></i> Timing de hoy</div>
+            <span id="timing-day-label" class="badge"></span>
+          </div>
+          <div id="timing-for-day-content"></div>
+        </div>
+
         <div class="grid-2 mb-6">
           <div class="card">
             <div class="card-header"><div class="card-title">🏋️ Antes del entrenamiento</div></div>
@@ -475,8 +485,9 @@
     <!-- Error -->
     <div id="menus-error" style="display:none;padding:14px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.3);border-radius:var(--radius-md);color:#ff4757;font-size:13px"></div>
 
-    <!-- Resultado: tabs + cards -->
+    <!-- Resultado: timing + tabs + cards -->
     <div id="menus-result" style="display:none">
+      <div id="menus-timing" style="display:none;margin-bottom:18px"></div>
       <div class="menus-tabs" id="menus-tabs"></div>
       <div id="menus-cards"></div>
     </div>
@@ -684,6 +695,7 @@ function selectDay(idx) {
 
   const athlete = AppState.athlete || { weight: 70 };
   renderNutritionUI(adj, athlete, isTraining);
+  renderTimingForDay(idx);
 
   // scroll to detail
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -926,6 +938,7 @@ function generateMenus() {
   const sess = currentTrainingPlan?.sessions?.[selectedDayIdx] || {};
   const sessionType = sess.isRest ? null : (sess.type || null);
   const tss = Math.round((sess.tssShare || 0.14) * (currentTrainingPlan?.tss_target || currentTrainingPlan?.targetTSS || 400));
+  const athlete = AppState.athlete || {};
 
   try {
     const data = LocalMenuGenerator.generate({
@@ -937,7 +950,12 @@ function generateMenus() {
       dislikes:    document.getElementById('prefs-dislikes').value.trim(),
       sessionType,
       tss,
+      sessionTime: sess.sessionTime || null,
+      durationMin: sess.durationMin || null,
+      weight:      athlete.weight  || 70,
+      phase:       currentTrainingPlan?.phase || null,
     });
+    renderTiming(data.timing);
     renderMenus(data.menus || []);
     result.style.display = 'block';
     savePrefsDraft();
@@ -948,6 +966,119 @@ function generateMenus() {
     spinner.style.display = 'none';
     btn.disabled = false;
   }
+}
+
+function renderTimingForDay(idx) {
+  const card    = document.getElementById('timing-for-day');
+  const content = document.getElementById('timing-for-day-content');
+  const label   = document.getElementById('timing-day-label');
+  if (!card || !content) return;
+
+  const sessions = currentTrainingPlan?.sessions || [];
+  const sess     = sessions[idx] || { isRest: true };
+  if (sess.isRest) { card.style.display = 'none'; return; }
+
+  const athlete     = AppState.athlete || {};
+  const adj         = getAdjustedNutrition(idx);
+  const sessionType = sess.type || null;
+  const tss         = Math.round((sess.tssShare || 0.14) * (currentTrainingPlan?.tss_target || currentTrainingPlan?.targetTSS || 400));
+  const timing      = (window.LocalMenuGenerator && adj)
+    ? LocalMenuGenerator.generate({
+        calories:    adj.dailyCalories || 2000,
+        carbs:       adj.carbs_g       || 300,
+        protein:     adj.protein_g     || 140,
+        fat:         adj.fat_g         || 60,
+        sessionType, tss,
+        sessionTime: sess.sessionTime || null,
+        durationMin: sess.durationMin || null,
+        weight:      athlete.weight  || 70,
+        phase:       currentTrainingPlan?.phase || null,
+      }).timing
+    : null;
+
+  if (!timing) { card.style.display = 'none'; return; }
+
+  if (label) {
+    label.textContent = sess.name || sess.type || 'Entrenamiento';
+    label.style.cssText = 'background:rgba(245,158,11,.12);color:#F59E0B;border:1px solid rgba(245,158,11,.3)';
+  }
+
+  function tBlock(title, color, icon, lines) {
+    return '<div style="background:' + color + '10;border-left:3px solid ' + color + ';border-radius:0 8px 8px 0;padding:11px 14px;margin-bottom:8px">' +
+      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + color + ';margin-bottom:5px">' + icon + ' ' + title + '</div>' +
+      lines.map(function(l){ return '<div style="font-size:13px;color:var(--text-secondary);line-height:1.6">' + l + '</div>'; }).join('') +
+      '</div>';
+  }
+
+  var html = '';
+  var pre = timing.preWorkout;
+  if (pre) {
+    var pl = [pre.foods];
+    if (pre.note) pl.push('<em style="color:var(--text-muted);font-size:12px">' + pre.note + '</em>');
+    html += tBlock('Pre-entrenamiento · ' + pre.timing, '#3B82F6', '🕐', pl);
+  }
+  var dur = timing.duringWorkout;
+  if (dur && dur.strategy !== 'Solo agua') {
+    var dl = ['<strong>' + dur.strategy + '</strong>', dur.foods];
+    if (dur.note) dl.push('<em style="color:var(--text-muted);font-size:12px">' + dur.note + '</em>');
+    html += tBlock('Durante la sesión', '#F59E0B', '🚴', dl);
+  } else if (dur) {
+    html += tBlock('Durante la sesión', '#6B7280', '💧', [dur.foods]);
+  }
+  var post = timing.postWorkout;
+  if (post) {
+    var pl2 = [post.foods_inmediatos];
+    if (post.note) pl2.push('<em style="color:var(--text-muted);font-size:12px">' + post.note + '</em>');
+    html += tBlock('Post · ' + post.timing_inmediato, '#10B981', '🔋', pl2);
+    if (post.timing_comida && post.foods_comida) {
+      html += tBlock('Comida de recuperación · ' + post.timing_comida, '#8B5CF6', '🍽️', [post.foods_comida]);
+    }
+  }
+
+  content.innerHTML = html;
+  card.style.display = '';
+}
+
+function renderTiming(timing) {
+  const el = document.getElementById('menus-timing');
+  if (!el) return;
+  if (!timing) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+  function timingBlock(title, color, icon, lines) {
+    return '<div style="background:' + color + '12;border-left:3px solid ' + color + ';border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">' +
+      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + color + ';margin-bottom:4px">' + icon + ' ' + title + '</div>' +
+      lines.map(function(l) { return '<div style="font-size:12px;color:var(--text-secondary);line-height:1.5">' + l + '</div>'; }).join('') +
+      '</div>';
+  }
+
+  var html = '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px">⏰ Timing nutricional para hoy</div>';
+
+  var pre = timing.preWorkout;
+  if (pre) {
+    var preLines = [pre.foods];
+    if (pre.note) preLines.push('<em style="color:var(--text-muted)">' + pre.note + '</em>');
+    html += timingBlock('Pre-entrenamiento · ' + pre.timing, '#3B82F6', '🕐', preLines);
+  }
+
+  var dur = timing.duringWorkout;
+  if (dur && dur.strategy && dur.strategy !== 'Solo agua') {
+    var durLines = ['<strong>' + dur.strategy + '</strong>', dur.foods];
+    if (dur.note) durLines.push('<em style="color:var(--text-muted)">' + dur.note + '</em>');
+    html += timingBlock('Durante la sesión', '#F59E0B', '🚴', durLines);
+  }
+
+  var post = timing.postWorkout;
+  if (post) {
+    var postLines = [post.foods_inmediatos];
+    if (post.note) postLines.push('<em style="color:var(--text-muted)">' + post.note + '</em>');
+    html += timingBlock('Post · ' + post.timing_inmediato, '#10B981', '🔋', postLines);
+    if (post.timing_comida && post.foods_comida) {
+      html += timingBlock('Comida de recuperación · ' + post.timing_comida, '#8B5CF6', '🍽️', [post.foods_comida]);
+    }
+  }
+
+  el.innerHTML = html;
+  el.style.display = '';
 }
 
 function renderMenus(menus) {
