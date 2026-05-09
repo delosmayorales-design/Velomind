@@ -2613,65 +2613,66 @@ function _renderWd(d, name, lat, lng) {
 }
 
 // ══ RAIN RADAR (RainViewer) ════════════════════════════════════
+// Precargamos todos los layers a opacidad 0 y solo alternamos opacidad
+// para evitar recrear tiles en cada frame (causa 429 rate-limit)
 let _rainActive    = false;
-let _rainLayer     = null;
-let _rainFrames    = [];
+let _rainLayers    = [];   // L.tileLayer precargados
 let _rainFrameIdx  = 0;
 let _rainAnimTimer = null;
-const _RAIN_OPACITY = 0.65;
+const _RAIN_OPACITY  = 0.65;
+const _RAIN_TILE_OPT = {
+  opacity: 0,
+  attribution: '© RainViewer',
+  maxNativeZoom: 6,
+  maxZoom: 18,
+  errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAABjE+ibYAAAAASUVORK5CYII=',
+};
 
-async function _fetchRainFrames() {
+async function _fetchRainPaths() {
   const r = await fetch('https://api.rainviewer.com/public/weather-maps.json');
   const d = await r.json();
-  return (d.radar?.past || []).slice(-6).map(f => f.path);
+  return (d.radar?.past || []).slice(-4).map(f => f.path);
 }
 
-function _rainTileUrl(path) {
-  return `https://tilecache.rainviewer.com${path}/256/{z}/{x}/{y}/2/1_1.png`;
-}
-
-function _showRainFrame(idx) {
-  if (_rainLayer) { map.removeLayer(_rainLayer); _rainLayer = null; }
-  if (!_rainFrames.length) return;
-  const path = _rainFrames[idx % _rainFrames.length];
-  _rainLayer = L.tileLayer(_rainTileUrl(path), {
-    opacity: _RAIN_OPACITY,
-    attribution: '© RainViewer',
-    maxNativeZoom: 6,
-    maxZoom: 18,
-    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAABjE+ibYAAAAASUVORK5CYII=',
+function _buildRainLayers(paths) {
+  paths.forEach(path => {
+    const url = `https://tilecache.rainviewer.com${path}/256/{z}/{x}/{y}/2/1_1.png`;
+    const layer = L.tileLayer(url, { ..._RAIN_TILE_OPT });
+    layer.addTo(map);
+    _rainLayers.push(layer);
   });
-  _rainLayer.addTo(map);
 }
 
-function _startRainAnim() {
-  _rainAnimTimer = setInterval(() => {
-    _rainFrameIdx = (_rainFrameIdx + 1) % _rainFrames.length;
-    _showRainFrame(_rainFrameIdx);
-  }, 600);
+function _stepRainFrame() {
+  _rainLayers.forEach((l, i) => l.setOpacity(i === _rainFrameIdx ? _RAIN_OPACITY : 0));
+  _rainFrameIdx = (_rainFrameIdx + 1) % _rainLayers.length;
 }
 
-function _stopRainAnim() {
+function _stopRain() {
   if (_rainAnimTimer) { clearInterval(_rainAnimTimer); _rainAnimTimer = null; }
-  if (_rainLayer) { map.removeLayer(_rainLayer); _rainLayer = null; }
+  _rainLayers.forEach(l => map.removeLayer(l));
+  _rainLayers = [];
+  _rainFrameIdx = 0;
 }
 
 async function toggleRainLayer() {
   const btn = document.getElementById('btn-rain');
   if (_rainActive) {
     _rainActive = false;
-    _stopRainAnim();
+    _stopRain();
     btn?.classList.remove('active');
     return;
   }
   btn?.classList.add('loading');
   try {
-    _rainFrames = await _fetchRainFrames();
-    if (!_rainFrames.length) throw new Error('Sin datos de radar');
+    const paths = await _fetchRainPaths();
+    if (!paths.length) throw new Error('Sin datos de radar');
+    _rainLayers = [];
+    _buildRainLayers(paths);
     _rainActive   = true;
-    _rainFrameIdx = _rainFrames.length - 1;
-    _showRainFrame(_rainFrameIdx);
-    _startRainAnim();
+    _rainFrameIdx = 0;
+    _stepRainFrame();
+    _rainAnimTimer = setInterval(_stepRainFrame, 800);
     btn?.classList.remove('loading');
     btn?.classList.add('active');
   } catch(e) {
