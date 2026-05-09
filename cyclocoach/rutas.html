@@ -676,6 +676,7 @@ const API_BASE = window.API_URL;
 
 // ── Estado ───────────────────────────────────────────────────────
 let map, baseOSM, elevChart, cycleOverlayLayer, cycleOverlayOn = false, mapWindControl = null;
+let currentRouteElevs = null; // perfil de elevación de la ruta activa, para compartir
 let waypoints = [], waypointMarkers = [];
 let routeLayer = null, routeGeoJSON = null;
 let allRoutes = [], activeFilter = 'all';
@@ -934,6 +935,7 @@ async function fetchElevation(latLngs) {
 }
 
 function renderElevChart(elevs) {
+  currentRouteElevs = elevs;
   document.getElementById('elev-panel').classList.add('visible');
   // Notificar a Leaflet que el contenedor cambió de tamaño
   setTimeout(() => map && map.invalidateSize(), 50);
@@ -1203,11 +1205,12 @@ async function shareWhatsApp(id) {
   if (!r) return;
 
   const typeLabel = { road: '🚴 Road', gravel: '🪨 Gravel', mtb: '🏔️ MTB' }[r.type] || r.type;
-  const dist = r.distance_km      ? `📏 ${r.distance_km} km`               : '';
-  const time = r.estimated_minutes ? `⏱️ ~${formatTime(r.estimated_minutes)}` : '';
+  const dist = r.distance_km       ? `📏 ${r.distance_km} km`                          : '';
+  const elev = r.elevation_gain_m  ? `⛰️ ${Math.round(r.elevation_gain_m)} m D+`       : '';
+  const time = r.estimated_minutes ? `⏱️ ~${formatTime(r.estimated_minutes)}`           : '';
   const msg  =
     `🚵 *${r.name}* · ${typeLabel}\n` +
-    `${[dist, time].filter(Boolean).join('   ')}\n\n` +
+    `${[dist, elev, time].filter(Boolean).join('   ')}\n\n` +
     `_Ruta creada con VeloMind_ 💪`;
 
   // Cargar ruta en el mapa
@@ -1239,9 +1242,12 @@ async function shareWhatsApp(id) {
       );
 
       // Dibujar la ruta encima del canvas de tiles
+      const elevs    = currentRouteElevs;
+      const profileH = elevs?.length ? Math.round(tilesCanvas.height * 0.28) : 0;
+
       const out = document.createElement('canvas');
       out.width  = tilesCanvas.width;
-      out.height = tilesCanvas.height;
+      out.height = tilesCanvas.height + profileH;
       const ctx  = out.getContext('2d');
       ctx.drawImage(tilesCanvas, 0, 0);
 
@@ -1257,6 +1263,69 @@ async function shareWhatsApp(id) {
           i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
         });
         ctx.stroke();
+      }
+
+      // Perfil de elevación debajo del mapa
+      if (elevs?.length && profileH > 0) {
+        const mapH = tilesCanvas.height;
+        const w = out.width, h = profileH;
+        const pad = 28, chartW = w - pad * 2, chartH = h - pad - 10;
+        const minE = Math.min(...elevs), maxE = Math.max(...elevs);
+        const range = (maxE - minE) || 1;
+
+        // Fondo
+        ctx.fillStyle = 'rgba(10,11,15,0.94)';
+        ctx.fillRect(0, mapH, w, h);
+
+        // Línea separadora
+        ctx.strokeStyle = 'rgba(255,107,53,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, mapH); ctx.lineTo(w, mapH); ctx.stroke();
+
+        // Gradiente de relleno
+        const grad = ctx.createLinearGradient(0, mapH + pad, 0, mapH + pad + chartH);
+        grad.addColorStop(0, 'rgba(255,107,53,0.55)');
+        grad.addColorStop(1, 'rgba(255,107,53,0.04)');
+
+        // Ruta del perfil
+        const pts = elevs.map((e, i) => ({
+          x: pad + (i / (elevs.length - 1)) * chartW,
+          y: pad + (1 - (e - minE) / range) * chartH,
+        }));
+
+        // Relleno
+        ctx.beginPath();
+        pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, mapH + p.y) : ctx.lineTo(p.x, mapH + p.y));
+        ctx.lineTo(pad + chartW, mapH + pad + chartH);
+        ctx.lineTo(pad, mapH + pad + chartH);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Línea del perfil
+        ctx.beginPath();
+        pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, mapH + p.y) : ctx.lineTo(p.x, mapH + p.y));
+        ctx.strokeStyle = '#FF6B35';
+        ctx.lineWidth = 2.5;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+
+        // Etiquetas de altitud
+        ctx.fillStyle = '#9CA3AF';
+        ctx.font = `bold ${Math.max(11, Math.round(w / 55))}px sans-serif`;
+        ctx.textBaseline = 'top';
+        ctx.fillText(Math.round(maxE) + ' m', 4, mapH + pad + 2);
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(Math.round(minE) + ' m', 4, mapH + pad + chartH);
+
+        // Desnivel ganado (D+)
+        if (r.elevation_gain_m) {
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = '#FF6B35';
+          ctx.font = `bold ${Math.max(12, Math.round(w / 48))}px sans-serif`;
+          const label = '⛰ D+ ' + Math.round(r.elevation_gain_m) + ' m';
+          ctx.fillText(label, w - ctx.measureText(label).width - 8, mapH + 6);
+        }
       }
 
       await new Promise((res, rej) => out.toBlob(async blob => {
