@@ -2627,7 +2627,7 @@ async function _fetchRainFrames() {
 }
 
 function _rainTileUrl(path) {
-  return `https://tilecache.rainviewer.com${path}/512/{z}/{x}/{y}/2/1_1.png`;
+  return `https://tilecache.rainviewer.com${path}/256/{z}/{x}/{y}/2/1_1.png`;
 }
 
 function _showRainFrame(idx) {
@@ -2637,8 +2637,8 @@ function _showRainFrame(idx) {
   _rainLayer = L.tileLayer(_rainTileUrl(path), {
     opacity: _RAIN_OPACITY,
     attribution: '© RainViewer',
-    tileSize: 512,
-    zoomOffset: 0,
+    maxNativeZoom: 10,
+    maxZoom: 18,
   });
   _rainLayer.addTo(map);
 }
