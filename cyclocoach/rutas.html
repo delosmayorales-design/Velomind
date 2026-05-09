@@ -2637,8 +2637,9 @@ function _showRainFrame(idx) {
   _rainLayer = L.tileLayer(_rainTileUrl(path), {
     opacity: _RAIN_OPACITY,
     attribution: '© RainViewer',
-    maxNativeZoom: 10,
+    maxNativeZoom: 6,
     maxZoom: 18,
+    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAABjE+ibYAAAAASUVORK5CYII=',
   });
   _rainLayer.addTo(map);
 }
