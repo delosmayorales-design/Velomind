@@ -331,6 +331,127 @@
     #mob-wind-fab.active { background: rgba(0,212,255,0.15); color: #00D4FF; border-color: rgba(0,212,255,0.6); }
     #mob-wind-fab.loading { opacity: 0.55; pointer-events: none; }
 
+    /* ── Weather Drawer ──────────────────────────────────────── */
+    #weather-drawer {
+      position: absolute;
+      top: 0; right: 0; bottom: 0;
+      width: 320px;
+      background: var(--bg-card);
+      border-left: 1px solid var(--border);
+      z-index: 800;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(102%);
+      transition: transform .25s ease;
+      overflow: hidden;
+    }
+    #weather-drawer.open { transform: translateX(0); }
+    #btn-weather-zone.active {
+      background: rgba(0,212,255,.12) !important;
+      border-color: rgba(0,212,255,.45) !important;
+      color: #00D4FF !important;
+    }
+    .wd-hdr {
+      padding: 11px 13px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    }
+    .wd-title { font-size: 13px; font-weight: 700; color: var(--text); flex: 1; }
+    .wd-close {
+      background: none; border: none; color: var(--text-muted);
+      font-size: 20px; cursor: pointer; line-height: 1; padding: 0 3px;
+    }
+    .wd-close:hover { color: var(--text); }
+    .wd-search-box {
+      padding: 10px 12px; border-bottom: 1px solid var(--border);
+      position: relative; flex-shrink: 0;
+    }
+    .wd-search-wrap {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--bg-input, rgba(255,255,255,.06));
+      border: 1px solid var(--border); border-radius: 8px; padding: 0 10px;
+      transition: border-color .2s;
+    }
+    .wd-search-wrap:focus-within { border-color: var(--primary); }
+    .wd-search-wrap > i { color: var(--text-muted); font-size: 12px; }
+    #wd-search-input {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--text); font-size: 13px; padding: 8px 0;
+    }
+    #wd-search-input::placeholder { color: var(--text-muted); }
+    #wd-geolocate {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 4px; transition: color .2s;
+    }
+    #wd-geolocate:hover { color: var(--primary); }
+    .wd-dropdown {
+      position: absolute; left: 12px; right: 12px; top: calc(100% - 2px);
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.45);
+      z-index: 900; overflow: hidden; display: none;
+    }
+    .wd-dropdown.open { display: block; }
+    .wd-res {
+      padding: 9px 12px; cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px; transition: background .15s;
+    }
+    .wd-res:last-child { border-bottom: none; }
+    .wd-res:hover { background: rgba(158,214,43,.1); }
+    .wd-res-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .wd-res-sub  { font-size: 11px; color: var(--text-muted); }
+    .wd-tabs {
+      display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .wd-tab {
+      flex: 1; padding: 8px 4px; font-size: 12px; font-weight: 700;
+      background: none; border: none; border-bottom: 2px solid transparent;
+      cursor: pointer; color: var(--text-muted); font-family: inherit;
+      transition: all .2s;
+    }
+    .wd-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .wd-body { flex: 1; overflow-y: auto; overflow-x: hidden; }
+    .wd-placeholder {
+      padding: 36px 20px; text-align: center; color: var(--text-muted);
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .wd-loading { padding: 36px; text-align: center; color: var(--text-muted); font-size: 13px; }
+    .wd-loc { padding: 10px 13px 5px; }
+    .wd-loc-name { font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 5px; }
+    .wd-loc-coords { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+    .wd-main {
+      padding: 12px 13px; display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .wd-icon { font-size: 44px; line-height: 1; }
+    .wd-temp-val { font-size: 42px; font-weight: 800; color: var(--text); line-height: 1; }
+    .wd-feels { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .wd-desc  { font-size: 12px; color: var(--text-secondary, #aaa); margin-top: 3px; font-weight: 500; }
+    .wd-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1px; background: var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .wd-cell { background: var(--bg-card); padding: 9px 12px; }
+    .wd-cell-lbl {
+      font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-bottom: 2px;
+    }
+    .wd-cell-val { font-size: 16px; font-weight: 700; color: var(--text); }
+    .wd-cell-sub { font-size: 10px; color: var(--text-muted); }
+    .wd-sec { padding: 9px 13px 5px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); font-weight: 600; }
+    .wd-hourly { overflow-x: auto; padding: 0 10px 12px; scrollbar-width: thin; }
+    .wd-h-track { display: flex; gap: 6px; }
+    .wd-h-item {
+      min-width: 50px; background: var(--bg-input, rgba(255,255,255,.05));
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 6px 5px; display: flex; flex-direction: column;
+      align-items: center; gap: 3px; flex-shrink: 0;
+    }
+    .wd-h-time { font-size: 10px; color: var(--text-muted); }
+    .wd-h-icon { font-size: 15px; }
+    .wd-h-temp { font-size: 12px; font-weight: 700; color: var(--text); }
+    .wd-h-rain { font-size: 10px; color: #60a5fa; }
+
     @media (max-width: 768px) {
       /* Header: una sola fila compacta */
       .page-header { padding: 8px 12px; gap: 8px; }
@@ -408,6 +529,21 @@
 
       /* FAB flechas de viento */
       #mob-wind-fab { display: flex; }
+
+      /* Weather drawer → bottom sheet en móvil */
+      #weather-drawer {
+        position: fixed !important;
+        top: auto !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+        width: 100% !important;
+        height: 72vh;
+        border-left: none !important;
+        border-top: 1px solid var(--border) !important;
+        border-radius: 16px 16px 0 0;
+        transform: translateY(105%) !important;
+        z-index: 1300 !important;
+        box-shadow: 0 -4px 24px rgba(0,0,0,.5) !important;
+      }
+      #weather-drawer.open { transform: translateY(0) !important; }
     }
   </style>
 </head>
@@ -429,7 +565,6 @@
     <a href="body-weight.html"      class="nav-item"><i class="fas fa-weight"></i> Peso y W/Kg</a>
     <div class="nav-section-title">Análisis y Técnica</div>
     <a href="rutas.html"            class="nav-item active"><i class="fas fa-map-marked-alt"></i> Rutas</a>
-    <a href="meteo.html" class="nav-item"><i class="fas fa-cloud-sun"></i> Meteorología</a>
     <a href="biomechanics.html"     class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
     <a href="mecanica-general.html" class="nav-item"><i class="fas fa-wrench"></i> Mecánica</a>
     <a href="garaje.html"           class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
@@ -476,6 +611,9 @@
       </button>
       <button class="btn btn-secondary btn-sm" onclick="openWindRouteModal()" style="background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.35);color:#00D4FF;">
         <i class="fas fa-wind"></i><span class="btn-label"> Ruta por viento</span>
+      </button>
+      <button class="btn btn-secondary btn-sm" id="btn-weather-zone" onclick="toggleWeatherDrawer()" title="Tiempo en la zona">
+        <i class="fas fa-cloud-sun"></i><span class="btn-label"> Tiempo zona</span>
       </button>
     </div>
   </header>
@@ -546,6 +684,34 @@
       <button id="mob-wind-fab" onclick="toggleWindArrows()" title="Flechas de viento">
         <i class="fas fa-location-arrow"></i>
       </button>
+
+      <!-- Weather Drawer -->
+      <div id="weather-drawer">
+        <div class="wd-hdr">
+          <i class="fas fa-cloud-sun" style="color:var(--primary);font-size:12px"></i>
+          <span class="wd-title">Tiempo en la zona</span>
+          <button class="wd-close" onclick="toggleWeatherDrawer()">×</button>
+        </div>
+        <div class="wd-search-box">
+          <div class="wd-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="wd-search-input" placeholder="Buscar lugar… ej: Alcaraz" autocomplete="off">
+            <button id="wd-geolocate" title="Usar mi ubicación"><i class="fas fa-crosshairs"></i></button>
+          </div>
+          <div id="wd-dropdown" class="wd-dropdown"></div>
+        </div>
+        <div class="wd-tabs">
+          <button class="wd-tab active" onclick="switchWdDay('hoy',this)">Hoy</button>
+          <button class="wd-tab" onclick="switchWdDay('manana',this)">Mañana</button>
+        </div>
+        <div class="wd-body" id="wd-body">
+          <div class="wd-placeholder">
+            <div style="font-size:42px;opacity:.3">⛅</div>
+            <strong style="color:var(--text);font-size:13px">¿A dónde salís?</strong>
+            <p style="font-size:12px;line-height:1.5;margin:0">Busca un lugar por nombre<br>o haz clic en el mapa</p>
+          </div>
+        </div>
+      </div>
 
       <!-- El mapa -->
       <div id="map"></div>
@@ -2245,6 +2411,204 @@ async function generateWindRoute() {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-magic"></i> Generar ruta';
   }
+}
+
+// ══ WEATHER DRAWER ════════════════════════════════════════════
+
+const _WMO = {
+  0:{i:'☀️',d:'Cielo despejado'},1:{i:'🌤️',d:'Mayormente despejado'},
+  2:{i:'⛅',d:'Parcialmente nublado'},3:{i:'☁️',d:'Nublado'},
+  45:{i:'🌫️',d:'Niebla'},48:{i:'🌫️',d:'Niebla'},
+  51:{i:'🌦️',d:'Llovizna ligera'},53:{i:'🌦️',d:'Llovizna'},55:{i:'🌧️',d:'Llovizna intensa'},
+  61:{i:'🌧️',d:'Lluvia ligera'},63:{i:'🌧️',d:'Lluvia moderada'},65:{i:'🌧️',d:'Lluvia intensa'},
+  71:{i:'🌨️',d:'Nieve ligera'},73:{i:'🌨️',d:'Nieve'},75:{i:'❄️',d:'Nieve intensa'},
+  80:{i:'🌦️',d:'Chubascos'},81:{i:'🌧️',d:'Chubascos mod.'},82:{i:'⛈️',d:'Chubascos fuertes'},
+  95:{i:'⛈️',d:'Tormenta'},96:{i:'⛈️',d:'Tormenta con granizo'},99:{i:'⛈️',d:'Tormenta'},
+};
+const _UV = ['Bajo','Bajo','Bajo','Mod.','Mod.','Alto','Alto','Muy alto','Muy alto','Muy alto','Muy alto','Extremo'];
+const _DIRS = ['N','NE','E','SE','S','SO','O','NO'];
+function _wmo(c){ return _WMO[c]||_WMO[Math.floor(c/10)*10]||{i:'🌡️',d:'Variable'}; }
+function _wdir(d){ return typeof d==='number' ? _DIRS[Math.round(d/45)%8] : ''; }
+
+let _wdOpen=false, _wdDay='hoy', _wdData=null, _wdLat=null, _wdLng=null, _wdName='', _wdTimer;
+
+function toggleWeatherDrawer() {
+  _wdOpen = !_wdOpen;
+  document.getElementById('weather-drawer').classList.toggle('open', _wdOpen);
+  document.getElementById('btn-weather-zone').classList.toggle('active', _wdOpen);
+}
+
+function switchWdDay(day, btn) {
+  _wdDay = day;
+  document.querySelectorAll('.wd-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  if (_wdData) _renderWd(_wdData, _wdName, _wdLat, _wdLng);
+}
+
+// Clic en el mapa carga tiempo cuando el drawer está abierto
+map.on('click', async (e) => {
+  if (!_wdOpen) return;
+  const { lat, lng } = e.latlng;
+  const name = await _wdRevGeo(lat, lng);
+  _loadWd(lat, lng, name);
+});
+
+async function _wdRevGeo(lat, lng) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+      { headers: { 'Accept-Language': 'es' } });
+    const d = await r.json(), a = d.address || {};
+    return a.village||a.town||a.city||a.county||a.state||`${lat.toFixed(3)},${lng.toFixed(3)}`;
+  } catch { return `${lat.toFixed(3)},${lng.toFixed(3)}`; }
+}
+
+// Buscador
+const _wdInput = document.getElementById('wd-search-input');
+const _wdDrop  = document.getElementById('wd-dropdown');
+
+_wdInput.addEventListener('input', () => {
+  clearTimeout(_wdTimer);
+  const q = _wdInput.value.trim();
+  if (q.length < 2) { _wdDrop.classList.remove('open'); return; }
+  _wdTimer = setTimeout(() => _wdSearch(q), 380);
+});
+_wdInput.addEventListener('keydown', e => { if (e.key==='Escape') _wdDrop.classList.remove('open'); });
+document.addEventListener('click', e => { if (!e.target.closest('.wd-search-box')) _wdDrop.classList.remove('open'); });
+
+async function _wdSearch(q) {
+  try {
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=es&format=json`);
+    const results = (await r.json()).results || [];
+    if (!results.length) {
+      _wdDrop.innerHTML = `<div class="wd-res"><div class="wd-res-name" style="color:var(--text-muted)">Sin resultados</div></div>`;
+    } else {
+      _wdDrop.innerHTML = results.map(x => {
+        const sub = [x.admin1, x.country].filter(Boolean).join(', ');
+        return `<div class="wd-res" data-lat="${x.latitude}" data-lng="${x.longitude}" data-name="${x.name}">
+          <i class="fas fa-map-pin" style="color:var(--primary);font-size:11px;flex-shrink:0"></i>
+          <div><div class="wd-res-name">${x.name}</div><div class="wd-res-sub">${sub}</div></div>
+        </div>`;
+      }).join('');
+      _wdDrop.querySelectorAll('.wd-res[data-lat]').forEach(el => {
+        el.addEventListener('click', () => {
+          const lat = +el.dataset.lat, lng = +el.dataset.lng, name = el.dataset.name;
+          _wdInput.value = name;
+          _wdDrop.classList.remove('open');
+          map.setView([lat, lng], 12);
+          _loadWd(lat, lng, name);
+        });
+      });
+    }
+    _wdDrop.classList.add('open');
+  } catch {}
+}
+
+document.getElementById('wd-geolocate').addEventListener('click', () => {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    const name = await _wdRevGeo(lat, lng);
+    map.setView([lat, lng], 12);
+    _loadWd(lat, lng, name);
+  });
+});
+
+async function _loadWd(lat, lng, name) {
+  _wdLat=lat; _wdLng=lng; _wdName=name;
+  document.getElementById('wd-body').innerHTML =
+    `<div class="wd-loading"><i class="fas fa-circle-notch fa-spin" style="font-size:22px;margin-bottom:8px;display:block"></i>Cargando…</div>`;
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}`
+      +`&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index`
+      +`&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m`
+      +`&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code,wind_speed_10m_max`
+      +`&timezone=auto&forecast_days=2&wind_speed_unit=kmh`;
+    _wdData = await (await fetch(url)).json();
+    _renderWd(_wdData, name, lat, lng);
+  } catch {
+    document.getElementById('wd-body').innerHTML =
+      `<div class="wd-placeholder"><div style="font-size:36px">⚠️</div><p style="font-size:12px">Error al cargar. Comprueba tu conexión.</p></div>`;
+  }
+}
+
+function _renderWd(d, name, lat, lng) {
+  const isToday = _wdDay === 'hoy';
+  const code  = isToday ? d.current.weather_code : d.daily.weather_code[1];
+  const wInfo = _wmo(code);
+
+  const temp  = isToday ? Math.round(d.current.temperature_2m)
+    : Math.round((d.daily.temperature_2m_max[1] + d.daily.temperature_2m_min[1]) / 2);
+  const feels = isToday ? Math.round(d.current.apparent_temperature) : temp;
+  const hum   = isToday ? d.current.relative_humidity_2m + '%' : '—';
+  const rain  = isToday
+    ? (d.current.precipitation||0).toFixed(1) + ' mm'
+    : (d.daily.precipitation_probability_max?.[1]||0) + '% prob.';
+  const wind  = isToday
+    ? `${Math.round(d.current.wind_speed_10m)} km/h`
+    : `${Math.round(d.daily.wind_speed_10m_max[1])} km/h`;
+  const gustLine = isToday
+    ? `Ráchas ${Math.round(d.current.wind_gusts_10m)} · ${_wdir(d.current.wind_direction_10m)}`
+    : '';
+  const uv    = isToday ? Math.round(d.current.uv_index||0) : '—';
+  const uvLbl = typeof uv === 'number' ? (_UV[Math.min(uv,11)]||'Extremo') : '—';
+
+  const tgt = new Date(); if (!isToday) tgt.setDate(tgt.getDate()+1);
+  const tgtStr = tgt.toISOString().slice(0,10);
+  const nowTs  = Date.now();
+
+  const hourItems = d.hourly.time
+    .map((t,i)=>({t,i}))
+    .filter(({t}) => t.startsWith(tgtStr) && (isToday ? new Date(t).getTime() >= nowTs - 3600000 : true));
+
+  document.getElementById('wd-body').innerHTML = `
+    <div class="wd-loc">
+      <div class="wd-loc-name"><i class="fas fa-map-marker-alt" style="color:var(--primary);font-size:10px"></i> ${name}</div>
+      <div class="wd-loc-coords">${lat.toFixed(4)}° N · ${lng.toFixed(4)}° E</div>
+    </div>
+    <div class="wd-main">
+      <div class="wd-icon">${wInfo.i}</div>
+      <div>
+        <div class="wd-temp-val">${temp}°</div>
+        <div class="wd-feels">Sensación ${feels}°</div>
+        <div class="wd-desc">${wInfo.d}</div>
+      </div>
+    </div>
+    <div class="wd-grid">
+      <div class="wd-cell">
+        <div class="wd-cell-lbl"><i class="fas fa-tint"></i> Humedad</div>
+        <div class="wd-cell-val">${hum}</div>
+      </div>
+      <div class="wd-cell">
+        <div class="wd-cell-lbl"><i class="fas fa-cloud-rain"></i> Lluvia</div>
+        <div class="wd-cell-val" style="font-size:13px">${rain}</div>
+      </div>
+      <div class="wd-cell">
+        <div class="wd-cell-lbl"><i class="fas fa-wind"></i> Viento</div>
+        <div class="wd-cell-val">${wind}</div>
+        <div class="wd-cell-sub">${gustLine}</div>
+      </div>
+      <div class="wd-cell">
+        <div class="wd-cell-lbl"><i class="fas fa-sun"></i> UV</div>
+        <div class="wd-cell-val">${uv}</div>
+        <div class="wd-cell-sub">${uvLbl}</div>
+      </div>
+    </div>
+    <div class="wd-sec">Previsión horaria</div>
+    <div class="wd-hourly">
+      <div class="wd-h-track">
+        ${hourItems.map(({t,i}) => {
+          const icon = _wmo(d.hourly.weather_code[i]).i;
+          const tp   = Math.round(d.hourly.temperature_2m[i]);
+          const rain = d.hourly.precipitation_probability[i] ?? 0;
+          return `<div class="wd-h-item">
+            <div class="wd-h-time">${t.slice(11,16)}</div>
+            <div class="wd-h-icon">${icon}</div>
+            <div class="wd-h-temp">${tp}°</div>
+            ${rain>0?`<div class="wd-h-rain">${rain}%</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
 }
 
 // Revelar página tras renderizado inicial
