@@ -442,15 +442,19 @@
     .wd-hourly { overflow-x: auto; padding: 0 10px 12px; scrollbar-width: thin; }
     .wd-h-track { display: flex; gap: 6px; }
     .wd-h-item {
-      min-width: 50px; background: var(--bg-input, rgba(255,255,255,.05));
+      min-width: 52px; background: var(--bg-input, rgba(255,255,255,.05));
       border: 1px solid var(--border); border-radius: 8px;
       padding: 6px 5px; display: flex; flex-direction: column;
       align-items: center; gap: 3px; flex-shrink: 0;
+      cursor: pointer; transition: border-color .15s, background .15s;
     }
+    .wd-h-item:hover { border-color: var(--primary); background: rgba(158,214,43,.08); }
+    .wd-h-item.active { border-color: var(--primary); background: rgba(158,214,43,.18); box-shadow: 0 0 0 1px var(--primary); }
     .wd-h-time { font-size: 10px; color: var(--text-muted); }
     .wd-h-icon { font-size: 15px; }
     .wd-h-temp { font-size: 12px; font-weight: 700; color: var(--text); }
     .wd-h-rain { font-size: 10px; color: #60a5fa; }
+    .wd-h-wind { font-size: 9px; color: var(--text-muted); }
 
     @media (max-width: 768px) {
       /* Header: una sola fila compacta */
@@ -2520,7 +2524,7 @@ async function _loadWd(lat, lng, name) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}`
       +`&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index`
-      +`&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m`
+      +`&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m`
       +`&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code,wind_speed_10m_max`
       +`&timezone=auto&forecast_days=2&wind_speed_unit=kmh`;
     _wdData = await (await fetch(url)).json();
@@ -2601,15 +2605,38 @@ function _renderWd(d, name, lat, lng) {
           const icon = _wmo(d.hourly.weather_code[i]).i;
           const tp   = Math.round(d.hourly.temperature_2m[i]);
           const rain = d.hourly.precipitation_probability[i] ?? 0;
-          return `<div class="wd-h-item">
+          const wspd = Math.round(d.hourly.wind_speed_10m[i] ?? 0);
+          return `<div class="wd-h-item" onclick="_wdHourClick(this,${i})">
             <div class="wd-h-time">${t.slice(11,16)}</div>
             <div class="wd-h-icon">${icon}</div>
             <div class="wd-h-temp">${tp}°</div>
             ${rain>0?`<div class="wd-h-rain">${rain}%</div>`:''}
+            <div class="wd-h-wind">${wspd}km/h</div>
           </div>`;
         }).join('')}
       </div>
     </div>`;
+}
+
+function _wdHourClick(el, idx) {
+  if (!_wdData) return;
+  const isActive = el.classList.contains('active');
+  document.querySelectorAll('.wd-h-item').forEach(e => e.classList.remove('active'));
+  if (isActive) {
+    // Segundo clic: volver a viento en tiempo real
+    windHourOverride = null;
+    showToast('Viento en tiempo real', 'info');
+    return;
+  }
+  el.classList.add('active');
+  const spd = _wdData.hourly.wind_speed_10m[idx] ?? 0;
+  const deg = _wdData.hourly.wind_direction_10m?.[idx] ?? 0;
+  const u = Math.sin((deg + 180) * Math.PI / 180) * spd;
+  const v = -Math.cos((deg + 180) * Math.PI / 180) * spd;
+  windHourOverride = { u, v, spd, color: _windColor(spd) };
+  if (!windArrowsActive) toggleWindArrows();
+  const timeStr = _wdData.hourly.time[idx].slice(11, 16);
+  showToast(`Flechas · ${timeStr} · ${Math.round(spd)} km/h · ${_wdir(deg)}`, 'info');
 }
 
 // ══ RAIN RADAR (RainViewer) ════════════════════════════════════
