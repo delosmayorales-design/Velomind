@@ -4128,8 +4128,9 @@ function adaptToRoller(idx) {
 
   const ftp = AppState.athlete?.ftp || 200;
   const originalDur = sess.durationMin || Math.round(sess.tssShare * currentPlan.targetTSS / Math.pow(sess.ifTarget || 0.65, 2));
-  const rollerDur = Math.round(originalDur * 0.75); // Reducir 25% el tiempo
-  const rollerTSS = Math.round(sess.tssShare * currentPlan.targetTSS * 0.75); // Ajustar TSS proporcionalmente
+  const maxRollerDur = 87; // 1.45 horas máximo
+  const rollerDur = Math.min(Math.round(originalDur * 0.75), maxRollerDur);
+  const rollerTSS = Math.round((sess.tssShare * currentPlan.targetTSS) * (rollerDur / originalDur));
 
   const rollerTips = [
     '💨 Usa ventilador para simular viento y enfriar.',
@@ -4143,29 +4144,29 @@ function adaptToRoller(idx) {
   ];
 
   const modalContent = `
-    <div style="padding:20px;max-width:500px">
+    <div style="padding:20px;max-width:min(500px, 90vw);width:100%;box-sizing:border-box">
       <h3 style="margin:0 0 16px 0;font-size:18px;color:var(--text-primary);display:flex;align-items:center;gap:8px">
         <i class="fas fa-home" style="color:#6366f1"></i>
         Entrenamiento adaptado para rodillo
       </h3>
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
         <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:8px">${sess.name || sess.type}</div>
-        <div style="display:flex;gap:16px;margin-bottom:12px">
-          <div style="flex:1">
+        <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
             <div style="font-size:12px;color:var(--text-muted)">Duración original</div>
             <div style="font-size:16px;font-weight:700;color:var(--text-primary)">${originalDur} min</div>
           </div>
-          <div style="flex:1">
+          <div style="flex:1;min-width:120px">
             <div style="font-size:12px;color:var(--text-muted)">En rodillo</div>
             <div style="font-size:16px;font-weight:700;color:#6366f1">${rollerDur} min</div>
           </div>
         </div>
-        <div style="display:flex;gap:16px;margin-bottom:12px">
-          <div style="flex:1">
+        <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
             <div style="font-size:12px;color:var(--text-muted)">TSS original</div>
             <div style="font-size:16px;font-weight:700;color:var(--text-primary)">${Math.round(sess.tssShare * currentPlan.targetTSS)}</div>
           </div>
-          <div style="flex:1">
+          <div style="flex:1;min-width:120px">
             <div style="font-size:12px;color:var(--text-muted)">TSS rodillo</div>
             <div style="font-size:16px;font-weight:700;color:#6366f1">${rollerTSS}</div>
           </div>
@@ -4174,7 +4175,7 @@ function adaptToRoller(idx) {
           ${sess.description || 'Entrenamiento adaptado para condiciones de rodillo estático.'}
         </div>
       </div>
-      <div style="background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:16px;margin-bottom:16px">
         <h4 style="margin:0 0 12px 0;font-size:14px;color:#6366f1;display:flex;align-items:center;gap:6px">
           <i class="fas fa-lightbulb"></i> Pautas para rodillo
         </h4>
@@ -4182,9 +4183,9 @@ function adaptToRoller(idx) {
           ${rollerTips.map(tip => `<li>${tip}</li>`).join('')}
         </ul>
       </div>
-      <div style="display:flex;gap:8px">
-        <button onclick="closeRollerModal()" style="flex:1;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer">Cerrar</button>
-        <button onclick="exportRollerSession(${idx}, ${rollerDur})" style="flex:1;padding:12px;background:#6366f1;border:1px solid #6366f1;border-radius:8px;color:white;font-size:14px;font-weight:600;cursor:pointer">Exportar TCX</button>
+      <div style="display:flex;gap:8px;flex-direction:column">
+        <button onclick="closeRollerModal()" style="padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer">Cerrar</button>
+        <button onclick="exportRollerSession(${idx}, ${rollerDur})" style="padding:12px;background:#6366f1;border:1px solid #6366f1;border-radius:8px;color:white;font-size:14px;font-weight:600;cursor:pointer">Exportar TCX</button>
       </div>
     </div>
   `;
