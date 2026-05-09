@@ -282,6 +282,58 @@
     .modal-btn-save   { background:var(--primary);color:#111;font-weight:700;font-family:'Space Grotesk',sans-serif;border:none; }
     .modal-btn-save:hover { background:var(--primary-dark, #84B422);box-shadow:0 4px 16px rgba(158,214,43,0.3);transform:translateY(-1px); }
 
+    /* ── GPS Tracking HUD ──────────────────────────────────────── */
+    #tracking-hud {
+      position: absolute;
+      top: 14px; left: 50%; transform: translateX(-50%);
+      z-index: 600;
+      background: rgba(10,11,15,0.92);
+      border: 1.5px solid rgba(255,59,59,0.5);
+      border-radius: 14px;
+      padding: 10px 20px;
+      display: none; gap: 22px;
+      box-shadow: 0 4px 20px rgba(255,59,59,0.25);
+      backdrop-filter: blur(6px);
+    }
+    #tracking-hud.visible { display: flex; align-items: center; }
+    .trk-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #ff3b3b; flex-shrink: 0;
+      box-shadow: 0 0 0 0 rgba(255,59,59,0.6);
+      animation: trk-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes trk-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(255,59,59,0.6); }
+      70%  { box-shadow: 0 0 0 8px rgba(255,59,59,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,59,59,0); }
+    }
+    .trk-stat { text-align: center; min-width: 44px; }
+    .trk-val  { font-size: 18px; font-weight: 800; color: #fff; font-family:'Space Grotesk',sans-serif; line-height:1; }
+    .trk-lbl  { font-size: 9px; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing:.5px; margin-top:2px; }
+    .trk-sep  { width: 1px; height: 32px; background: rgba(255,255,255,0.1); flex-shrink:0; }
+    #btn-track.recording {
+      background: rgba(255,59,59,0.2) !important;
+      border-color: #ff3b3b !important;
+      color: #ff3b3b !important;
+      animation: trk-btn-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes trk-btn-pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(255,59,59,0.4); }
+      50%      { box-shadow: 0 0 0 6px rgba(255,59,59,0); }
+    }
+
+    /* ── Modal guardar trayecto ─────────────────────────────────── */
+    #track-modal .trk-summary {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-bottom: 16px;
+    }
+    #track-modal .trk-card {
+      background: var(--bg-input); border-radius: 8px;
+      padding: 10px 12px; text-align: center;
+    }
+    #track-modal .trk-card-val { font-size: 20px; font-weight: 800; color: var(--primary); font-family:'Space Grotesk',sans-serif; }
+    #track-modal .trk-card-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
+
     /* ── Leaflet override (z-index) ───────────────────────────── */
     .leaflet-control-layers { z-index: 400 !important; }
 
@@ -597,6 +649,9 @@
       <p>Crea, importa y guarda tus rutas · Road · Gravel · MTB</p>
     </div>
     <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" id="btn-track" onclick="toggleTracking()" style="background:rgba(255,59,59,0.12);border-color:rgba(255,59,59,0.4);color:#ff3b3b;">
+        <i class="fas fa-circle" id="btn-track-icon"></i><span class="btn-label" id="btn-track-label"> Grabar</span>
+      </button>
       <button class="btn btn-primary btn-sm" onclick="startDrawing()">
         <i class="fas fa-pencil-alt"></i><span class="btn-label"> Nueva ruta</span>
       </button>
@@ -652,6 +707,21 @@
 
     <!-- Mapa + elevación -->
     <div class="map-wrap">
+
+      <!-- HUD GPS tracking en vivo -->
+      <div id="tracking-hud">
+        <div class="trk-dot"></div>
+        <div class="trk-stat"><div class="trk-val" id="trk-time">00:00</div><div class="trk-lbl">tiempo</div></div>
+        <div class="trk-sep"></div>
+        <div class="trk-stat"><div class="trk-val" id="trk-dist">0.00</div><div class="trk-lbl">km</div></div>
+        <div class="trk-sep"></div>
+        <div class="trk-stat"><div class="trk-val" id="trk-speed">0.0</div><div class="trk-lbl">km/h</div></div>
+        <div class="trk-sep"></div>
+        <div class="trk-stat"><div class="trk-val" id="trk-elev">0</div><div class="trk-lbl">D+ m</div></div>
+        <button onclick="toggleTracking()" style="background:rgba(255,59,59,0.15);border:1px solid rgba(255,59,59,0.4);border-radius:8px;color:#ff3b3b;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;margin-left:6px;">
+          <i class="fas fa-stop"></i> Detener
+        </button>
+      </div>
 
       <!-- Stats flotantes -->
       <div class="map-stats" id="map-stats">
@@ -757,6 +827,29 @@
 </div>
 
 <!-- Modal: Ruta por viento -->
+<!-- Modal guardar trayecto GPS -->
+<div id="track-modal" style="display:none">
+  <div class="modal-overlay">
+    <div class="modal-box" style="width:340px">
+      <div class="modal-title"><i class="fas fa-route" style="color:#ff3b3b"></i> Guardar trayecto</div>
+      <div class="trk-summary" id="trk-modal-summary"></div>
+      <input id="trk-modal-name" class="modal-input" type="text" placeholder="Nombre de la actividad">
+      <select id="trk-modal-type" class="modal-select">
+        <option value="cycling">🚴 Ciclismo</option>
+        <option value="mtb">🏔️ MTB</option>
+        <option value="gravel">🪨 Gravel</option>
+        <option value="running">🏃 Running</option>
+      </select>
+      <div class="modal-row">
+        <button class="modal-btn modal-btn-cancel" onclick="discardTracking()">Descartar</button>
+        <button class="modal-btn modal-btn-save" onclick="saveTrackingActivity()" id="trk-save-btn">
+          <i class="fas fa-check"></i> Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="wind-route-modal" style="display:none">
   <div class="modal-overlay" onclick="if(event.target===this)closeWindRouteModal()">
     <div class="modal-box" style="width:360px">
@@ -1354,7 +1447,7 @@ function renderRouteList() {
         ${r.is_favorite ? '<i class="fas fa-star" style="color:#F59E0B;font-size:10px"></i>' : ''}
       </div>
       <div class="route-item-meta">
-        ${r.distance_km ? r.distance_km + ' km' : ''}${r.elevation_gain_m ? ' · ' + Math.round(r.elevation_gain_m) + ' m D+' : ''}${r.estimated_minutes ? ' · ~' + formatTime(r.estimated_minutes) : ''}
+        ${r.notes?.startsWith('GPS ·') ? '<span style="color:#ff3b3b;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px"><i class="fas fa-circle" style="font-size:6px"></i> GPS</span> · ' : ''}${r.distance_km ? r.distance_km + ' km' : ''}${r.elevation_gain_m ? ' · ' + Math.round(r.elevation_gain_m) + ' m D+' : ''}${r.estimated_minutes ? ' · ~' + formatTime(r.estimated_minutes) : ''}
       </div>
       <div class="route-item-actions">
         <button class="ri-btn fav ${r.is_favorite?'on':''}" title="Favorito"
@@ -1386,14 +1479,18 @@ function openRouteOnMap(id) {
   document.getElementById('map').classList.remove('drawing');
   document.getElementById('draw-toolbar').classList.remove('visible');
   routeGeoJSON = route.geojson;
-  const color   = route.type === 'gravel' ? '#F59E0B' : route.type === 'mtb' ? '#10B981' : '#FF6B35';
+  const isGps   = route.notes?.startsWith('GPS ·');
+  const color   = isGps ? '#ff3b3b' : route.type === 'gravel' ? '#F59E0B' : route.type === 'mtb' ? '#10B981' : '#FF6B35';
   const latLngs = route.geojson.coordinates.map(([ln,la]) => [la,ln]);
   if (routeLayer) map.removeLayer(routeLayer);
   routeLayer = L.polyline(latLngs, { color, weight: 4, opacity: 0.9 }).addTo(map);
   map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
   document.getElementById('stat-dist').textContent = route.distance_km?.toFixed(1) ?? '—';
   document.getElementById('stat-elev').textContent = route.elevation_gain_m ? Math.round(route.elevation_gain_m) : '—';
-  document.getElementById('stat-time').textContent = route.estimated_minutes ? formatTime(route.estimated_minutes) : '—';
+  // Para trayectos GPS las notas tienen el tiempo real "GPS · fecha · hh:mm:ss"
+  const gpsDur = isGps ? route.notes?.split(' · ')[2] : null;
+  document.getElementById('stat-time').textContent = gpsDur ?? (route.estimated_minutes ? formatTime(route.estimated_minutes) : '—');
+  document.querySelector('#map-stats .stat-l:last-of-type').textContent = isGps ? 'Duración' : 'Estimado';
   document.getElementById('map-stats').classList.add('visible');
   document.querySelectorAll('.route-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
   fetchElevation(latLngs);
@@ -2706,6 +2803,263 @@ async function toggleRainLayer() {
     btn?.classList.remove('loading');
     console.error('[Rain]', e);
     showToast('No se pudo cargar el radar de lluvia', 'error');
+  }
+}
+
+// ── GPS Tracking ─────────────────────────────────────────────────
+
+let _trkActive      = false;
+let _trkWatchId     = null;
+let _trkPoints      = [];   // [{lat,lng,alt,ts,speed}]
+let _trkPolyline    = null;
+let _trkMarker      = null;
+let _trkStartTime   = null;
+let _trkTimer       = null;
+let _trkDist        = 0;    // metros
+let _trkElevGain    = 0;    // metros D+
+let _trkMaxSpeed    = 0;    // km/h
+let _trkLastAlt     = null;
+let _trkMovingTime  = 0;    // segundos en movimiento
+let _trkLastTs      = null;
+
+function _haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function _fmtTime(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function toggleTracking() {
+  if (_trkActive) {
+    _stopTracking();
+  } else {
+    _startTracking();
+  }
+}
+
+function _startTracking() {
+  if (!navigator.geolocation) {
+    showToast('Tu navegador no soporta geolocalización', 'error');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    () => {
+      _trkActive     = true;
+      _trkPoints     = [];
+      _trkDist       = 0;
+      _trkElevGain   = 0;
+      _trkMaxSpeed   = 0;
+      _trkLastAlt    = null;
+      _trkMovingTime = 0;
+      _trkLastTs     = null;
+      _trkStartTime  = Date.now();
+
+      // Polyline roja en el mapa
+      _trkPolyline = L.polyline([], { color: '#ff3b3b', weight: 4, opacity: 0.85 }).addTo(map);
+
+      // Marker posición actual
+      const icon = L.divIcon({ className: '', html: '<div style="width:14px;height:14px;background:#ff3b3b;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 3px rgba(255,59,59,0.3)"></div>', iconSize:[14,14], iconAnchor:[7,7] });
+      _trkMarker = L.marker([0,0], { icon, zIndexOffset: 1000 });
+
+      _trkWatchId = navigator.geolocation.watchPosition(_onTrkPos, _onTrkErr, {
+        enableHighAccuracy: true,
+        maximumAge: 3000,
+        timeout: 15000,
+      });
+
+      // Ticker cada segundo para actualizar tiempo
+      _trkTimer = setInterval(_trkTick, 1000);
+
+      document.getElementById('tracking-hud').classList.add('visible');
+      const btn = document.getElementById('btn-track');
+      btn.classList.add('recording');
+      document.getElementById('btn-track-icon').className = 'fas fa-stop';
+      document.getElementById('btn-track-label').textContent = ' Detener';
+      showToast('Grabando trayecto…', 'info');
+    },
+    () => showToast('No se pudo obtener la ubicación. Verifica los permisos.', 'error'),
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function _onTrkPos(pos) {
+  const { latitude: lat, longitude: lng, altitude: alt, speed } = pos.coords;
+  const ts = pos.timestamp;
+  const speedKmh = speed != null ? speed * 3.6 : null;
+
+  // Distancia
+  if (_trkPoints.length > 0) {
+    const prev = _trkPoints[_trkPoints.length - 1];
+    const d = _haversine(prev.lat, prev.lng, lat, lng);
+    // Filtrar saltos de GPS > 200m en < 3s (noise)
+    const dt = (ts - prev.ts) / 1000;
+    if (d < 200 || dt > 5) {
+      _trkDist += d;
+    }
+    // Elevación
+    if (alt != null && _trkLastAlt != null) {
+      const diff = alt - _trkLastAlt;
+      if (diff > 0.5) _trkElevGain += diff;
+    }
+    // Tiempo en movimiento
+    const spd = speedKmh ?? ((d / dt) * 3.6);
+    if (spd > 1.5 && dt > 0) _trkMovingTime += dt;
+  }
+
+  if (alt != null) _trkLastAlt = alt;
+  if (speedKmh != null && speedKmh > _trkMaxSpeed) _trkMaxSpeed = speedKmh;
+
+  _trkPoints.push({ lat, lng, alt, ts, speed: speedKmh });
+  _trkPolyline.addLatLng([lat, lng]);
+
+  // Mover marker
+  _trkMarker.setLatLng([lat, lng]);
+  if (_trkPoints.length === 1) {
+    _trkMarker.addTo(map);
+    map.setView([lat, lng], 15);
+  }
+
+  // Actualizar HUD velocidad
+  const curSpeed = speedKmh ?? 0;
+  document.getElementById('trk-speed').textContent = curSpeed.toFixed(1);
+  document.getElementById('trk-dist').textContent  = (_trkDist / 1000).toFixed(2);
+  document.getElementById('trk-elev').textContent  = Math.round(_trkElevGain);
+}
+
+function _onTrkErr(err) {
+  console.warn('[Tracking] GPS error:', err.message);
+}
+
+function _trkTick() {
+  const elapsed = Math.floor((Date.now() - _trkStartTime) / 1000);
+  document.getElementById('trk-time').textContent = _fmtTime(elapsed);
+}
+
+function _stopTracking() {
+  if (_trkWatchId != null) {
+    navigator.geolocation.clearWatch(_trkWatchId);
+    _trkWatchId = null;
+  }
+  if (_trkTimer) { clearInterval(_trkTimer); _trkTimer = null; }
+  _trkActive = false;
+
+  document.getElementById('tracking-hud').classList.remove('visible');
+  const btn = document.getElementById('btn-track');
+  btn.classList.remove('recording');
+  document.getElementById('btn-track-icon').className = 'fas fa-circle';
+  document.getElementById('btn-track-label').textContent = ' Grabar';
+
+  if (_trkPoints.length < 2) {
+    showToast('Trayecto demasiado corto para guardar', 'info');
+    _clearTrackLayers();
+    return;
+  }
+
+  // Armar resumen en el modal
+  const elapsed = Math.floor((Date.now() - _trkStartTime) / 1000);
+  const distKm  = _trkDist / 1000;
+  const avgSpeed = _trkMovingTime > 0 ? distKm / (_trkMovingTime / 3600) : 0;
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+  document.getElementById('trk-modal-name').value =
+    `Salida ${now.toLocaleDateString('es', {weekday:'long'})} ${now.toLocaleDateString('es',{day:'numeric',month:'short'})}`;
+
+  document.getElementById('trk-modal-summary').innerHTML = `
+    <div class="trk-card"><div class="trk-card-val">${distKm.toFixed(2)}</div><div class="trk-card-lbl">km</div></div>
+    <div class="trk-card"><div class="trk-card-val">${_fmtTime(elapsed)}</div><div class="trk-card-lbl">tiempo</div></div>
+    <div class="trk-card"><div class="trk-card-val">${avgSpeed.toFixed(1)}</div><div class="trk-card-lbl">km/h media</div></div>
+    <div class="trk-card"><div class="trk-card-val">${Math.round(_trkElevGain)}</div><div class="trk-card-lbl">D+ metros</div></div>
+  `;
+
+  // Guardar estado para el modal
+  document.getElementById('track-modal')._trkData = { elapsed, distKm, avgSpeed, dateStr };
+  document.getElementById('track-modal').style.display = '';
+}
+
+function discardTracking() {
+  document.getElementById('track-modal').style.display = 'none';
+  _clearTrackLayers();
+  showToast('Trayecto descartado', 'info');
+}
+
+function _clearTrackLayers() {
+  if (_trkPolyline) { map.removeLayer(_trkPolyline); _trkPolyline = null; }
+  if (_trkMarker)   { map.removeLayer(_trkMarker);   _trkMarker   = null; }
+  _trkPoints = [];
+}
+
+function _buildTrackGeoJSON() {
+  // Downsample a máx 600 puntos para no saturar la BD
+  const pts = _trkPoints;
+  const step = Math.max(1, Math.ceil(pts.length / 600));
+  const sampled = pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
+  return {
+    type: 'LineString',
+    coordinates: sampled.map(p => [p.lng, p.lat]),
+  };
+}
+
+async function saveTrackingActivity() {
+  const btn = document.getElementById('trk-save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Guardando…';
+
+  const { elapsed, distKm, avgSpeed, dateStr } = document.getElementById('track-modal')._trkData;
+  const name = document.getElementById('trk-modal-name').value.trim() || 'Salida GPS';
+  const type = document.getElementById('trk-modal-type').value;
+  const calories = Math.round(distKm * 40);
+
+  const actPayload = {
+    name, date: dateStr, source: 'GPS', type,
+    duration: elapsed, distance: _trkDist,
+    elevation: Math.round(_trkElevGain),
+    avg_speed: Math.round(avgSpeed * 10) / 10,
+    max_speed: Math.round(_trkMaxSpeed * 10) / 10,
+    calories,
+    notes: `Trayecto grabado en VeloMind · ${_trkPoints.length} puntos GPS`,
+  };
+
+  // Tipo de ruta compatible con el panel (cycling/running → road por defecto)
+  const routeType = ['road','gravel','mtb'].includes(type) ? type : 'road';
+  const routePayload = {
+    name, type: routeType,
+    geojson: _buildTrackGeoJSON(),
+    distance_km: Math.round(distKm * 10) / 10,
+    elevation_gain_m: Math.round(_trkElevGain),
+    notes: `GPS · ${dateStr} · ${_fmtTime(elapsed)}`,
+  };
+
+  try {
+    const headers = { 'Content-Type': 'application/json', ...Auth.getHeaders() };
+
+    // Guardar actividad y ruta en paralelo
+    const [actRes, routeRes] = await Promise.all([
+      fetch(`${API_BASE}/activities`, { method: 'POST', headers, body: JSON.stringify(actPayload) }),
+      fetch(`${API_BASE}/routes`,     { method: 'POST', headers, body: JSON.stringify(routePayload) }),
+    ]);
+
+    if (!actRes.ok)   throw new Error('Actividad: ' + ((await actRes.json()).error   || actRes.statusText));
+    if (!routeRes.ok) throw new Error('Ruta: '      + ((await routeRes.json()).error || routeRes.statusText));
+
+    document.getElementById('track-modal').style.display = 'none';
+    _clearTrackLayers();
+    await loadRoutes();   // refresca el panel izquierdo con la ruta nueva
+    showToast(`Trayecto guardado · ${distKm.toFixed(2)} km`, 'success');
+  } catch(e) {
+    showToast('Error al guardar: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check"></i> Guardar';
   }
 }
 
