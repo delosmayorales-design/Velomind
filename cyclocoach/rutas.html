@@ -298,14 +298,15 @@
     .g-topbar {
       display: flex; align-items: center; justify-content: space-between;
       background: #111; border-bottom: 1px solid #222;
-      padding: 8px 14px; flex-shrink: 0;
+      padding: 6px 14px; flex-shrink: 0;
+      padding-top: max(6px, env(safe-area-inset-top, 6px));
     }
     .g-topbar-left  { display: flex; align-items: center; gap: 8px; }
-    .g-topbar-time  { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: 1px; }
-    .g-rec-dot      { width: 9px; height: 9px; border-radius: 50%; background: #ff3b3b;
+    .g-topbar-time  { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: 1px; }
+    .g-rec-dot      { width: 8px; height: 8px; border-radius: 50%; background: #ff3b3b;
                       animation: trk-pulse 1.4s ease-in-out infinite; flex-shrink: 0; }
-    .g-topbar-dist  { font-size: 20px; font-weight: 800; color: #9ED62B; }
-    .g-topbar-unit  { font-size: 11px; color: #555; margin-left: 3px; }
+    .g-topbar-dist  { font-size: 18px; font-weight: 800; color: #9ED62B; }
+    .g-topbar-unit  { font-size: 10px; color: #555; margin-left: 3px; }
 
     /* Grid de campos: 5 filas explícitas que llenan el espacio disponible */
     .g-grid {
@@ -345,22 +346,26 @@
     /* Sensor sin datos: valor apagado */
     .g-cell-val.g-no-data { color: #2a2a2a !important; }
 
-    /* Barra inferior: botones */
+    /* Barra inferior: botones compactos */
     .g-botbar {
       display: flex; gap: 0; flex-shrink: 0;
       border-top: 1px solid #1a1a1a;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
     .g-botbtn {
-      flex: 1; padding: 14px 8px;
+      flex: 1; padding: 10px 4px;
       background: #0d0d0d; border: none;
-      color: #888; font-size: 12px; font-weight: 700;
+      color: #666; font-size: 11px; font-weight: 700;
       cursor: pointer; font-family: inherit;
-      display: flex; align-items: center; justify-content: center; gap: 6px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px;
       transition: background .18s;
       border-right: 1px solid #1a1a1a;
+      -webkit-tap-highlight-color: transparent;
     }
     .g-botbtn:last-child { border-right: none; }
-    .g-botbtn:hover, .g-botbtn:active { background: #161616; }
+    .g-botbtn:active { background: #1a1a1a; }
+    .g-botbtn i { font-size: 18px; }
     .g-botbtn.g-stop { color: #ff3b3b; }
     .g-botbtn.g-map  { color: #9ED62B; }
     .g-botbtn.g-sens { color: #0082fc; }
@@ -1112,13 +1117,16 @@
   <!-- Barra inferior -->
   <div class="g-botbar">
     <button class="g-botbtn g-stop" onclick="toggleTracking()">
-      <i class="fas fa-stop-circle"></i> Detener
+      <i class="fas fa-stop-circle"></i>
+      <span>Detener</span>
     </button>
     <button class="g-botbtn g-sens" onclick="openSensorsModal()">
-      <i class="fas fa-bluetooth"></i> Sensores
+      <i class="fas fa-bluetooth"></i>
+      <span>Sensores</span>
     </button>
     <button class="g-botbtn g-map" onclick="closeGarminOverlay()">
-      <i class="fas fa-map-marked-alt"></i> Mapa
+      <i class="fas fa-map-marked-alt"></i>
+      <span>Mapa</span>
     </button>
   </div>
 
