@@ -4130,6 +4130,10 @@ function adaptToRoller(idx) {
   const maxRollerDur = 87; // 1.45 horas máximo
   const rollerDur = Math.min(Math.round(originalDur * 0.75), maxRollerDur);
   const rollerTSS = Math.round((sess.tssShare * currentPlan.targetTSS) * (rollerDur / originalDur));
+  const rollerPct = Math.round(100 * rollerDur / originalDur);
+  const rollerDurNote = rollerDur >= maxRollerDur
+    ? `máximo recomendado para rodillo estático (${rollerPct}% del original de ${originalDur} min)`
+    : `75% del original para compensar el mayor esfuerzo térmico sin ventilación exterior`;
 
   const rollerTips = [
     '💨 Usa ventilador para simular viento y enfriar.',
@@ -4170,11 +4174,8 @@ function adaptToRoller(idx) {
             <div style="font-size:16px;font-weight:700;color:#6366f1">${rollerTSS}</div>
           </div>
         </div>
-        <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px">
-          ${sess.description || 'Entrenamiento adaptado para condiciones de rodillo estático.'}
-        </div>
         <div style="font-size:12px;background:rgba(99,102,241,0.1);border-left:3px solid #6366f1;border-radius:0 6px 6px 0;padding:8px 10px;color:#818cf8;margin-bottom:12px">
-          ⏱️ En rodillo harás <strong>${rollerDur} min</strong> en lugar de los ${originalDur} min originales (75% de la duración para compensar el mayor esfuerzo térmico).
+          ⏱️ En rodillo harás <strong>${rollerDur} min</strong> — ${rollerDurNote}.
         </div>
       </div>
       <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:16px;margin-bottom:16px">
