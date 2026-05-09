@@ -323,6 +323,8 @@
       .fg-row { grid-template-columns: 1fr; }
       .bike-detail-header { flex-direction: column; align-items: flex-start; }
       .ci-stats { grid-template-columns: 1fr 1fr 1fr; }
+      .header-actions .btn-label { display: none; }
+      .header-actions { gap: 6px; }
     }
   </style>
 </head>
@@ -356,6 +358,7 @@
 
     <div class="nav-section-title">Análisis y Técnica</div>
     <a href="rutas.html" class="nav-item"><i class="fas fa-map-marked-alt"></i> Rutas</a>
+    <a href="meteo.html" class="nav-item"><i class="fas fa-cloud-sun"></i> Meteorología</a>
     <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
     <a href="mecanica-general.html" class="nav-item"><i class="fas fa-wrench"></i> Mecánica</a>
     <a href="garaje.html" class="nav-item active"><i class="fas fa-warehouse"></i> Mi Garaje</a>
@@ -385,16 +388,16 @@
     </div>
     <div class="header-actions" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-primary btn-sm" id="btn-import-strava" onclick="G.importFromStrava()">
-        <i class="fab fa-strava"></i> Importar bicis de Strava
+        <i class="fab fa-strava"></i><span class="btn-label"> Importar Strava</span>
       </button>
       <button class="btn btn-secondary btn-sm" onclick="G.openAddBike()">
-        <i class="fas fa-plus"></i> Nueva bici
+        <i class="fas fa-plus"></i><span class="btn-label"> Nueva bici</span>
       </button>
       <button class="btn btn-secondary btn-sm" onclick="G.syncActivities()">
-        <i class="fas fa-sync-alt"></i> Actualizar km
+        <i class="fas fa-sync-alt"></i><span class="btn-label"> Actualizar km</span>
       </button>
-      <button class="btn btn-ghost btn-sm" onclick="G.exportPDF()" title="Exportar informe de mantenimiento">
-        <i class="fas fa-file-pdf"></i> Informe PDF
+      <button class="btn btn-ghost btn-sm" onclick="G.exportPDF()" title="Informe de mantenimiento">
+        <i class="fas fa-file-pdf"></i><span class="btn-label"> Informe PDF</span>
       </button>
     </div>
   </header>
