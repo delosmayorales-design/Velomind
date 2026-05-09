@@ -1168,7 +1168,7 @@ async function initTrainingPlan() {
       const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan'));
       if (local?.sessions) {
         if (local.week_start === currentWeekStart) {
-          currentPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {} };
+          currentPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {}, adaptation: local.adaptation || null };
         }
       }
     } catch(_) {}
@@ -1187,6 +1187,11 @@ async function initTrainingPlan() {
       fillAdjustmentForm();
       if (currentPlan) {
         renderPlan(currentPlan, AppState.athlete);
+        // Si el plan cacheado no tiene adaptation, regenerar en background para obtenerla
+        if (!currentPlan.adaptation) {
+          generatePlan();
+          silentSavePlan();
+        }
       } else {
         generatePlan();
         silentSavePlan();
@@ -2378,6 +2383,7 @@ async function silentSavePlan() {
       phase:           currentPlan.phase     || null,
       ftp_at_creation: AppState.athlete?.ftp || null,
       advice:          currentPlan.advice    || null,
+      adaptation:      currentPlan.adaptation || null,
     };
     localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...planData, savedAt: Date.now() }));
     await fetch(`${API}/plans/training`, {
