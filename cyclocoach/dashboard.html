@@ -63,6 +63,32 @@
         radial-gradient(ellipse 55% 90% at 92% 50%, rgba(158,214,43,.08) 0%, transparent 68%),
         linear-gradient(135deg, #0c1008 0%, #090d06 100%);
     }
+    /* ── Animaciones del hero ─────────────────────────────── */
+    @keyframes decoFloat {
+      0%,100% { transform: translateY(-50%) scale(1); }
+      50%     { transform: translateY(calc(-50% - 14px)) scale(1.08); }
+    }
+    @keyframes decoWarn {
+      0%,100% { opacity: .14; transform: translateY(-50%) scale(1); }
+      30%     { opacity: .35; transform: translateY(-50%) scale(1.12); }
+      60%     { opacity: .14; transform: translateY(-50%) scale(1); }
+    }
+    @keyframes decoPedalear {
+      0%     { transform: translateY(-50%) rotate(-8deg); }
+      50%    { transform: translateY(-50%) rotate(8deg); }
+      100%   { transform: translateY(-50%) rotate(-8deg); }
+    }
+    @keyframes heroBorderGlow {
+      0%,100% { box-shadow: -4px 0 0 0 var(--hero-accent,#9ED62B),
+                             0 0 0 0 transparent; }
+      50%     { box-shadow: -4px 0 0 0 var(--hero-accent,#9ED62B),
+                             0 0 28px 4px var(--hero-glow,rgba(158,214,43,.18)); }
+    }
+    @keyframes heroBgBreath {
+      0%,100% { opacity: 1; }
+      50%     { opacity: .88; }
+    }
+
     /* Icono decorativo grande — usa Font Awesome, siempre renderiza */
     .hero-deco {
       position: absolute;
@@ -75,7 +101,12 @@
       user-select: none;
       pointer-events: none;
       line-height: 1;
+      animation: decoFloat 4s ease-in-out infinite;
     }
+    .coach-hero.loaded .hero-deco  { animation: decoWarn   2.4s ease-in-out infinite; }
+    .coach-hero.no-data .hero-deco { animation: decoPedalear 1.6s ease-in-out infinite; }
+    .coach-hero.fresh .hero-deco   { animation: decoFloat 2.8s ease-in-out infinite; }
+    .coach-hero { animation: fadeUp .35s ease both, heroBorderGlow 5s ease-in-out infinite .4s; }
     .hero-content { position: relative; z-index: 1; max-width: calc(100% - 130px); }
     .hero-eyebrow {
       font-size: 11px;
