@@ -1113,8 +1113,8 @@
 <!-- Overlay iframe: permite navegar sin perder grabación ni sensores -->
 <div id="nav-iframe-overlay">
   <div id="nav-iframe-bar">
-    <div class="trk-dot"></div>
-    <div class="trk-lbl-rec">Grabando &nbsp;<span id="nav-iframe-time">00:00</span> &nbsp;·&nbsp; <span id="nav-iframe-dist">0.00</span> km</div>
+    <div class="trk-dot" id="nav-iframe-dot"></div>
+    <div class="trk-lbl-rec" id="nav-iframe-label">Grabando &nbsp;<span id="nav-iframe-time">00:00</span> &nbsp;·&nbsp; <span id="nav-iframe-dist">0.00</span> km</div>
     <button id="nav-iframe-back" onclick="closeNavIframe()">
       <i class="fas fa-map-marked-alt"></i> Volver al mapa
     </button>
@@ -3674,19 +3674,35 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Interceptar navegación del sidebar: abrir en iframe para no perder grabación
+// Interceptar navegación del sidebar cuando hay grabación O sensores conectados
+function _anySensorConnected() {
+  return Object.values(_bt).some(s => s.connected);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.nav-item[href]').forEach(link => {
     link.addEventListener('click', (e) => {
-      if (!_trkActive) return;
-      if (link.getAttribute('href') === 'rutas.html') return;
+      const href = link.getAttribute('href');
+      if (href === 'rutas.html') return;            // misma página, dejar pasar
+      if (!_trkActive && !_anySensorConnected()) return;  // nada activo, dejar pasar
       e.preventDefault();
-      openNavIframe(link.getAttribute('href'));
+      openNavIframe(href);
     });
   });
 });
 
 function openNavIframe(url) {
+  // Ajustar barra según estado actual
+  const dot   = document.getElementById('nav-iframe-dot');
+  const label = document.getElementById('nav-iframe-label');
+  if (_trkActive) {
+    dot.style.background = '#ff3b3b';
+    label.innerHTML = 'Grabando &nbsp;<span id="nav-iframe-time">00:00</span> &nbsp;·&nbsp; <span id="nav-iframe-dist">0.00</span> km';
+  } else {
+    dot.style.background = '#0082fc';
+    dot.style.animation  = 'none';
+    label.innerHTML = '<i class="fas fa-bluetooth" style="color:#0082fc;font-size:11px"></i> &nbsp;Sensores BT conectados';
+  }
   document.getElementById('nav-iframe-frame').src = url;
   document.getElementById('nav-iframe-overlay').classList.add('visible');
 }
