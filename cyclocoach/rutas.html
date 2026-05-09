@@ -282,6 +282,86 @@
     .modal-btn-save   { background:var(--primary);color:#111;font-weight:700;font-family:'Space Grotesk',sans-serif;border:none; }
     .modal-btn-save:hover { background:var(--primary-dark, #84B422);box-shadow:0 4px 16px rgba(158,214,43,0.3);transform:translateY(-1px); }
 
+    /* ── Pantalla de navegación estilo Garmin ───────────────────── */
+    #garmin-overlay {
+      position: fixed; inset: 0; z-index: 4000;
+      background: #000;
+      display: none; flex-direction: column;
+      font-family: 'Space Grotesk', sans-serif;
+      user-select: none;
+    }
+    #garmin-overlay.visible { display: flex; }
+
+    /* Barra superior: tiempo + distancia */
+    .g-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #111; border-bottom: 1px solid #222;
+      padding: 10px 16px; flex-shrink: 0;
+    }
+    .g-topbar-left  { display: flex; align-items: center; gap: 10px; }
+    .g-topbar-time  { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 1px; }
+    .g-rec-dot      { width: 10px; height: 10px; border-radius: 50%; background: #ff3b3b;
+                      animation: trk-pulse 1.4s ease-in-out infinite; flex-shrink: 0; }
+    .g-topbar-dist  { font-size: 22px; font-weight: 800; color: #9ED62B; }
+    .g-topbar-unit  { font-size: 11px; color: #555; margin-left: 3px; }
+
+    /* Grid de campos de datos */
+    .g-grid {
+      flex: 1; display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px; background: #1a1a1a;
+      overflow: hidden;
+    }
+    .g-cell {
+      background: #0a0a0a;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 10px 8px; position: relative;
+    }
+    .g-cell.g-span2 { grid-column: span 2; }
+    .g-cell-lbl {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: #444; margin-bottom: 4px;
+    }
+    .g-cell-val {
+      font-size: 48px; font-weight: 900; color: #fff; line-height: 1;
+    }
+    .g-cell-unit { font-size: 13px; color: #555; margin-top: 3px; }
+
+    /* Colores por tipo de dato */
+    .g-cell.g-speed   .g-cell-val { font-size: 72px; color: #fff; }
+    .g-cell.g-hr      .g-cell-val { color: #ff4757; }
+    .g-cell.g-power   .g-cell-val { color: #9ED62B; }
+    .g-cell.g-np      .g-cell-val { color: #9ED62B; }
+    .g-cell.g-cad     .g-cell-val { color: #00D4FF; }
+    .g-cell.g-elev    .g-cell-val { color: #F59E0B; }
+    .g-cell.g-alt     .g-cell-val { color: #F59E0B; }
+    .g-cell.g-vmed    .g-cell-val { color: #aaa; font-size: 38px; }
+    .g-cell.g-vmax    .g-cell-val { color: #aaa; font-size: 38px; }
+
+    /* Sensor sin datos: valor apagado */
+    .g-cell-val.g-no-data { color: #2a2a2a !important; }
+
+    /* Barra inferior: botones */
+    .g-botbar {
+      display: flex; gap: 0; flex-shrink: 0;
+      border-top: 1px solid #1a1a1a;
+    }
+    .g-botbtn {
+      flex: 1; padding: 16px 8px;
+      background: #0d0d0d; border: none;
+      color: #888; font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background .18s;
+      border-right: 1px solid #1a1a1a;
+    }
+    .g-botbtn:last-child { border-right: none; }
+    .g-botbtn:hover, .g-botbtn:active { background: #161616; }
+    .g-botbtn.g-stop { color: #ff3b3b; }
+    .g-botbtn.g-map  { color: #9ED62B; }
+    .g-botbtn.g-sens { color: #0082fc; }
+
     /* ── Overlay iframe (navegación durante grabación) ─────────── */
     #nav-iframe-overlay {
       position: fixed; inset: 0; z-index: 3000;
@@ -932,6 +1012,104 @@
 </div>
 
 <!-- Modal: Ruta por viento -->
+<!-- Pantalla de navegación estilo Garmin -->
+<div id="garmin-overlay">
+
+  <!-- Barra superior -->
+  <div class="g-topbar">
+    <div class="g-topbar-left">
+      <div class="g-rec-dot"></div>
+      <div class="g-topbar-time" id="g-time">00:00</div>
+    </div>
+    <div>
+      <span class="g-topbar-dist" id="g-dist">0.00</span>
+      <span class="g-topbar-unit">km</span>
+    </div>
+  </div>
+
+  <!-- Grid de datos -->
+  <div class="g-grid">
+
+    <!-- Velocidad actual: campo grande, span completo -->
+    <div class="g-cell g-speed g-span2">
+      <div class="g-cell-lbl">Velocidad</div>
+      <div class="g-cell-val" id="g-speed">0.0</div>
+      <div class="g-cell-unit">km/h</div>
+    </div>
+
+    <!-- FC -->
+    <div class="g-cell g-hr">
+      <div class="g-cell-lbl">❤️ Frec. cardíaca</div>
+      <div class="g-cell-val g-no-data" id="g-hr">--</div>
+      <div class="g-cell-unit">bpm</div>
+    </div>
+
+    <!-- Potencia actual -->
+    <div class="g-cell g-power">
+      <div class="g-cell-lbl">💪 Potencia</div>
+      <div class="g-cell-val g-no-data" id="g-power">--</div>
+      <div class="g-cell-unit">W</div>
+    </div>
+
+    <!-- Cadencia -->
+    <div class="g-cell g-cad">
+      <div class="g-cell-lbl">⚡ Cadencia</div>
+      <div class="g-cell-val g-no-data" id="g-cad">--</div>
+      <div class="g-cell-unit">rpm</div>
+    </div>
+
+    <!-- NP -->
+    <div class="g-cell g-np">
+      <div class="g-cell-lbl">💪 NP (30s)</div>
+      <div class="g-cell-val g-no-data" id="g-np">--</div>
+      <div class="g-cell-unit">W</div>
+    </div>
+
+    <!-- Desnivel + -->
+    <div class="g-cell g-elev">
+      <div class="g-cell-lbl">↑ Desnivel +</div>
+      <div class="g-cell-val" id="g-elev">0</div>
+      <div class="g-cell-unit">m</div>
+    </div>
+
+    <!-- Altitud -->
+    <div class="g-cell g-alt">
+      <div class="g-cell-lbl">⛰️ Altitud</div>
+      <div class="g-cell-val g-no-data" id="g-alt">--</div>
+      <div class="g-cell-unit">m</div>
+    </div>
+
+    <!-- Vel. media -->
+    <div class="g-cell g-vmed">
+      <div class="g-cell-lbl">Vel. media</div>
+      <div class="g-cell-val" id="g-vmed">0.0</div>
+      <div class="g-cell-unit">km/h</div>
+    </div>
+
+    <!-- Vel. máxima -->
+    <div class="g-cell g-vmax">
+      <div class="g-cell-lbl">Vel. máxima</div>
+      <div class="g-cell-val" id="g-vmax">0.0</div>
+      <div class="g-cell-unit">km/h</div>
+    </div>
+
+  </div>
+
+  <!-- Barra inferior -->
+  <div class="g-botbar">
+    <button class="g-botbtn g-stop" onclick="toggleTracking()">
+      <i class="fas fa-stop-circle"></i> Detener
+    </button>
+    <button class="g-botbtn g-sens" onclick="openSensorsModal()">
+      <i class="fas fa-bluetooth"></i> Sensores
+    </button>
+    <button class="g-botbtn g-map" onclick="closeGarminOverlay()">
+      <i class="fas fa-map-marked-alt"></i> Mapa
+    </button>
+  </div>
+
+</div>
+
 <!-- Overlay iframe: permite navegar sin perder grabación ni sensores -->
 <div id="nav-iframe-overlay">
   <div id="nav-iframe-bar">
@@ -3073,6 +3251,9 @@ function _startTracking() {
       btn.classList.add('recording');
       document.getElementById('btn-track-icon').className = 'fas fa-stop';
       document.getElementById('btn-track-label').textContent = ' Detener';
+
+      // Abrir pantalla Garmin automáticamente
+      openGarminOverlay();
       showToast('Grabando trayecto…', 'info');
     },
     () => showToast('No se pudo obtener la ubicación. Verifica los permisos.', 'error'),
@@ -3117,11 +3298,16 @@ function _onTrkPos(pos) {
     map.setView([lat, lng], 15);
   }
 
-  // Actualizar HUD velocidad
+  // Actualizar HUD mini
   const curSpeed = speedKmh ?? 0;
   document.getElementById('trk-speed').textContent = curSpeed.toFixed(1);
   document.getElementById('trk-dist').textContent  = (_trkDist / 1000).toFixed(2);
   document.getElementById('trk-elev').textContent  = Math.round(_trkElevGain);
+
+  // Actualizar pantalla Garmin
+  _gUpdate('g-speed', curSpeed.toFixed(1));
+  if (alt != null) _gUpdate('g-alt', Math.round(alt), false);
+  else             _gUpdate('g-alt', '--', true);
 }
 
 function _onTrkErr(err) {
@@ -3130,12 +3316,32 @@ function _onTrkErr(err) {
 
 function _trkTick() {
   const elapsed = Math.floor((Date.now() - _trkStartTime) / 1000);
-  document.getElementById('trk-time').textContent = _fmtTime(elapsed);
-  // Actualizar también la barra del iframe si está abierto
+  const timeStr = _fmtTime(elapsed);
+  const distKm  = (_trkDist / 1000).toFixed(2);
+  const avgSpeed = _trkMovingTime > 0
+    ? ((_trkDist / 1000) / (_trkMovingTime / 3600)).toFixed(1)
+    : '0.0';
+
+  // HUD mini
+  document.getElementById('trk-time').textContent = timeStr;
+
+  // Pantalla Garmin
+  _gUpdate('g-time',  timeStr);
+  _gUpdate('g-dist',  distKm);
+  _gUpdate('g-elev',  Math.round(_trkElevGain));
+  _gUpdate('g-vmed',  avgSpeed);
+  _gUpdate('g-vmax',  _trkMaxSpeed.toFixed(1));
+
+  // NP en vivo (últimos 30s de potencia)
+  if (_btData.powSamples.length >= 30) {
+    _gUpdate('g-np', _calcNP(_btData.powSamples), false);
+  }
+
+  // Barra iframe si está abierto
   const iframeTime = document.getElementById('nav-iframe-time');
   const iframeDist = document.getElementById('nav-iframe-dist');
-  if (iframeTime) iframeTime.textContent = _fmtTime(elapsed);
-  if (iframeDist) iframeDist.textContent = (_trkDist / 1000).toFixed(2);
+  if (iframeTime) iframeTime.textContent = timeStr;
+  if (iframeDist) iframeDist.textContent = distKm;
 }
 
 function _stopTracking() {
@@ -3147,6 +3353,7 @@ function _stopTracking() {
   _trkActive = false;
 
   document.getElementById('tracking-hud').classList.remove('visible');
+  closeGarminOverlay();
   const btn = document.getElementById('btn-track');
   btn.classList.remove('recording');
   document.getElementById('btn-track-icon').className = 'fas fa-circle';
@@ -3278,6 +3485,46 @@ async function saveTrackingActivity() {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-check"></i> Guardar';
   }
+}
+
+// ── Pantalla Garmin ───────────────────────────────────────────────
+
+let _wakeLock = null;
+
+async function openGarminOverlay() {
+  document.getElementById('garmin-overlay').classList.add('visible');
+  // Evitar que la pantalla se apague durante la grabación
+  try {
+    if ('wakeLock' in navigator) {
+      _wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch(_) {}
+}
+
+function closeGarminOverlay() {
+  document.getElementById('garmin-overlay').classList.remove('visible');
+  _releaseWakeLock();
+}
+
+function _releaseWakeLock() {
+  if (_wakeLock) { _wakeLock.release().catch(() => {}); _wakeLock = null; }
+}
+
+// Re-adquirir wake lock si la página vuelve al foco
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && _trkActive && !_wakeLock) {
+    try {
+      if ('wakeLock' in navigator)
+        _wakeLock = await navigator.wakeLock.request('screen');
+    } catch(_) {}
+  }
+});
+
+function _gUpdate(id, val, noData = false) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = val;
+  el.classList.toggle('g-no-data', noData);
 }
 
 // ── Sensores Bluetooth ────────────────────────────────────────────
@@ -3463,6 +3710,7 @@ function _parseHR(value) {
   const flags = value.getUint8(0);
   const bpm   = (flags & 0x1) ? value.getUint16(1, true) : value.getUint8(1);
   document.getElementById('trk-s-hr').textContent = bpm;
+  _gUpdate('g-hr', bpm, false);
   if (bpm > _btData.maxHr) _btData.maxHr = bpm;
   _btData.hrSamples.push(bpm);
 }
@@ -3485,6 +3733,7 @@ function _parseCSC(value) {
       const rpm = Math.round((deltaRev / deltaTs) * 1024 * 60);
       const clamped = Math.min(rpm, 200); // filtrar ruido
       document.getElementById('trk-s-cad').textContent = clamped;
+      _gUpdate('g-cad', clamped, false);
       _btData.cadSamples.push(clamped);
     }
   }
@@ -3497,6 +3746,7 @@ function _parsePower(value) {
   const watts = value.getInt16(2, true);
   const w = Math.max(0, watts);
   document.getElementById('trk-s-pow').textContent = w;
+  _gUpdate('g-power', w, false);
   if (w > _btData.maxPow) _btData.maxPow = w;
   _btData.powSamples.push(w);
 
@@ -3518,8 +3768,9 @@ function _parsePower(value) {
         const rpm = Math.round((deltaRev / deltaTs) * 1024 * 60);
         const clamped = Math.min(rpm, 200);
         document.getElementById('trk-s-cad').textContent = clamped;
+        _gUpdate('g-cad', clamped, false);
         _btData.cadSamples.push(clamped);
-        _updateSensorHUD('cadence', true); // mostrar columna cadencia
+        _updateSensorHUD('cadence', true);
       }
     }
     _btData._lastPowCrankRev = crankRev;
