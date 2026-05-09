@@ -786,6 +786,8 @@ function windDir(deg) {
     loadWeather(lat, lng, name || `${lat.toFixed(3)}, ${lng.toFixed(3)}`);
   }
 })();
+
+requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
 </script>
 </body>
 </html>
