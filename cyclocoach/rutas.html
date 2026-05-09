@@ -3695,7 +3695,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.nav-item[href]').forEach(link => {
     link.addEventListener('click', (e) => {
       const href = link.getAttribute('href');
-      if (href === 'rutas.html') return;            // misma página, dejar pasar
+
+      // Clic en "Rutas" mientras hay grabación o sensores → cerrar overlays y quedarse
+      if (href === 'rutas.html') {
+        if (_trkActive || _anySensorConnected()) {
+          e.preventDefault();
+          closeNavIframe();
+          closeGarminOverlay();
+        }
+        return;
+      }
+
       if (!_trkActive && !_anySensorConnected()) return;  // nada activo, dejar pasar
       e.preventDefault();
       openNavIframe(href);
