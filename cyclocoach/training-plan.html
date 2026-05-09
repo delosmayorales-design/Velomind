@@ -865,7 +865,8 @@
     <div id="ftp-advisor-section" style="margin-bottom:20px"></div>
 
     <!-- PLAN SEMANAL -->
-    <div id="coach-alerts-section" class="hidden" style="margin-bottom:20px"></div>
+    <div id="coach-alerts-section" class="hidden" style="margin-bottom:12px"></div>
+    <div id="ramp-rate-bar" style="display:none;margin-bottom:16px;padding:8px 14px;background:var(--bg-input);border-radius:8px;font-size:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"></div>
     <div id="recalc-summary" style="display:none;margin-bottom:20px"></div>
 
     <div class="card mb-6">
@@ -1484,6 +1485,20 @@ function renderPlan(plan, athlete) {
       alertSection.classList.add('hidden');
       alertSection.innerHTML = '';
     }
+  }
+
+  // Ramp rate bar
+  const rampEl = document.getElementById('ramp-rate-bar');
+  if (rampEl && plan.rampRate !== undefined) {
+    const r = plan.rampRate;
+    const color = r > 7 ? '#EF4444' : r > 5 ? '#F59E0B' : r < -3 ? '#9CA3AF' : '#10B981';
+    const label = r > 7 ? '⚠ Muy alto — riesgo de lesión' : r > 5 ? '↑ Alto — monitorea la fatiga' : r < -3 ? '↓ Semana de recuperación / mantenimiento' : '✅ Progresión óptima';
+    rampEl.innerHTML =
+      `<i class="fas fa-chart-line" style="color:${color}"></i>` +
+      `<span style="color:var(--text-muted)">Rampa CTL esta semana:</span>` +
+      `<span style="color:${color};font-weight:700">${r >= 0 ? '+' : ''}${r} CTL/sem</span>` +
+      `<span style="color:${color}">${label}</span>`;
+    rampEl.style.display = 'flex';
   }
 
   const sessContainer = document.getElementById('weekly-plan');

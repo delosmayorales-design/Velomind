@@ -693,6 +693,16 @@
       </div>
     </div>
 
+    <!-- ── RESUMEN SEMANA ANTERIOR ── -->
+    <div class="card" id="weekly-summary-card" style="margin-bottom:16px;display:none">
+      <div class="card-eyebrow" style="display:flex;align-items:center;gap:8px">
+        <i class="fas fa-calendar-check" style="color:var(--primary)"></i>
+        <span>Semana anterior</span>
+        <span id="weekly-summary-dates" style="color:var(--text-muted);font-size:10px;font-weight:400"></span>
+      </div>
+      <div id="weekly-summary-content"></div>
+    </div>
+
     <!-- ── SEMANA ── -->
     <div class="card week-card" style="margin-bottom:16px">
       <div class="card-eyebrow"><i class="fas fa-calendar-week" style="color:var(--primary)"></i> Tu semana</div>
@@ -1321,6 +1331,7 @@ function renderMacrocycle() {
     renderHero(AppState.athlete, m, dashPlan);
     if (m) renderFTP(m);
     renderMacrocycle();
+    renderWeeklySummary();
   });
 
   BackendSync.loadProfile().then(profile => {
@@ -1337,6 +1348,74 @@ function renderMacrocycle() {
 
   requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
 })();
+
+// ── RESUMEN SEMANA ANTERIOR ──────────────────────────────────
+function renderWeeklySummary() {
+  const card = document.getElementById('weekly-summary-card');
+  if (!card) return;
+  const acts = AppState.activities || [];
+  if (!acts.length) { card.style.display = 'none'; return; }
+
+  const now = new Date();
+  const todayDow = (now.getDay() + 6) % 7; // 0=Lun
+  const lastMon = new Date(now);
+  lastMon.setDate(now.getDate() - todayDow - 7);
+  lastMon.setHours(0, 0, 0, 0);
+  const lastSun = new Date(lastMon);
+  lastSun.setDate(lastMon.getDate() + 6);
+  lastSun.setHours(23, 59, 59, 999);
+
+  const weekActs = acts.filter(a => {
+    const d = new Date((a.date || '').slice(0, 10) + 'T00:00:00');
+    return !isNaN(d) && d >= lastMon && d <= lastSun;
+  });
+  if (!weekActs.length) { card.style.display = 'none'; return; }
+
+  const totalTSS  = Math.round(weekActs.reduce((s, a) => s + (Number(a.tss) || 0), 0));
+  const totalH    = Math.round(weekActs.reduce((s, a) => s + (Number(a.duration) || 0), 0) / 360) / 10;
+  const totalKm   = Math.round(weekActs.reduce((s, a) => s + (Number(a.distance) || 0), 0) / 100) / 10;
+  const sessCount = weekActs.length;
+
+  // CTL ganado en los últimos 7 días usando pmcData
+  const pmc = AppState.pmcData || [];
+  let ctlHtml = '';
+  if (pmc.length >= 8) {
+    const gain = Math.round((pmc[pmc.length - 1].ctl - pmc[Math.max(0, pmc.length - 8)].ctl) * 10) / 10;
+    const gainColor = gain >= 0 ? '#10B981' : '#F59E0B';
+    ctlHtml = `<div style="text-align:center;padding:10px;background:var(--bg-input);border-radius:8px">
+      <div style="font-size:18px;font-weight:800;color:${gainColor}">${gain >= 0 ? '+' : ''}${gain}</div>
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-top:2px">CTL ganado</div>
+    </div>`;
+  }
+
+  const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const fmt = d => `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  const datesEl = document.getElementById('weekly-summary-dates');
+  if (datesEl) datesEl.textContent = `${fmt(lastMon)} – ${fmt(lastSun)}`;
+
+  document.getElementById('weekly-summary-content').innerHTML =
+    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(85px,1fr));gap:8px;padding:4px 0 4px">
+      <div style="text-align:center;padding:10px;background:var(--bg-input);border-radius:8px">
+        <div style="font-size:18px;font-weight:800;color:var(--primary)">${totalTSS}</div>
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-top:2px">TSS total</div>
+      </div>
+      <div style="text-align:center;padding:10px;background:var(--bg-input);border-radius:8px">
+        <div style="font-size:18px;font-weight:800;color:var(--text)">${totalH}h</div>
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-top:2px">En bici</div>
+      </div>
+      <div style="text-align:center;padding:10px;background:var(--bg-input);border-radius:8px">
+        <div style="font-size:18px;font-weight:800;color:var(--text)">${sessCount}</div>
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-top:2px">Sesiones</div>
+      </div>
+      ${totalKm > 0 ? `<div style="text-align:center;padding:10px;background:var(--bg-input);border-radius:8px">
+        <div style="font-size:18px;font-weight:800;color:var(--text)">${totalKm}</div>
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-top:2px">km</div>
+      </div>` : ''}
+      ${ctlHtml}
+    </div>`;
+
+  card.style.display = '';
+}
 </script>
 </body>
 </html>

@@ -361,6 +361,9 @@ const TrainingPlanGenerator = {
     const advice = this._getAdvice(tsb, ctl, effectivePhase);
     const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week, athlete.segments);
 
+    // Tasa de progresión: ΔCTLsemana ≈ (carga_diaria - CTL) × (1 - e^(-7/42)) ≈ × 0.154
+    const rampRate = Math.round((targetTSS / 7 - ctl) * 0.154 * 10) / 10;
+
     return {
       phase: effectivePhase,
       targetTSS,
@@ -369,6 +372,7 @@ const TrainingPlanGenerator = {
       sessions,
       ctl: Math.round(ctl),
       tsb: tsbRound,
+      rampRate,
       cycleInfo,
       macrocycle,
       adherence: Math.round(adherence * 100),
