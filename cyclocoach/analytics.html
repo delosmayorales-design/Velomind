@@ -21,14 +21,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.css">
   <script>window.API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : 'https://velomind-backend.onrender.com/api';</script>
   <style>
-    .pmc-pbtn {
-      background:var(--bg-input);border:1px solid var(--border);color:var(--text-muted);
-      border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;
-      font-family:inherit;transition:all .15s;
-    }
-    .pmc-pbtn.active,.pmc-pbtn:hover {
-      background:var(--primary);border-color:var(--primary);color:#000;font-weight:700;
-    }
     .delta-wrap { display:flex; align-items:center; gap:6px; margin-top:5px; flex-wrap:wrap; }
     .delta-pill {
       display:inline-flex; align-items:center; gap:4px;
@@ -297,15 +289,9 @@
       <div class="card-header">
         <div class="card-title"><i class="fas fa-chart-area"></i> Performance Management Chart</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <div style="display:flex;gap:3px">
-            <button class="pmc-pbtn active" onclick="setPMCPeriod(28,this)">4sem</button>
-            <button class="pmc-pbtn" onclick="setPMCPeriod(56,this)">8sem</button>
-            <button class="pmc-pbtn" onclick="setPMCPeriod(112,this)">16sem</button>
-            <button class="pmc-pbtn" onclick="setPMCPeriod(99999,this)">Todo</button>
-          </div>
-          <span class="badge" style="background:rgba(59,130,246,0.12);color:#3B82F6;border:1px solid rgba(59,130,246,0.3)">● CTL</span>
-          <span class="badge" style="background:rgba(239,68,68,0.12);color:#EF4444;border:1px solid rgba(239,68,68,0.3)">● ATL</span>
-          <span class="badge" style="background:rgba(16,185,129,0.12);color:#10B981;border:1px solid rgba(16,185,129,0.3)">-- TSB</span>
+          <span class="badge" style="background:rgba(59,130,246,0.12);color:#3B82F6;border:1px solid rgba(59,130,246,0.3)">● CTL Fitness</span>
+          <span class="badge" style="background:rgba(239,68,68,0.12);color:#EF4444;border:1px solid rgba(239,68,68,0.3)">● ATL Fatiga</span>
+          <span class="badge" style="background:rgba(16,185,129,0.12);color:#10B981;border:1px solid rgba(16,185,129,0.3)">-- TSB Forma</span>
         </div>
       </div>
       <div id="pmc-stats-bar" style="padding:6px 16px 2px;font-size:11px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;min-height:24px"></div>
@@ -840,7 +826,7 @@ function render() {
   }
 
   try { renderWeekStrip(state.activities); } catch(e) { console.error('Error renderWeekStrip', e); }
-  try { renderPMCChart(pmcPeriodDays); } catch(e) { console.error('Error renderPMCChart', e); }
+  try { renderPMCChart(days); } catch(e) { console.error('Error renderPMCChart', e); }
   try { renderTSSChart(acts); } catch(e) { console.error('Error renderTSSChart', e); }
   try { renderZonesChart(acts, ftp); } catch(e) { console.error('Error renderZonesChart', e); }
   try { renderPowerChart(acts); } catch(e) { console.error('Error renderPowerChart', e); }
@@ -852,15 +838,6 @@ function render() {
 }
 
 // ─── PMC CHART ────────────────────────────────────────────────
-var pmcPeriodDays = 28;
-
-function setPMCPeriod(d, btn) {
-  pmcPeriodDays = d;
-  document.querySelectorAll('.pmc-pbtn').forEach(function(b) { b.classList.remove('active'); });
-  if (btn) btn.classList.add('active');
-  renderPMCChart(pmcPeriodDays);
-}
-
 function renderPMCChart(days) {
   var cutoff = days > 9000 ? new Date(0) : new Date(Date.now() - days * 86400000);
   var filtered = state.pmc.filter(function(p) { return new Date(p.date) >= cutoff; });
