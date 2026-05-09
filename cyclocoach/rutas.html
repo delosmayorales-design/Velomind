@@ -612,6 +612,9 @@
       <button class="btn btn-secondary btn-sm" onclick="openWindRouteModal()" style="background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.35);color:#00D4FF;">
         <i class="fas fa-wind"></i><span class="btn-label"> Ruta por viento</span>
       </button>
+      <button class="btn btn-secondary btn-sm" id="btn-rain" onclick="toggleRainLayer()" title="Radar de lluvia en tiempo real">
+        <i class="fas fa-cloud-rain"></i><span class="btn-label"> Lluvia</span>
+      </button>
       <button class="btn btn-secondary btn-sm" id="btn-weather-zone" onclick="toggleWeatherDrawer()" title="Tiempo en la zona">
         <i class="fas fa-cloud-sun"></i><span class="btn-label"> Tiempo zona</span>
       </button>
@@ -2607,6 +2610,74 @@ function _renderWd(d, name, lat, lng) {
         }).join('')}
       </div>
     </div>`;
+}
+
+// ══ RAIN RADAR (RainViewer) ════════════════════════════════════
+let _rainActive    = false;
+let _rainLayer     = null;
+let _rainFrames    = [];
+let _rainFrameIdx  = 0;
+let _rainAnimTimer = null;
+const _RAIN_OPACITY = 0.65;
+
+async function _fetchRainFrames() {
+  const r = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+  const d = await r.json();
+  return (d.radar?.past || []).slice(-6).map(f => f.path);
+}
+
+function _rainTileUrl(path) {
+  return `https://tilecache.rainviewer.com${path}/512/{z}/{x}/{y}/2/1_1.png`;
+}
+
+function _showRainFrame(idx) {
+  if (_rainLayer) { map.removeLayer(_rainLayer); _rainLayer = null; }
+  if (!_rainFrames.length) return;
+  const path = _rainFrames[idx % _rainFrames.length];
+  _rainLayer = L.tileLayer(_rainTileUrl(path), {
+    opacity: _RAIN_OPACITY,
+    attribution: '© RainViewer',
+    tileSize: 512,
+    zoomOffset: 0,
+  });
+  _rainLayer.addTo(map);
+}
+
+function _startRainAnim() {
+  _rainAnimTimer = setInterval(() => {
+    _rainFrameIdx = (_rainFrameIdx + 1) % _rainFrames.length;
+    _showRainFrame(_rainFrameIdx);
+  }, 600);
+}
+
+function _stopRainAnim() {
+  if (_rainAnimTimer) { clearInterval(_rainAnimTimer); _rainAnimTimer = null; }
+  if (_rainLayer) { map.removeLayer(_rainLayer); _rainLayer = null; }
+}
+
+async function toggleRainLayer() {
+  const btn = document.getElementById('btn-rain');
+  if (_rainActive) {
+    _rainActive = false;
+    _stopRainAnim();
+    btn?.classList.remove('active');
+    return;
+  }
+  btn?.classList.add('loading');
+  try {
+    _rainFrames = await _fetchRainFrames();
+    if (!_rainFrames.length) throw new Error('Sin datos de radar');
+    _rainActive   = true;
+    _rainFrameIdx = _rainFrames.length - 1;
+    _showRainFrame(_rainFrameIdx);
+    _startRainAnim();
+    btn?.classList.remove('loading');
+    btn?.classList.add('active');
+  } catch(e) {
+    btn?.classList.remove('loading');
+    console.error('[Rain]', e);
+    showToast('No se pudo cargar el radar de lluvia', 'error');
+  }
 }
 
 // Revelar página tras renderizado inicial
