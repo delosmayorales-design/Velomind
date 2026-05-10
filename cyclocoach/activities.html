@@ -354,13 +354,40 @@ function renderActivities(activities) {
     return;
   }
   const ftp = AppState.athlete?.ftp || 200;
-  container.innerHTML = '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Actividad</th><th>Fecha</th><th>Duracion</th><th>Distancia</th><th>Pot. Media</th><th>NP</th><th>IF</th><th>FC Media</th><th>Cad.</th><th>Desnivel</th><th>TSS</th><th>kcal</th><th></th></tr></thead><tbody>' + activities.map(a => {
+  const rows = activities.map(a => {
     const zone = Utils.getPowerZone(a.avg_power, ftp);
     const tssColor = (a.tss > 100) ? 'var(--accent-red)' : (a.tss > 60) ? 'var(--primary)' : 'var(--accent-yellow)';
     const sid = a.strava_id || (a.id?.startsWith('strava_') ? a.id.replace('strava_', '') : null);
-    const rowClick = 'onclick="showActivityDetail(\'' + a.id + '\')" style="cursor:pointer"';
-    return '<tr ' + rowClick + '><td><div style="display:flex;align-items:center;gap:6px"><div class="value-bold" style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (a.name || 'Entrenamiento') + '">' + (a.name || 'Entrenamiento') + '</div>' + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.7"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '') + '</div><div style="display:flex;gap:4px;margin-top:2px"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + ';font-size:9px">' + (zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue" style="font-size:9px">' + (a.source || 'CSV') + '</span></div></td><td style="white-space:nowrap">' + Utils.formatDate(a.date) + '</td><td class="value-bold">' + Utils.formatDuration(a.duration) + '</td><td>' + Utils.formatDistance(a.distance) + '</td><td>' + (a.avg_power ? '<span style="color:var(--primary);font-weight:600">' + a.avg_power + 'W</span>' : '--') + '</td><td>' + (a.np ? '<span style="color:var(--primary-light);font-weight:600">' + a.np + 'W</span>' : '--') + '</td><td style="color:var(--text-secondary)">' + (a.if_value ? a.if_value.toFixed(2) : '--') + '</td><td>' + (a.avg_hr ? a.avg_hr + ' bpm' : '--') + '</td><td>' + (a.avg_cadence ? a.avg_cadence + ' rpm' : '--') + '</td><td>' + (a.elevation ? '↑' + a.elevation + 'm' : '--') + '</td><td><span style="font-weight:700;color:' + tssColor + '">' + (a.tss || '--') + '</span></td><td style="color:var(--text-muted)">' + (estimatedCal(a) ? Math.round(estimatedCal(a)) + 'kcal' : '--') + '</td><td style="white-space:nowrap"><button onclick="event.stopPropagation();showActivityDetail(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="padding:4px 8px" title="Detalle"><i class="fas fa-info-circle"></i></button><button onclick="event.stopPropagation();confirmDelete(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="color:var(--accent-red);padding:4px 8px" title="Eliminar"><i class="fas fa-trash"></i></button></td></tr>';
-  }).join('') + '</tbody></table></div>';
+    const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return '<tr data-id="' + esc(a.id) + '" style="cursor:pointer">'
+      + '<td><div style="display:flex;align-items:center;gap:6px"><div class="value-bold" style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(a.name || 'Entrenamiento') + '">' + esc(a.name || 'Entrenamiento') + '</div>'
+      + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.7"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '')
+      + '</div><div style="display:flex;gap:4px;margin-top:2px"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + ';font-size:9px">' + esc(zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue" style="font-size:9px">' + esc(a.source || 'CSV') + '</span></div></td>'
+      + '<td style="white-space:nowrap">' + Utils.formatDate(a.date) + '</td>'
+      + '<td class="value-bold">' + Utils.formatDuration(a.duration) + '</td>'
+      + '<td>' + Utils.formatDistance(a.distance) + '</td>'
+      + '<td>' + (a.avg_power ? '<span style="color:var(--primary);font-weight:600">' + a.avg_power + 'W</span>' : '--') + '</td>'
+      + '<td>' + (a.np ? '<span style="color:var(--primary-light);font-weight:600">' + a.np + 'W</span>' : '--') + '</td>'
+      + '<td style="color:var(--text-secondary)">' + (a.if_value ? a.if_value.toFixed(2) : '--') + '</td>'
+      + '<td>' + (a.avg_hr ? a.avg_hr + ' bpm' : '--') + '</td>'
+      + '<td>' + (a.avg_cadence ? a.avg_cadence + ' rpm' : '--') + '</td>'
+      + '<td>' + (a.elevation ? '↑' + a.elevation + 'm' : '--') + '</td>'
+      + '<td><span style="font-weight:700;color:' + tssColor + '">' + (a.tss || '--') + '</span></td>'
+      + '<td style="color:var(--text-muted)">' + (estimatedCal(a) ? Math.round(estimatedCal(a)) + 'kcal' : '--') + '</td>'
+      + '<td style="white-space:nowrap">'
+        + '<button data-action="detail" class="btn btn-ghost btn-sm" style="padding:4px 8px" title="Detalle"><i class="fas fa-info-circle"></i></button>'
+        + '<button data-action="delete" class="btn btn-ghost btn-sm" style="color:var(--accent-red);padding:4px 8px" title="Eliminar"><i class="fas fa-trash"></i></button>'
+      + '</td></tr>';
+  }).join('');
+  container.innerHTML = '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Actividad</th><th>Fecha</th><th>Duracion</th><th>Distancia</th><th>Pot. Media</th><th>NP</th><th>IF</th><th>FC Media</th><th>Cad.</th><th>Desnivel</th><th>TSS</th><th>kcal</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  container.querySelector('table').addEventListener('click', function(e) {
+    const btn = e.target.closest('button[data-action]');
+    const row = e.target.closest('tr[data-id]');
+    if (!row) return;
+    const id = row.dataset.id;
+    if (btn && btn.dataset.action === 'delete') { e.stopPropagation(); confirmDelete(id); }
+    else if (!btn) showActivityDetail(id);
+  });
 }
 
 const dropZone = document.getElementById('drop-zone');
@@ -766,9 +793,12 @@ function showActivityDetail(actId) {
     <!-- ACCIONES -->
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${sid ? `<a href="https://www.strava.com/activities/${sid}" target="_blank" class="btn" style="flex:1;background:rgba(252,76,2,0.1);color:#FC4C02;border:1px solid rgba(252,76,2,0.3);text-decoration:none;font-size:12px;padding:8px 14px;text-align:center"><i class="fab fa-strava"></i> Ver en Strava</a>` : ''}
-      <button onclick="confirmDelete('${act.id}')" class="btn" style="flex:1;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:12px"><i class="fas fa-trash"></i> Eliminar</button>
+      <button data-panel-delete class="btn" style="flex:1;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:12px"><i class="fas fa-trash"></i> Eliminar</button>
     </div>
   `;
+
+  const panelDelBtn = document.querySelector('[data-panel-delete]');
+  if (panelDelBtn) panelDelBtn.onclick = () => confirmDelete(act.id);
 
   document.getElementById('detail-panel').scrollTop = 0;
   document.getElementById('detail-panel').classList.add('open');
