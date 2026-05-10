@@ -2254,8 +2254,10 @@ document.addEventListener('DOMContentLoaded', () => {
         justify-content: space-around;
         align-items: center;
         z-index: 9997;
-        padding-bottom: env(safe-area-inset-bottom); /* Ajuste seguro para iPhone Notch */
+        padding-bottom: env(safe-area-inset-bottom);
+        transition: transform 0.3s ease;
       }
+      .bottom-nav.mob-hidden { transform: translateY(100%); }
       body.light-theme .bottom-nav { background: #ffffff !important; }
       .bottom-nav-item {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -2319,6 +2321,18 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       document.body.classList.add('sidebar-open');
     });
+
+    // Auto-ocultar menú inferior tras 4s, mostrar al tocar pantalla
+    let _bnTimer;
+    const _hideBN = () => bottomNav.classList.add('mob-hidden');
+    window._showBottomNav = () => {
+      bottomNav.classList.remove('mob-hidden');
+      clearTimeout(_bnTimer);
+      _bnTimer = setTimeout(_hideBN, 4000);
+    };
+    document.addEventListener('touchstart', window._showBottomNav, { passive: true });
+    // Mostrar al inicio y luego ocultar
+    setTimeout(_hideBN, 4000);
   }
 
   // 3. Botón hamburguesa en el page-header — solo si existe el header

@@ -484,6 +484,12 @@
       50%      { box-shadow: 0 0 0 6px rgba(255,59,59,0); }
     }
 
+    /* Auto-pause: HUD y Garmin */
+    #tracking-hud.paused { border-color: rgba(245,158,11,0.5) !important; box-shadow: 0 4px 20px rgba(245,158,11,0.2) !important; }
+    #tracking-hud.paused .trk-dot { background: #F59E0B !important; animation: none !important; box-shadow: none !important; }
+    .g-rec-dot.g-paused { background: #F59E0B !important; animation: none !important; box-shadow: none !important; }
+    #g-pause-lbl { font-size: 10px; font-weight: 700; color: #F59E0B; letter-spacing: 1.5px; margin-left: 8px; }
+
     /* ── Modal guardar trayecto ─────────────────────────────────── */
     #track-modal .trk-summary {
       display: grid; grid-template-columns: 1fr 1fr;
@@ -545,6 +551,31 @@
     #mob-wind-fab.active { background: rgba(0,212,255,0.15); color: #00D4FF; border-color: rgba(0,212,255,0.6); }
     #mob-wind-fab.loading { opacity: 0.55; pointer-events: none; }
 
+    /* FAB rutas guardadas — solo visible en móvil */
+    #mob-routes-fab {
+      display: none;
+      position: absolute;
+      bottom: 14px; left: 14px;
+      z-index: 600;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 16px; cursor: pointer;
+      align-items: center; justify-content: center;
+      box-shadow: var(--shadow-md);
+      transition: all 0.2s;
+    }
+    #mob-routes-fab.active { background: rgba(255,107,53,0.15); color: var(--primary); border-color: rgba(255,107,53,0.5); }
+
+    /* Overlay oscuro al abrir panel de rutas en móvil */
+    #routes-panel-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 815;
+      background: rgba(0,0,0,0.45);
+    }
+
     /* ── Weather Drawer ──────────────────────────────────────── */
     #weather-drawer {
       position: absolute;
@@ -565,6 +596,12 @@
       border-color: rgba(0,212,255,.45) !important;
       color: #00D4FF !important;
     }
+    #btn-rain.active {
+      background: rgba(0,212,255,.12) !important;
+      border-color: rgba(0,212,255,.45) !important;
+      color: #00D4FF !important;
+    }
+    #btn-rain.loading { opacity: .55; pointer-events: none; }
     .wd-hdr {
       padding: 11px 13px; border-bottom: 1px solid var(--border);
       display: flex; align-items: center; gap: 8px; flex-shrink: 0;
@@ -671,92 +708,90 @@
     .wd-h-wind { font-size: 9px; color: var(--text-muted); }
 
     @media (max-width: 768px) {
-      /* Header: una sola fila compacta */
-      .page-header { padding: 8px 12px; gap: 8px; }
-      .page-title p { display: none; }
-      .page-title h1 { font-size: 15px; }
-      .header-actions { gap: 5px; flex-wrap: nowrap; }
-      .header-actions .btn-sm { font-size: 11px; padding: 5px 8px; }
-      .header-actions .btn-sm .btn-label { display: none; }
-      /* Ocultar botones de viento secundarios del header — accesibles desde FAB */
+      /* Header flotante — se auto-oculta, aparece al tocar la pantalla */
+      .page-header {
+        position: fixed !important;
+        top: 0 !important; left: 0 !important; right: 0 !important; z-index: 910 !important;
+        padding: 6px 10px !important; gap: 5px !important;
+        background: rgba(10,11,15,0.96) !important;
+        backdrop-filter: blur(12px) !important;
+        border-bottom: 1px solid var(--border) !important;
+        transform: translateY(-110%) !important;
+        transition: transform 0.3s ease !important;
+        flex-wrap: nowrap !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        margin-bottom: 0 !important;
+        width: 100% !important;
+      }
+      .page-header.mob-visible { transform: translateY(0) !important; }
+      .page-title p { display: none !important; }
+      .page-title h1 { font-size: 14px !important; }
+      .header-actions { gap: 4px !important; flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; width: auto !important; }
+      .header-actions .btn-sm { font-size: 11px !important; padding: 5px 8px !important; flex-shrink: 0 !important; }
+      .header-actions .btn-sm .btn-label { display: none !important; }
       #btn-wind-arrows, #btn-wind-info { display: none !important; }
 
-      /* Layout apilado vertical */
-      .map-area { flex-direction: column; }
+      /* Mapa a pantalla completa */
+      .map-area { position: fixed !important; inset: 0; z-index: 1; }
+      .map-wrap  { position: absolute !important; inset: 0; display: flex; flex-direction: column; }
 
-      /* Panel de rutas: colapsable — por defecto cerrado (solo tabs) */
+      /* Panel de rutas: bottom-sheet flotante (no ocupa espacio) */
       .routes-panel {
-        width: 100%;
-        min-width: unset;
-        height: 50px;
-        flex-direction: column;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-        flex-shrink: 0;
-        overflow: hidden;
-        transition: height 0.25s ease;
+        position: fixed !important;
+        bottom: 65px; left: 0; right: 0;
+        width: 100% !important; min-width: unset !important;
+        height: auto !important; max-height: 55vh;
+        border-right: none !important;
+        border-top: 1px solid var(--border);
+        border-radius: 16px 16px 0 0;
+        transform: translateY(calc(100% + 65px));
+        transition: transform 0.3s ease;
+        z-index: 820; overflow: hidden;
+        display: flex; flex-direction: column;
       }
-      .routes-panel.mob-expanded { height: 200px; }
-      .routes-panel-top { padding: 8px 10px; }
+      .routes-panel.mob-sheet-open { transform: translateY(0); }
+      .routes-panel-top { padding: 8px 10px; cursor: pointer; }
       .routes-panel-toggle { display: flex; }
       #mob-panel-toggle { display: flex !important; }
-      .routes-panel-top { cursor: pointer; }
-      .routes-panel.mob-expanded #mob-panel-chevron { transform: rotate(180deg); }
-
+      .routes-panel.mob-sheet-open #mob-panel-chevron { transform: rotate(180deg); }
       .routes-list {
-        display: flex;
-        flex-direction: row;
-        overflow-x: auto;
-        overflow-y: hidden;
-        flex-wrap: nowrap;
-        gap: 6px;
-        padding: 6px 8px;
+        display: flex; flex-direction: row;
+        overflow-x: auto; overflow-y: hidden;
+        flex-wrap: nowrap; gap: 6px; padding: 6px 8px;
       }
-      .route-item {
-        min-width: 160px;
-        flex-shrink: 0;
-        margin-bottom: 0;
-      }
+      .route-item { min-width: 160px; flex-shrink: 0; margin-bottom: 0; }
 
-      /* El mapa ocupa todo el espacio restante */
-      .map-wrap { flex: 1; min-height: 0; }
-
-      /* Stats flotantes más compactos */
+      /* Stats flotantes */
       .map-stats { top: 8px; right: 8px; padding: 6px 10px; gap: 10px; }
       .stat-v { font-size: 15px; }
 
-      /* Draw toolbar */
-      .draw-toolbar { left: 8px; bottom: 10px; flex-wrap: wrap; }
+      /* Draw toolbar — por encima del menú inferior */
+      .draw-toolbar { left: 8px; bottom: 75px; flex-wrap: wrap; }
       .dt-btn { padding: 6px 10px; font-size: 11px; }
 
-      /* Wind card: bottom sheet full-width */
+      /* FABs visibles en móvil */
+      #mob-wind-fab { display: flex; }
+      #mob-routes-fab { display: flex; }
+
+      /* Wind card: bottom sheet */
       .wind-card {
         position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
+        bottom: 0 !important; left: 0 !important; right: 0 !important;
+        width: 100% !important; max-width: 100% !important;
         border-radius: 16px 16px 0 0 !important;
-        border-left: none !important;
-        border-right: none !important;
-        border-bottom: none !important;
+        border-left: none !important; border-right: none !important; border-bottom: none !important;
         padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
-        max-height: 60vh;
-        overflow-y: auto;
+        max-height: 60vh; overflow-y: auto;
         z-index: 1200 !important;
         box-shadow: 0 -4px 24px rgba(0,0,0,0.5) !important;
       }
 
-      /* FAB flechas de viento */
-      #mob-wind-fab { display: flex; }
-
-      /* Weather drawer → bottom sheet en móvil */
+      /* Weather drawer → bottom sheet */
       #weather-drawer {
         position: fixed !important;
         top: auto !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
-        width: 100% !important;
-        height: 72vh;
+        width: 100% !important; height: 72vh;
         border-left: none !important;
         border-top: 1px solid var(--border) !important;
         border-radius: 16px 16px 0 0;
@@ -966,6 +1001,14 @@
         <i class="fas fa-location-arrow"></i>
       </button>
 
+      <!-- FAB panel de rutas (solo móvil) -->
+      <button id="mob-routes-fab" onclick="toggleRoutesPanel()" title="Mis rutas">
+        <i class="fas fa-list-ul"></i>
+      </button>
+
+      <!-- Overlay oscuro al abrir panel de rutas -->
+      <div id="routes-panel-overlay" onclick="closeRoutesPanel()"></div>
+
       <!-- Weather Drawer -->
       <div id="weather-drawer">
         <div class="wd-hdr">
@@ -1039,6 +1082,7 @@
     <div class="g-topbar-left">
       <div class="g-rec-dot"></div>
       <div class="g-topbar-time" id="g-time">00:00</div>
+      <div id="g-pause-lbl" style="display:none">PAUSADO</div>
     </div>
     <div>
       <span class="g-topbar-dist" id="g-dist">0.00</span>
@@ -2451,15 +2495,38 @@ async function toggleWindArrows() {
   }
 }
 
-// ── Toggle panel de rutas (móvil) ────────────────────────────────
+// ── Toggle panel de rutas ────────────────────────────────────────
 function toggleRoutesPanel() {
-  const panel = document.getElementById('routes-panel');
-  const label = document.getElementById('routes-toggle-label');
-  const expanded = panel.classList.toggle('mob-expanded');
-  if (label) label.textContent = expanded ? 'Ocultar rutas' : 'Ver rutas';
-  // Sincronizar chevron del botón inline
+  if (window.innerWidth > 768) {
+    // Desktop: comportamiento clásico de sidebar
+    const panel = document.getElementById('routes-panel');
+    const label = document.getElementById('routes-toggle-label');
+    const expanded = panel.classList.toggle('mob-expanded');
+    if (label) label.textContent = expanded ? 'Ocultar rutas' : 'Ver rutas';
+    const chev = document.getElementById('mob-panel-chevron');
+    if (chev) chev.style.transform = expanded ? 'rotate(180deg)' : '';
+    return;
+  }
+  // Móvil: bottom-sheet overlay
+  const panel   = document.getElementById('routes-panel');
+  const fab     = document.getElementById('mob-routes-fab');
+  const overlay = document.getElementById('routes-panel-overlay');
+  const open    = panel.classList.toggle('mob-sheet-open');
+  if (fab)     fab.classList.toggle('active', open);
+  if (overlay) overlay.style.display = open ? '' : 'none';
   const chev = document.getElementById('mob-panel-chevron');
-  if (chev) chev.style.transform = expanded ? 'rotate(180deg)' : '';
+  if (chev) chev.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+function closeRoutesPanel() {
+  const panel   = document.getElementById('routes-panel');
+  const fab     = document.getElementById('mob-routes-fab');
+  const overlay = document.getElementById('routes-panel-overlay');
+  panel.classList.remove('mob-sheet-open');
+  if (fab)     fab.classList.remove('active');
+  if (overlay) overlay.style.display = 'none';
+  const chev = document.getElementById('mob-panel-chevron');
+  if (chev) chev.style.transform = '';
 }
 
 // ── Bounding box para detectar si hay que re-fetch ───────────────
@@ -3198,8 +3265,9 @@ async function toggleRainLayer() {
 
 let _trkActive      = false;
 let _trkWatchId     = null;
-let _trkPoints      = [];   // [{lat,lng,alt,ts,speed}]
+let _trkPoints      = [];   // [{lat,lng,alt,ts,speed,paused}]
 let _trkPolyline    = null;
+let _trkPolylines   = [];   // todos los segmentos (nuevo seg. al reanudar)
 let _trkMarker      = null;
 let _trkStartTime   = null;
 let _trkTimer       = null;
@@ -3209,6 +3277,8 @@ let _trkMaxSpeed    = 0;    // km/h
 let _trkLastAlt     = null;
 let _trkMovingTime  = 0;    // segundos en movimiento
 let _trkLastTs      = null;
+let _trkPaused      = false; // auto-pause activo
+let _trkPauseCount  = 0;     // lecturas consecutivas lentas
 
 function _haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000;
@@ -3249,11 +3319,15 @@ function _startTracking() {
       _trkLastAlt    = null;
       _trkMovingTime = 0;
       _trkLastTs     = null;
+      _trkPaused     = false;
+      _trkPauseCount = 0;
+      _trkPolylines  = [];
       _trkStartTime  = Date.now();
       _resetSensorAccumulators();
 
       // Polyline roja en el mapa
       _trkPolyline = L.polyline([], { color: '#ff3b3b', weight: 4, opacity: 0.85 }).addTo(map);
+      _trkPolylines.push(_trkPolyline);
 
       // Marker posición actual
       const icon = L.divIcon({ className: '', html: '<div style="width:14px;height:14px;background:#ff3b3b;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 3px rgba(255,59,59,0.3)"></div>', iconSize:[14,14], iconAnchor:[7,7] });
@@ -3261,7 +3335,7 @@ function _startTracking() {
 
       _trkWatchId = navigator.geolocation.watchPosition(_onTrkPos, _onTrkErr, {
         enableHighAccuracy: true,
-        maximumAge: 3000,
+        maximumAge: 0,
         timeout: 15000,
       });
 
@@ -3284,50 +3358,84 @@ function _startTracking() {
 }
 
 function _onTrkPos(pos) {
-  const { latitude: lat, longitude: lng, altitude: alt, speed } = pos.coords;
+  const { latitude: lat, longitude: lng, altitude: alt, speed, accuracy } = pos.coords;
   const ts = pos.timestamp;
   const speedKmh = speed != null ? speed * 3.6 : null;
 
-  // Distancia
-  if (_trkPoints.length > 0) {
+  const isFirst = _trkPoints.length === 0;
+
+  // Descartar lecturas con precisión GPS pobre (salvo primer punto)
+  if (!isFirst && accuracy > 25) return;
+
+  if (!isFirst) {
     const prev = _trkPoints[_trkPoints.length - 1];
-    const d = _haversine(prev.lat, prev.lng, lat, lng);
-    // Filtrar saltos de GPS > 200m en < 3s (noise)
-    const dt = (ts - prev.ts) / 1000;
-    if (d < 200 || dt > 5) {
+    const d  = _haversine(prev.lat, prev.lng, lat, lng);
+    const dt = Math.max(0.5, (ts - prev.ts) / 1000);
+
+    // Descartar saltos GPS imposibles (máx. ~100 km/h = 28 m/s)
+    const maxDist = Math.max(30, dt * 28);
+    if (d > maxDist) return;
+
+    // Velocidad: GPS si disponible, si no, calculada
+    const spd = (speedKmh != null && speedKmh > 0) ? speedKmh : (d / dt) * 3.6;
+
+    // ── Auto-pause ─────────────────────────────────────────────
+    if (spd < 1.5) {
+      _trkPauseCount++;
+      if (_trkPauseCount >= 3 && !_trkPaused) {
+        _trkPaused = true;
+        document.getElementById('tracking-hud')?.classList.add('paused');
+        document.querySelector('.g-rec-dot')?.classList.add('g-paused');
+        const lbl = document.getElementById('g-pause-lbl');
+        if (lbl) lbl.style.display = '';
+      }
+    } else {
+      _trkPauseCount = 0;
+      if (_trkPaused) {
+        // Reanudar: crear nuevo segmento de polyline
+        _trkPaused = false;
+        document.getElementById('tracking-hud')?.classList.remove('paused');
+        document.querySelector('.g-rec-dot')?.classList.remove('g-paused');
+        const lbl = document.getElementById('g-pause-lbl');
+        if (lbl) lbl.style.display = 'none';
+        _trkPolyline = L.polyline([], { color: '#ff3b3b', weight: 4, opacity: 0.85 }).addTo(map);
+        _trkPolylines.push(_trkPolyline);
+      }
+      // Acumular métricas solo cuando hay movimiento
+      _trkMovingTime += dt;
       _trkDist += d;
+      if (alt != null && _trkLastAlt != null) {
+        const diff = alt - _trkLastAlt;
+        if (diff > 0.5) _trkElevGain += diff;
+      }
     }
-    // Elevación
-    if (alt != null && _trkLastAlt != null) {
-      const diff = alt - _trkLastAlt;
-      if (diff > 0.5) _trkElevGain += diff;
-    }
-    // Tiempo en movimiento
-    const spd = speedKmh ?? ((d / dt) * 3.6);
-    if (spd > 1.5 && dt > 0) _trkMovingTime += dt;
   }
 
   if (alt != null) _trkLastAlt = alt;
   if (speedKmh != null && speedKmh > _trkMaxSpeed) _trkMaxSpeed = speedKmh;
 
-  _trkPoints.push({ lat, lng, alt, ts, speed: speedKmh });
-  _trkPolyline.addLatLng([lat, lng]);
+  _trkPoints.push({ lat, lng, alt, ts, speed: speedKmh, paused: _trkPaused && !isFirst });
 
-  // Mover marker
+  // Solo añadir a la polilínea si está en movimiento (o es el primer punto)
+  if (!_trkPaused || isFirst) {
+    _trkPolyline.addLatLng([lat, lng]);
+  }
+
+  // Mover marcador siempre
   _trkMarker.setLatLng([lat, lng]);
-  if (_trkPoints.length === 1) {
+  if (isFirst) {
     _trkMarker.addTo(map);
     map.setView([lat, lng], 15);
   }
 
   // Actualizar HUD mini
-  const curSpeed = speedKmh ?? 0;
+  const curSpeed = _trkPaused ? 0 : (speedKmh ?? 0);
   document.getElementById('trk-speed').textContent = curSpeed.toFixed(1);
   document.getElementById('trk-dist').textContent  = (_trkDist / 1000).toFixed(2);
   document.getElementById('trk-elev').textContent  = Math.round(_trkElevGain);
 
   // Actualizar pantalla Garmin
-  _gUpdate('g-speed', curSpeed.toFixed(1));
+  _gUpdate('g-speed', _trkPaused ? '–' : curSpeed.toFixed(1));
   if (alt != null) _gUpdate('g-alt', Math.round(alt), false);
   else             _gUpdate('g-alt', '--', true);
 }
@@ -3375,6 +3483,11 @@ function _stopTracking() {
   _trkActive = false;
 
   document.getElementById('tracking-hud').classList.remove('visible');
+  document.getElementById('tracking-hud').classList.remove('paused');
+  document.querySelector('.g-rec-dot')?.classList.remove('g-paused');
+  const pauseLbl = document.getElementById('g-pause-lbl');
+  if (pauseLbl) pauseLbl.style.display = 'none';
+  _trkPaused = false; _trkPauseCount = 0;
   document.getElementById('fab-garmin').style.display = 'none';
   closeGarminOverlay();
   const btn = document.getElementById('btn-track');
@@ -3424,16 +3537,17 @@ function discardTracking() {
 }
 
 function _clearTrackLayers() {
-  if (_trkPolyline) { map.removeLayer(_trkPolyline); _trkPolyline = null; }
-  if (_trkMarker)   { map.removeLayer(_trkMarker);   _trkMarker   = null; }
+  _trkPolylines.forEach(p => { try { map.removeLayer(p); } catch(_) {} });
+  _trkPolylines = []; _trkPolyline = null;
+  if (_trkMarker) { map.removeLayer(_trkMarker); _trkMarker = null; }
   _trkPoints = [];
 }
 
 function _buildTrackGeoJSON() {
-  // Downsample a máx 600 puntos para no saturar la BD
-  const pts = _trkPoints;
-  const step = Math.max(1, Math.ceil(pts.length / 600));
-  const sampled = pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
+  // Solo puntos en movimiento (excluye los capturados durante autopause)
+  const activePts = _trkPoints.filter(p => !p.paused);
+  const step = Math.max(1, Math.ceil(activePts.length / 600));
+  const sampled = activePts.filter((_, i) => i % step === 0 || i === activePts.length - 1);
   return {
     type: 'LineString',
     coordinates: sampled.map(p => [p.lng, p.lat]),
@@ -3516,7 +3630,7 @@ let _wakeLock = null;
 
 async function openGarminOverlay() {
   document.getElementById('garmin-overlay').classList.add('visible');
-  // Evitar que la pantalla se apague durante la grabación
+  document.querySelector('.bottom-nav')?.classList.add('mob-hidden');
   try {
     if ('wakeLock' in navigator) {
       _wakeLock = await navigator.wakeLock.request('screen');
@@ -3526,6 +3640,7 @@ async function openGarminOverlay() {
 
 function closeGarminOverlay() {
   document.getElementById('garmin-overlay').classList.remove('visible');
+  document.querySelector('.bottom-nav')?.classList.remove('mob-hidden');
   _releaseWakeLock();
 }
 
@@ -3883,6 +3998,23 @@ function _resetSensorAccumulators() {
   _btData._lastPowCrankRev = null;
   _btData._lastPowCrankTs  = null;
 }
+
+// ── Auto-mostrar header en móvil al tocar la pantalla ────────────
+(function() {
+  let _hdrTimer;
+  function _showMobHeader() {
+    if (window.innerWidth > 768) return;
+    const hdr = document.querySelector('.page-header');
+    if (!hdr) return;
+    hdr.classList.add('mob-visible');
+    clearTimeout(_hdrTimer);
+    _hdrTimer = setTimeout(() => hdr.classList.remove('mob-visible'), 4000);
+  }
+  // Mostrar al tocar en cualquier parte superior (primeros 60px) o botón
+  document.addEventListener('touchstart', function(e) {
+    if (e.touches[0].clientY < 60 || e.target.closest('button')) _showMobHeader();
+  }, { passive: true });
+})();
 
 // Revelar página tras renderizado inicial
 requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
