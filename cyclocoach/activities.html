@@ -34,6 +34,10 @@
     .detail-metric-mini .value { font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;line-height:1; }
     .detail-section-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:18px 0 10px; }
     .chart-wrap { background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px 16px; }
+    @media (max-width: 600px) {
+      .main-content { overflow-x: auto !important; }
+      #activities-list > div { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    }
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
@@ -359,7 +363,7 @@ function renderActivities(activities) {
     const tssColor = (a.tss > 100) ? 'var(--accent-red)' : (a.tss > 60) ? 'var(--primary)' : 'var(--accent-yellow)';
     const sid = a.strava_id || (a.id?.startsWith('strava_') ? a.id.replace('strava_', '') : null);
     const rowClick = 'onclick="showActivityDetail(\'' + a.id + '\')" style="cursor:pointer"';
-    return '<tr ' + rowClick + '><td><div style="display:flex;align-items:center;gap:6px"><div class="value-bold" style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (a.name || 'Entrenamiento') + '">' + (a.name || 'Entrenamiento') + '</div>' + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.7"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '') + '</div><div style="display:flex;gap:4px;margin-top:2px"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + ';font-size:9px">' + (zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue" style="font-size:9px">' + (a.source || 'CSV') + '</span></div></td><td style="white-space:nowrap">' + Utils.formatDate(a.date) + '</td><td class="value-bold">' + Utils.formatDuration(a.duration) + '</td><td>' + Utils.formatDistance(a.distance) + '</td><td>' + (a.avg_power ? '<span style="color:var(--primary);font-weight:600">' + a.avg_power + 'W</span>' : '--') + '</td><td>' + (a.np ? '<span style="color:var(--primary-light);font-weight:600">' + a.np + 'W</span>' : '--') + '</td><td style="color:var(--text-secondary)">' + (a.if_value ? a.if_value.toFixed(2) : '--') + '</td><td>' + (a.avg_hr ? a.avg_hr + ' bpm' : '--') + '</td><td>' + (a.avg_cadence ? a.avg_cadence + ' rpm' : '--') + '</td><td>' + (a.elevation ? '↑' + a.elevation + 'm' : '--') + '</td><td><span style="font-weight:700;color:' + tssColor + '">' + (a.tss || '--') + '</span></td><td style="color:var(--text-muted)">' + (estimatedCal(a) ? Math.round(estimatedCal(a)) + 'kcal' : '--') + '</td><td style="white-space:nowrap"><button onclick="event.stopPropagation();showActivityDetail(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="padding:4px 8px" title="Detalle"><i class="fas fa-info-circle"></i></button><button onclick="event.stopPropagation();deleteActivity(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="color:var(--accent-red);padding:4px 8px" title="Eliminar"><i class="fas fa-trash"></i></button></td></tr>';
+    return '<tr ' + rowClick + '><td><div style="display:flex;align-items:center;gap:6px"><div class="value-bold" style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (a.name || 'Entrenamiento') + '">' + (a.name || 'Entrenamiento') + '</div>' + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.7"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '') + '</div><div style="display:flex;gap:4px;margin-top:2px"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + ';font-size:9px">' + (zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue" style="font-size:9px">' + (a.source || 'CSV') + '</span></div></td><td style="white-space:nowrap">' + Utils.formatDate(a.date) + '</td><td class="value-bold">' + Utils.formatDuration(a.duration) + '</td><td>' + Utils.formatDistance(a.distance) + '</td><td>' + (a.avg_power ? '<span style="color:var(--primary);font-weight:600">' + a.avg_power + 'W</span>' : '--') + '</td><td>' + (a.np ? '<span style="color:var(--primary-light);font-weight:600">' + a.np + 'W</span>' : '--') + '</td><td style="color:var(--text-secondary)">' + (a.if_value ? a.if_value.toFixed(2) : '--') + '</td><td>' + (a.avg_hr ? a.avg_hr + ' bpm' : '--') + '</td><td>' + (a.avg_cadence ? a.avg_cadence + ' rpm' : '--') + '</td><td>' + (a.elevation ? '↑' + a.elevation + 'm' : '--') + '</td><td><span style="font-weight:700;color:' + tssColor + '">' + (a.tss || '--') + '</span></td><td style="color:var(--text-muted)">' + (estimatedCal(a) ? Math.round(estimatedCal(a)) + 'kcal' : '--') + '</td><td style="white-space:nowrap"><button onclick="event.stopPropagation();showActivityDetail(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="padding:4px 8px" title="Detalle"><i class="fas fa-info-circle"></i></button><button onclick="event.stopPropagation();confirmDelete(\'' + a.id + '\')" class="btn btn-ghost btn-sm" style="color:var(--accent-red);padding:4px 8px" title="Eliminar"><i class="fas fa-trash"></i></button></td></tr>';
   }).join('') + '</tbody></table></div>';
 }
 
@@ -766,7 +770,7 @@ function showActivityDetail(actId) {
     <!-- ACCIONES -->
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${sid ? `<a href="https://www.strava.com/activities/${sid}" target="_blank" class="btn" style="flex:1;background:rgba(252,76,2,0.1);color:#FC4C02;border:1px solid rgba(252,76,2,0.3);text-decoration:none;font-size:12px;padding:8px 14px;text-align:center"><i class="fab fa-strava"></i> Ver en Strava</a>` : ''}
-      <button onclick="deleteActivity('${act.id}')" class="btn" style="flex:1;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:12px"><i class="fas fa-trash"></i> Eliminar</button>
+      <button onclick="confirmDelete('${act.id}')" class="btn" style="flex:1;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:12px"><i class="fas fa-trash"></i> Eliminar</button>
     </div>
   `;
 
@@ -907,8 +911,17 @@ function closePanel() {
   window.scrollTo(0, savedScroll);
 }
 
+function confirmDelete(id) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+  overlay.innerHTML = '<div style="background:var(--bg-card);border-radius:16px 16px 0 0;padding:24px 20px max(32px,env(safe-area-inset-bottom));width:100%;max-width:480px;border-top:1px solid var(--border)"><div style="font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text-primary)">Eliminar actividad</div><div style="font-size:14px;color:var(--text-muted);margin-bottom:24px">Esta acción no se puede deshacer.</div><div style="display:flex;gap:10px"><button class="cdel-cancel" style="flex:1;padding:13px;border-radius:10px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);font-size:15px;font-weight:600;cursor:pointer">Cancelar</button><button class="cdel-confirm" style="flex:1;padding:13px;border-radius:10px;border:none;background:#ef4444;color:#fff;font-size:15px;font-weight:600;cursor:pointer">Eliminar</button></div></div>';
+  overlay.querySelector('.cdel-cancel').onclick = () => overlay.remove();
+  overlay.querySelector('.cdel-confirm').onclick = () => { overlay.remove(); deleteActivity(id); };
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 function deleteActivity(id) {
-  if (!confirm('Eliminar esta actividad?')) return;
   AppState.removeActivity(id);
   if (typeof BackendSync !== 'undefined') BackendSync.deleteActivity(id).catch(() => {});
   allActivities = allActivities.filter(a => a.id !== id);
