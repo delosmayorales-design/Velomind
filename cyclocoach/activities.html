@@ -909,7 +909,7 @@ function closePanel() {
 
 function confirmDelete(id) {
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
   overlay.innerHTML = '<div style="background:var(--bg-card);border-radius:16px 16px 0 0;padding:24px 20px max(32px,env(safe-area-inset-bottom));width:100%;max-width:480px;border-top:1px solid var(--border)"><div style="font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text-primary)">Eliminar actividad</div><div style="font-size:14px;color:var(--text-muted);margin-bottom:24px">Esta acción no se puede deshacer.</div><div style="display:flex;gap:10px"><button class="cdel-cancel" style="flex:1;padding:13px;border-radius:10px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);font-size:15px;font-weight:600;cursor:pointer">Cancelar</button><button class="cdel-confirm" style="flex:1;padding:13px;border-radius:10px;border:none;background:#ef4444;color:#fff;font-size:15px;font-weight:600;cursor:pointer">Eliminar</button></div></div>';
   overlay.querySelector('.cdel-cancel').onclick = () => overlay.remove();
   overlay.querySelector('.cdel-confirm').onclick = () => { overlay.remove(); deleteActivity(id); };
