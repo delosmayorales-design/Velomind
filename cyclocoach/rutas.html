@@ -3773,6 +3773,19 @@ function _onTrkErr(err) {
 }
 
 function _trkTick() {
+  // Muestra de 1Hz exacto para NP/FC — igual que Garmin Connect
+  // Potencia: promedio del segundo o 0 si no hubo pedaleo (coasting incluido)
+  const w1s = _btData._powAccum.count > 0
+    ? Math.round(_btData._powAccum.sum / _btData._powAccum.count)
+    : (_btData.powSamples.length > 0 ? 0 : null); // 0 solo si ya empezó a pedalear
+  if (w1s !== null) _btData.powSamples.push(w1s);
+  _btData._powAccum = { sum: 0, count: 0 };
+  // FC: promedio del segundo
+  if (_btData._hrAccum.count > 0) {
+    _btData.hrSamples.push(Math.round(_btData._hrAccum.sum / _btData._hrAccum.count));
+    _btData._hrAccum = { sum: 0, count: 0 };
+  }
+
   const elapsed = Math.floor((Date.now() - _trkStartTime) / 1000);
   const timeStr = _fmtTime(elapsed);
   const distKm  = (_trkDist / 1000).toFixed(2);
@@ -3903,6 +3916,13 @@ async function saveTrackingActivity() {
   const avgCad = _avg(_btData.cadSamples);
   const avgPow = _avg(_btData.powSamples);
   const np     = _calcNP(_btData.powSamples);
+  // IF calculado con el FTP del perfil en el momento de guardar
+  const ftp    = AppState.athlete?.ftp || 0;
+  const ifVal  = (np && ftp) ? Math.round((np / ftp) * 100) / 100 : undefined;
+  // TSS = (duración_h × NP × IF) / FTP × 100
+  const tss    = (np && ifVal && ftp)
+    ? Math.round((elapsed / 3600) * np * ifVal / ftp * 100)
+    : undefined;
   // Recalcular calorías si tenemos potencia (más preciso)
   const calFinal = avgPow > 0
     ? Math.round(avgPow * elapsed * 0.00024)  // W × s × eficiencia ~24%
@@ -3921,6 +3941,8 @@ async function saveTrackingActivity() {
     avg_power:   avgPow || undefined,
     max_power:   _btData.maxPow || undefined,
     np:          np     || undefined,
+    if_value:    ifVal,
+    tss:         tss,
     notes: `Trayecto grabado en VeloMind · ${_trkPoints.length} puntos GPS`,
   };
 
@@ -4037,9 +4059,11 @@ const _bt = {
 
 // Acumuladores para calcular medias y NP al guardar
 const _btData = {
-  hrSamples:    [],   // bpm por segundo
+  hrSamples:    [],   // bpm por segundo (1Hz, bucketizado en _trkTick)
   cadSamples:   [],   // rpm por segundo
-  powSamples:   [],   // W por segundo (para NP y media)
+  powSamples:   [],   // W por segundo exacto (1Hz, bucketizado en _trkTick — igual que Garmin)
+  _powAccum:    { sum: 0, count: 0 },  // acumulador intrasegundo para potencia
+  _hrAccum:     { sum: 0, count: 0 },  // acumulador intrasegundo para FC
   maxHr:        0,
   maxPow:       0,
   // Para cadencia CSC (crank revolution data)
@@ -4214,7 +4238,9 @@ function _parseHR(value) {
   document.getElementById('trk-s-hr').textContent = bpm;
   _gUpdate('g-hr', bpm, false);
   if (bpm > _btData.maxHr) _btData.maxHr = bpm;
-  _btData.hrSamples.push(bpm);
+  // Acumular intrasegundo — el ticker de 1Hz lo guarda en hrSamples
+  _btData._hrAccum.sum += bpm;
+  _btData._hrAccum.count++;
 }
 
 function _parseCSC(value) {
@@ -4250,7 +4276,9 @@ function _parsePower(value) {
   document.getElementById('trk-s-pow').textContent = w;
   _gUpdate('g-power', w, false);
   if (w > _btData.maxPow) _btData.maxPow = w;
-  _btData.powSamples.push(w);
+  // Acumular intrasegundo — el ticker de 1Hz lo guarda en powSamples (igual que Garmin)
+  _btData._powAccum.sum += w;
+  _btData._powAccum.count++;
 
   // Cadencia desde el potenciómetro (bit 4 = Crank Revolution Data)
   if (flags & 0x10) {
@@ -4329,6 +4357,8 @@ function _resetSensorAccumulators() {
   _btData.hrSamples  = [];
   _btData.cadSamples = [];
   _btData.powSamples = [];
+  _btData._powAccum  = { sum: 0, count: 0 };
+  _btData._hrAccum   = { sum: 0, count: 0 };
   _btData.maxHr      = 0;
   _btData.maxPow     = 0;
   _btData._lastCrankRev = null;
