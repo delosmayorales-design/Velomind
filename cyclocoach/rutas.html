@@ -4016,6 +4016,151 @@ function _resetSensorAccumulators() {
   }, { passive: true });
 })();
 
+// ── Panel Lateral de Herramientas (solo móvil) ─────────────────────
+(function initMobSidePanel() {
+  if (window.innerWidth > 768) return;
+
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    #mob-side-panel {
+      position: fixed; top: 50%; right: 0;
+      transform: translateY(-50%);
+      z-index: 750;
+      display: flex; flex-direction: row; align-items: center;
+    }
+    #mob-side-tab {
+      order: 1; flex-shrink: 0;
+      width: 28px; padding: 22px 0;
+      background: rgba(10,12,18,0.92);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-radius: 14px 0 0 14px;
+      border: 1px solid rgba(255,255,255,0.13); border-right: none;
+      color: rgba(255,255,255,0.55); font-size: 14px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, color 0.15s;
+      box-shadow: -4px 0 18px rgba(0,0,0,0.45);
+    }
+    #mob-side-tab:active { background: rgba(255,255,255,0.12); }
+    #mob-side-panel.sp-open #mob-side-tab {
+      background: rgba(158,214,43,0.13); color: #9ED62B;
+      border-color: rgba(158,214,43,0.32);
+    }
+    #mob-side-content {
+      order: 0;
+      display: flex; flex-direction: column;
+      background: rgba(9,11,17,0.95);
+      backdrop-filter: blur(30px) saturate(160%);
+      -webkit-backdrop-filter: blur(30px) saturate(160%);
+      border-radius: 18px 0 0 18px;
+      border: 1px solid rgba(255,255,255,0.10); border-right: none;
+      padding: 6px 0;
+      transform: translateX(calc(100% + 28px));
+      transition: transform 0.37s cubic-bezier(0.34,1.56,0.64,1);
+      max-height: 75vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      min-width: 190px;
+      box-shadow: -8px 0 32px rgba(0,0,0,0.60);
+    }
+    #mob-side-panel.sp-open #mob-side-content { transform: translateX(0); }
+    #mob-side-content .mob-sp-btn {
+      display: flex !important; align-items: center !important;
+      gap: 13px !important; padding: 14px 20px 14px 16px !important;
+      color: rgba(255,255,255,0.85) !important;
+      background: transparent !important;
+      border: none !important;
+      border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+      border-radius: 0 !important;
+      font-size: 14px !important; font-weight: 500 !important;
+      font-family: 'Space Grotesk', sans-serif !important;
+      cursor: pointer !important; white-space: nowrap !important;
+      width: 100% !important; box-sizing: border-box !important;
+      text-align: left !important; justify-content: flex-start !important;
+      margin: 0 !important; height: auto !important;
+      flex: none !important; transform: none !important; box-shadow: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+      transition: background 0.15s !important;
+    }
+    #mob-side-content .mob-sp-btn:last-child { border-bottom: none !important; }
+    #mob-side-content .mob-sp-btn:active { background: rgba(255,255,255,0.08) !important; }
+    #mob-side-content .mob-sp-btn i { width: 18px !important; text-align: center !important; font-size: 15px !important; flex-shrink: 0 !important; opacity: 0.7; }
+    #mob-side-content .mob-sp-btn .btn-label { display: inline !important; font-size: 14px !important; opacity: 1; }
+    #mob-side-content #btn-track  { color: #ff3b3b !important; }
+    #mob-side-content #btn-track.recording { background: rgba(255,59,59,0.10) !important; }
+    #mob-side-content #btn-sensors.connected { color: #00d464 !important; }
+    #mob-side-content #btn-wind-arrows,
+    #mob-side-content #btn-wind-info { display: flex !important; }
+    #mob-side-content #btn-wind-arrows.active,
+    #mob-side-content #btn-rain.active,
+    #mob-side-content #btn-weather-zone.active {
+      color: #00D4FF !important; background: rgba(0,212,255,0.08) !important;
+    }
+    #mob-wind-fab, #mob-routes-fab { display: none !important; }
+  `;
+  document.head.appendChild(styleEl);
+
+  function build() {
+    const headerActions = document.querySelector('.header-actions');
+    if (!headerActions) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'mob-side-panel';
+
+    const tab = document.createElement('button');
+    tab.id = 'mob-side-tab';
+    tab.setAttribute('aria-label', 'Herramientas');
+    tab.innerHTML = '<i class="fas fa-sliders-h"></i>';
+
+    const content = document.createElement('div');
+    content.id = 'mob-side-content';
+
+    // Botón "Mis Rutas" al inicio (sustituye al mob-routes-fab)
+    const routesBtn = document.createElement('button');
+    routesBtn.className = 'mob-sp-btn';
+    routesBtn.innerHTML = '<i class="fas fa-list"></i><span class="btn-label"> Mis Rutas</span>';
+    routesBtn.addEventListener('click', () => { if (window.toggleRoutesPanel) toggleRoutesPanel(); closePanel(); });
+    content.appendChild(routesBtn);
+
+    // Mover todos los botones del header al panel (conservan sus onclick)
+    Array.from(headerActions.children).forEach(child => {
+      if (child.tagName !== 'INPUT') child.classList.add('mob-sp-btn');
+      content.appendChild(child);
+    });
+    headerActions.style.display = 'none';
+
+    panel.appendChild(content);
+    panel.appendChild(tab);
+    (document.querySelector('.map-area') || document.body).appendChild(panel);
+
+    // Toggle / auto-ocultar
+    let hideTimer;
+    const closePanel = () => { panel.classList.remove('sp-open'); clearTimeout(hideTimer); };
+    const openPanel  = () => {
+      panel.classList.add('sp-open');
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(closePanel, 5000);
+    };
+
+    tab.addEventListener('click', e => {
+      e.stopPropagation();
+      panel.classList.contains('sp-open') ? closePanel() : openPanel();
+    });
+
+    // Reiniciar timer al tocar dentro del panel
+    content.addEventListener('touchstart', () => {
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(closePanel, 5000);
+    }, { passive: true });
+
+    // Cerrar al tocar el mapa fuera del panel
+    document.getElementById('map')?.addEventListener('touchstart', e => {
+      if (!panel.contains(e.target)) closePanel();
+    }, { passive: true });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
+  else build();
+})();
+
 // Revelar página tras renderizado inicial
 requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
 </script>
