@@ -2429,6 +2429,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let _bnTimer;
     const _hideBN = () => bottomNav.classList.add('mob-hidden');
     window._showBottomNav = () => {
+      if (document.getElementById('garmin-overlay')?.classList.contains('visible')) return;
       bottomNav.classList.remove('mob-hidden');
       clearTimeout(_bnTimer);
       _bnTimer = setTimeout(_hideBN, 4000);
