@@ -506,6 +506,68 @@
     }
     .params-apply-btn:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); border-color: var(--primary); color: var(--text-primary, #fff); transform: translateY(-1px); }
 
+    /* ── Session action bar ──────────────────────────────────── */
+    .sess-actions {
+      border-top: 1px solid var(--border);
+      padding: 8px 16px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      background: rgba(0,0,0,0.08);
+    }
+    .sess-export-section {
+      display: flex; align-items: center; gap: 5px; position: relative;
+    }
+    .sess-export-lbl {
+      font-size: 10px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; white-space: nowrap;
+    }
+    .sess-fmt-btn {
+      background: var(--bg-input); border: 1px solid var(--border);
+      color: var(--text-secondary); border-radius: 6px;
+      padding: 6px 10px; font-size: 11px; font-weight: 600;
+      cursor: pointer; -webkit-tap-highlight-color: transparent; font-family: inherit;
+    }
+    .sess-fmt-btn:hover { border-color: var(--primary); color: var(--text-primary); }
+    .sess-act-btn {
+      display: flex; align-items: center; gap: 5px;
+      border-radius: 6px; padding: 6px 12px;
+      font-size: 11px; font-weight: 700; font-family: inherit;
+      cursor: pointer; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sess-act-roller { background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); color: #818cf8; }
+    .sess-act-audio  { background: rgba(196,239,68,0.15);  border: 1px solid rgba(196,239,68,0.4);  color: #C4EF44; }
+    /* Mobile toggle (oculto en desktop) */
+    .sess-export-toggle { display: none; }
+
+    @media (max-width: 600px) {
+      .sess-actions { padding: 10px 12px; gap: 8px; position: relative; flex-wrap: nowrap; }
+      .sess-export-lbl, .sess-export-formats { display: none !important; }
+      .sess-export-formats.open {
+        display: flex !important; flex-wrap: nowrap; gap: 7px;
+        position: absolute;
+        bottom: calc(100% + 6px); left: 12px;
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: 10px; padding: 8px 10px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+        z-index: 20;
+        animation: fadeIn 0.15s ease;
+      }
+      .sess-export-toggle {
+        display: flex; align-items: center; gap: 5px;
+        background: var(--bg-input); border: 1px solid var(--border);
+        color: var(--text-secondary); border-radius: 6px;
+        padding: 8px 12px; font-size: 12px; font-weight: 600;
+        cursor: pointer; -webkit-tap-highlight-color: transparent; font-family: inherit;
+        transition: border-color 0.15s;
+      }
+      .sess-export-toggle .chev { font-size: 9px; transition: transform 0.2s; }
+      .sess-export-toggle.open .chev { transform: rotate(180deg); }
+      .sess-export-toggle.open { border-color: var(--primary); color: var(--text-primary); }
+      .sess-act-btn { flex: 1; justify-content: center; padding: 8px 6px; font-size: 12px; }
+    }
+
     /* ── Audio Coach Overlay ─────────────────────────────────── */
     #audio-coach-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,.88);
@@ -1715,17 +1777,22 @@ function renderPlan(plan, athlete) {
       </div>` : '');
 
     const actionButtons = !sess.isRest ? `
-      <div class="session-action-btns" style="border-top:1px solid var(--border);padding:8px 16px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:rgba(0,0,0,0.08)">
-        <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap"><i class="fas fa-download"></i> Exportar:</span>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          <button onclick="exportSessionToGarmin(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">TCX</button>
-          <button onclick="exportSessionToZwift(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">ZWO</button>
-          <button onclick="exportSessionToERG(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">ERG</button>
-          <button onclick="exportSessionToGPX(${i})" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">GPX</button>
+      <div class="sess-actions">
+        <div class="sess-export-section">
+          <span class="sess-export-lbl"><i class="fas fa-download"></i> Exportar:</span>
+          <div class="sess-export-formats">
+            <button class="sess-fmt-btn" onclick="exportSessionToGarmin(${i})">TCX</button>
+            <button class="sess-fmt-btn" onclick="exportSessionToZwift(${i})">ZWO</button>
+            <button class="sess-fmt-btn" onclick="exportSessionToERG(${i})">ERG</button>
+            <button class="sess-fmt-btn" onclick="exportSessionToGPX(${i})">GPX</button>
+          </div>
+          <button class="sess-export-toggle" onclick="toggleSessExport(this)">
+            <i class="fas fa-download"></i> Exportar <i class="fas fa-chevron-down chev"></i>
+          </button>
         </div>
-        <div style="flex:1;min-width:8px"></div>
-        <button onclick="adaptToRoller(${i})" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#818cf8;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent"><i class="fas fa-home"></i> Rodillo</button>
-        <button onclick="startAudioCoach(${i})" style="background:rgba(196,239,68,0.15);border:1px solid rgba(196,239,68,0.4);color:#C4EF44;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent"><i class="fas fa-headphones"></i> Audio</button>
+        <div style="flex:1;min-width:4px"></div>
+        <button class="sess-act-btn sess-act-roller" onclick="adaptToRoller(${i})"><i class="fas fa-home"></i> Rodillo</button>
+        <button class="sess-act-btn sess-act-audio" onclick="startAudioCoach(${i})"><i class="fas fa-headphones"></i> Audio</button>
       </div>
     ` : '';
 
@@ -3595,6 +3662,29 @@ initTrainingPlan().catch((e) => {
   console.error("Fallo al inicializar el plan de entrenamiento:", e);
   document.documentElement.style.removeProperty('opacity');
 });
+
+function toggleSessExport(btn) {
+  const section = btn.closest('.sess-export-section');
+  const menu = section.querySelector('.sess-export-formats');
+  const isOpen = !menu.classList.contains('open');
+  // Cerrar todos los menus abiertos primero
+  document.querySelectorAll('.sess-export-formats.open').forEach(m => {
+    m.classList.remove('open');
+    m.closest('.sess-export-section')?.querySelector('.sess-export-toggle')?.classList.remove('open');
+  });
+  if (isOpen) {
+    menu.classList.add('open');
+    btn.classList.add('open');
+    const closeHandler = (e) => {
+      if (!section.contains(e.target)) {
+        menu.classList.remove('open');
+        btn.classList.remove('open');
+        document.removeEventListener('click', closeHandler, true);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler, true), 0);
+  }
+}
 
 function exportSessionToGarmin(index) {
   if (!currentPlan) { alert('El plan aún no está generado.'); return; }
