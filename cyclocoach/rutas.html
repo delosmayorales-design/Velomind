@@ -4076,16 +4076,11 @@ function _resetSensorAccumulators() {
 
   const styleEl = document.createElement('style');
   styleEl.textContent = `
-    #mob-side-panel {
-      position: fixed; top: 50%; right: 0;
-      transform: translateY(-50%);
-      z-index: 750;
-      display: flex; flex-direction: row; align-items: center;
-      pointer-events: none;
-    }
+    /* Tab: elemento fijo independiente — siempre recibe toques */
     #mob-side-tab {
-      order: 1; flex-shrink: 0;
-      pointer-events: auto;
+      position: fixed; right: 0; top: 50%;
+      transform: translateY(-50%);
+      z-index: 751;
       width: 28px; padding: 22px 0;
       background: rgba(10,12,18,0.92);
       backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -4098,13 +4093,18 @@ function _resetSensorAccumulators() {
       box-shadow: -4px 0 18px rgba(0,0,0,0.45);
     }
     #mob-side-tab:active { background: rgba(255,255,255,0.12); }
-    #mob-side-panel.sp-open #mob-side-tab {
-      background: rgba(158,214,43,0.13); color: #9ED62B;
-      border-color: rgba(158,214,43,0.32);
+    #mob-side-tab.sp-open { background: rgba(158,214,43,0.13); color: #9ED62B; border-color: rgba(158,214,43,0.32); }
+
+    /* Panel: solo contiene el contenido; separado del tab */
+    #mob-side-panel {
+      position: fixed; right: 28px; top: 50%;
+      transform: translateY(-50%);
+      z-index: 750;
+      pointer-events: none;
     }
+    #mob-side-panel.sp-open { pointer-events: auto; }
+
     #mob-side-content {
-      order: 0;
-      pointer-events: auto;
       display: flex; flex-direction: column;
       background: rgba(9,11,17,0.95);
       backdrop-filter: blur(30px) saturate(160%);
@@ -4112,13 +4112,14 @@ function _resetSensorAccumulators() {
       border-radius: 18px 0 0 18px;
       border: 1px solid rgba(255,255,255,0.10); border-right: none;
       padding: 6px 0;
-      transform: translateX(calc(100% + 28px));
+      transform: translateX(100%);
       transition: transform 0.37s cubic-bezier(0.34,1.56,0.64,1);
       max-height: 75vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
       min-width: 190px;
       box-shadow: -8px 0 32px rgba(0,0,0,0.60);
     }
     #mob-side-panel.sp-open #mob-side-content { transform: translateX(0); }
+
     #mob-side-content .mob-sp-btn {
       display: flex !important; align-items: center !important;
       gap: 13px !important; padding: 14px 20px 14px 16px !important;
@@ -4144,8 +4145,7 @@ function _resetSensorAccumulators() {
     #mob-side-content #btn-track  { color: #ff3b3b !important; }
     #mob-side-content #btn-track.recording { background: rgba(255,59,59,0.10) !important; }
     #mob-side-content #btn-sensors.connected { color: #00d464 !important; }
-    #mob-side-content #btn-wind-arrows,
-    #mob-side-content #btn-wind-info { display: flex !important; }
+    #mob-side-content #btn-wind-arrows { display: flex !important; }
     #mob-side-content #btn-wind-arrows.active,
     #mob-side-content #btn-rain.active,
     #mob-side-content #btn-weather-zone.active {
@@ -4159,40 +4159,56 @@ function _resetSensorAccumulators() {
     const headerActions = document.querySelector('.header-actions');
     if (!headerActions) return;
 
-    const panel = document.createElement('div');
-    panel.id = 'mob-side-panel';
-
+    // Tab: fixed independiente
     const tab = document.createElement('button');
     tab.id = 'mob-side-tab';
     tab.setAttribute('aria-label', 'Herramientas');
     tab.innerHTML = '<i class="fas fa-sliders-h"></i>';
 
+    // Panel: solo el contenido deslizante
+    const panel = document.createElement('div');
+    panel.id = 'mob-side-panel';
+
     const content = document.createElement('div');
     content.id = 'mob-side-content';
 
-    // Botón "Mis Rutas" al inicio (sustituye al mob-routes-fab)
+    // Botón "Mis Rutas" al inicio
     const routesBtn = document.createElement('button');
     routesBtn.className = 'mob-sp-btn';
     routesBtn.innerHTML = '<i class="fas fa-list"></i><span class="btn-label"> Mis Rutas</span>';
     routesBtn.addEventListener('click', () => { if (window.toggleRoutesPanel) toggleRoutesPanel(); closePanel(); });
     content.appendChild(routesBtn);
 
-    // Mover todos los botones del header al panel (conservan sus onclick)
+    // Mover botones del header al panel
     Array.from(headerActions.children).forEach(child => {
       if (child.tagName !== 'INPUT') child.classList.add('mob-sp-btn');
       content.appendChild(child);
     });
     headerActions.style.display = 'none';
 
+    // Reemplazar onclick atributos por addEventListener para máxima compatibilidad iOS
+    content.querySelectorAll('[onclick]').forEach(el => {
+      const fn = el.getAttribute('onclick');
+      el.removeAttribute('onclick');
+      el.addEventListener('click', () => { try { new Function(fn)(); } catch(e) { console.warn(e); } });
+    });
+
     panel.appendChild(content);
-    panel.appendChild(tab);
-    (document.querySelector('.map-area') || document.body).appendChild(panel);
+
+    const mapArea = document.querySelector('.map-area') || document.body;
+    mapArea.appendChild(tab);   // Tab: elemento independiente
+    mapArea.appendChild(panel); // Panel: solo el contenido
 
     // Toggle / auto-ocultar
     let hideTimer;
-    const closePanel = () => { panel.classList.remove('sp-open'); clearTimeout(hideTimer); };
-    const openPanel  = () => {
+    const closePanel = () => {
+      panel.classList.remove('sp-open');
+      tab.classList.remove('sp-open');
+      clearTimeout(hideTimer);
+    };
+    const openPanel = () => {
       panel.classList.add('sp-open');
+      tab.classList.add('sp-open');
       clearTimeout(hideTimer);
       hideTimer = setTimeout(closePanel, 5000);
     };
@@ -4202,15 +4218,14 @@ function _resetSensorAccumulators() {
       panel.classList.contains('sp-open') ? closePanel() : openPanel();
     });
 
-    // Reiniciar timer al tocar dentro del panel
     content.addEventListener('touchstart', () => {
       clearTimeout(hideTimer);
       hideTimer = setTimeout(closePanel, 5000);
     }, { passive: true });
 
-    // Cerrar al tocar el mapa fuera del panel
+    // Cerrar al tocar el mapa (fuera del panel y el tab)
     document.getElementById('map')?.addEventListener('touchstart', e => {
-      if (!panel.contains(e.target)) closePanel();
+      if (!panel.contains(e.target) && e.target !== tab) closePanel();
     }, { passive: true });
   }
 
