@@ -737,31 +737,43 @@
       .map-area { position: fixed !important; inset: 0; z-index: 1; }
       .map-wrap  { position: absolute !important; inset: 0; display: flex; flex-direction: column; }
 
-      /* Panel de rutas: bottom-sheet flotante (no ocupa espacio) */
+      /* Panel de rutas: pantalla completa con scroll vertical */
       .routes-panel {
         position: fixed !important;
-        bottom: 65px; left: 0; right: 0;
+        inset: 0 !important;
         width: 100% !important; min-width: unset !important;
-        height: auto !important; max-height: 55vh;
-        border-right: none !important;
-        border-top: 1px solid var(--border);
-        border-radius: 16px 16px 0 0;
-        transform: translateY(calc(100% + 65px));
-        transition: transform 0.3s ease;
+        height: 100% !important; max-height: 100vh !important;
+        border: none !important; border-radius: 0 !important;
+        transform: translateY(100%);
+        transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
         z-index: 820; overflow: hidden;
         display: flex; flex-direction: column;
       }
       .routes-panel.mob-sheet-open { transform: translateY(0); }
-      .routes-panel-top { padding: 8px 10px; cursor: pointer; }
-      .routes-panel-toggle { display: flex; }
-      #mob-panel-toggle { display: flex !important; }
-      .routes-panel.mob-sheet-open #mob-panel-chevron { transform: rotate(180deg); }
-      .routes-list {
-        display: flex; flex-direction: row;
-        overflow-x: auto; overflow-y: hidden;
-        flex-wrap: nowrap; gap: 6px; padding: 6px 8px;
+      .routes-panel-top {
+        padding: 12px 14px;
+        display: flex; align-items: center; gap: 8px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
       }
-      .route-item { min-width: 160px; flex-shrink: 0; margin-bottom: 0; }
+      .routes-panel-toggle { display: flex; }
+      #mob-panel-toggle {
+        display: flex !important;
+        margin-left: auto;
+        background: rgba(255,59,59,0.1) !important;
+        border-color: rgba(255,59,59,0.3) !important;
+        color: #ff4757 !important;
+        padding: 6px 12px !important;
+        font-size: 12px !important;
+      }
+      #mob-panel-toggle i.fa-chevron-down { display: none; }
+      .routes-list {
+        flex: 1;
+        display: flex !important; flex-direction: column !important;
+        overflow-y: auto !important; overflow-x: hidden !important;
+        gap: 8px !important; padding: 10px 10px !important;
+      }
+      .route-item { width: 100% !important; min-width: unset !important; flex-shrink: 0 !important; margin-bottom: 0 !important; }
 
       /* Stats flotantes */
       .map-stats { top: 8px; right: 8px; padding: 6px 10px; gap: 10px; }
@@ -4156,8 +4168,9 @@ function _resetSensorAccumulators() {
   document.head.appendChild(styleEl);
 
   function build() {
+    // Ocultar la barra de botones original en móvil
     const headerActions = document.querySelector('.header-actions');
-    if (!headerActions) return;
+    if (headerActions) headerActions.style.setProperty('display', 'none', 'important');
 
     // Tab: fixed independiente
     const tab = document.createElement('button');
@@ -4179,12 +4192,11 @@ function _resetSensorAccumulators() {
     routesBtn.addEventListener('click', () => { if (window.toggleRoutesPanel) toggleRoutesPanel(); closePanel(); });
     content.appendChild(routesBtn);
 
-    // Mover botones del header al panel
-    Array.from(headerActions.children).forEach(child => {
+    // Mover botones originales para conservar ids, estado visual y onclick nativos.
+    Array.from(headerActions?.children || []).forEach(child => {
       if (child.tagName !== 'INPUT') child.classList.add('mob-sp-btn');
       content.appendChild(child);
     });
-    headerActions.style.display = 'none';
 
     panel.appendChild(content);
 
