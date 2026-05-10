@@ -872,14 +872,8 @@
         <i class="fas fa-file-import"></i><span class="btn-label"> Importar GPX</span>
       </button>
       <input id="gpx-input" type="file" accept=".gpx,.tcx" style="display:none" onchange="importGPX(this)">
-      <button class="btn btn-secondary btn-sm" id="btn-wind" onclick="showWindSuggestion()">
-        <i class="fas fa-wind"></i><span class="btn-label"> Viento</span>
-      </button>
       <button class="btn btn-secondary btn-sm" id="btn-wind-arrows" onclick="toggleWindArrows()" title="Flechas de viento animadas en el mapa">
         <i class="fas fa-location-arrow"></i><span class="btn-label"> Flechas viento</span>
-      </button>
-      <button class="btn btn-secondary btn-sm" id="btn-wind-info" onclick="toggleWindInfo()" title="Cómo funcionan las flechas de viento" style="padding:6px 9px;">
-        <i class="fas fa-circle-question"></i>
       </button>
       <button class="btn btn-secondary btn-sm" onclick="openWindRouteModal()" style="background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.35);color:#00D4FF;">
         <i class="fas fa-wind"></i><span class="btn-label"> Ruta por viento</span>
