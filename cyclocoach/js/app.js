@@ -2238,34 +2238,55 @@ document.addEventListener('DOMContentLoaded', () => {
       /* --- Fin de manejo de Modales --- */
       
       /* Ajustar notificaciones flotantes (Toasts) para no chocar con el menú */
-      .toast-wrap { bottom: 80px !important; right: 16px !important; }
+      .toast-wrap { bottom: 90px !important; right: 16px !important; }
 
       /* Ocultar botón hamburguesa superior, ahora usamos la barra inferior */
       .mobile-menu-btn { display: none !important; }
 
-      /* Barra de Navegación Inferior (Estilo Strava) */
+      /* ── Barra de Navegación Inferior — Glass Morphism Flotante ── */
       .bottom-nav {
         position: fixed !important;
-        bottom: 0; left: 0; right: 0;
-        height: 65px;
-        background: var(--bg-card, #1a1d26);
-        border-top: 1px solid var(--border, rgba(255,255,255,0.08));
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        left: 12px; right: 12px;
+        height: 62px;
+        background: rgba(10, 12, 18, 0.90) !important;
+        backdrop-filter: blur(28px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 22px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.60), inset 0 0 0 0.5px rgba(255,255,255,0.05);
         display: flex !important;
         justify-content: space-around;
         align-items: center;
         z-index: 9997;
-        padding-bottom: env(safe-area-inset-bottom);
-        transition: transform 0.3s ease;
+        padding: 0 4px;
+        transition: transform 0.38s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease;
       }
-      .bottom-nav.mob-hidden { transform: translateY(100%); }
-      body.light-theme .bottom-nav { background: #ffffff !important; }
+      .bottom-nav.mob-hidden {
+        transform: translateY(calc(100% + 20px));
+        opacity: 0;
+        pointer-events: none;
+      }
+      body.light-theme .bottom-nav {
+        background: rgba(255,255,255,0.88) !important;
+        border-color: rgba(0,0,0,0.08);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.15), inset 0 0 0 0.5px rgba(0,0,0,0.04);
+      }
       .bottom-nav-item {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        color: var(--text-muted, #6b7280); text-decoration: none; font-size: 10px; font-weight: 600;
-        gap: 4px; flex: 1; height: 100%; transition: color 0.2s;
+        color: rgba(255,255,255,0.38); text-decoration: none;
+        font-size: 9.5px; font-weight: 600; letter-spacing: 0.02em;
+        gap: 3px; flex: 1; height: 100%;
+        transition: color 0.2s ease, transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+        -webkit-tap-highlight-color: transparent;
+        user-select: none; -webkit-user-select: none;
       }
+      .bottom-nav-item:active { transform: scale(0.85); }
       .bottom-nav-item.active { color: var(--primary, #9ED62B); }
-      .bottom-nav-item i { font-size: 20px; margin-bottom: 2px; }
+      .bottom-nav-item.active i { filter: drop-shadow(0 0 6px rgba(158,214,43,0.55)); }
+      .bottom-nav-item i { font-size: 19px; }
+      body.light-theme .bottom-nav-item { color: rgba(0,0,0,0.38); }
+      body.light-theme .bottom-nav-item.active { color: #7ab822; }
     }
     
     /* Diseño del Botón Hamburguesa */
@@ -2411,15 +2432,50 @@ document.addEventListener('DOMContentLoaded', () => {
     document.head.appendChild(manifest);
   }
 
-  // 2. Inyectar theme-color para la barra de estado del móvil
+  // 2. Viewport con safe-area (notch / Dynamic Island) y sin zoom
+  const vpMeta = document.querySelector('meta[name="viewport"]');
+  const vpContent = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+  if (vpMeta) { vpMeta.content = vpContent; }
+  else {
+    const vp = document.createElement('meta');
+    vp.name = 'viewport';
+    vp.content = vpContent;
+    document.head.appendChild(vp);
+  }
+
+  // 3. Theme-color para la barra de estado del móvil
   if (!document.querySelector('meta[name="theme-color"]')) {
     const themeColor = document.createElement('meta');
     themeColor.name = 'theme-color';
-    themeColor.content = document.documentElement.getAttribute('data-theme') === 'light' ? '#ffffff' : '#0a0b0f';
+    themeColor.content = document.documentElement.getAttribute('data-theme') === 'light' ? '#ffffff' : '#05070a';
     document.head.appendChild(themeColor);
   }
 
-  // 3. Registrar Service Worker
+  // 4. Apple PWA meta tags (para iOS — "Añadir a pantalla de inicio")
+  const appleMetas = [
+    { name: 'apple-mobile-web-app-capable',           content: 'yes' },
+    { name: 'apple-mobile-web-app-status-bar-style',  content: 'black-translucent' },
+    { name: 'apple-mobile-web-app-title',             content: 'VeloMind' },
+    { name: 'mobile-web-app-capable',                 content: 'yes' },
+    { name: 'application-name',                       content: 'VeloMind' },
+  ];
+  appleMetas.forEach(({ name, content }) => {
+    if (!document.querySelector(`meta[name="${name}"]`)) {
+      const m = document.createElement('meta');
+      m.name = name; m.content = content;
+      document.head.appendChild(m);
+    }
+  });
+
+  // 5. Apple touch icon
+  if (!document.querySelector('link[rel="apple-touch-icon"]')) {
+    const ati = document.createElement('link');
+    ati.rel  = 'apple-touch-icon';
+    ati.href = 'logo2.png';
+    document.head.appendChild(ati);
+  }
+
+  // 6. Registrar Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js')

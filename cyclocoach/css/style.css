@@ -1475,3 +1475,81 @@ html.light-theme img[src*="logoPerfil" i] {
 @keyframes vt-in {
   from { opacity: 0; transform: translateY(3px); }
 }
+
+/* ══════════════════════════════════════════════════════════
+   PREMIUM PWA — Native-like Mobile Experience
+   ══════════════════════════════════════════════════════════ */
+
+/* Safe-area CSS variables */
+:root {
+  --safe-top:    env(safe-area-inset-top,    0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left,   0px);
+  --safe-right:  env(safe-area-inset-right,  0px);
+}
+
+/* Tap highlight removal — native feel */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Momentum scroll on scrollable containers */
+.main-content,
+.sidebar,
+[class*="table-wrap"],
+[class*="-scroll"],
+.modal-body {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Glass utility class */
+.glass {
+  background: rgba(14, 17, 23, 0.75);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+}
+html.light-theme .glass {
+  background: rgba(255,255,255,0.75);
+  border-color: rgba(0,0,0,0.07);
+}
+
+/* Skeleton loader */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--bg-card) 25%,
+    rgba(255,255,255,0.06) 50%,
+    var(--bg-card) 75%);
+  background-size: 1200px 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+  color: transparent !important;
+  pointer-events: none;
+}
+.skeleton * { visibility: hidden; }
+
+/* Card press micro-animation */
+.stat-card,
+.card,
+.metric-card,
+.training-card {
+  transition:
+    transform 0.15s cubic-bezier(0.34,1.56,0.64,1),
+    box-shadow 0.15s ease;
+}
+.stat-card:active,
+.card:active,
+.metric-card:active,
+.training-card:active {
+  transform: scale(0.975);
+}
+
+/* Bottom padding so content doesn't hide behind floating nav */
+@media (max-width: 768px) {
+  .main-content {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
