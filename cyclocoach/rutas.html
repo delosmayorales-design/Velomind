@@ -86,6 +86,41 @@
     }
     .route-item:hover { background: var(--bg-input); }
     .route-item.active { background: rgba(255,107,53,0.1); border-color: rgba(255,107,53,0.3); }
+    .route-preview {
+      width: 100%;
+      aspect-ratio: 2.8 / 1;
+      margin-bottom: 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015)),
+        radial-gradient(circle at 18% 24%, rgba(158,214,43,0.12), transparent 32%),
+        var(--bg-input);
+      overflow: hidden;
+      position: relative;
+    }
+    .route-preview svg {
+      width: 100%; height: 100%; display: block;
+    }
+    .route-preview-grid {
+      stroke: rgba(255,255,255,0.055);
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
+    }
+    .route-preview-track {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 4;
+      vector-effect: non-scaling-stroke;
+      filter: drop-shadow(0 0 6px rgba(255,255,255,0.22));
+    }
+    .route-preview-dot {
+      fill: var(--bg-card);
+      stroke: currentColor;
+      stroke-width: 3;
+      vector-effect: non-scaling-stroke;
+    }
     .route-item-name {
       font-size: 13px; font-weight: 600;
       color: var(--text-primary);
@@ -504,6 +539,10 @@
 
     /* ── Leaflet override (z-index) ───────────────────────────── */
     .leaflet-control-layers { z-index: 400 !important; }
+    body.routes-panel-open .leaflet-control-zoom,
+    body.routes-panel-open .leaflet-control-layers {
+      display: none !important;
+    }
 
     /* ── Responsive móvil ─────────────────────────────────────── */
 
@@ -751,21 +790,40 @@
       }
       .routes-panel.mob-sheet-open { transform: translateY(0); }
       .routes-panel-top {
-        padding: 12px 14px;
+        padding: 14px 58px 12px 14px;
         display: flex; align-items: center; gap: 8px;
         border-bottom: 1px solid var(--border);
         flex-shrink: 0;
+        background: rgba(14,17,23,0.96);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+      .filter-tabs { gap: 8px; width: 100%; }
+      .filter-tab {
+        min-height: 42px;
+        padding: 10px 8px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 800;
       }
       .routes-panel-toggle { display: flex; }
       #mob-panel-toggle {
         display: flex !important;
-        margin-left: auto;
-        background: rgba(255,59,59,0.1) !important;
-        border-color: rgba(255,59,59,0.3) !important;
+        position: absolute;
+        top: 12px; right: 12px;
+        width: 42px; height: 42px;
+        margin-left: 0;
+        background: rgba(255,59,59,0.14) !important;
+        border-color: rgba(255,59,59,0.38) !important;
         color: #ff4757 !important;
-        padding: 6px 12px !important;
-        font-size: 12px !important;
+        padding: 0 !important;
+        font-size: 15px !important;
+        justify-content: center;
+        border-radius: 50% !important;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.35);
       }
+      #mob-panel-toggle i.fa-map { display: none; }
+      #mob-panel-toggle::before { content: "\\f00d"; font-family: "Font Awesome 6 Free"; font-weight: 900; }
       #mob-panel-toggle i.fa-chevron-down { display: none; }
       .routes-list {
         flex: 1;
@@ -773,7 +831,15 @@
         overflow-y: auto !important; overflow-x: hidden !important;
         gap: 8px !important; padding: 10px 10px !important;
       }
-      .route-item { width: 100% !important; min-width: unset !important; flex-shrink: 0 !important; margin-bottom: 0 !important; }
+      .route-item {
+        width: 100% !important; min-width: unset !important;
+        flex-shrink: 0 !important; margin-bottom: 0 !important;
+        padding: 12px !important;
+      }
+      .route-item-name { font-size: 15px !important; }
+      .route-item-meta { font-size: 12px !important; }
+      .route-item-actions { gap: 12px; margin-top: 8px; }
+      .ri-btn { font-size: 12px; }
 
       /* Stats flotantes */
       .map-stats { top: 8px; right: 8px; padding: 6px 10px; gap: 10px; }
@@ -1875,6 +1941,50 @@ function filterRoutes(type, btn) {
   renderRouteList();
 }
 
+function routeColor(route) {
+  const isGps = route.notes?.startsWith('GPS ·');
+  return isGps ? '#ff3b3b' : route.type === 'gravel' ? '#F59E0B' : route.type === 'mtb' ? '#10B981' : '#FF6B35';
+}
+
+function routePreviewSvg(route) {
+  const rawCoords = route?.geojson?.coordinates || [];
+  const step = Math.max(1, Math.ceil(rawCoords.length / 80));
+  const coords = rawCoords.filter((_, i) => i % step === 0);
+  if (rawCoords.length > 1 && coords[coords.length - 1] !== rawCoords[rawCoords.length - 1]) {
+    coords.push(rawCoords[rawCoords.length - 1]);
+  }
+  if (coords.length < 2) {
+    return `<div class="route-preview" aria-hidden="true">
+      <svg viewBox="0 0 220 78" preserveAspectRatio="none">
+        <path class="route-preview-grid" d="M0 26H220M0 52H220M55 0V78M110 0V78M165 0V78"/>
+      </svg>
+    </div>`;
+  }
+
+  const lons = coords.map(([lon]) => lon);
+  const lats = coords.map(([, lat]) => lat);
+  const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const lonSpan = maxLon - minLon || 1;
+  const latSpan = maxLat - minLat || 1;
+  const w = 220, h = 78, pad = 10;
+  const pts = coords.map(([lon, lat]) => {
+    const x = pad + ((lon - minLon) / lonSpan) * (w - pad * 2);
+    const y = h - pad - ((lat - minLat) / latSpan) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const [sx, sy] = pts.split(' ')[0].split(',');
+  const color = routeColor(route);
+
+  return `<div class="route-preview" style="color:${color}" aria-hidden="true">
+    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <path class="route-preview-grid" d="M0 26H220M0 52H220M55 0V78M110 0V78M165 0V78"/>
+      <polyline class="route-preview-track" points="${pts}" stroke="${color}"/>
+      <circle class="route-preview-dot" cx="${sx}" cy="${sy}" r="3.2"/>
+    </svg>
+  </div>`;
+}
+
 function renderRouteList() {
   const list     = document.getElementById('routes-list');
   const filtered = activeFilter === 'all' ? allRoutes : allRoutes.filter(r => r.type === activeFilter);
@@ -1887,6 +1997,7 @@ function renderRouteList() {
   }
   list.innerHTML = filtered.map(r => `
     <div class="route-item" data-id="${r.id}" onclick="openRouteOnMap('${r.id}')">
+      ${routePreviewSvg(r)}
       <div class="route-item-name">
         <span>${escHtml(r.name)}</span>
         <span class="badge-type badge-${r.type}">${r.type}</span>
@@ -1926,7 +2037,7 @@ function openRouteOnMap(id) {
   document.getElementById('draw-toolbar').classList.remove('visible');
   routeGeoJSON = route.geojson;
   const isGps   = route.notes?.startsWith('GPS ·');
-  const color   = isGps ? '#ff3b3b' : route.type === 'gravel' ? '#F59E0B' : route.type === 'mtb' ? '#10B981' : '#FF6B35';
+  const color   = routeColor(route);
   const latLngs = route.geojson.coordinates.map(([ln,la]) => [la,ln]);
   if (routeLayer) map.removeLayer(routeLayer);
   routeLayer = L.polyline(latLngs, { color, weight: 4, opacity: 0.9 }).addTo(map);
@@ -1939,6 +2050,10 @@ function openRouteOnMap(id) {
   document.querySelector('#map-stats .stat-l:last-of-type').textContent = isGps ? 'Duración' : 'Estimado';
   document.getElementById('map-stats').classList.add('visible');
   document.querySelectorAll('.route-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+  if (window.innerWidth <= 768) {
+    closeRoutesPanel();
+    setTimeout(() => map.invalidateSize(), 280);
+  }
   fetchElevation(latLngs);
 }
 
@@ -2531,6 +2646,7 @@ function toggleRoutesPanel() {
   const open    = panel.classList.toggle('mob-sheet-open');
   if (fab)     fab.classList.toggle('active', open);
   if (overlay) overlay.style.display = open ? '' : 'none';
+  document.body.classList.toggle('routes-panel-open', open);
   const chev = document.getElementById('mob-panel-chevron');
   if (chev) chev.style.transform = open ? 'rotate(180deg)' : '';
 }
@@ -2542,6 +2658,7 @@ function closeRoutesPanel() {
   panel.classList.remove('mob-sheet-open');
   if (fab)     fab.classList.remove('active');
   if (overlay) overlay.style.display = 'none';
+  document.body.classList.remove('routes-panel-open');
   const chev = document.getElementById('mob-panel-chevron');
   if (chev) chev.style.transform = '';
 }
