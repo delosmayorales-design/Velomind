@@ -4027,9 +4027,11 @@ function _resetSensorAccumulators() {
       transform: translateY(-50%);
       z-index: 750;
       display: flex; flex-direction: row; align-items: center;
+      pointer-events: none;
     }
     #mob-side-tab {
       order: 1; flex-shrink: 0;
+      pointer-events: auto;
       width: 28px; padding: 22px 0;
       background: rgba(10,12,18,0.92);
       backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -4048,6 +4050,7 @@ function _resetSensorAccumulators() {
     }
     #mob-side-content {
       order: 0;
+      pointer-events: auto;
       display: flex; flex-direction: column;
       background: rgba(9,11,17,0.95);
       backdrop-filter: blur(30px) saturate(160%);
