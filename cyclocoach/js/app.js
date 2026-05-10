@@ -2082,22 +2082,79 @@ document.addEventListener('DOMContentLoaded', () => {
       html, body { overflow-x: hidden; }
       * { box-sizing: border-box !important; }
 
-      /* Menú Lateral (Sidebar) Off-Canvas */
+      /* Menú Lateral (Sidebar) Off-Canvas — estilo Garmin Connect */
       .sidebar {
         position: fixed !important;
         top: 0; left: 0; bottom: 0;
-        width: 280px !important;
+        width: 88vw !important;
+        max-width: 360px !important;
         transform: translateX(-100%) !important;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1) !important;
         z-index: 9999 !important;
-        background: var(--bg, #0a0b0f) !important;
-        border-right: 1px solid var(--border) !important;
-        box-shadow: 4px 0 24px rgba(0,0,0,0.5) !important;
-        display: flex !important; 
+        background: var(--bg-card, #0E1117) !important;
+        border-right: none !important;
+        box-shadow: 8px 0 40px rgba(0,0,0,0.65) !important;
+        display: flex !important;
       }
-      body.sidebar-open .sidebar { 
-        transform: translateX(0) !important; 
+      body.sidebar-open .sidebar {
+        transform: translateX(0) !important;
       }
+
+      /* Ítems de nav — full width, texto grande, flecha a la derecha */
+      .sidebar .nav-item {
+        display: flex !important;
+        align-items: center !important;
+        gap: 16px !important;
+        padding: 17px 22px !important;
+        font-size: 16px !important;
+        font-weight: 500 !important;
+        border-radius: 0 !important;
+        width: 100% !important;
+        border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+        position: relative !important;
+        color: var(--text-primary, #EEF2FF) !important;
+      }
+      .sidebar .nav-item::after {
+        content: '›';
+        position: absolute;
+        right: 20px;
+        font-size: 22px;
+        line-height: 1;
+        color: rgba(255,255,255,0.25);
+        font-weight: 300;
+      }
+      .sidebar .nav-item.active {
+        background: rgba(158,214,43,0.10) !important;
+        color: var(--primary-light, #C4EF44) !important;
+        border-left: 3px solid var(--primary, #9ED62B) !important;
+      }
+      .sidebar .nav-item.active::after { color: var(--primary, #9ED62B); }
+      .sidebar .nav-item i {
+        font-size: 17px !important;
+        width: 22px !important;
+        text-align: center !important;
+        color: rgba(255,255,255,0.5) !important;
+      }
+      .sidebar .nav-item.active i { color: var(--primary, #9ED62B) !important; }
+      .sidebar .nav-section-title {
+        font-size: 11px !important;
+        padding: 20px 22px 6px !important;
+        letter-spacing: 1.2px !important;
+      }
+      /* Logo section más compacta */
+      .sidebar .sidebar-logo {
+        padding: 22px 22px 18px !important;
+      }
+      /* Footer */
+      .sidebar .sidebar-footer {
+        padding: 16px 22px !important;
+      }
+      .sidebar .athlete-info .name { font-size: 15px !important; }
+      .sidebar .athlete-info .ftp  { font-size: 12px !important; }
+      /* Light theme */
+      body.light-theme .sidebar .nav-item { color: #1a1d26 !important; border-bottom-color: rgba(0,0,0,0.06) !important; }
+      body.light-theme .sidebar .nav-item::after { color: rgba(0,0,0,0.2); }
+      body.light-theme .sidebar .nav-item i { color: rgba(0,0,0,0.4) !important; }
       
       /* Overlay (Fondo oscuro al abrir el menú) */
       .sidebar-overlay {
