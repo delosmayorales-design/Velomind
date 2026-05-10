@@ -2086,8 +2086,8 @@ document.addEventListener('DOMContentLoaded', () => {
       .sidebar {
         position: fixed !important;
         top: 0; left: 0; bottom: 0;
-        width: 88vw !important;
-        max-width: 360px !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
         transform: translateX(-100%) !important;
         transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1) !important;
         z-index: 9999 !important;
@@ -2151,6 +2151,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       .sidebar .athlete-info .name { font-size: 15px !important; }
       .sidebar .athlete-info .ftp  { font-size: 12px !important; }
+      /* Botón × para cerrar el sidebar */
+      .sidebar-close-btn {
+        display: flex !important;
+        align-items: center; justify-content: center;
+        width: 36px; height: 36px;
+        background: rgba(255,255,255,0.08);
+        border: none; border-radius: 50%;
+        color: rgba(255,255,255,0.65);
+        font-size: 16px; cursor: pointer;
+        margin-left: auto; flex-shrink: 0;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 0.15s, transform 0.12s;
+      }
+      .sidebar-close-btn:active { background: rgba(255,255,255,0.15); transform: scale(0.9); }
+      body.light-theme .sidebar-close-btn { color: rgba(0,0,0,0.55); background: rgba(0,0,0,0.07); }
       /* Light theme */
       body.light-theme .sidebar .nav-item { color: #1a1d26 !important; border-bottom-color: rgba(0,0,0,0.06) !important; }
       body.light-theme .sidebar .nav-item::after { color: rgba(0,0,0,0.2); }
@@ -2363,6 +2378,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.sidebar a').forEach(link => {
       link.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
     });
+
+    // Botón × para cerrar el sidebar en móvil
+    const sidebarLogo = document.querySelector('.sidebar-logo');
+    if (sidebarLogo) {
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'sidebar-close-btn';
+      closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+      closeBtn.onclick = () => document.body.classList.remove('sidebar-open');
+      sidebarLogo.appendChild(closeBtn);
+    }
 
     const overlay = document.createElement('div');
     overlay.className = 'sidebar-overlay';
