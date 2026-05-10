@@ -380,13 +380,13 @@ function renderActivities(activities) {
       + '</td></tr>';
   }).join('');
   container.innerHTML = '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Actividad</th><th>Fecha</th><th>Duracion</th><th>Distancia</th><th>Pot. Media</th><th>NP</th><th>IF</th><th>FC Media</th><th>Cad.</th><th>Desnivel</th><th>TSS</th><th>kcal</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
-  container.querySelector('table').addEventListener('click', function(e) {
-    const btn = e.target.closest('button[data-action]');
-    const row = e.target.closest('tr[data-id]');
-    if (!row) return;
-    const id = row.dataset.id;
-    if (btn && btn.dataset.action === 'delete') { e.stopPropagation(); confirmDelete(id); }
-    else if (!btn) showActivityDetail(id);
+  container.querySelectorAll('tr[data-id]').forEach(function(row) {
+    var id = row.dataset.id;
+    row.addEventListener('click', function() { showActivityDetail(id); });
+    var delBtn = row.querySelector('[data-action="delete"]');
+    if (delBtn) delBtn.addEventListener('click', function(e) { e.stopPropagation(); confirmDelete(id); });
+    var detBtn = row.querySelector('[data-action="detail"]');
+    if (detBtn) detBtn.addEventListener('click', function(e) { e.stopPropagation(); showActivityDetail(id); });
   });
 }
 
