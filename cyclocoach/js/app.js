@@ -2151,25 +2151,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       .sidebar .athlete-info .name { font-size: 15px !important; }
       .sidebar .athlete-info .ftp  { font-size: 12px !important; }
-      /* Botón × para cerrar el sidebar */
-      .sidebar-close-btn {
-        display: flex !important;
-        align-items: center; justify-content: center;
-        width: 36px; height: 36px;
-        background: rgba(255,255,255,0.08);
-        border: none; border-radius: 50%;
-        color: rgba(255,255,255,0.65);
-        font-size: 16px; cursor: pointer;
-        margin-left: auto; flex-shrink: 0;
-        -webkit-tap-highlight-color: transparent;
-        transition: background 0.15s, transform 0.12s;
-      }
-      .sidebar-close-btn:active { background: rgba(255,255,255,0.15); transform: scale(0.9); }
-      body.light-theme .sidebar-close-btn { color: rgba(0,0,0,0.55); background: rgba(0,0,0,0.07); }
       /* Light theme */
-      body.light-theme .sidebar .nav-item { color: #1a1d26 !important; border-bottom-color: rgba(0,0,0,0.06) !important; }
-      body.light-theme .sidebar .nav-item::after { color: rgba(0,0,0,0.2); }
-      body.light-theme .sidebar .nav-item i { color: rgba(0,0,0,0.4) !important; }
+      body.light-theme .sidebar .nav-item { color: #1a2e18 !important; border-bottom-color: rgba(0,0,0,0.06) !important; }
+      body.light-theme .sidebar .nav-item::after { color: rgba(0,0,0,0.25); }
+      body.light-theme .sidebar .nav-item i { color: #2D5016 !important; }
+      body.light-theme .sidebar .nav-item.active i { color: #4d7a00 !important; }
       
       /* Overlay (Fondo oscuro al abrir el menú) */
       .sidebar-overlay {
@@ -2357,8 +2343,8 @@ document.addEventListener('DOMContentLoaded', () => {
       .bottom-nav-item.active { color: var(--primary, #9ED62B); }
       .bottom-nav-item.active i { filter: drop-shadow(0 0 6px rgba(158,214,43,0.55)); }
       .bottom-nav-item i { font-size: 19px; }
-      body.light-theme .bottom-nav-item { color: rgba(0,0,0,0.38); }
-      body.light-theme .bottom-nav-item.active { color: #7ab822; }
+      body.light-theme .bottom-nav-item { color: rgba(0,0,0,0.62); }
+      body.light-theme .bottom-nav-item.active { color: #4d7a00; }
     }
     
     /* Diseño del Botón Hamburguesa */
@@ -2379,15 +2365,30 @@ document.addEventListener('DOMContentLoaded', () => {
       link.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
     });
 
-    // Botón × para cerrar el sidebar en móvil
-    const sidebarLogo = document.querySelector('.sidebar-logo');
-    if (sidebarLogo) {
-      const closeBtn = document.createElement('button');
-      closeBtn.className = 'sidebar-close-btn';
-      closeBtn.innerHTML = '<i class="fas fa-times"></i>';
-      closeBtn.onclick = () => document.body.classList.remove('sidebar-open');
-      sidebarLogo.appendChild(closeBtn);
-    }
+    // Swipe para abrir/cerrar el sidebar
+    let _swipeStartX = null;
+    let _swipeStartY = null;
+    document.addEventListener('touchstart', e => {
+      _swipeStartX = e.touches[0].clientX;
+      _swipeStartY = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+      if (_swipeStartX === null) return;
+      const dx = e.changedTouches[0].clientX - _swipeStartX;
+      const dy = e.changedTouches[0].clientY - _swipeStartY;
+      // Solo activar si el movimiento es más horizontal que vertical
+      if (Math.abs(dx) < Math.abs(dy) * 1.2 || Math.abs(dx) < 40) return;
+      const sidebarOpen = document.body.classList.contains('sidebar-open');
+      if (dx > 0 && !sidebarOpen && _swipeStartX < 40) {
+        // Deslizar derecha desde el borde izquierdo → abrir
+        document.body.classList.add('sidebar-open');
+      } else if (dx < 0 && sidebarOpen) {
+        // Deslizar izquierda → cerrar
+        document.body.classList.remove('sidebar-open');
+      }
+      _swipeStartX = null;
+      _swipeStartY = null;
+    }, { passive: true });
 
     const overlay = document.createElement('div');
     overlay.className = 'sidebar-overlay';

@@ -1229,8 +1229,11 @@ html.light-theme body {
 
 html.light-theme .sidebar { background: #F7F5F0 !important; }
 html.light-theme .sidebar .nav-item { color: #2D5016 !important; }
+html.light-theme .sidebar .nav-item i { color: #2D5016 !important; }
 html.light-theme .sidebar .nav-item:hover { background: rgba(45,80,22,0.08) !important; color: #1A3A0A !important; }
+html.light-theme .sidebar .nav-item:hover i { color: #1A3A0A !important; }
 html.light-theme .sidebar .nav-item.active { background: rgba(45,80,22,0.14) !important; color: #1A3A0A !important; font-weight: 600 !important; }
+html.light-theme .sidebar .nav-item.active i { color: #4d7a00 !important; }
 html.light-theme .sidebar .nav-section-title { color: rgba(45,80,22,0.45) !important; }
 html.light-theme .sidebar .athlete-info .name { color: #1A3A0A !important; }
 html.light-theme .sidebar .athlete-info .ftp { color: #2D5016 !important; }

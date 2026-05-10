@@ -3451,6 +3451,123 @@ let _trkMovingTime  = 0;    // segundos en movimiento
 let _trkLastTs      = null;
 let _trkPaused      = false; // auto-pause activo
 let _trkPauseCount  = 0;     // lecturas consecutivas lentas
+let _trkGpsLost     = false; // señal GPS perdida
+let _trkGpsRetry    = null;  // timeout para reintentar watchPosition
+let _trkBackupTimer = null;  // intervalo de backup en IndexedDB
+
+// ── IndexedDB backup ──────────────────────────────────────────────
+const _IDB_NAME = 'velotrack_v1';
+
+function _openTrackDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(_IDB_NAME, 1);
+    r.onupgradeneeded = e => e.target.result.createObjectStore('session');
+    r.onsuccess = e => res(e.target.result);
+    r.onerror   = () => rej(r.error);
+  });
+}
+
+async function _idbPut(data) {
+  try {
+    const db = await _openTrackDB();
+    await new Promise((res, rej) => {
+      const tx = db.transaction('session', 'readwrite');
+      tx.objectStore('session').put(data, 'current');
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+    db.close();
+  } catch(e) { console.warn('[Track] IDB write:', e); }
+}
+
+async function _idbGet() {
+  try {
+    const db = await _openTrackDB();
+    const data = await new Promise((res, rej) => {
+      const tx = db.transaction('session', 'readonly');
+      const req = tx.objectStore('session').get('current');
+      req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
+    });
+    db.close();
+    return data || null;
+  } catch(e) { return null; }
+}
+
+async function _idbClear() {
+  try {
+    const db = await _openTrackDB();
+    await new Promise((res, rej) => {
+      const tx = db.transaction('session', 'readwrite');
+      tx.objectStore('session').delete('current');
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+    db.close();
+  } catch(e) {}
+}
+
+async function _saveTrackBackup() {
+  if (!_trkActive || _trkPoints.length === 0) return;
+  await _idbPut({
+    points: _trkPoints,
+    startTime: _trkStartTime,
+    dist: _trkDist,
+    elevGain: _trkElevGain,
+    maxSpeed: _trkMaxSpeed,
+    movingTime: _trkMovingTime,
+    savedAt: Date.now(),
+  });
+}
+
+async function _checkAndOfferRestore() {
+  const saved = await _idbGet();
+  if (!saved?.points?.length) return;
+  const ageMin = Math.round((Date.now() - saved.savedAt) / 60000);
+  if (ageMin > 1440) { await _idbClear(); return; } // más de 24h → descartar
+  const distKm = (saved.dist / 1000).toFixed(2);
+  const banner = document.createElement('div');
+  banner.id = 'trk-recover-banner';
+  banner.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:9000;background:#1a2e18;border:1px solid #9ed62b;border-radius:10px;padding:12px 16px;color:#eef2ff;font-size:13px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.5);max-width:340px;width:90%';
+  banner.innerHTML = `
+    <i class="fas fa-exclamation-triangle" style="color:#9ed62b;font-size:16px;flex-shrink:0"></i>
+    <span>Sesión GPS sin guardar (<strong>${distKm} km</strong>, hace ${ageMin} min)</span>
+    <div style="display:flex;gap:6px;margin-left:auto;flex-shrink:0">
+      <button onclick="recoverTrackSession()" style="background:#9ed62b;color:#0e1117;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer">Recuperar</button>
+      <button onclick="discardTrackBackup()" style="background:rgba(255,255,255,0.1);color:#eef2ff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">Descartar</button>
+    </div>`;
+  document.body.appendChild(banner);
+}
+
+async function recoverTrackSession() {
+  const saved = await _idbGet();
+  document.getElementById('trk-recover-banner')?.remove();
+  if (!saved?.points?.length) return;
+  _trkPoints    = saved.points;
+  _trkStartTime = saved.startTime;
+  _trkDist      = saved.dist;
+  _trkElevGain  = saved.elevGain;
+  _trkMaxSpeed  = saved.maxSpeed;
+  _trkMovingTime = saved.movingTime;
+  const elapsed  = Math.floor((Date.now() - _trkStartTime) / 1000);
+  const distKm   = _trkDist / 1000;
+  const avgSpeed = _trkMovingTime > 0 ? distKm / (_trkMovingTime / 3600) : 0;
+  const now      = new Date();
+  const dateStr  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  document.getElementById('trk-modal-name').value =
+    `Salida ${now.toLocaleDateString('es', {weekday:'long'})} ${now.toLocaleDateString('es',{day:'numeric',month:'short'})}`;
+  document.getElementById('trk-modal-summary').innerHTML = `
+    <div class="trk-card"><div class="trk-card-val">${distKm.toFixed(2)}</div><div class="trk-card-lbl">km</div></div>
+    <div class="trk-card"><div class="trk-card-val">${_fmtTime(elapsed)}</div><div class="trk-card-lbl">tiempo</div></div>
+    <div class="trk-card"><div class="trk-card-val">${avgSpeed.toFixed(1)}</div><div class="trk-card-lbl">km/h media</div></div>
+    <div class="trk-card"><div class="trk-card-val">${Math.round(_trkElevGain)}</div><div class="trk-card-lbl">D+ m</div></div>`;
+  document.getElementById('track-modal')._trkData = { elapsed, distKm, avgSpeed, dateStr };
+  document.getElementById('track-modal').style.display = '';
+  showToast(`Sesión recuperada · ${distKm.toFixed(2)} km`, 'success');
+}
+
+async function discardTrackBackup() {
+  document.getElementById('trk-recover-banner')?.remove();
+  await _idbClear();
+  showToast('Sesión anterior descartada', 'info');
+}
 
 function _haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000;
@@ -3513,6 +3630,8 @@ function _startTracking() {
 
       // Ticker cada segundo para actualizar tiempo
       _trkTimer = setInterval(_trkTick, 1000);
+      // Backup en IndexedDB cada 30s
+      _trkBackupTimer = setInterval(_saveTrackBackup, 30000);
 
       document.getElementById('tracking-hud').classList.add('visible');
       const btn = document.getElementById('btn-track');
@@ -3533,6 +3652,15 @@ function _onTrkPos(pos) {
   const { latitude: lat, longitude: lng, altitude: alt, speed, accuracy } = pos.coords;
   const ts = pos.timestamp;
   const speedKmh = speed != null ? speed * 3.6 : null;
+
+  // Señal GPS recuperada tras pérdida
+  if (_trkGpsLost) {
+    _trkGpsLost = false;
+    clearTimeout(_trkGpsRetry);
+    _trkGpsRetry = null;
+    document.getElementById('trk-gps-lost-lbl')?.remove();
+    showToast('Señal GPS recuperada', 'success');
+  }
 
   const isFirst = _trkPoints.length === 0;
 
@@ -3614,6 +3742,34 @@ function _onTrkPos(pos) {
 
 function _onTrkErr(err) {
   console.warn('[Tracking] GPS error:', err.message);
+  if (!_trkGpsLost) {
+    _trkGpsLost = true;
+    showToast('Señal GPS perdida – esperando reconexión…', 'warning');
+    // Indicador visual en el HUD
+    const hud = document.getElementById('tracking-hud');
+    if (hud && !document.getElementById('trk-gps-lost-lbl')) {
+      const lbl = document.createElement('div');
+      lbl.id = 'trk-gps-lost-lbl';
+      lbl.style.cssText = 'position:absolute;top:4px;right:44px;font-size:10px;color:#ffcc00;letter-spacing:.5px;font-weight:700';
+      lbl.textContent = 'GPS…';
+      hud.style.position = 'relative';
+      hud.appendChild(lbl);
+    }
+  }
+  // Reiniciar watchPosition tras 5s
+  if (_trkWatchId != null) {
+    navigator.geolocation.clearWatch(_trkWatchId);
+    _trkWatchId = null;
+  }
+  clearTimeout(_trkGpsRetry);
+  _trkGpsRetry = setTimeout(() => {
+    if (!_trkActive) return;
+    _trkWatchId = navigator.geolocation.watchPosition(_onTrkPos, _onTrkErr, {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 15000,
+    });
+  }, 5000);
 }
 
 function _trkTick() {
@@ -3652,6 +3808,10 @@ function _stopTracking() {
     _trkWatchId = null;
   }
   if (_trkTimer) { clearInterval(_trkTimer); _trkTimer = null; }
+  if (_trkBackupTimer) { clearInterval(_trkBackupTimer); _trkBackupTimer = null; }
+  clearTimeout(_trkGpsRetry); _trkGpsRetry = null;
+  _trkGpsLost = false;
+  document.getElementById('trk-gps-lost-lbl')?.remove();
   _trkActive = false;
 
   document.getElementById('tracking-hud').classList.remove('visible');
@@ -3702,9 +3862,10 @@ function _stopTracking() {
   document.getElementById('track-modal').style.display = '';
 }
 
-function discardTracking() {
+async function discardTracking() {
   document.getElementById('track-modal').style.display = 'none';
   _clearTrackLayers();
+  await _idbClear();
   showToast('Trayecto descartado', 'info');
 }
 
@@ -3722,7 +3883,8 @@ function _buildTrackGeoJSON() {
   const sampled = activePts.filter((_, i) => i % step === 0 || i === activePts.length - 1);
   return {
     type: 'LineString',
-    coordinates: sampled.map(p => [p.lng, p.lat]),
+    // [lon, lat, alt, timestamp] — alt=0 si no disponible; ts permite recalcular velocidad después
+    coordinates: sampled.map(p => [p.lng, p.lat, p.alt != null ? Math.round(p.alt * 10) / 10 : 0, p.ts]),
   };
 }
 
@@ -3786,6 +3948,7 @@ async function saveTrackingActivity() {
 
     document.getElementById('track-modal').style.display = 'none';
     _clearTrackLayers();
+    await _idbClear();
     await loadRoutes();   // refresca el panel izquierdo con la ruta nueva
     showToast(`Trayecto guardado · ${distKm.toFixed(2)} km`, 'success');
   } catch(e) {
@@ -3819,6 +3982,9 @@ function closeGarminOverlay() {
 function _releaseWakeLock() {
   if (_wakeLock) { _wakeLock.release().catch(() => {}); _wakeLock = null; }
 }
+
+// Verificar si hay sesión GPS sin guardar al cargar la página
+document.addEventListener('DOMContentLoaded', () => setTimeout(_checkAndOfferRestore, 800));
 
 // Re-adquirir wake lock si la página vuelve al foco
 document.addEventListener('visibilitychange', async () => {
