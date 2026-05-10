@@ -2152,10 +2152,10 @@ document.addEventListener('DOMContentLoaded', () => {
       .sidebar .athlete-info .name { font-size: 15px !important; }
       .sidebar .athlete-info .ftp  { font-size: 12px !important; }
       /* Light theme */
-      body.light-theme .sidebar .nav-item { color: #1a2e18 !important; border-bottom-color: rgba(0,0,0,0.06) !important; }
-      body.light-theme .sidebar .nav-item::after { color: rgba(0,0,0,0.25); }
-      body.light-theme .sidebar .nav-item i { color: #2D5016 !important; }
-      body.light-theme .sidebar .nav-item.active i { color: #4d7a00 !important; }
+      html.light-theme .sidebar .nav-item { color: #1a2e18 !important; border-bottom-color: rgba(0,0,0,0.06) !important; }
+      html.light-theme .sidebar .nav-item::after { color: rgba(0,0,0,0.25); }
+      html.light-theme .sidebar .nav-item i { color: #2D5016 !important; }
+      html.light-theme .sidebar .nav-item.active i { color: #4d7a00 !important; }
       
       /* Overlay (Fondo oscuro al abrir el menú) */
       .sidebar-overlay {
@@ -2325,7 +2325,7 @@ document.addEventListener('DOMContentLoaded', () => {
         opacity: 0;
         pointer-events: none;
       }
-      body.light-theme .bottom-nav {
+      html.light-theme .bottom-nav {
         background: rgba(255,255,255,0.88) !important;
         border-color: rgba(0,0,0,0.08);
         box-shadow: 0 8px 32px rgba(0,0,0,0.15), inset 0 0 0 0.5px rgba(0,0,0,0.04);
@@ -2343,8 +2343,8 @@ document.addEventListener('DOMContentLoaded', () => {
       .bottom-nav-item.active { color: var(--primary, #9ED62B); }
       .bottom-nav-item.active i { filter: drop-shadow(0 0 6px rgba(158,214,43,0.55)); }
       .bottom-nav-item i { font-size: 19px; }
-      body.light-theme .bottom-nav-item { color: rgba(0,0,0,0.62); }
-      body.light-theme .bottom-nav-item.active { color: #4d7a00; }
+      html.light-theme .bottom-nav-item { color: rgba(0,0,0,0.62); }
+      html.light-theme .bottom-nav-item.active { color: #4d7a00; }
     }
     
     /* Diseño del Botón Hamburguesa */
