@@ -4003,7 +4003,7 @@ function closeModal(id) {
     }
     #plan-side-panel.sp-open #plan-side-content { transform: translateX(0); }
     #plan-side-content .psp-btn {
-      display: flex !important; align-items: center !important;
+      display: flex !important; align-items: flex-start !important;
       gap: 13px !important; padding: 14px 20px 14px 16px !important;
       color: rgba(255,255,255,0.85) !important;
       background: transparent !important;
@@ -4018,6 +4018,22 @@ function closeModal(id) {
       margin: 0 !important; height: auto !important;
       -webkit-tap-highlight-color: transparent !important;
       transition: background 0.15s !important;
+    }
+    #plan-side-content .psp-copy {
+      display: flex !important; flex-direction: column !important;
+      gap: 3px !important; min-width: 0 !important;
+      white-space: normal !important; line-height: 1.2 !important;
+    }
+    #plan-side-content .psp-copy > span {
+      font-size: 14px !important; font-weight: 700 !important;
+      color: inherit !important;
+    }
+    #plan-side-content .psp-desc {
+      display: block !important;
+      font-size: 11px !important; font-weight: 500 !important;
+      color: rgba(255,255,255,0.52) !important;
+      line-height: 1.25 !important;
+      white-space: normal !important;
     }
     #plan-side-content .psp-btn:last-child { border-bottom: none !important; }
     #plan-side-content .psp-btn:active { background: rgba(255,255,255,0.08) !important; }
@@ -4042,9 +4058,32 @@ function closeModal(id) {
     const content = document.createElement('div');
     content.id = 'plan-side-content';
 
+    const descriptions = {
+      'sync-strava-btn': 'Trae tus últimas actividades y actualiza la carga.',
+      'btn-ai-coach': 'Analiza tu semana y propone ajustes útiles.',
+      'btn-save-plan': 'Guarda los cambios del plan actual.'
+    };
+    const titleDescriptions = {
+      'Exportar semana a Garmin': 'Descarga la semana para llevarla a Garmin.',
+      'Exportar semana a Zwift': 'Prepara entrenos compatibles con Zwift.',
+      'Regenerar plan': 'Recalcula la semana con tus datos actuales.'
+    };
+
     // Mover botones originales para conservar ids, estado visual y onclick nativos.
     Array.from(headerBtns?.children || []).forEach(child => {
       child.classList.add('psp-btn');
+      const label = child.querySelector('span');
+      const descText = descriptions[child.id] || titleDescriptions[child.getAttribute('title')] || '';
+      if (label && descText) {
+        const copy = document.createElement('span');
+        copy.className = 'psp-copy';
+        const desc = document.createElement('small');
+        desc.className = 'psp-desc';
+        desc.textContent = descText;
+        copy.appendChild(label);
+        copy.appendChild(desc);
+        child.appendChild(copy);
+      }
       content.appendChild(child);
     });
 

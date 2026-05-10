@@ -2105,9 +2105,9 @@ document.addEventListener('DOMContentLoaded', () => {
         display: flex !important;
         align-items: center !important;
         gap: 16px !important;
-        padding: 17px 22px !important;
-        font-size: 16px !important;
-        font-weight: 500 !important;
+        padding: 18px 22px !important;
+        font-size: 18px !important;
+        font-weight: 600 !important;
         border-radius: 0 !important;
         width: 100% !important;
         border-bottom: 1px solid rgba(255,255,255,0.05) !important;
@@ -2130,7 +2130,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       .sidebar .nav-item.active::after { color: var(--primary, #9ED62B); }
       .sidebar .nav-item i {
-        font-size: 17px !important;
+        font-size: 18px !important;
         width: 22px !important;
         text-align: center !important;
         color: rgba(255,255,255,0.5) !important;
@@ -2407,6 +2407,13 @@ document.addEventListener('DOMContentLoaded', () => {
       { name: 'Métricas',  icon: 'fa-chart-bar',      href: 'analytics.html' },
       { name: 'Menú',      icon: 'fa-bars',           href: '#', isMenu: true }
     ];
+
+    navItems.splice(
+      2,
+      2,
+      { name: 'Rutas',       icon: 'fa-route',         href: 'rutas.html' },
+      { name: 'Actividades', icon: 'fa-biking', href: 'activities.html' }
+    );
 
     bottomNav.innerHTML = navItems.map(item => {
       const isActive = currentPath.includes(item.href) && !item.isMenu ? 'active' : '';
