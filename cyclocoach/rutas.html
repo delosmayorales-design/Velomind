@@ -4186,13 +4186,6 @@ function _resetSensorAccumulators() {
     });
     headerActions.style.display = 'none';
 
-    // Reemplazar onclick atributos por addEventListener para máxima compatibilidad iOS
-    content.querySelectorAll('[onclick]').forEach(el => {
-      const fn = el.getAttribute('onclick');
-      el.removeAttribute('onclick');
-      el.addEventListener('click', () => { try { new Function(fn)(); } catch(e) { console.warn(e); } });
-    });
-
     panel.appendChild(content);
 
     const mapArea = document.querySelector('.map-area') || document.body;
