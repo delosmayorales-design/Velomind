@@ -612,6 +612,7 @@
       font-size: 20px; cursor: pointer; line-height: 1; padding: 0 3px;
     }
     .wd-close:hover { color: var(--text); }
+    .wd-drag-handle { display: none; }
     .wd-search-box {
       padding: 10px 12px; border-bottom: 1px solid var(--border);
       position: relative; flex-shrink: 0;
@@ -799,7 +800,16 @@
         z-index: 1300 !important;
         box-shadow: 0 -4px 24px rgba(0,0,0,.5) !important;
       }
-      #weather-drawer.open { transform: translateY(0) !important; }
+      #weather-drawer.open { transform: translateY(0); }
+      .wd-drag-handle {
+        display: block;
+        width: 44px; height: 4px;
+        background: rgba(255,255,255,0.22);
+        border-radius: 2px;
+        margin: 12px auto 6px;
+        flex-shrink: 0;
+        cursor: grab;
+      }
     }
   </style>
 </head>
@@ -1011,6 +1021,7 @@
 
       <!-- Weather Drawer -->
       <div id="weather-drawer">
+        <div class="wd-drag-handle"></div>
         <div class="wd-hdr">
           <i class="fas fa-cloud-sun" style="color:var(--primary);font-size:12px"></i>
           <span class="wd-title">Tiempo en la zona</span>
@@ -4014,6 +4025,55 @@ function _resetSensorAccumulators() {
   document.addEventListener('touchstart', function(e) {
     if (e.touches[0].clientY < 60 || e.target.closest('button')) _showMobHeader();
   }, { passive: true });
+})();
+
+// ── Swipe para cerrar/abrir el Weather Drawer (móvil) ─────────────
+(function initWeatherSwipe() {
+  const drawer = document.getElementById('weather-drawer');
+  if (!drawer) return;
+
+  let startY = 0, startOpen = false, dragging = false;
+  const THRESHOLD = 80;
+
+  const isMob = () => window.innerWidth <= 768;
+
+  drawer.addEventListener('touchstart', e => {
+    if (!isMob()) return;
+    startY    = e.touches[0].clientY;
+    startOpen = drawer.classList.contains('open');
+    dragging  = true;
+    drawer.style.transition = 'none';
+  }, { passive: true });
+
+  drawer.addEventListener('touchmove', e => {
+    if (!dragging || !isMob()) return;
+    const dy = e.touches[0].clientY - startY;
+    if (startOpen && dy > 0) {
+      // Arrastrar hacia abajo mientras está abierto → preview de cierre
+      drawer.style.transform = `translateY(${dy}px)`;
+    } else if (!startOpen && dy < 0) {
+      // Arrastrar hacia arriba mientras está cerrado → preview de apertura
+      const h = drawer.getBoundingClientRect().height || window.innerHeight * 0.72;
+      drawer.style.transform = `translateY(${Math.max(0, h + dy)}px)`;
+    }
+  }, { passive: true });
+
+  drawer.addEventListener('touchend', e => {
+    if (!dragging || !isMob()) return;
+    dragging = false;
+    drawer.style.transition = '';
+    drawer.style.transform  = '';
+
+    const dy = e.changedTouches[0].clientY - startY;
+    if (startOpen && dy > THRESHOLD) {
+      // Suficiente deslizamiento hacia abajo → cerrar
+      if (typeof toggleWeatherDrawer === 'function') toggleWeatherDrawer();
+    } else if (!startOpen && dy < -THRESHOLD) {
+      // Suficiente deslizamiento hacia arriba → abrir
+      if (typeof toggleWeatherDrawer === 'function') toggleWeatherDrawer();
+    }
+    // Si no supera el umbral, el drawer vuelve a su posición con la transición CSS
+  });
 })();
 
 // ── Panel Lateral de Herramientas (solo móvil) ─────────────────────
