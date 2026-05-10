@@ -3,7 +3,7 @@
    Design System: Apex Dark — Obsidian + Lime + Amber
    ══════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Roboto+Condensed:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
 /* ─── Design Tokens ────────────────────────────────────────── */
 :root {
@@ -86,7 +86,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Roboto Condensed', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text-primary);
   font-size: 14px;
@@ -140,7 +140,7 @@ input, select, textarea, button { font-family: inherit; }
 }
 
 .logo-text {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
@@ -220,7 +220,7 @@ input, select, textarea, button { font-family: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 700;
   font-size: 18px;
   color: #05070a;
@@ -267,7 +267,7 @@ input, select, textarea, button { font-family: inherit; }
 }
 
 .page-title h1 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
@@ -320,7 +320,7 @@ input, select, textarea, button { font-family: inherit; }
 }
 
 .card-title {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: var(--text-primary);
@@ -362,7 +362,7 @@ input, select, textarea, button { font-family: inherit; }
 }
 
 .metric-card .metric-value {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 20px;
   font-weight: 700;
   color: var(--text-primary);
@@ -423,7 +423,7 @@ a:focus:not(:focus-visible) {
   border: 1px solid transparent;
   transition: var(--transition);
   white-space: nowrap;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   letter-spacing: 0.2px;
 }
 
@@ -493,7 +493,7 @@ a:focus:not(:focus-visible) {
   border-radius: 99px;
   font-size: 11px;
   font-weight: 600;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   background: rgba(255,255,255,0.06);
   color: var(--text-secondary);
   border: 1px solid transparent;
@@ -549,7 +549,7 @@ a:focus:not(:focus-visible) {
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: 14px;
-  font-family: 'Roboto Condensed', sans-serif;
+  font-family: 'Inter', sans-serif;
   transition: var(--transition);
   outline: none;
 }
@@ -602,7 +602,7 @@ select.form-input option {
 .data-table tbody tr:hover { background: rgba(158,214,43,0.03); }
 
 .value-bold {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -618,7 +618,7 @@ select.form-input option {
 
 .zone-label {
   font-size: 11px; font-weight: 700; width: 28px; flex-shrink: 0;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .zone-range {
@@ -796,7 +796,7 @@ html.light-theme .modal-close-x:hover {
   font-size: 13px; font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .tab-btn:hover { color: var(--text-secondary); background: rgba(158,214,43,0.05); }
@@ -842,7 +842,7 @@ html.light-theme .modal-close-x:hover {
   color: var(--text-muted); margin-bottom: 4px;
 }
 .weight-stat-card .stat-value {
-  font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; color: var(--text-primary);
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 700; color: var(--text-primary);
 }
 .weight-stat-card .stat-unit { font-size: 12px; color: var(--text-muted); }
 
@@ -998,7 +998,7 @@ html.light-theme .modal-close-x:hover {
 .text-lime           { color: var(--primary-light); }
 
 .font-mono    { font-family: 'JetBrains Mono', monospace; }
-.font-display { font-family: 'Space Grotesk', sans-serif; }
+.font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
 
 .d-flex          { display: flex; }
 .d-grid          { display: grid; }
@@ -1082,7 +1082,7 @@ html.light-theme .modal-close-x:hover {
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 13px;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   cursor: pointer;
   outline: none;
   transition: var(--transition);
@@ -1104,7 +1104,7 @@ html.light-theme .modal-close-x:hover {
   font-family: 'JetBrains Mono', monospace;
 }
 .stat-chip .chip-value {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -1113,7 +1113,7 @@ html.light-theme .modal-close-x:hover {
 .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
 .stat-row:last-child { border-bottom: none; }
 .stat-row .row-label { font-size: 12px; color: var(--text-muted); }
-.stat-row .row-value { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.stat-row .row-value { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700; color: var(--text-primary); }
 
 /* ─── Empty State ────────────────────────────────────────────── */
 .empty-state {

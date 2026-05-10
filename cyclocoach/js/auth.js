@@ -437,7 +437,7 @@ const Auth = (() => {
       position:fixed;inset:0;z-index:9999;
       display:flex;align-items:center;justify-content:center;
       background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);
-      font-family:'Roboto Condensed',sans-serif;
+      font-family:'Inter',sans-serif;
     `;
     modal.innerHTML = `
       <div style="background:#13151c;border:1px solid rgba(255,107,53,0.3);border-radius:16px;
@@ -446,21 +446,21 @@ const Auth = (() => {
           style="position:absolute;top:12px;right:16px;background:none;border:none;color:#6b7280;
                  font-size:20px;cursor:pointer;">×</button>
         <div style="font-size:40px;margin-bottom:16px;">⭐</div>
-        <h3 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;
+        <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:700;
                    color:#f0f2f5;margin-bottom:10px;">Función Premium</h3>
         <p style="color:#9ca3af;font-size:14px;line-height:1.6;margin-bottom:28px;">
           Esta función utiliza IA avanzada (Claude / Gemini) y está disponible en el plan Premium.
         </p>
         <a href="pricing.html"
            style="display:block;background:#FF6B35;color:#fff;text-decoration:none;
-                  padding:13px;border-radius:10px;font-family:'Space Grotesk',sans-serif;
+                  padding:13px;border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;
                   font-weight:700;font-size:15px;margin-bottom:12px;">
           Ver planes y precios
         </a>
         <button onclick="document.getElementById('premium-modal').remove()"
           style="width:100%;background:transparent;border:1px solid rgba(255,255,255,0.08);
                  color:#6b7280;padding:11px;border-radius:10px;cursor:pointer;
-                   font-family:'Roboto Condensed',sans-serif;font-size:14px;">
+                   font-family:'Inter',sans-serif;font-size:14px;">
           Quizás más tarde
         </button>
       </div>`;

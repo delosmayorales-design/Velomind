@@ -18,7 +18,7 @@
   </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
@@ -53,7 +53,7 @@
     .logo{display:flex;align-items:center;gap:10px;margin-bottom:52px;position:relative;z-index:1;}
     .left-content{position:relative;z-index:1;flex:1;}
     .step-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(158,214,43,0.1);border:1px solid rgba(158,214,43,0.2);color:var(--primary);padding:5px 12px;border-radius:99px;font-size:12px;font-weight:600;margin-bottom:18px;}
-    .left-title{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:800;line-height:1.2;margin-bottom:14px;letter-spacing:-0.5px;}
+    .left-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:30px;font-weight:800;line-height:1.2;margin-bottom:14px;letter-spacing:-0.5px;}
     .left-title .accent{color:var(--primary);}
     .left-desc{font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:36px;}
 
@@ -63,7 +63,7 @@
     .progress-step:not(:last-child)::after{content:'';position:absolute;left:15px;top:42px;bottom:0;width:2px;background:var(--border);}
     .progress-step.done::after{background:var(--primary);}
     .progress-step.active::after{background:linear-gradient(to bottom,var(--primary),var(--border));}
-    .step-circle{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text-muted);flex-shrink:0;background:var(--bg-input);transition:var(--transition);position:relative;z-index:1;}
+    .step-circle{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;color:var(--text-muted);flex-shrink:0;background:var(--bg-input);transition:var(--transition);position:relative;z-index:1;}
     .progress-step.active .step-circle{border-color:var(--primary);color:var(--primary);background:rgba(158,214,43,0.1);box-shadow:0 0 12px rgba(158,214,43,0.25);}
     .progress-step.done .step-circle{border-color:var(--success);background:rgba(52,211,153,0.12);color:var(--success);}
     .step-info{flex:1;padding-top:5px;}
@@ -81,7 +81,7 @@
 
     .step-header{margin-bottom:26px;}
     .step-num{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--primary);margin-bottom:6px;}
-    .step-title{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--text-primary);margin-bottom:5px;}
+    .step-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:700;color:var(--text-primary);margin-bottom:5px;}
     .step-subtitle{font-size:13px;color:var(--text-muted);line-height:1.5;}
 
     /* Form elements */
@@ -106,7 +106,7 @@
     /* Buttons */
     .btn-row{display:flex;gap:10px;margin-top:22px;}
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border-radius:var(--radius-md, 8px);font-size:14px;cursor:pointer;transition:all 0.2s ease;}
-    .btn-primary{background:var(--primary);color:#111;flex:1;border:none;font-weight:700;font-family:'Space Grotesk',sans-serif;}
+    .btn-primary{background:var(--primary);color:#111;flex:1;border:none;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;}
     .btn-primary:hover{background:var(--primary-dark, #84B422);box-shadow:0 4px 16px rgba(158,214,43,0.3);transform:translateY(-1px);}
     .btn-back{background:var(--bg-input, rgba(255,255,255,0.05));color:var(--text-secondary, #cbd5e1);border:1px solid var(--border, rgba(255,255,255,0.1));font-weight:600;font-family:inherit;}
     .btn-back:hover{background:var(--bg-card-hover, rgba(255,255,255,0.08));color:var(--text-primary, #fff);border-color:var(--primary);transform:translateY(-1px);}
@@ -118,13 +118,13 @@
     /* Summary */
     .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
     .summary-stat{background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;text-align:center;}
-    .summary-stat .sv{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;}
+    .summary-stat .sv{font-family:'Plus Jakarta Sans',sans-serif;font-size:19px;font-weight:700;}
     .summary-stat .sl{font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-top:3px;}
     .zones-list{display:flex;flex-direction:column;gap:5px;margin-bottom:18px;}
     .zone-row{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-input);border-radius:var(--radius-sm);}
     .zone-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
     .zone-name{flex:1;font-size:12px;color:var(--text-secondary);}
-    .zone-watts{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;}
+    .zone-watts{font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;}
 
     @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.9); } }
 

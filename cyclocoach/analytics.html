@@ -116,7 +116,7 @@
     <!-- ESTADO VACÍO: Cuando no hay datos -->
     <div id="metrics-empty-state" class="card" style="display:none; padding: 80px 20px; text-align: center; border: 1px dashed var(--border); margin-bottom: 24px;">
       <i class="fas fa-chart-line" style="font-size: 52px; color: var(--text-muted); margin-bottom: 20px; opacity: 0.4;"></i>
-      <h2 style="font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 800; color: var(--text-primary); margin-bottom: 12px;">Sin datos de rendimiento</h2>
+      <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: var(--text-primary); margin-bottom: 12px;">Sin datos de rendimiento</h2>
       <p style="color: var(--text-muted); max-width: 480px; margin: 0 auto 32px; font-size: 15px; line-height: 1.6;">VeloMind necesita analizar tus actividades reales para calcular tu estado de forma (CTL/ATL), zonas de potencia y récords personales.</p>
       <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
         <a href="integrations.html" class="btn btn-primary" style="padding: 12px 24px"><i class="fab fa-strava"></i> Conectar con Strava</a>
@@ -1658,7 +1658,7 @@ function renderZoneRow(zone, val1, val2, unit) {
   return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;margin-bottom:6px;background:var(--bg-input);border:1px solid var(--border)">
     <div style="width:8px;height:8px;border-radius:50%;background:${zone.color};flex-shrink:0;box-shadow:0 0 6px ${zone.color}66"></div>
     <div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${zone.name}</div>
-    <div style="font-size:13px;font-weight:700;color:${zone.color};white-space:nowrap;font-family:'Space Grotesk',sans-serif">${val1}${unit}${val2 ? ' – ' + val2 + unit : '+'}</div>
+    <div style="font-size:13px;font-weight:700;color:${zone.color};white-space:nowrap;font-family:'Plus Jakarta Sans',sans-serif">${val1}${unit}${val2 ? ' – ' + val2 + unit : '+'}</div>
   </div>`;
 }
 
@@ -1937,7 +1937,7 @@ function renderPowerCurve(pc) {
       var barColor = 'rgba(196,239,68,' + barOpacity.toFixed(2) + ')';
       return '<tr>' +
         '<td class="power-table-td" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text-primary);white-space:nowrap">' + p.label + '</td>' +
-        '<td class="power-table-td" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:14px;color:#C4EF44;font-weight:800;font-family:\'Space Grotesk\',sans-serif">' + p.power + 'W</td>' +
+        '<td class="power-table-td" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:14px;color:#C4EF44;font-weight:800;font-family:\'Plus Jakarta Sans\',sans-serif">' + p.power + 'W</td>' +
         '<td class="power-table-td hide-on-mobile" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted)">' + (p.wkg || '--') + '</td>' +
         '<td class="power-table-td hide-on-mobile" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted)">' + (p.pctFTP ? p.pctFTP + '%' : '--') + '</td>' +
         '<td class="power-table-td" style="padding:10px 10px;border-bottom:1px solid var(--border);width:100%">' +

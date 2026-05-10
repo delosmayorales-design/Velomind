@@ -43,7 +43,7 @@
     .water-unit { display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 4px 5px; background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.2); border-radius:8px; width:46px; transition:all 0.25s ease; cursor:default; }
     .water-unit.filled { background:rgba(0,212,255,0.15); border-color:rgba(0,212,255,0.5); }
     .water-unit .w-icon { font-size:15px; line-height:1; }
-    .water-unit .w-time { font-size:10px; font-weight:700; color:rgba(0,212,255,0.85); font-family:'Space Grotesk',sans-serif; letter-spacing:0.2px; }
+    .water-unit .w-time { font-size:10px; font-weight:700; color:rgba(0,212,255,0.85); font-family:'Plus Jakarta Sans',sans-serif; letter-spacing:0.2px; }
 
     /* ── Timeline ────────────────────────────────────────────── */
     .timeline { position:relative; padding-left:28px; }
@@ -81,7 +81,7 @@
     .session-row:hover { background:var(--bg-card-hover); }
     .day-badge { min-width:56px; text-align:center; }
     .day-badge .dn { font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-muted); }
-    .day-badge .dd { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:var(--text-primary); line-height:1; }
+    .day-badge .dd { font-family:'Plus Jakarta Sans',sans-serif; font-size:26px; font-weight:700; color:var(--text-primary); line-height:1; }
     .session-content { flex:1; }
     .session-meta { display:flex; gap:12px; margin-top:6px; flex-wrap:wrap; }
     .meta-tag { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--text-muted); }
@@ -95,7 +95,7 @@
     .menus-section { margin-top:28px; }
     .menus-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
     .menus-title { font-size:15px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px; }
-    .btn-generate { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:12px 20px; background:var(--primary); border:none; border-radius:var(--radius-md, 8px); color:#111; font-size:14px; font-weight:700; cursor:pointer; font-family:'Space Grotesk', sans-serif; transition:all 0.2s ease; }
+    .btn-generate { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:12px 20px; background:var(--primary); border:none; border-radius:var(--radius-md, 8px); color:#111; font-size:14px; font-weight:700; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif; transition:all 0.2s ease; }
     .btn-generate:hover { background:var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .btn-generate:disabled { opacity:.5; cursor:not-allowed; }
     .prefs-panel { background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; margin-bottom:16px; display:flex; flex-direction:column; gap:12px; }
@@ -119,7 +119,7 @@
     .menu-food-amount { color:var(--text-muted); font-size:12px; }
     .menu-totals { display:flex; gap:10px; margin-top:18px; padding-top:14px; border-top:1px solid var(--border); flex-wrap:wrap; }
     .menu-total-pill { flex:1; min-width:70px; text-align:center; background:var(--bg-card); border-radius:var(--radius-sm); padding:8px 6px; }
-    .menu-total-val { font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:700; color:var(--text-primary); }
+    .menu-total-val { font-family:'Plus Jakarta Sans',sans-serif; font-size:16px; font-weight:700; color:var(--text-primary); }
     .menu-total-lbl { font-size:10px; color:var(--text-muted); margin-top:2px; }
     .menus-spinner { display:flex; align-items:center; justify-content:center; gap:12px; padding:40px; color:var(--text-muted); font-size:14px; }
     .spinner-dot { width:8px; height:8px; border-radius:50%; background:var(--primary); animation:spinBounce .8s ease-in-out infinite; }
@@ -268,7 +268,7 @@
               <div class="macro-summary-ring">
                 <canvas id="macro-chart" width="140" height="140"></canvas>
                 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
-                  <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)" id="macro-kcal-center">--</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)" id="macro-kcal-center">--</div>
                   <div style="font-size:10px;color:var(--text-muted)">kcal</div>
                 </div>
               </div>
@@ -290,11 +290,11 @@
                 </div>
                 <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
                   <div style="font-size:12px;color:var(--text-muted)">Metabolismo basal (BMR)</div>
-                  <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:var(--text-secondary)" id="bmr-display">-- kcal</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:var(--text-secondary)" id="bmr-display">-- kcal</div>
                 </div>
                 <div>
                   <div style="font-size:12px;color:var(--text-muted)">Gasto por entrenamiento</div>
-                  <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:var(--primary)" id="workout-cals-display">-- kcal</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:var(--primary)" id="workout-cals-display">-- kcal</div>
                 </div>
               </div>
             </div>
@@ -306,7 +306,7 @@
               <span class="badge badge-blue" id="hydration-badge">-- ml</span>
             </div>
             <div style="text-align:center;margin-bottom:16px">
-              <div style="font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:700;color:var(--accent)" id="hydration-total">--</div>
+              <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:36px;font-weight:700;color:var(--accent)" id="hydration-total">--</div>
               <div style="font-size:13px;color:var(--text-muted)">mililitros totales al día</div>
             </div>
             <div class="hydration-bar" id="hydration-units"></div>
@@ -445,7 +445,7 @@
     <!-- Cabecera -->
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
       <div>
-        <h2 id="mm-title" style="font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;margin-bottom:6px">🍽️ Menús del Día</h2>
+        <h2 id="mm-title" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:19px;font-weight:700;margin-bottom:6px">🍽️ Menús del Día</h2>
         <div id="mm-macros" style="display:flex;gap:14px;flex-wrap:wrap"></div>
       </div>
       <button onclick="closeMenusModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;padding:4px;line-height:1"><i class="fas fa-times"></i></button>
@@ -1150,7 +1150,7 @@ function openMenusModal(idx) {
       { val: adj.fat_g     + 'g',               lbl: 'Grasas',   color: '#FFC800' },
     ].map(p => `
       <div style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:4px 12px">
-        <span style="font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:${p.color}">${p.val}</span>
+        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;color:${p.color}">${p.val}</span>
         <span style="font-size:11px;color:var(--text-muted)">${p.lbl}</span>
       </div>`).join('');
   } else {

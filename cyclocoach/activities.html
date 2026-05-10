@@ -31,7 +31,7 @@
     .drag-active .upload-zone { border-color: var(--primary); background: rgba(255,107,53,0.08); }
     .detail-metric-mini { background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center; }
     .detail-metric-mini .label { font-size:9px;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:0.5px;margin-bottom:3px; }
-    .detail-metric-mini .value { font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;line-height:1; }
+    .detail-metric-mini .value { font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;line-height:1; }
     .detail-section-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:18px 0 10px; }
     .chart-wrap { background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px 16px; }
   </style>
@@ -215,7 +215,7 @@
 <div class="panel-overlay" id="panel-overlay" onclick="closePanel()"></div>
 <div class="activity-detail-panel" id="detail-panel">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700">Detalle Actividad</h2>
+    <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700">Detalle Actividad</h2>
     <button onclick="closePanel()" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
   </div>
   <div id="panel-content"></div>
@@ -664,7 +664,7 @@ function showActivityDetail(actId) {
   document.getElementById('panel-content').innerHTML = `
     <!-- CABECERA -->
     <div style="margin-bottom:16px">
-      <h3 style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:6px;line-height:1.2">${act.name}</h3>
+      <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:6px;line-height:1.2">${act.name}</h3>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <span class="badge badge-blue" style="font-size:9px"><i class="fas fa-file-import"></i> ${act.source}</span>
         ${zone ? `<span class="badge" style="background:${zone.color}22;color:${zone.color};border:1px solid ${zone.color}44;font-size:9px">${zone.name.split(' — ')[0]}</span>` : ''}

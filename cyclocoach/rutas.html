@@ -90,14 +90,16 @@
       width: 100%;
       aspect-ratio: 2.8 / 1;
       margin-bottom: 8px;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.10);
       background:
-        linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015)),
-        radial-gradient(circle at 18% 24%, rgba(158,214,43,0.12), transparent 32%),
+        linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015)),
+        radial-gradient(circle at 18% 24%, rgba(158,214,43,0.16), transparent 33%),
+        radial-gradient(circle at 84% 72%, rgba(56,189,248,0.11), transparent 34%),
         var(--bg-input);
       overflow: hidden;
       position: relative;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
     }
     .route-preview svg {
       width: 100%; height: 100%; display: block;
@@ -107,19 +109,47 @@
       stroke-width: 1;
       vector-effect: non-scaling-stroke;
     }
+    .route-preview-area {
+      fill: rgba(255,255,255,0.035);
+      stroke: rgba(255,255,255,0.06);
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
+    }
+    .route-preview-track-casing {
+      fill: none;
+      stroke: rgba(5,7,10,0.70);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 8;
+      vector-effect: non-scaling-stroke;
+    }
     .route-preview-track {
       fill: none;
       stroke-linecap: round;
       stroke-linejoin: round;
-      stroke-width: 4;
+      stroke-width: 4.5;
       vector-effect: non-scaling-stroke;
-      filter: drop-shadow(0 0 6px rgba(255,255,255,0.22));
+      filter: drop-shadow(0 0 8px rgba(255,255,255,0.18));
     }
     .route-preview-dot {
       fill: var(--bg-card);
       stroke: currentColor;
       stroke-width: 3;
       vector-effect: non-scaling-stroke;
+    }
+    .route-preview-end { fill: currentColor; stroke: rgba(255,255,255,0.8); }
+    .route-preview-label {
+      position: absolute;
+      right: 8px; bottom: 7px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(5,7,10,0.68);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: rgba(255,255,255,0.72);
+      font-size: 10px;
+      font-weight: 700;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
     .route-item-name {
       font-size: 13px; font-weight: 600;
@@ -180,7 +210,7 @@
     }
     .map-stats.visible { display: flex; }
     .stat-it { text-align: center; }
-    .stat-v  { font-size: 20px; font-weight: 800; color: var(--primary); font-family:'Space Grotesk',sans-serif; }
+    .stat-v  { font-size: 20px; font-weight: 800; color: var(--primary); font-family:'Plus Jakarta Sans',sans-serif; }
     .stat-l  { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top:1px; }
 
     /* Toolbar de dibujo (abajo-izquierda del mapa) */
@@ -204,7 +234,7 @@
       transition: all 0.2s ease;
     }
     .dt-btn:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); border-color: var(--primary); color: var(--text-primary, #fff); transform: translateY(-1px); }
-    .dt-btn.save { background: var(--primary); border: none; color: #111; font-weight: 700; font-family: 'Space Grotesk', sans-serif; }
+    .dt-btn.save { background: var(--primary); border: none; color: #111; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; }
     .dt-btn.save:hover { background: var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .dt-btn.del  { color: #ff4757; }
 
@@ -225,7 +255,7 @@
     .wind-card-hdr { display:flex;align-items:center;justify-content:space-between;margin-bottom:10px; }
     .wind-card-ttl { font-size:12px;font-weight:700;color:#00D4FF; }
     .wind-close    { background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1; }
-    .wind-speed    { font-size:32px;font-weight:800;font-family:'Space Grotesk',sans-serif; }
+    .wind-speed    { font-size:32px;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif; }
     .wind-dir      { font-size:12px;color:var(--text-muted);margin-bottom:10px; }
     .wind-advice   { font-size:12px;color:var(--text-primary);line-height:1.6; }
     .wind-note     { font-size:11px;color:var(--text-muted);margin-top:7px; }
@@ -301,7 +331,7 @@
       border:1px solid var(--border);
       border-radius:16px;padding:26px;width:320px;
     }
-    .modal-title { font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;color:var(--text-primary);margin-bottom:18px; }
+    .modal-title { font-family:'Plus Jakarta Sans',sans-serif;font-size:17px;font-weight:700;color:var(--text-primary);margin-bottom:18px; }
     .modal-input,.modal-select {
       width:100%;padding:9px 12px;
       background:var(--bg-input);border:1px solid var(--border);
@@ -314,7 +344,7 @@
     .modal-btn { flex:1;padding:12px 16px;border:1px solid transparent;border-radius:var(--radius-md, 8px);font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s ease; }
     .modal-btn-cancel { background:var(--bg-input, rgba(255,255,255,0.05));color:var(--text-secondary, #cbd5e1);border-color:var(--border, rgba(255,255,255,0.1)); }
     .modal-btn-cancel:hover { background:var(--bg-card-hover, rgba(255,255,255,0.08));border-color:var(--primary);color:var(--text-primary, #fff);transform:translateY(-1px); }
-    .modal-btn-save   { background:var(--primary);color:#111;font-weight:700;font-family:'Space Grotesk',sans-serif;border:none; }
+    .modal-btn-save   { background:var(--primary);color:#111;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;border:none; }
     .modal-btn-save:hover { background:var(--primary-dark, #84B422);box-shadow:0 4px 16px rgba(158,214,43,0.3);transform:translateY(-1px); }
 
     /* ── Pantalla de navegación estilo Garmin ───────────────────── */
@@ -322,7 +352,7 @@
       position: fixed; inset: 0; z-index: 4000;
       background: #000;
       display: none; flex-direction: column;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Plus Jakarta Sans', sans-serif;
       user-select: none;
       height: 100dvh;   /* cubre barra dinámica del navegador mobile */
       touch-action: none;
@@ -444,7 +474,7 @@
       background:var(--bg-card);border:1px solid var(--border);
       border-radius:16px;padding:22px;width:310px;
     }
-    .sensor-modal-title { font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;display:flex;align-items:center;gap:8px; }
+    .sensor-modal-title { font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;display:flex;align-items:center;gap:8px; }
     .sensor-modal-sub   { font-size:11px;color:var(--text-muted);margin-bottom:18px;line-height:1.5; }
     .sensor-row {
       display:flex;align-items:center;justify-content:space-between;
@@ -475,7 +505,7 @@
     }
     #trk-sensor-row.visible { display:flex; }
     .trk-s-stat { text-align:center; }
-    .trk-s-val  { font-size:15px;font-weight:800;color:#fff;font-family:'Space Grotesk',sans-serif;line-height:1; }
+    .trk-s-val  { font-size:15px;font-weight:800;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;line-height:1; }
     .trk-s-lbl  { font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.5px;margin-top:1px; }
     .trk-s-sep  { width:1px;height:24px;background:rgba(255,255,255,0.08);flex-shrink:0;align-self:center; }
 
@@ -505,7 +535,7 @@
       100% { box-shadow: 0 0 0 0 rgba(255,59,59,0); }
     }
     .trk-stat { text-align: center; min-width: 44px; }
-    .trk-val  { font-size: 18px; font-weight: 800; color: #fff; font-family:'Space Grotesk',sans-serif; line-height:1; }
+    .trk-val  { font-size: 18px; font-weight: 800; color: #fff; font-family:'Plus Jakarta Sans',sans-serif; line-height:1; }
     .trk-lbl  { font-size: 9px; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing:.5px; margin-top:2px; }
     .trk-sep  { width: 1px; height: 32px; background: rgba(255,255,255,0.1); flex-shrink:0; }
     #btn-track.recording {
@@ -534,7 +564,7 @@
       background: var(--bg-input); border-radius: 8px;
       padding: 10px 12px; text-align: center;
     }
-    #track-modal .trk-card-val { font-size: 20px; font-weight: 800; color: var(--primary); font-family:'Space Grotesk',sans-serif; }
+    #track-modal .trk-card-val { font-size: 20px; font-weight: 800; color: var(--primary); font-family:'Plus Jakarta Sans',sans-serif; }
     #track-modal .trk-card-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
 
     /* ── Leaflet override (z-index) ───────────────────────────── */
@@ -1957,6 +1987,7 @@ function routePreviewSvg(route) {
     return `<div class="route-preview" aria-hidden="true">
       <svg viewBox="0 0 220 78" preserveAspectRatio="none">
         <path class="route-preview-grid" d="M0 26H220M0 52H220M55 0V78M110 0V78M165 0V78"/>
+        <path class="route-preview-area" d="M-10 58C28 42 38 66 72 48S128 20 162 38S196 35 232 18V88H-10Z"/>
       </svg>
     </div>`;
   }
@@ -1973,15 +2004,22 @@ function routePreviewSvg(route) {
     const y = h - pad - ((lat - minLat) / latSpan) * (h - pad * 2);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(' ');
-  const [sx, sy] = pts.split(' ')[0].split(',');
+  const ptList = pts.split(' ');
+  const [sx, sy] = ptList[0].split(',');
+  const [ex, ey] = ptList[ptList.length - 1].split(',');
   const color = routeColor(route);
+  const previewLabel = route.distance_km ? `${Number(route.distance_km).toFixed(1)} km` : (route.type || 'Ruta').toUpperCase();
 
   return `<div class="route-preview" style="color:${color}" aria-hidden="true">
     <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
       <path class="route-preview-grid" d="M0 26H220M0 52H220M55 0V78M110 0V78M165 0V78"/>
+      <path class="route-preview-area" d="M-10 58C28 42 38 66 72 48S128 20 162 38S196 35 232 18V88H-10Z"/>
+      <polyline class="route-preview-track-casing" points="${pts}"/>
       <polyline class="route-preview-track" points="${pts}" stroke="${color}"/>
       <circle class="route-preview-dot" cx="${sx}" cy="${sy}" r="3.2"/>
+      <circle class="route-preview-dot route-preview-end" cx="${ex}" cy="${ey}" r="3.6"/>
     </svg>
+    <span class="route-preview-label">${previewLabel}</span>
   </div>`;
 }
 
@@ -2945,7 +2983,7 @@ function renderWindStatus(day) {
         <div style="display:flex;align-items:center;gap:14px">
           ${compassSVG(60, lvlColor, d.deg)}
       <div>
-            <div style="font-size:26px;font-weight:800;color:${lvlColor};font-family:'Space Grotesk',sans-serif;line-height:1;margin-bottom:2px">${d.spd}<span style="font-size:12px;font-weight:500"> km/h</span></div>
+            <div style="font-size:26px;font-weight:800;color:${lvlColor};font-family:'Plus Jakarta Sans',sans-serif;line-height:1;margin-bottom:2px">${d.spd}<span style="font-size:12px;font-weight:500"> km/h</span></div>
             <div style="font-weight:700;color:var(--text-primary);font-size:12px">Desde el ${from} · Ráfagas ${d.gust} km/h${dayLabel}</div>
             <div style="color:#00D4FF;font-size:11px;margin-top:2px">
               ↗ Sal hacia el <strong>${from}</strong> · ↙ Vuelve a favor
@@ -4258,7 +4296,7 @@ function _resetSensorAccumulators() {
       border-bottom: 1px solid rgba(255,255,255,0.06) !important;
       border-radius: 0 !important;
       font-size: 14px !important; font-weight: 500 !important;
-      font-family: 'Space Grotesk', sans-serif !important;
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
       cursor: pointer !important; white-space: nowrap !important;
       width: 100% !important; box-sizing: border-box !important;
       text-align: left !important; justify-content: flex-start !important;

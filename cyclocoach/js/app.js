@@ -1470,7 +1470,7 @@ const Charts = {
     return {
       color: '#9ca3af',
       borderColor: 'rgba(255,255,255,0.07)',
-      font: { family: 'Roboto Condensed', size: 12 },
+      font: { family: 'Inter', size: 12 },
     };
   },
 
@@ -1498,7 +1498,7 @@ const Charts = {
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: { labels: { color: '#9ca3af', font: { family: 'Roboto Condensed', size: 12 }, usePointStyle: true, pointStyleWidth: 12 } },
+          legend: { labels: { color: '#9ca3af', font: { family: 'Inter', size: 12 }, usePointStyle: true, pointStyleWidth: 12 } },
           tooltip: {
             backgroundColor: '#1a1d26',
             borderColor: 'rgba(255,255,255,0.1)',
@@ -1858,7 +1858,7 @@ const DashboardUI = {
           position: relative;
           overflow: hidden;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 107, 53, 0.05);
-          font-family: 'Roboto Condensed', sans-serif;
+          font-family: 'Inter', sans-serif;
         }
         .weekly-highlight-card::before {
           content: '';
@@ -1883,7 +1883,7 @@ const DashboardUI = {
         }
         .weekly-tss { text-align: center; flex: 1; min-width: 120px; }
         .weekly-tss-val {
-          font-size: 2.4rem; font-family: 'Space Grotesk', sans-serif; font-weight: 800;
+          font-size: 2.4rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800;
           background: linear-gradient(135deg, #FF6B35 0%, #FFB088 100%);
           -webkit-background-clip: text; -webkit-text-fill-color: transparent;
           line-height: 1; margin-bottom: 5px; text-shadow: 0px 4px 15px rgba(255, 107, 53, 0.3);
@@ -1901,7 +1901,7 @@ const DashboardUI = {
         }
       </style>
       <div class="weekly-highlight-card">
-        <h3 style="color: #fff; margin-top: 0; margin-bottom: 20px; font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; display: flex; align-items: center; gap: 8px;">
+        <h3 style="color: #fff; margin-top: 0; margin-bottom: 20px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.3rem; display: flex; align-items: center; gap: 8px;">
           <i class="fas fa-fire" style="color: #FF6B35;"></i> Tu Semana
         </h3>
         <div class="weekly-content">
