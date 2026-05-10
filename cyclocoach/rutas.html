@@ -4380,6 +4380,7 @@ function _resetSensorAccumulators() {
   }
   // Mostrar al tocar en cualquier parte superior (primeros 60px) o botón
   document.addEventListener('touchstart', function(e) {
+    if (document.querySelector('.routes-panel.mob-sheet-open')) return;
     if (e.touches[0].clientY < 60 || e.target.closest('button')) _showMobHeader();
   }, { passive: true });
 })();
