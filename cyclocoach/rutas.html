@@ -4439,28 +4439,33 @@ function _resetSensorAccumulators() {
 
   const styleEl = document.createElement('style');
   styleEl.textContent = `
-    /* Tab: elemento fijo independiente — siempre recibe toques */
+    /* FAB circular — siempre visible en el lateral derecho */
     #mob-side-tab {
-      position: fixed; right: 0; top: 50%;
+      position: fixed; right: 14px; top: 50%;
       transform: translateY(-50%);
       z-index: 751;
-      width: 28px; padding: 22px 0;
-      background: rgba(10,12,18,0.92);
-      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-      border-radius: 14px 0 0 14px;
-      border: 1px solid rgba(255,255,255,0.13); border-right: none;
-      color: rgba(255,255,255,0.55); font-size: 14px; cursor: pointer;
+      width: 52px; height: 52px;
+      background: rgba(14,17,23,0.92);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.18);
+      color: rgba(255,255,255,0.82); font-size: 19px; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       -webkit-tap-highlight-color: transparent;
-      transition: background 0.15s, color 0.15s;
-      box-shadow: -4px 0 18px rgba(0,0,0,0.45);
+      transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.15s;
+      box-shadow: 0 4px 22px rgba(0,0,0,0.55);
     }
-    #mob-side-tab:active { background: rgba(255,255,255,0.12); }
-    #mob-side-tab.sp-open { background: rgba(158,214,43,0.13); color: #9ED62B; border-color: rgba(158,214,43,0.32); }
+    #mob-side-tab:active { transform: translateY(-50%) scale(0.88); }
+    #mob-side-tab.sp-open {
+      background: rgba(158,214,43,0.18);
+      color: #9ED62B;
+      border-color: rgba(158,214,43,0.50);
+      box-shadow: 0 4px 22px rgba(158,214,43,0.20);
+    }
 
-    /* Panel: solo contiene el contenido; separado del tab */
+    /* Panel: desliza desde el lateral derecho, junto al FAB */
     #mob-side-panel {
-      position: fixed; right: 28px; top: 50%;
+      position: fixed; right: 74px; top: 50%;
       transform: translateY(-50%);
       z-index: 750;
       pointer-events: none;
@@ -4527,7 +4532,7 @@ function _resetSensorAccumulators() {
     const tab = document.createElement('button');
     tab.id = 'mob-side-tab';
     tab.setAttribute('aria-label', 'Herramientas');
-    tab.innerHTML = '<i class="fas fa-sliders-h"></i>';
+    tab.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
 
     // Panel: solo el contenido deslizante
     const panel = document.createElement('div');
