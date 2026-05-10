@@ -34,10 +34,6 @@
     .detail-metric-mini .value { font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;line-height:1; }
     .detail-section-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:18px 0 10px; }
     .chart-wrap { background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px 16px; }
-    @media (max-width: 600px) {
-      .main-content { overflow-x: auto !important; }
-      #activities-list > div { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-    }
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
@@ -986,6 +982,49 @@ async function syncFromProvider(provider) {
   } catch(e) { if (btn) btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error: ' + e.message; }
   setTimeout(() => { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt" style="color:#FC4C02"></i> Importar desde Strava'; } }, 3000);
 }
+</script>
+<script>
+// Inyectar overrides DESPUÉS de que app.js aplique su CSS global (DOMContentLoaded + setTimeout)
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var s = document.createElement('style');
+    s.textContent = [
+      '@media (max-width: 768px) {',
+      /* Permitir que el contenedor padre no corte el scroll horizontal */
+      '  html, body { overflow-x: auto !important; }',
+      '  .main-content { overflow-x: visible !important; }',
+      /* Wrapper de la tabla: scroll horizontal táctil */
+      '  #activities-list > div {',
+      '    overflow-x: scroll !important;',
+      '    -webkit-overflow-scrolling: touch !important;',
+      '    max-width: calc(100vw - 28px) !important;',
+      '    width: 100% !important;',
+      '  }',
+      /* Restaurar tabla como tabla, no bloque */
+      '  #activities-list table {',
+      '    display: table !important;',
+      '    width: auto !important;',
+      '    max-width: none !important;',
+      '    min-width: 720px;',
+      '  }',
+      /* Restaurar flex horizontal dentro de celdas (ej: nombre + badge) */
+      '  #activities-list td > div[style] {',
+      '    flex-direction: row !important;',
+      '    align-items: center !important;',
+      '    text-align: left !important;',
+      '    height: auto !important;',
+      '  }',
+      /* Restaurar tamaño normal de botones dentro de la tabla */
+      '  #activities-list td button {',
+      '    width: auto !important;',
+      '    margin: 0 !important;',
+      '    padding: 4px 8px !important;',
+      '  }',
+      '}'
+    ].join('\n');
+    document.head.appendChild(s);
+  }, 0);
+});
 </script>
 </body>
 </html>
