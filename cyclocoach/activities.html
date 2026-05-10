@@ -384,14 +384,12 @@ function renderActivities(activities) {
     var id = row.dataset.id;
     row.addEventListener('click', function(e) {
       if (e.target.closest('[data-action="delete"]')) return;
-      try { showActivityDetail(id); }
-      catch(err) { alert('Error al abrir detalle:\n' + err.message + '\n\nID: ' + id); }
+      showActivityDetail(id);
     });
     var delBtn = row.querySelector('[data-action="delete"]');
     if (delBtn) delBtn.addEventListener('click', function(e) {
       e.stopPropagation();
-      try { confirmDelete(id); }
-      catch(err) { alert('Error al eliminar:\n' + err.message); }
+      confirmDelete(id);
     });
   });
 }
@@ -659,7 +657,7 @@ function generateCoachComment(act, pmcSnap, allActs) {
 }
 
 function showActivityDetail(actId) {
-  const act = allActivities.find(a => a.id === actId);
+  const act = allActivities.find(a => String(a.id) === String(actId));
   if (!act) return;
   const ftp = AppState.athlete?.ftp || 200;
   const weight = AppState.athlete?.weight || 70;
@@ -956,7 +954,7 @@ function confirmDelete(id) {
 function deleteActivity(id) {
   AppState.removeActivity(id);
   if (typeof BackendSync !== 'undefined') BackendSync.deleteActivity(id).catch(() => {});
-  allActivities = allActivities.filter(a => a.id !== id);
+  allActivities = allActivities.filter(a => String(a.id) !== String(id));
   renderActivities(allActivities);
   closePanel();
   document.getElementById('total-count').textContent = allActivities.length + ' actividades';
