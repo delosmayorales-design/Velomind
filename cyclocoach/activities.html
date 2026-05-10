@@ -682,7 +682,8 @@ function showActivityDetail(actId) {
   const npWkg  = act.np && weight ? (act.np / weight).toFixed(2) : null;
   const trimp  = act.avg_hr && act.duration ? Math.round((act.duration / 60) * (act.avg_hr / lthr) * 0.64 * Math.exp(1.92 * act.avg_hr / lthr)) : null;
 
-  const sid = act.strava_id || (act.id?.startsWith('strava_') ? act.id.replace('strava_', '') : null);
+  const idStr = String(act.id || '');
+  const sid = act.strava_id || (idStr.startsWith('strava_') ? idStr.replace('strava_', '') : null);
   const coachComment = generateCoachComment(act, pmcSnap, allActivities);
 
   document.getElementById('panel-content').innerHTML = `
@@ -799,9 +800,10 @@ function showActivityDetail(actId) {
 
   document.getElementById('detail-panel').scrollTop = 0;
   document.getElementById('detail-panel').classList.add('open');
-  document.getElementById('panel-overlay').classList.add('show');
-  document.body.style.top = `-${window.scrollY}px`;
-  document.body.style.position = 'fixed';
+  const panelOv = document.getElementById('panel-overlay');
+  panelOv.style.pointerEvents = 'none';
+  panelOv.classList.add('show');
+  setTimeout(() => { panelOv.style.pointerEvents = ''; }, 350);
   document.body.style.overflow = 'hidden';
 
   // Render charts after DOM is ready
@@ -927,11 +929,7 @@ function renderDetailCharts(act, ftp) {
 function closePanel() {
   document.getElementById('detail-panel').classList.remove('open');
   document.getElementById('panel-overlay').classList.remove('show');
-  const savedScroll = parseInt(document.body.style.top || '0') * -1;
-  document.body.style.position = '';
-  document.body.style.top = '';
   document.body.style.overflow = '';
-  window.scrollTo(0, savedScroll);
 }
 
 function confirmDelete(id) {
