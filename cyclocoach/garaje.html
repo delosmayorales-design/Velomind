@@ -326,86 +326,72 @@
       .bike-detail-header { flex-direction: column; align-items: flex-start; }
       .ci-stats { grid-template-columns: 1fr 1fr 1fr; }
       header.page-header .header-actions { display: none !important; }
-      .garage-fab { display: flex !important; }
-      .page-body { padding-bottom: 110px !important; }
+      #garage-side-tab    { display: flex !important; }
+      #garage-side-panel  { display: block !important; }
     }
 
-    /* Speed-dial FAB — solo en móvil */
-    .garage-fab {
+    /* ── Panel lateral de acciones (solo móvil) ─────────────── */
+    #garage-side-tab {
       display: none;
-      position: fixed;
-      bottom: calc(82px + env(safe-area-inset-bottom, 0px));
-      right: 18px;
+      position: fixed; right: 0; top: 50%;
+      transform: translateY(-50%);
       z-index: 9500;
-      flex-direction: column-reverse;
-      align-items: flex-end;
-      gap: 10px;
+      width: 28px; padding: 22px 0;
+      background: rgba(10,12,18,0.92);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-radius: 14px 0 0 14px;
+      border: 1px solid rgba(255,255,255,0.13); border-right: none;
+      color: rgba(255,255,255,0.55); font-size: 14px; cursor: pointer;
+      align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, color 0.15s;
+      box-shadow: -4px 0 18px rgba(0,0,0,0.45);
     }
-    .garage-fab-backdrop {
+    #garage-side-tab:active { background: rgba(255,255,255,0.12); }
+    #garage-side-tab.sp-open { background: rgba(158,214,43,0.13); color: #9ED62B; border-color: rgba(158,214,43,0.32); }
+
+    #garage-side-panel {
       display: none;
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-    }
-    .garage-fab.open .garage-fab-backdrop { display: block; }
-    .garage-fab-actions {
-      display: flex;
-      flex-direction: column-reverse;
-      gap: 8px;
-      align-items: flex-end;
-      opacity: 0;
+      position: fixed; right: 28px; top: 50%;
+      transform: translateY(-50%);
+      z-index: 9499;
       pointer-events: none;
-      transform: translateY(10px);
-      transition: opacity 0.18s ease, transform 0.18s ease;
     }
-    .garage-fab.open .garage-fab-actions {
-      opacity: 1;
-      pointer-events: auto;
-      transform: translateY(0);
+    #garage-side-panel.sp-open { pointer-events: auto; }
+
+    #garage-side-content {
+      display: flex; flex-direction: column;
+      background: rgba(9,11,17,0.95);
+      backdrop-filter: blur(30px) saturate(160%);
+      -webkit-backdrop-filter: blur(30px) saturate(160%);
+      border-radius: 18px 0 0 18px;
+      border: 1px solid rgba(255,255,255,0.10); border-right: none;
+      padding: 6px 0;
+      transform: translateX(110%);
+      transition: transform 0.37s cubic-bezier(0.34,1.56,0.64,1);
+      min-width: 195px;
+      box-shadow: -8px 0 32px rgba(0,0,0,0.60);
     }
-    .garage-fab-action {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-light);
-      border-radius: 24px;
-      padding: 10px 18px 10px 14px;
-      cursor: pointer;
-      white-space: nowrap;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-      font-family: 'Inter', sans-serif;
-      transition: transform 0.12s;
+    #garage-side-panel.sp-open #garage-side-content { transform: translateX(0); }
+
+    .gsp-btn {
+      display: flex; align-items: center;
+      gap: 13px; padding: 14px 20px 14px 16px;
+      color: rgba(255,255,255,0.85);
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 14px; font-weight: 500;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer; white-space: nowrap;
+      width: 100%; box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
     }
-    .garage-fab-action:active { transform: scale(0.96); }
-    .garage-fab-action i { font-size: 15px; width: 18px; text-align: center; }
-    .garage-fab-trigger {
-      width: 36px; height: 36px;
-      border-radius: 50%;
-      background: rgba(10,12,18,0.55);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: rgba(255,255,255,0.38);
-      font-size: 14px;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-      opacity: 0.6;
-      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s, background 0.2s, color 0.2s, border-color 0.2s, width 0.2s, height 0.2s, font-size 0.2s;
-      flex-shrink: 0;
-    }
-    .garage-fab-trigger:active { transform: scale(0.9); opacity: 1; }
-    .garage-fab.open .garage-fab-trigger {
-      transform: rotate(45deg);
-      opacity: 1;
-      width: 44px; height: 44px; font-size: 16px;
-      background: rgba(158,214,43,0.15);
-      color: var(--primary);
-      border-color: rgba(158,214,43,0.5);
-      box-shadow: 0 4px 16px rgba(158,214,43,0.25);
-    }
+    .gsp-btn:last-child { border-bottom: none; }
+    .gsp-btn:active { background: rgba(255,255,255,0.08); }
+    .gsp-btn i { width: 18px; text-align: center; font-size: 15px; flex-shrink: 0; opacity: 0.85; }
+    .gsp-btn span { font-weight: 700; }
   </style>
 </head>
 <body>
@@ -507,26 +493,25 @@
   </div>
 </main>
 
-<!-- Speed-dial FAB (solo móvil) -->
-<div class="garage-fab" id="garage-fab">
-  <div class="garage-fab-backdrop" onclick="closeFab()"></div>
-  <div class="garage-fab-actions">
-    <button class="garage-fab-action" onclick="G.exportPDF();closeFab()">
-      <i class="fas fa-file-pdf" style="color:var(--text-muted)"></i> PDF
+<!-- Panel lateral de acciones (solo móvil) -->
+<button id="garage-side-tab" onclick="toggleGarageSide()" aria-label="Acciones del garaje">
+  <i class="fas fa-sliders-h"></i>
+</button>
+<div id="garage-side-panel">
+  <div id="garage-side-content">
+    <button class="gsp-btn" onclick="G.importFromStrava();closeGarageSide()">
+      <i class="fab fa-strava" style="color:#FC4C02"></i><span>Importar Strava</span>
     </button>
-    <button class="garage-fab-action" onclick="G.syncActivities();closeFab()">
-      <i class="fas fa-sync-alt" style="color:var(--accent)"></i> Actualizar km
+    <button class="gsp-btn" onclick="G.openAddBike();closeGarageSide()">
+      <i class="fas fa-plus" style="color:var(--primary)"></i><span>Nueva bici</span>
     </button>
-    <button class="garage-fab-action" onclick="G.openAddBike();closeFab()">
-      <i class="fas fa-plus" style="color:var(--primary)"></i> Nueva bici
+    <button class="gsp-btn" onclick="G.syncActivities();closeGarageSide()">
+      <i class="fas fa-sync-alt" style="color:var(--accent)"></i><span>Actualizar km</span>
     </button>
-    <button class="garage-fab-action" onclick="G.importFromStrava();closeFab()">
-      <i class="fab fa-strava" style="color:#FC4C02"></i> Importar Strava
+    <button class="gsp-btn" onclick="G.exportPDF();closeGarageSide()">
+      <i class="fas fa-file-pdf" style="color:var(--text-muted)"></i><span>PDF</span>
     </button>
   </div>
-  <button class="garage-fab-trigger" id="garage-fab-trigger" onclick="toggleGarageFab()">
-    <i class="fas fa-plus"></i>
-  </button>
 </div>
 
 <!-- ═══════ MODAL: CHECK-IN ═══════════════════════════════════ -->
@@ -1729,12 +1714,24 @@ const G = (() => {
   return { init, showOverview, showBike, openCheckin, confirmCheckin, openEditComp, saveCompEdit, searchPrice, searchInModal, openEditBike, saveBikeConfig, openAddKm, confirmAddKm, openHistory, openModal, closeModal, syncActivities, exportPDF, importFromStrava, openAddBike, saveNewBike, deleteBike };
 })();
 
-function toggleGarageFab() {
-  document.getElementById('garage-fab')?.classList.toggle('open');
+function toggleGarageSide() {
+  const tab   = document.getElementById('garage-side-tab');
+  const panel = document.getElementById('garage-side-panel');
+  const open  = panel.classList.toggle('sp-open');
+  tab.classList.toggle('sp-open', open);
 }
-function closeFab() {
-  document.getElementById('garage-fab')?.classList.remove('open');
+function closeGarageSide() {
+  document.getElementById('garage-side-tab')?.classList.remove('sp-open');
+  document.getElementById('garage-side-panel')?.classList.remove('sp-open');
 }
+// Cerrar al pulsar fuera del panel
+document.addEventListener('click', e => {
+  const tab   = document.getElementById('garage-side-tab');
+  const panel = document.getElementById('garage-side-panel');
+  if (panel?.classList.contains('sp-open') && !tab?.contains(e.target) && !panel?.contains(e.target)) {
+    closeGarageSide();
+  }
+});
 
 document.addEventListener('DOMContentLoaded', G.init);
 
