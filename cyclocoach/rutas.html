@@ -919,9 +919,13 @@
       .draw-toolbar { left: 8px; bottom: 75px; flex-wrap: wrap; }
       .dt-btn { padding: 6px 10px; font-size: 11px; }
 
-      /* FABs visibles en móvil */
-      #mob-wind-fab { display: flex; }
-      #mob-routes-fab { display: flex; }
+      /* FABs originales — reemplazados por panel lateral */
+      #mob-wind-fab { display: none !important; }
+      #mob-routes-fab { display: none !important; }
+      /* Panel lateral de acciones */
+      #rutas-side-tab   { display: flex !important; }
+      #rutas-side-panel { display: block !important; }
+      .header-actions .btn-sm { display: none !important; }
 
       /* Wind card: bottom sheet */
       .wind-card {
@@ -959,6 +963,69 @@
         cursor: grab;
       }
     }
+
+    /* ── Panel lateral de acciones rutas (solo móvil) ────────── */
+    #rutas-side-tab {
+      display: none;
+      position: fixed; right: 0; top: 50%;
+      transform: translateY(-50%);
+      z-index: 9500;
+      width: 28px; padding: 22px 0;
+      background: rgba(10,12,18,0.92);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-radius: 14px 0 0 14px;
+      border: 1px solid rgba(255,255,255,0.13); border-right: none;
+      color: rgba(255,255,255,0.55); font-size: 14px; cursor: pointer;
+      align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, color 0.15s;
+      box-shadow: -4px 0 18px rgba(0,0,0,0.45);
+    }
+    #rutas-side-tab:active { background: rgba(255,255,255,0.12); }
+    #rutas-side-tab.sp-open { background: rgba(158,214,43,0.13); color: #9ED62B; border-color: rgba(158,214,43,0.32); }
+
+    #rutas-side-panel {
+      display: none;
+      position: fixed; right: 28px; top: 50%;
+      transform: translateY(-50%);
+      z-index: 9499;
+      pointer-events: none;
+    }
+    #rutas-side-panel.sp-open { pointer-events: auto; }
+
+    #rutas-side-content {
+      display: flex; flex-direction: column;
+      background: rgba(9,11,17,0.95);
+      backdrop-filter: blur(30px) saturate(160%);
+      -webkit-backdrop-filter: blur(30px) saturate(160%);
+      border-radius: 18px 0 0 18px;
+      border: 1px solid rgba(255,255,255,0.10); border-right: none;
+      padding: 6px 0;
+      transform: translateX(110%);
+      transition: transform 0.37s cubic-bezier(0.34,1.56,0.64,1);
+      min-width: 195px;
+      max-height: 80vh; overflow-y: auto;
+      box-shadow: -8px 0 32px rgba(0,0,0,0.60);
+    }
+    #rutas-side-panel.sp-open #rutas-side-content { transform: translateX(0); }
+
+    .rsp-btn {
+      display: flex; align-items: center;
+      gap: 13px; padding: 13px 20px 13px 16px;
+      color: rgba(255,255,255,0.85);
+      background: transparent; border: none;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 14px; font-weight: 500;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer; white-space: nowrap;
+      width: 100%; box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+    }
+    .rsp-btn:last-child { border-bottom: none; }
+    .rsp-btn:active { background: rgba(255,255,255,0.08); }
+    .rsp-btn i { width: 18px; text-align: center; font-size: 15px; flex-shrink: 0; opacity: 0.85; }
+    .rsp-btn span { font-weight: 700; }
   </style>
 </head>
 <body>
@@ -1152,18 +1219,51 @@
         <i class="fas fa-tachometer-alt"></i>
       </button>
 
-      <!-- FAB flechas de viento (solo móvil) -->
-      <button id="mob-wind-fab" onclick="toggleWindArrows()" title="Flechas de viento">
+      <!-- FAB flechas de viento (solo móvil) — oculto, reemplazado por panel lateral -->
+      <button id="mob-wind-fab" onclick="toggleWindArrows()" title="Flechas de viento" style="display:none">
         <i class="fas fa-location-arrow"></i>
       </button>
 
-      <!-- FAB panel de rutas (solo móvil) -->
-      <button id="mob-routes-fab" onclick="toggleRoutesPanel()" title="Mis rutas">
+      <!-- FAB panel de rutas (solo móvil) — oculto, reemplazado por panel lateral -->
+      <button id="mob-routes-fab" onclick="toggleRoutesPanel()" title="Mis rutas" style="display:none">
         <i class="fas fa-list-ul"></i>
       </button>
 
       <!-- Overlay oscuro al abrir panel de rutas -->
       <div id="routes-panel-overlay" onclick="closeRoutesPanel()"></div>
+
+      <!-- Panel lateral de acciones (solo móvil) -->
+      <button id="rutas-side-tab" onclick="toggleRutasSide()" aria-label="Acciones">
+        <i class="fas fa-sliders-h"></i>
+      </button>
+      <div id="rutas-side-panel">
+        <div id="rutas-side-content">
+          <button class="rsp-btn" onclick="toggleRoutesPanel();closeRutasSide()">
+            <i class="fas fa-list-ul" style="color:var(--primary)"></i><span>Rutas guardadas</span>
+          </button>
+          <button class="rsp-btn" onclick="startDrawing();closeRutasSide()">
+            <i class="fas fa-pencil-alt" style="color:var(--primary)"></i><span>Nueva ruta</span>
+          </button>
+          <button class="rsp-btn" onclick="document.getElementById('gpx-input').click();closeRutasSide()">
+            <i class="fas fa-file-import"></i><span>Importar GPX</span>
+          </button>
+          <button class="rsp-btn" onclick="toggleTracking();closeRutasSide()">
+            <i class="fas fa-circle" style="color:#ff3b3b"></i><span>Grabar ruta</span>
+          </button>
+          <button class="rsp-btn" onclick="toggleWindArrows();closeRutasSide()">
+            <i class="fas fa-location-arrow" style="color:#00D4FF"></i><span>Flechas viento</span>
+          </button>
+          <button class="rsp-btn" onclick="toggleRainLayer();closeRutasSide()">
+            <i class="fas fa-cloud-rain"></i><span>Lluvia</span>
+          </button>
+          <button class="rsp-btn" onclick="toggleWeatherDrawer();closeRutasSide()">
+            <i class="fas fa-cloud-sun"></i><span>Tiempo zona</span>
+          </button>
+          <button class="rsp-btn" onclick="openWindRouteModal();closeRutasSide()">
+            <i class="fas fa-wind" style="color:#00D4FF"></i><span>Ruta por viento</span>
+          </button>
+        </div>
+      </div>
 
       <!-- Weather Drawer -->
       <div id="weather-drawer">
@@ -4650,6 +4750,25 @@ function _resetSensorAccumulators() {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
   else build();
 })();
+
+// ── Panel lateral de acciones (móvil) ────────────────────────
+function toggleRutasSide() {
+  const tab   = document.getElementById('rutas-side-tab');
+  const panel = document.getElementById('rutas-side-panel');
+  const open  = panel.classList.toggle('sp-open');
+  tab.classList.toggle('sp-open', open);
+}
+function closeRutasSide() {
+  document.getElementById('rutas-side-tab')?.classList.remove('sp-open');
+  document.getElementById('rutas-side-panel')?.classList.remove('sp-open');
+}
+document.addEventListener('click', e => {
+  const tab   = document.getElementById('rutas-side-tab');
+  const panel = document.getElementById('rutas-side-panel');
+  if (panel?.classList.contains('sp-open') && !tab?.contains(e.target) && !panel?.contains(e.target)) {
+    closeRutasSide();
+  }
+});
 
 // Revelar página tras renderizado inicial
 requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
