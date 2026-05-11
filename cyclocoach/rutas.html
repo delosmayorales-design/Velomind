@@ -1946,7 +1946,12 @@ function importGPX(input) {
       const pts    = Array.from(xml.querySelectorAll('trkpt,rtept,wpt'));
       if (!pts.length) { alert('No se encontraron puntos en el archivo'); return; }
 
-      const latLngs = pts.map(p => [parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))]);
+      const trkSegs = Array.from(xml.querySelectorAll('trkseg'))
+        .map(seg => Array.from(seg.querySelectorAll('trkpt')).map(p => [parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))]))
+        .filter(seg => seg.length >= 2);
+      const latLngs = trkSegs.length
+        ? trkSegs.flat()
+        : pts.map(p => [parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))]);
       const elevs   = pts.map(p => { const el = p.querySelector('ele'); return el ? parseFloat(el.textContent) : null; }).filter(v => v !== null);
 
       if (!latLngs || latLngs.length < 2) {
@@ -1959,9 +1964,11 @@ function importGPX(input) {
       document.getElementById('map').classList.remove('drawing');
       document.getElementById('draw-toolbar').classList.remove('visible');
 
-      routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la,ln]) => [ln,la]) };
+      routeGeoJSON = trkSegs.length > 1
+        ? { type: 'MultiLineString', coordinates: trkSegs.map(seg => seg.map(([la,ln]) => [ln,la])) }
+        : { type: 'LineString', coordinates: latLngs.map(([la,ln]) => [ln,la]) };
       if (routeLayer) map.removeLayer(routeLayer);
-      routeLayer = L.polyline(latLngs, { color: '#10B981', weight: 4, opacity: 0.9 }).addTo(map);
+      routeLayer = L.polyline(trkSegs.length > 1 ? trkSegs : latLngs, { color: '#10B981', weight: 4, opacity: 0.9 }).addTo(map);
       map.fitBounds(routeLayer.getBounds(), { padding: [30,30] });
 
       const distKm = haversineTotal(latLngs);
@@ -2035,14 +2042,35 @@ function routeColor(route) {
   return isGps ? '#ff3b3b' : route.type === 'gravel' ? '#F59E0B' : route.type === 'mtb' ? '#10B981' : '#FF6B35';
 }
 
-function routePreviewSvg(route) {
-  const rawCoords = route?.geojson?.coordinates || [];
-  const step = Math.max(1, Math.ceil(rawCoords.length / 80));
-  const coords = rawCoords.filter((_, i) => i % step === 0);
-  if (rawCoords.length > 1 && coords[coords.length - 1] !== rawCoords[rawCoords.length - 1]) {
-    coords.push(rawCoords[rawCoords.length - 1]);
+function routeCoordSegments(geojson) {
+  if (!geojson?.coordinates) return [];
+  if (geojson.type === 'MultiLineString') {
+    return geojson.coordinates.filter(seg => Array.isArray(seg) && seg.length >= 2);
   }
-  if (coords.length < 2) {
+  if (geojson.type === 'LineString' && Array.isArray(geojson.coordinates)) {
+    return geojson.coordinates.length >= 2 ? [geojson.coordinates] : [];
+  }
+  return [];
+}
+
+function routeFlatCoords(geojson) {
+  return routeCoordSegments(geojson).flat();
+}
+
+function routeLatLngSegments(geojson) {
+  return routeCoordSegments(geojson).map(seg => seg.map(([ln, la]) => [la, ln]));
+}
+
+function routePreviewSvg(route) {
+  const rawSegments = routeCoordSegments(route?.geojson);
+  const previewSegments = rawSegments.map(seg => {
+    const step = Math.max(1, Math.ceil(seg.length / 80));
+    const sampled = seg.filter((_, i) => i % step === 0);
+    if (seg.length > 1 && sampled[sampled.length - 1] !== seg[seg.length - 1]) sampled.push(seg[seg.length - 1]);
+    return sampled;
+  }).filter(seg => seg.length >= 2);
+  const coords = previewSegments.flat();
+  if (previewSegments.length === 0 || coords.length < 2) {
     return `<div class="route-preview" aria-hidden="true">
       <svg viewBox="0 0 220 78" preserveAspectRatio="none">
         <path class="route-preview-grid" d="M0 26H220M0 52H220M55 0V78M110 0V78M165 0V78"/>
@@ -2058,12 +2086,13 @@ function routePreviewSvg(route) {
   const lonSpan = maxLon - minLon || 1;
   const latSpan = maxLat - minLat || 1;
   const w = 220, h = 78, pad = 10;
-  const pts = coords.map(([lon, lat]) => {
+  const project = ([lon, lat]) => {
     const x = pad + ((lon - minLon) / lonSpan) * (w - pad * 2);
     const y = h - pad - ((lat - minLat) / latSpan) * (h - pad * 2);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-  const ptList = pts.split(' ');
+  };
+  const segmentPts = previewSegments.map(seg => seg.map(project).join(' '));
+  const ptList = segmentPts.join(' ').split(' ');
   const [sx, sy] = ptList[0].split(',');
   const [ex, ey] = ptList[ptList.length - 1].split(',');
   const color = routeColor(route);
@@ -2073,8 +2102,8 @@ function routePreviewSvg(route) {
     <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
       <path class="route-preview-grid" d="M0 26H220M0 52H220M55 0V78M110 0V78M165 0V78"/>
       <path class="route-preview-area" d="M-10 58C28 42 38 66 72 48S128 20 162 38S196 35 232 18V88H-10Z"/>
-      <polyline class="route-preview-track-casing" points="${pts}"/>
-      <polyline class="route-preview-track" points="${pts}" stroke="${color}"/>
+      ${segmentPts.map(pts => `<polyline class="route-preview-track-casing" points="${pts}"/>`).join('')}
+      ${segmentPts.map(pts => `<polyline class="route-preview-track" points="${pts}" stroke="${color}"/>`).join('')}
       <circle class="route-preview-dot" cx="${sx}" cy="${sy}" r="3.2"/>
       <circle class="route-preview-dot route-preview-end" cx="${ex}" cy="${ey}" r="3.6"/>
     </svg>
@@ -2129,8 +2158,9 @@ function openRouteOnMap(id) {
   const route = allRoutes.find(r => r.id === id);
   if (!route?.geojson) return;
 
-  const latLngs = route.geojson.coordinates.map(([ln,la]) => [la,ln]);
-  if (!latLngs || latLngs.length < 2) {
+  const latLngSegments = routeLatLngSegments(route.geojson);
+  const flatLatLngs = latLngSegments.flat();
+  if (!flatLatLngs || flatLatLngs.length < 2) {
     showToast('La ruta guardada no tiene suficientes puntos para dibujar.', 'error');
     return;
   }
@@ -2143,7 +2173,7 @@ function openRouteOnMap(id) {
   const isGps   = route.notes?.startsWith('GPS ·');
   const color   = routeColor(route);
   if (routeLayer) map.removeLayer(routeLayer);
-  routeLayer = L.polyline(latLngs, { color, weight: 4, opacity: 0.9 }).addTo(map);
+  routeLayer = L.polyline(latLngSegments, { color, weight: 4, opacity: 0.9 }).addTo(map);
   map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
   document.getElementById('stat-dist').textContent = route.distance_km?.toFixed(1) ?? '—';
   document.getElementById('stat-elev').textContent = route.elevation_gain_m ? Math.round(route.elevation_gain_m) : '—';
@@ -2157,7 +2187,7 @@ function openRouteOnMap(id) {
     closeRoutesPanel();
     setTimeout(() => map.invalidateSize(), 280);
   }
-  fetchElevation(latLngs);
+  fetchElevation(flatLatLngs);
 }
 
 async function toggleFav(id, fav) {
@@ -2228,18 +2258,21 @@ async function shareWhatsApp(id) {
       const ctx  = out.getContext('2d');
       ctx.drawImage(tilesCanvas, 0, 0);
 
-      if (routeGeoJSON?.coordinates?.length) {
+      const shareSegments = routeCoordSegments(routeGeoJSON);
+      if (shareSegments.length) {
         const typeColors = { road: '#FF6B35', gravel: '#F59E0B', mtb: '#10B981' };
-        ctx.beginPath();
         ctx.strokeStyle = typeColors[r.type] || '#FF6B35';
         ctx.lineWidth   = 5;
         ctx.lineJoin    = 'round';
         ctx.lineCap     = 'round';
-        routeGeoJSON.coordinates.forEach(([lon, lat], i) => {
-          const pt = map.latLngToContainerPoint(L.latLng(lat, lon));
-          i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
+        shareSegments.forEach(seg => {
+          ctx.beginPath();
+          seg.forEach(([lon, lat], i) => {
+            const pt = map.latLngToContainerPoint(L.latLng(lat, lon));
+            i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
+          });
+          ctx.stroke();
         });
-        ctx.stroke();
       }
 
       // Perfil de elevación debajo del mapa
@@ -2331,9 +2364,17 @@ async function shareWhatsApp(id) {
 
 function exportGPX(id) {
   const r = allRoutes.find(r => r.id === id);
-  if (!r?.geojson?.coordinates) return;
-  const trkpts = r.geojson.coordinates.map(([ln,la]) => `    <trkpt lat="${la}" lon="${ln}"></trkpt>`).join('\n');
-  const blob   = new Blob([`<?xml version="1.0"?>\n<gpx version="1.1" creator="VeloMind"><trk><name>${escHtml(r.name)}</name><trkseg>\n${trkpts}\n</trkseg></trk></gpx>`], { type:'application/gpx+xml' });
+  const segments = routeCoordSegments(r?.geojson);
+  if (!segments.length) return;
+  const trksegs = segments.map(seg => {
+    const trkpts = seg.map(([ln, la, ele, ts]) => {
+      const eleTag = Number.isFinite(ele) && ele !== 0 ? `<ele>${ele}</ele>` : '';
+      const timeTag = ts ? `<time>${new Date(ts).toISOString()}</time>` : '';
+      return `    <trkpt lat="${la}" lon="${ln}">${eleTag}${timeTag}</trkpt>`;
+    }).join('\n');
+    return `  <trkseg>\n${trkpts}\n  </trkseg>`;
+  }).join('\n');
+  const blob   = new Blob([`<?xml version="1.0"?>\n<gpx version="1.1" creator="VeloMind"><trk><name>${escHtml(r.name)}</name>\n${trksegs}\n</trk></gpx>`], { type:'application/gpx+xml' });
   Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: r.name.replace(/\s+/g,'_')+'.gpx' }).click();
 }
 
@@ -3535,6 +3576,7 @@ let _trkGpsLost     = false; // señal GPS perdida
 let _trkGpsRetry    = null;  // timeout para reintentar watchPosition
 let _trkBackupTimer = null;  // intervalo de backup en IndexedDB
 let _trkAltSmooth   = null;  // altitud suavizada (EMA) para evitar saltos de pantalla
+let _trkSegmentId   = 0;     // separa pausas/reconexiones para no dibujar rectas falsas
 
 // ── IndexedDB backup ──────────────────────────────────────────────
 const _IDB_NAME = 'velotrack_v1';
@@ -3692,6 +3734,7 @@ function _startTracking() {
       _trkPaused     = false;
       _trkPauseCount = 0;
       _trkAltSmooth  = null;
+      _trkSegmentId  = 0;
       _trkPolylines  = [];
       _trkStartTime  = Date.now();
       _resetSensorAccumulators();
@@ -3758,6 +3801,13 @@ function _onTrkPos(pos) {
     const maxDist = Math.max(30, dt * 28);
     if (d > maxDist) return;
 
+    const hasTrackGap = dt > 30 && d > 50;
+    if (hasTrackGap && !_trkPaused) {
+      _trkSegmentId++;
+      _trkPolyline = L.polyline([], { color: '#ff3b3b', weight: 4, opacity: 0.85 }).addTo(map);
+      _trkPolylines.push(_trkPolyline);
+    }
+
     // Velocidad calculada desde distancia/tiempo
     const calcSpd = (d / dt) * 3.6;
     // Para auto-pause usar el MÍNIMO de GPS y calculada: evita que el ruido GPS
@@ -3785,17 +3835,22 @@ function _onTrkPos(pos) {
         if (lbl) lbl.style.display = 'none';
         _trkPolyline = L.polyline([], { color: '#ff3b3b', weight: 4, opacity: 0.85 }).addTo(map);
         _trkPolylines.push(_trkPolyline);
+        _trkSegmentId++;
       }
       // Acumular métricas solo cuando hay movimiento real
-      _trkMovingTime += dt;
-      _trkDist += d;
-      // Velocidad máxima: solo en movimiento (evita picos de ruido GPS parado)
-      const displaySpd = speedKmh ?? calcSpd;
-      if (displaySpd > _trkMaxSpeed) _trkMaxSpeed = displaySpd;
-      // Desnivel: umbral 1 m para filtrar ruido de altitud GPS
-      if (alt != null && _trkLastAlt != null) {
-        const diff = alt - _trkLastAlt;
-        if (diff > 1.0) _trkElevGain += diff;
+      if (!hasTrackGap) {
+        _trkMovingTime += dt;
+        _trkDist += d;
+      }
+      if (!hasTrackGap) {
+        // Velocidad máxima: solo en movimiento (evita picos de ruido GPS parado)
+        const displaySpd = speedKmh ?? calcSpd;
+        if (displaySpd > _trkMaxSpeed) _trkMaxSpeed = displaySpd;
+        // Desnivel: umbral 1 m para filtrar ruido de altitud GPS
+        if (alt != null && _trkLastAlt != null) {
+          const diff = alt - _trkLastAlt;
+          if (diff > 1.0) _trkElevGain += diff;
+        }
       }
     }
   }
@@ -3806,7 +3861,7 @@ function _onTrkPos(pos) {
     _trkAltSmooth = _trkAltSmooth == null ? alt : _trkAltSmooth * 0.75 + alt * 0.25;
   }
 
-  _trkPoints.push({ lat, lng, alt, ts, speed: speedKmh, paused: _trkPaused && !isFirst });
+  _trkPoints.push({ lat, lng, alt, ts, speed: speedKmh, paused: _trkPaused && !isFirst, segmentId: _trkSegmentId, accuracy });
 
   // Solo añadir a la polilínea si está en movimiento (o es el primer punto)
   if (!_trkPaused || isFirst) {
@@ -3979,18 +4034,69 @@ function _clearTrackLayers() {
   _trkPolylines = []; _trkPolyline = null;
   if (_trkMarker) { map.removeLayer(_trkMarker); _trkMarker = null; }
   _trkPoints = [];
+  _trkSegmentId = 0;
+}
+
+function _encodeTrackPoint(p) {
+  return [
+    Math.round(p.lng * 1e6) / 1e6,
+    Math.round(p.lat * 1e6) / 1e6,
+    p.alt != null ? Math.round(p.alt * 10) / 10 : 0,
+    p.ts
+  ];
+}
+
+function _thinTrackSegment(points) {
+  if (points.length <= 2) return points;
+  const reduced = [points[0]];
+  let last = points[0];
+  for (let i = 1; i < points.length - 1; i++) {
+    const p = points[i];
+    const d = _haversine(last.lat, last.lng, p.lat, p.lng);
+    const dt = Math.abs((p.ts || 0) - (last.ts || 0));
+    if (d >= 2 || dt >= 10000) {
+      reduced.push(p);
+      last = p;
+    }
+  }
+  reduced.push(points[points.length - 1]);
+  if (reduced.length <= 5000) return reduced;
+  const step = Math.ceil(reduced.length / 5000);
+  return reduced.filter((_, i) => i % step === 0 || i === reduced.length - 1);
 }
 
 function _buildTrackGeoJSON() {
-  // Solo puntos en movimiento (excluye los capturados durante autopause)
-  const activePts = _trkPoints.filter(p => !p.paused);
-  const step = Math.max(1, Math.ceil(activePts.length / 600));
-  const sampled = activePts.filter((_, i) => i % step === 0 || i === activePts.length - 1);
-  return {
-    type: 'LineString',
-    // [lon, lat, alt, timestamp] — alt=0 si no disponible; ts permite recalcular velocidad después
-    coordinates: sampled.map(p => [p.lng, p.lat, p.alt != null ? Math.round(p.alt * 10) / 10 : 0, p.ts]),
-  };
+  const segments = [];
+  let current = [];
+  let currentId = null;
+
+  _trkPoints.forEach((p, idx) => {
+    if (p.paused) {
+      if (current.length >= 2) segments.push(current);
+      current = [];
+      currentId = null;
+      return;
+    }
+    const sid = Number.isFinite(p.segmentId) ? p.segmentId : 0;
+    if (currentId !== null && sid !== currentId) {
+      if (current.length >= 2) segments.push(current);
+      current = [];
+    }
+    currentId = sid;
+    current.push(p);
+
+    const next = _trkPoints[idx + 1];
+    if (!next && current.length >= 2) segments.push(current);
+  });
+
+  const coords = segments
+    .map(seg => _thinTrackSegment(seg).map(_encodeTrackPoint))
+    .filter(seg => seg.length >= 2);
+
+  if (coords.length <= 1) {
+    return { type: 'LineString', coordinates: coords[0] || [] };
+  }
+  return { type: 'MultiLineString', coordinates: coords };
 }
 
 async function saveTrackingActivity() {
