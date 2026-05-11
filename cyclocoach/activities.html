@@ -364,7 +364,7 @@ function renderActivities(activities) {
     const tssColor = (a.tss > 100) ? 'var(--accent-red)' : (a.tss > 60) ? 'var(--primary)' : 'var(--accent-yellow)';
     const sid = a.strava_id || (a.id?.toString().startsWith('strava_') ? a.id.toString().replace('strava_', '') : null);
     const id = esc(a.id);
-    return '<tr onclick="_actClick(\'' + id + '\')" style="cursor:pointer">'
+    return '<tr data-act-id="' + id + '" style="cursor:pointer">'
       + '<td><div style="display:flex;align-items:center;gap:6px"><div class="value-bold" style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(a.name || 'Entrenamiento') + '">' + esc(a.name || 'Entrenamiento') + '</div>'
       + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.7"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '')
       + '</div><div style="display:flex;gap:4px;margin-top:2px"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + ';font-size:9px">' + esc(zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue" style="font-size:9px">' + esc(a.source || 'CSV') + '</span></div></td>'
@@ -380,11 +380,33 @@ function renderActivities(activities) {
       + '<td><span style="font-weight:700;color:' + tssColor + '">' + (a.tss || '--') + '</span></td>'
       + '<td style="color:var(--text-muted)">' + (estimatedCal(a) ? Math.round(estimatedCal(a)) + 'kcal' : '--') + '</td>'
       + '<td style="white-space:nowrap">'
-        + '<button onclick="event.stopPropagation();_actClick(\'' + id + '\')" class="btn btn-ghost btn-sm" style="padding:4px 8px" title="Detalle"><i class="fas fa-info-circle"></i></button>'
-        + '<button onclick="event.stopPropagation();confirmDelete(\'' + id + '\')" class="btn btn-ghost btn-sm" style="color:var(--accent-red);padding:4px 8px" title="Eliminar"><i class="fas fa-trash"></i></button>'
+        + '<button data-detail-id="' + id + '" class="btn btn-ghost btn-sm" style="padding:4px 8px;pointer-events:auto" title="Detalle"><i class="fas fa-info-circle"></i></button>'
+        + '<button data-delete-id="' + id + '" class="btn btn-ghost btn-sm" style="color:var(--accent-red);padding:4px 8px;pointer-events:auto" title="Eliminar"><i class="fas fa-trash"></i></button>'
       + '</td></tr>';
   }).join('');
   container.innerHTML = '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Actividad</th><th>Fecha</th><th>Duracion</th><th>Distancia</th><th>Pot. Media</th><th>NP</th><th>IF</th><th>FC Media</th><th>Cad.</th><th>Desnivel</th><th>TSS</th><th>kcal</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+
+  container.querySelectorAll('tr[data-act-id]').forEach(function(row) {
+    row.addEventListener('click', function(e) {
+      if (!e.target.closest('button')) {
+        showActivityDetail(row.getAttribute('data-act-id'));
+      }
+    });
+  });
+
+  container.querySelectorAll('button[data-detail-id]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      showActivityDetail(btn.getAttribute('data-detail-id'));
+    });
+  });
+
+  container.querySelectorAll('button[data-delete-id]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      confirmDelete(btn.getAttribute('data-delete-id'));
+    });
+  });
 }
 
 const dropZone = document.getElementById('drop-zone');
@@ -1042,8 +1064,16 @@ document.addEventListener('DOMContentLoaded', function() {
       /* Restaurar tamaño normal de botones dentro de la tabla */
       '  #activities-list td button {',
       '    width: auto !important;',
+      '    min-width: 32px !important;',
       '    margin: 0 !important;',
       '    padding: 4px 8px !important;',
+      '    pointer-events: auto !important;',
+      '    position: relative !important;',
+      '    z-index: 2 !important;',
+      '  }',
+      '  #activities-list tr[data-act-id] {',
+      '    pointer-events: auto !important;',
+      '    cursor: pointer !important;',
       '  }',
       '}'
     ].join('\n');
