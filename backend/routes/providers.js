@@ -9,10 +9,51 @@ const router  = express.Router();
 
 const STRAVA_ID     = process.env.STRAVA_CLIENT_ID;
 const STRAVA_SECRET = process.env.STRAVA_CLIENT_SECRET;
+const GARMIN_ID     = process.env.GARMIN_CLIENT_ID;
+const GARMIN_SECRET = process.env.GARMIN_CLIENT_SECRET;
 
 // ✅ REDIRECT CORRECTO (NUNCA localhost)
 const STRAVA_RDR = process.env.STRAVA_REDIRECT_URI 
   || 'https://velomind-backend.onrender.com/api/providers/strava/callback';
+const GARMIN_RDR = process.env.GARMIN_REDIRECT_URI
+  || 'https://velomind-backend.onrender.com/api/providers/garmin/callback';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://velomind-liard.vercel.app';
+const GARMIN_AUTH_URL = 'https://connect.garmin.com/oauth2Confirm';
+const GARMIN_TOKEN_URL = 'https://connectapi.garmin.com/di-oauth2-service/oauth/token';
+const GARMIN_API_BASE = process.env.GARMIN_API_BASE || 'https://apis.garmin.com/wellness-api/rest';
+
+function base64Url(input) {
+  return Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function sha256Base64Url(input) {
+  return require('crypto').createHash('sha256').update(input).digest('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function randomPkceVerifier() {
+  return require('crypto').randomBytes(48).toString('base64url');
+}
+
+function encodeState(payload) {
+  const body = base64Url(JSON.stringify(payload));
+  const sig = require('crypto')
+    .createHmac('sha256', process.env.JWT_SECRET || 'velomind-dev-secret')
+    .update(body)
+    .digest('base64url');
+  return `${body}.${sig}`;
+}
+
+function decodeState(state) {
+  const [body, sig] = String(state || '').split('.');
+  if (!body || !sig) return null;
+  const expected = require('crypto')
+    .createHmac('sha256', process.env.JWT_SECRET || 'velomind-dev-secret')
+    .update(body)
+    .digest('base64url');
+  if (sig !== expected) return null;
+  return JSON.parse(Buffer.from(body.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+}
 
 // ─── CONNECT ────────────────────────────────────────────
 
@@ -438,17 +479,226 @@ rowsToInsert.push({
 
 // ─── STATUS ─────────────────────────────────────────────
 
+// ─── GARMIN CONNECT (OAuth2 PKCE + Activity API) ─────────────
+
+router.get('/garmin/connect', requireAuth, (req, res) => {
+  if (!GARMIN_ID || !GARMIN_SECRET) {
+    return res.status(501).json({
+      error: 'Garmin no configurado',
+      detail: 'Necesitas credenciales aprobadas del Garmin Connect Developer Program.'
+    });
+  }
+
+  const codeVerifier = randomPkceVerifier();
+  const codeChallenge = sha256Base64Url(codeVerifier);
+  const state = encodeState({ userId: req.user.id, verifier: codeVerifier, ts: Date.now() });
+  const params = new URLSearchParams({
+    client_id: GARMIN_ID,
+    response_type: 'code',
+    state,
+    redirect_uri: GARMIN_RDR,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256'
+  });
+
+  res.json({ url: `${GARMIN_AUTH_URL}?${params.toString()}` });
+});
+
+async function exchangeGarminToken(params) {
+  const body = new URLSearchParams({ client_id: GARMIN_ID, client_secret: GARMIN_SECRET, ...params });
+  const r = await fetch(GARMIN_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error_description || data.error || `Garmin token HTTP ${r.status}`);
+  return data;
+}
+
+async function getGarminUserId(accessToken) {
+  const r = await fetch(`${GARMIN_API_BASE}/user/id`, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!r.ok) return null;
+  const data = await r.json().catch(() => ({}));
+  return data.userId || null;
+}
+
+async function handleGarminCallback(req, res) {
+  const { code, state, error } = req.method === 'POST' ? req.body : req.query;
+  if (error) return res.redirect(`${FRONTEND_URL}/integrations.html?garmin=error&reason=${encodeURIComponent(error)}`);
+  if (!code || !state) return res.status(400).json({ error: 'code y state requeridos' });
+
+  const decoded = decodeState(state);
+  if (!decoded?.userId || !decoded?.verifier) return res.status(400).json({ error: 'state Garmin invalido' });
+  if (Date.now() - Number(decoded.ts || 0) > 15 * 60 * 1000) return res.status(400).json({ error: 'state Garmin caducado' });
+
+  try {
+    const token = await exchangeGarminToken({
+      grant_type: 'authorization_code',
+      code,
+      code_verifier: decoded.verifier,
+      redirect_uri: GARMIN_RDR
+    });
+    const expiresAt = Math.floor(Date.now() / 1000) + Number(token.expires_in || 86400);
+    const refreshExpiresAt = token.refresh_token_expires_in
+      ? Math.floor(Date.now() / 1000) + Number(token.refresh_token_expires_in)
+      : null;
+    const garminUserId = await getGarminUserId(token.access_token);
+    const { error: dbError } = await supabase.from('users').update({
+      garmin_token: token.access_token,
+      garmin_refresh: token.refresh_token,
+      garmin_expires_at: expiresAt,
+      garmin_refresh_expires_at: refreshExpiresAt,
+      garmin_user_id: garminUserId
+    }).eq('id', decoded.userId);
+    if (dbError) throw dbError;
+
+    if (req.method === 'POST') return res.json({ message: 'Garmin conectado', userId: garminUserId });
+    res.redirect(`${FRONTEND_URL}/integrations.html?garmin=connected`);
+  } catch (e) {
+    if (req.method === 'POST') return res.status(500).json({ error: e.message });
+    res.redirect(`${FRONTEND_URL}/integrations.html?garmin=error&reason=${encodeURIComponent(e.message)}`);
+  }
+}
+
+router.get('/garmin/callback', handleGarminCallback);
+router.post('/garmin/callback', requireAuth, handleGarminCallback);
+
+async function refreshGarminIfNeeded(user) {
+  let token = user.garmin_token;
+  const expiresAt = Number(user.garmin_expires_at || 0);
+  if (expiresAt && Date.now() / 1000 <= expiresAt - 600) return token;
+  if (!user.garmin_refresh) throw new Error('Garmin necesita reconexion: falta refresh token.');
+  const data = await exchangeGarminToken({ grant_type: 'refresh_token', refresh_token: user.garmin_refresh });
+  token = data.access_token;
+  await supabase.from('users').update({
+    garmin_token: data.access_token,
+    garmin_refresh: data.refresh_token,
+    garmin_expires_at: Math.floor(Date.now() / 1000) + Number(data.expires_in || 86400),
+    garmin_refresh_expires_at: data.refresh_token_expires_in
+      ? Math.floor(Date.now() / 1000) + Number(data.refresh_token_expires_in)
+      : user.garmin_refresh_expires_at
+  }).eq('id', user.id);
+  return token;
+}
+
+function isGarminCycling(a) {
+  const type = String(a.activityType || a.activityTypeName || a.activityName || '').toLowerCase();
+  return ['cycling', 'biking', 'road_biking', 'mountain_biking', 'indoor_cycling', 'e_biking', 'gravel_cycling']
+    .some(t => type.includes(t.replace(/_/g, '')) || type.includes(t));
+}
+
+function mapGarminActivity(a, uid, ftp) {
+  const id = a.summaryId || a.activityId || a.startTimeInSeconds || a.startTimeOffsetInSeconds;
+  const startSec = Number(a.startTimeInSeconds || a.startTimeOffsetInSeconds || 0);
+  const duration = Math.round(Number(a.durationInSeconds || a.activeTimeInSeconds || a.elapsedDurationInSeconds || 0));
+  const avgPower = Math.round(Number(a.averagePowerInWatts || a.avgPower || 0));
+  const np = Math.round(Number(a.normalizedPowerInWatts || a.normPower || avgPower || 0));
+  let ifValue = 0, tss = 0;
+  if (np > 0 && duration > 0 && ftp > 0) {
+    ifValue = Math.round((np / ftp) * 100) / 100;
+    tss = Math.round((duration * np * ifValue) / (ftp * 3600) * 100);
+  }
+  return {
+    id: `garmin_${id}`,
+    user_id: uid,
+    name: String(a.activityName || a.activityType || 'Actividad Garmin').substring(0, 250),
+    type: 'cycling',
+    date: startSec ? new Date(startSec * 1000).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10),
+    duration,
+    distance: Math.round(Number(a.distanceInMeters || a.distance || 0)),
+    elevation: Math.round(Number(a.elevationGainInMeters || a.totalElevationGainInMeters || 0)),
+    avg_speed: Math.round(Number(a.averageSpeedInMetersPerSecond || 0) * 36) / 10,
+    max_speed: Math.round(Number(a.maxSpeedInMetersPerSecond || 0) * 36) / 10,
+    avg_power: Math.min(avgPower, 2500),
+    max_power: Math.min(Math.round(Number(a.maxPowerInWatts || 0)), 3500),
+    np: Math.min(np, 2500),
+    avg_hr: Math.min(Math.round(Number(a.averageHeartRateInBeatsPerMinute || a.averageHR || 0)), 250),
+    max_hr: Math.min(Math.round(Number(a.maxHeartRateInBeatsPerMinute || a.maxHR || 0)), 250),
+    avg_cadence: Math.round(Number(a.averageBikeCadenceInRoundsPerMinute || a.averageCadence || 0)),
+    calories: Math.round(Number(a.activeKilocalories || a.calories || 0)),
+    tss,
+    if_value: ifValue,
+    garmin_id: id ? String(id) : null,
+    source: 'Garmin'
+  };
+}
+
+router.post('/garmin/sync', requireAuth, async (req, res) => {
+  const uid = req.user.id;
+  const { data: user, error: userError } = await supabase.from('users').select('*').eq('id', uid).single();
+  if (userError) return res.status(500).json({ error: userError.message });
+  if (!user?.garmin_token) return res.status(400).json({ error: 'Garmin no conectado' });
+  try {
+    const token = await refreshGarminIfNeeded(user);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const start = Math.floor(Number(req.body?.since || (nowSec - 30 * 86400)));
+    const params = new URLSearchParams({
+      uploadStartTimeInSeconds: String(start),
+      uploadEndTimeInSeconds: String(nowSec)
+    });
+    const r = await fetch(`${GARMIN_API_BASE}/activities?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const raw = await r.text();
+    if (r.status === 404 || r.status === 403) {
+      return res.status(501).json({
+        error: 'Activity API no disponible para esta app Garmin.',
+        detail: 'Activa Activity API en el Developer Portal o solicita acceso/backfill a Garmin.'
+      });
+    }
+    if (!r.ok) throw new Error(`Garmin activities HTTP ${r.status}: ${raw.substring(0, 200)}`);
+    const acts = raw ? JSON.parse(raw) : [];
+    const ftp = Math.max(1, user.ftp || 200);
+    const rows = (Array.isArray(acts) ? acts : []).filter(isGarminCycling).map(a => mapGarminActivity(a, uid, ftp)).filter(a => a.garmin_id);
+    let failed = 0;
+    for (let i = 0; i < rows.length; i += 100) {
+      const chunk = rows.slice(i, i + 100);
+      const { error } = await supabase.from('activities').upsert(chunk, { onConflict: 'id' });
+      if (error) failed += chunk.length;
+    }
+    setImmediate(async () => {
+      try { await recalculatePMC(uid); } catch (err) { console.error('[Garmin Sync] PMC:', err.message); }
+    });
+    res.json({ message: 'Garmin Sync OK', downloaded: Array.isArray(acts) ? acts.length : 0, cycling_filtered: rows.length, synced: rows.length - failed, failed });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/garmin/disconnect', requireAuth, async (req, res) => {
+  try {
+    const { data: user } = await supabase.from('users').select('garmin_token').eq('id', req.user.id).single();
+    if (user?.garmin_token) {
+      await fetch(`${GARMIN_API_BASE}/user/registration`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${user.garmin_token}` }
+      }).catch(() => {});
+    }
+    await supabase.from('users').update({
+      garmin_token: null,
+      garmin_refresh: null,
+      garmin_expires_at: null,
+      garmin_refresh_expires_at: null,
+      garmin_user_id: null
+    }).eq('id', req.user.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/status', requireAuth, async (req, res) => {
   try {
     const { data: user } = await supabase
       .from('users')
-      .select('strava_token')
+      .select('strava_token, garmin_token')
       .eq('id', req.user.id)
       .single();
 
     res.json({
       strava: { connected: !!user?.strava_token, configured: !!STRAVA_ID },
-      garmin: { connected: false, configured: false }
+      garmin: { connected: !!user?.garmin_token, configured: !!GARMIN_ID }
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

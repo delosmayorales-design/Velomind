@@ -42,6 +42,7 @@
     }
     .integration-card.connected::before { opacity: 1; }
     .integration-card.connected { border-color: rgba(52,211,153,0.25); }
+    .integration-card.garmin-card::before { background: #007AC7; }
 
     .int-header {
       display: flex;
@@ -131,6 +132,38 @@
     }
     .btn-strava-sync:hover { background: #e04400; }
     .btn-strava-sync:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-garmin-connect,
+    .btn-garmin-sync {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 22px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      background: #007AC7;
+      color: white;
+      transition: all 0.2s;
+      width: fit-content;
+    }
+    .btn-garmin-connect:hover,
+    .btn-garmin-sync:hover { background: #0065a5; transform: translateY(-1px); }
+    .btn-garmin-connect:disabled,
+    .btn-garmin-sync:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .integration-note {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border: 1px solid rgba(56,189,248,0.25);
+      background: rgba(56,189,248,0.08);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.55;
+    }
 
     .btn-disconnect {
       display: inline-flex;
@@ -242,6 +275,8 @@
       .int-features { grid-template-columns: 1fr; gap: 8px; }
       .btn-strava-connect,
       .btn-strava-sync,
+      .btn-garmin-connect,
+      .btn-garmin-sync,
       .btn-disconnect { width: 100%; justify-content: center; }
       .token-row { flex-direction: column; }
       .token-row input { font-size: 16px; }
@@ -293,7 +328,7 @@
   <header class="page-header">
     <div class="page-title">
       <h1><i class="fas fa-plug" style="color:var(--primary)"></i> Integraciones</h1>
-      <p>Conecta Strava para sincronizar tus actividades automáticamente</p>
+      <p>Conecta Strava o Garmin Connect para sincronizar tus actividades</p>
     </div>
   </header>
 
@@ -332,6 +367,42 @@
       </div>
 
       <div class="sync-log" id="strava-log"></div>
+
+    </div>
+
+    <div class="integration-card garmin-card" id="card-garmin" style="margin-top:24px">
+
+      <div class="int-header">
+        <div class="int-logo" style="background:rgba(0,122,199,0.12)">
+          <i class="fas fa-stopwatch" style="color:#007AC7;font-size:24px"></i>
+        </div>
+        <div>
+          <div class="int-name">Garmin Connect</div>
+          <div class="int-tagline">Importa actividades registradas con Edge, Forerunner, Fenix y otros Garmin</div>
+          <div class="int-status disconnected" id="garmin-status">
+            <i class="fas fa-circle" style="font-size:8px"></i> No conectado
+          </div>
+        </div>
+      </div>
+
+      <div class="int-features">
+        <div class="int-feature"><i class="fas fa-check"></i> OAuth2 PKCE oficial</div>
+        <div class="int-feature"><i class="fas fa-check"></i> Sincronización de actividades</div>
+        <div class="int-feature"><i class="fas fa-check"></i> Potencia, FC y cadencia si Garmin los entrega</div>
+        <div class="int-feature"><i class="fas fa-check"></i> Actualiza TSS y PMC</div>
+      </div>
+
+      <div class="int-actions" id="garmin-actions"></div>
+
+      <div class="last-sync-row" id="garmin-last-sync" style="display:none">
+        <i class="fas fa-clock"></i> <span id="garmin-last-sync-text"></span>
+      </div>
+
+      <div class="sync-log" id="garmin-log"></div>
+
+      <div class="integration-note">
+        Garmin Connect no ofrece acceso abierto como Strava. Para activar esta integración necesitas que Garmin apruebe tu app en el Garmin Connect Developer Program y habilite Activity API para tus credenciales.
+      </div>
 
     </div>
 
@@ -402,12 +473,55 @@
     }
   }
 
+  function renderGarminDisconnected(configured = false) {
+    const card = document.getElementById('card-garmin');
+    const status = document.getElementById('garmin-status');
+    card.classList.remove('connected');
+    status.className = 'int-status disconnected';
+    status.innerHTML = configured
+      ? '<i class="fas fa-circle" style="font-size:8px"></i> Configurado, sin conectar'
+      : '<i class="fas fa-circle" style="font-size:8px"></i> Pendiente de credenciales';
+    document.getElementById('garmin-actions').innerHTML = `
+      <button class="btn-garmin-connect" id="btn-garmin-connect" onclick="connectGarmin()">
+        <i class="fas fa-stopwatch"></i> Conectar con Garmin
+      </button>
+      <button class="btn-disconnect" onclick="showGarminSetup()">
+        <i class="fas fa-circle-info"></i> Ver instrucciones
+      </button>`;
+  }
+
+  function renderGarminConnected() {
+    const card = document.getElementById('card-garmin');
+    const status = document.getElementById('garmin-status');
+    card.classList.add('connected');
+    status.className = 'int-status connected';
+    status.innerHTML = '<i class="fas fa-check-circle" style="font-size:10px"></i> Conectado';
+    document.getElementById('garmin-actions').innerHTML = `
+      <button class="btn-garmin-sync" id="btn-garmin-sync" onclick="doGarminSync()">
+        <i class="fas fa-sync-alt"></i> Sincronizar Garmin
+      </button>
+      <button class="btn-disconnect" onclick="doGarminDisconnect()">
+        <i class="fas fa-unlink"></i> Desconectar
+      </button>`;
+    const ts = localStorage.getItem('velomind_garmin_last_sync');
+    if (ts) {
+      document.getElementById('garmin-last-sync').style.display = 'flex';
+      document.getElementById('garmin-last-sync-text').textContent =
+        'Última sincronización: ' + new Date(parseInt(ts)).toLocaleString('es-ES');
+    }
+  }
+
   // ── Init estado ──────────────────────────────────────────────
   function initStatus() {
     if (localStorage.getItem('velomind_strava_connected') === '1') {
       renderConnected();
     } else {
       renderDisconnected();
+    }
+    if (localStorage.getItem('velomind_garmin_connected') === '1') {
+      renderGarminConnected();
+    } else {
+      renderGarminDisconnected(false);
     }
   }
   initStatus();
@@ -418,6 +532,12 @@
       if (s?.strava?.connected) {
         localStorage.setItem('velomind_strava_connected', '1');
         renderConnected();
+      }
+      if (s?.garmin?.connected) {
+        localStorage.setItem('velomind_garmin_connected', '1');
+        renderGarminConnected();
+      } else {
+        renderGarminDisconnected(!!s?.garmin?.configured);
       }
     }).catch(() => {});
   }
@@ -436,6 +556,16 @@
       try { await doSync(); } catch(e) {}
       toast.innerHTML = '<i class="fas fa-check-circle" style="color:#34d399"></i> <span style="color:#34d399">Strava sincronizado correctamente</span>';
       setTimeout(() => toast.remove(), 4000);
+    }
+    if (params.get('garmin') === 'connected') {
+      history.replaceState({}, '', window.location.pathname);
+      localStorage.setItem('velomind_garmin_connected', '1');
+      renderGarminConnected();
+      await doGarminSync().catch(() => {});
+    }
+    if (params.get('garmin') === 'error') {
+      history.replaceState({}, '', window.location.pathname);
+      alert('Garmin no se pudo conectar: ' + (params.get('reason') || 'error desconocido'));
     }
   })();
 
@@ -460,6 +590,40 @@
       alert('Error: ' + (e.message || 'No se pudo conectar con Strava'));
       if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Conectar con Strava'; }
     }
+  }
+
+  async function connectGarmin() {
+    const btn = document.getElementById('btn-garmin-connect');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...'; }
+    try {
+      const res = await fetch(`${window.API_URL}/providers/garmin/connect`, { headers: Auth.getHeaders() });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 501) {
+          showGarminSetup();
+          return;
+        }
+        throw new Error(data.error || 'No se pudo iniciar Garmin');
+      }
+      if (!data.url) throw new Error('Respuesta inválida del servidor');
+      window.location.href = data.url;
+    } catch(e) {
+      alert('Error: ' + (e.message || 'No se pudo conectar con Garmin'));
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-stopwatch"></i> Conectar con Garmin'; }
+    }
+  }
+
+  function showGarminSetup() {
+    alert(
+      'Para sincronizar Garmin Connect necesitas:\n\n' +
+      '1. Solicitar acceso al Garmin Connect Developer Program.\n' +
+      '2. Crear una app en Garmin Developer Portal.\n' +
+      '3. Activar Activity API para importar actividades.\n' +
+      '4. Configurar Redirect URI:\n' +
+      '   https://velomind-backend.onrender.com/api/providers/garmin/callback\n\n' +
+      'Variables en Render:\n' +
+      'GARMIN_CLIENT_ID\nGARMIN_CLIENT_SECRET\nGARMIN_REDIRECT_URI\nFRONTEND_URL'
+    );
   }
 
   function toggleTokenInput() {
@@ -528,6 +692,43 @@
     }
   }
 
+  async function doGarminSync() {
+    const log = document.getElementById('garmin-log');
+    const btn = document.getElementById('btn-garmin-sync');
+    log.innerHTML = '';
+    log.classList.add('show');
+    const addLog = (msg, type = '') => {
+      const d = document.createElement('div');
+      d.className = 'log-line ' + type;
+      d.textContent = new Date().toLocaleTimeString('es') + ' — ' + msg;
+      log.appendChild(d);
+      log.scrollTop = log.scrollHeight;
+    };
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...'; }
+    addLog('Conectando con Garmin Connect...', 'info');
+    try {
+      if (typeof BackendSync === 'undefined') throw new Error('BackendSync no disponible');
+      const result = await BackendSync.syncGarmin(msg => addLog(msg, 'info'));
+      const count = Number(result?.synced || 0);
+      addLog(`${result.downloaded || 0} actividades Garmin → ${result.cycling_filtered || 0} de ciclismo`, 'info');
+      addLog(count ? `${count} actividades importadas` : 'Todo al día o Garmin aún no entregó datos nuevos', count ? 'ok' : 'info');
+      const now = Date.now();
+      localStorage.setItem('velomind_garmin_last_sync', now.toString());
+      document.getElementById('garmin-last-sync').style.display = 'flex';
+      document.getElementById('garmin-last-sync-text').textContent =
+        'Última sincronización: ' + new Date(now).toLocaleString('es-ES');
+      if (btn) btn.innerHTML = '<i class="fas fa-check"></i> Sincronizado';
+      setTimeout(() => {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar Garmin'; }
+      }, 3000);
+    } catch(e) {
+      addLog('Error: ' + e.message, 'err');
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error — reintentar'; }
+      if (/Activity API|Garmin no configurado|501/.test(e.message)) showGarminSetup();
+    }
+  }
+
   // ── Desconectar ──────────────────────────────────────────────
   function doDisconnect() {
     if (!confirm('¿Desconectar Strava? Se mantendrán las actividades ya importadas.')) return;
@@ -537,6 +738,16 @@
     document.getElementById('strava-last-sync').style.display = 'none';
     document.getElementById('strava-log').classList.remove('show');
     renderDisconnected();
+  }
+
+  async function doGarminDisconnect() {
+    if (!confirm('¿Desconectar Garmin? Se mantendrán las actividades ya importadas.')) return;
+    await fetch(`${window.API_URL}/providers/garmin/disconnect`, { method: 'DELETE', headers: Auth.getHeaders() }).catch(() => {});
+    localStorage.removeItem('velomind_garmin_connected');
+    localStorage.removeItem('velomind_garmin_last_sync');
+    document.getElementById('garmin-last-sync').style.display = 'none';
+    document.getElementById('garmin-log').classList.remove('show');
+    renderGarminDisconnected(true);
   }
 
   // Revelar página tras renderizado inicial
