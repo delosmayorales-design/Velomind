@@ -1586,11 +1586,14 @@ Sesión planificada para ${diaRef}: tipo="${tipoSesion}", ${sesionOriginal?.dura
 ${proximaBlock}
 Input del atleta: "${contexto || 'no especificado'}".
 Carga últimos 7 días: ${recentHours.toFixed(1)}h, ${recentTSS} TSS.
-Última actividad (ayer): ${actsCompact[0] ? `TSS ${actsCompact[0].tss}, NP ${actsCompact[0].np}` : 'ninguna'}.
+HISTORIAL RECIENTE:
+- Ayer: ${actsCompact[0] ? `TSS ${actsCompact[0].tss}, NP ${actsCompact[0].np}, Tipo ${actsCompact[0].tipo}` : 'descanso'}
+- Hace 2 días: ${actsCompact[1] ? `TSS ${actsCompact[1].tss}, NP ${actsCompact[1].np}` : 'descanso'}
 
 REGLAS DE SEGURIDAD OBLIGATORIAS:
-1. Si ayer el TSS fue > CTL + 20 (sobrecarga), hoy DEBE ser descanso o recuperación suave, aunque el usuario quiera "más".
-2. Si hoy es descanso y MAÑANA tocan series (vo2max, threshold, tempo), hoy SOLO puedes recomendar Z2 suave (Endurance). PROHIBIDO series hoy si mañana hay series.
+1. ANÁLISIS DE FATIGA: Si el TSS de ayer fue > (CTL + 15) O si los últimos 2 días suman > (CTL * 2), hoy DEBES denegar intensidad. Si el usuario pide salir, recomienda SOLO Z1/Z2 suave (Endurance) max 60 min.
+2. PREVENCIÓN BACK-TO-BACK: Si mañana hay sesión de calidad (VO2, Threshold, Tempo), hoy NO puedes hacer calidad. Máximo Z2 suave.
+3. SI HOY ES DESCANSO Y EL USUARIO PIDE SALIR: Debes proponer una sesión para HOY que sea compatible con la fatiga acumulada de ayer y el entreno de mañana. No cambies el de mañana en este endpoint, céntrate en HOY.
 
 APLICA LA PRIMERA REGLA QUE COINCIDA CON EL INPUT:
 
@@ -1902,8 +1905,8 @@ Recalcular la semana optimizando rendimiento (NO solo fatiga), manteniendo estí
 ════════════════════════════════════
 CONSTRAINTS DUROS (OBLIGATORIOS)
 ════════════════════════════════════
-1. SI EL USUARIO SE EXCEDIÓ AYER: Prioriza sesiones de recuperación (Z2) los próximos 2 días para evitar el colapso del TSB.
-2. PROHIBIDO 2 días consecutivos de alta intensidad (vo2max, threshold, sprint).
+1. COMPENSACIÓN POR ACTIVIDAD EXTRA: Si el usuario entrena en un día que era de descanso (HOY), debes buscar un día de entrenamiento futuro en la semana y convertirlo en descanso ("isRest": true) para no exceder el total de días de carga previstos.
+2. PROTECCIÓN DE CALIDAD: No permitas dos sesiones de alta intensidad (Z4, Z5, Z6) en días consecutivos. Si el usuario añade una hoy, la de mañana debe pasar a ser Z2 o descanso.
    * 1 sesión VO2max o alta intensidad
    * 1 sesión threshold/tempo/sweetspot
    * 1 sesión endurance o long
