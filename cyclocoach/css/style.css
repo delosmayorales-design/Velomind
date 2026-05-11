@@ -228,6 +228,13 @@ input, select, textarea, button { font-family: inherit; }
   box-shadow: 0 0 14px rgba(158,214,43,0.35);
 }
 
+/* Reducir el tamaño del logo en el menú lateral */
+.sidebar-logo img {
+  max-width: 140px !important; /* 50% de 280px */
+  width: 100%;
+  height: auto;
+}
+
 .athlete-info .name {
   font-size: 13px;
   font-weight: 600;
