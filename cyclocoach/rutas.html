@@ -49,6 +49,10 @@
       padding: 14px 14px 10px;
       border-bottom: 1px solid var(--border);
     }
+    /* mobile-only elements — hidden on desktop */
+    .rpt-drag  { display: none; }
+    .rpt-row   { display: none; }
+    .rpt-title { font-size: 15px; font-weight: 800; color: var(--text-primary); }
     .filter-tabs {
       display: flex;
       gap: 4px;
@@ -820,41 +824,63 @@
       }
       .routes-panel.mob-sheet-open { transform: translateY(0); }
       .routes-panel-top {
-        padding: 14px 58px 12px 14px;
-        display: flex; align-items: center; gap: 8px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
         border-bottom: 1px solid var(--border);
         flex-shrink: 0;
         background: rgba(14,17,23,0.96);
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
       }
-      .filter-tabs { gap: 8px; width: 100%; }
+      .rpt-drag {
+        display: block;
+        width: 40px; height: 4px;
+        background: var(--text-muted);
+        opacity: 0.35;
+        border-radius: 2px;
+        margin: 12px auto 6px;
+        flex-shrink: 0;
+      }
+      .rpt-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 14px 10px;
+      }
+      .filter-tabs {
+        gap: 8px;
+        padding: 0 14px 14px;
+        box-sizing: border-box;
+        width: 100%;
+      }
       .filter-tab {
-        min-height: 42px;
-        padding: 10px 8px;
+        min-height: 40px;
+        padding: 8px 4px;
         border-radius: 12px;
         font-size: 13px;
-        font-weight: 800;
+        font-weight: 700;
       }
       .routes-panel-toggle { display: flex; }
       #mob-panel-toggle {
         display: flex !important;
-        position: absolute;
-        top: 12px; right: 12px;
-        width: 42px; height: 42px;
-        margin-left: 0;
+        position: static !important;
+        width: 36px; height: 36px;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
         background: rgba(255,59,59,0.14) !important;
-        border-color: rgba(255,59,59,0.38) !important;
+        border: 1px solid rgba(255,59,59,0.38) !important;
         color: #ff4757 !important;
         padding: 0 !important;
-        font-size: 15px !important;
-        justify-content: center;
+        font-size: 16px !important;
         border-radius: 50% !important;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+        cursor: pointer;
       }
-      #mob-panel-toggle i.fa-map { display: none; }
-      #mob-panel-toggle::before { content: "\\f00d"; font-family: "Font Awesome 6 Free"; font-weight: 900; }
-      #mob-panel-toggle i.fa-chevron-down { display: none; }
+      #mob-panel-toggle::before { content: none !important; }
       .routes-list {
         flex: 1;
         display: flex !important; flex-direction: column !important;
@@ -1000,17 +1026,21 @@
 
     <!-- Panel izquierdo: lista de rutas guardadas -->
     <div class="routes-panel" id="routes-panel">
-      <div class="routes-panel-top" onclick="if(window.innerWidth<=768)toggleRoutesPanel()" style="cursor:default">
-        <div class="filter-tabs">
-          <button class="filter-tab active" onclick="event.stopPropagation();filterRoutes('all',this)">Todas</button>
-          <button class="filter-tab"        onclick="event.stopPropagation();filterRoutes('road',this)">Road</button>
-          <button class="filter-tab"        onclick="event.stopPropagation();filterRoutes('gravel',this)">Gravel</button>
-          <button class="filter-tab"        onclick="event.stopPropagation();filterRoutes('mtb',this)">MTB</button>
-          <button id="mob-panel-toggle" onclick="event.stopPropagation();toggleRoutesPanel()" title="Ver rutas"
-            style="display:none;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);padding:4px 8px;cursor:pointer;font-size:11px;align-items:center;gap:4px;flex-shrink:0;">
-            <i class="fas fa-map" style="font-size:10px"></i>
-            <i class="fas fa-chevron-down" id="mob-panel-chevron" style="font-size:9px;transition:transform .25s"></i>
+      <div class="routes-panel-top">
+        <!-- drag handle & title — solo visible en móvil -->
+        <div class="rpt-drag" aria-hidden="true"></div>
+        <div class="rpt-row">
+          <span class="rpt-title">Rutas guardadas</span>
+          <button id="mob-panel-toggle" onclick="toggleRoutesPanel()" title="Cerrar panel" style="display:none;">
+            <i class="fas fa-xmark"></i>
           </button>
+        </div>
+        <!-- tabs de filtro -->
+        <div class="filter-tabs">
+          <button class="filter-tab active" onclick="filterRoutes('all',this)">Todas</button>
+          <button class="filter-tab"        onclick="filterRoutes('road',this)">Road</button>
+          <button class="filter-tab"        onclick="filterRoutes('gravel',this)">Gravel</button>
+          <button class="filter-tab"        onclick="filterRoutes('mtb',this)">MTB</button>
         </div>
       </div>
       <div class="routes-list" id="routes-list">
