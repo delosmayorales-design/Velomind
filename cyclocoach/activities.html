@@ -386,27 +386,6 @@ function renderActivities(activities) {
   }).join('');
   container.innerHTML = '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Actividad</th><th>Fecha</th><th>Duracion</th><th>Distancia</th><th>Pot. Media</th><th>NP</th><th>IF</th><th>FC Media</th><th>Cad.</th><th>Desnivel</th><th>TSS</th><th>kcal</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 
-  container.querySelectorAll('tr[data-act-id]').forEach(function(row) {
-    row.addEventListener('click', function(e) {
-      if (!e.target.closest('button')) {
-        showActivityDetail(row.getAttribute('data-act-id'));
-      }
-    });
-  });
-
-  container.querySelectorAll('button[data-detail-id]').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      showActivityDetail(btn.getAttribute('data-detail-id'));
-    });
-  });
-
-  container.querySelectorAll('button[data-delete-id]').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      confirmDelete(btn.getAttribute('data-delete-id'));
-    });
-  });
 }
 
 const dropZone = document.getElementById('drop-zone');
@@ -689,11 +668,17 @@ function showActivityDetail(actId) {
   const tsbColor = (typeof tsb === 'number') ? (tsb > 5 ? '#10b981' : tsb > -10 ? '#9ED62B' : tsb > -20 ? '#f59e0b' : '#ef4444') : '#64748b';
 
   // RR (Ramp Rate): CTL hoy - CTL hace 7 días
-  const date7ago = new Date(act.date + 'T12:00:00');
-  date7ago.setDate(date7ago.getDate() - 7);
-  const date7str = date7ago.toISOString().substring(0, 10);
-  const pmcSnap7 = (AppState.pmcData || []).find(d => d.date === date7str) ||
-                   (AppState.pmcData || []).reduce((prev, cur) => (!prev || cur.date <= date7str && cur.date > prev.date) ? cur : prev, null);
+  let date7str = null;
+  try {
+    const actDateStr = String(act.date || '').substring(0, 10);
+    const date7ago = new Date(actDateStr + 'T12:00:00');
+    if (!isNaN(date7ago.getTime())) {
+      date7ago.setDate(date7ago.getDate() - 7);
+      date7str = date7ago.toISOString().substring(0, 10);
+    }
+  } catch(_) {}
+  const pmcSnap7 = date7str ? ((AppState.pmcData || []).find(d => d.date === date7str) ||
+                   (AppState.pmcData || []).reduce((prev, cur) => (!prev || cur.date <= date7str && cur.date > prev.date) ? cur : prev, null)) : null;
   const rr = (typeof ctl === 'number' && pmcSnap7?.ctl != null) ? Math.round((ctl - pmcSnap7.ctl) * 10) / 10 : '--';
   const rrColor = (typeof rr === 'number') ? (rr > 5 ? '#ef4444' : rr > 0 ? '#f59e0b' : rr > -5 ? '#10b981' : '#38BDF8') : '#64748b';
   const rrLabel = (typeof rr === 'number') ? (rr > 5 ? '↑ Carga alta' : rr > 0 ? '↑ Subiendo' : rr > -5 ? '↓ Descargando' : '↓ Taper') : '';
@@ -708,7 +693,7 @@ function showActivityDetail(actId) {
   const sid = act.strava_id || (idStr.startsWith('strava_') ? idStr.replace('strava_', '') : null);
   const coachComment = generateCoachComment(act, pmcSnap, allActivities);
 
-  document.getElementById('panel-content').innerHTML = `
+  try { document.getElementById('panel-content').innerHTML = `
     <!-- CABECERA -->
     <div style="margin-bottom:16px">
       <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:6px;line-height:1.2">${act.name}</h3>
@@ -815,10 +800,12 @@ function showActivityDetail(actId) {
       ${sid ? `<a href="https://www.strava.com/activities/${sid}" target="_blank" class="btn" style="flex:1;background:rgba(252,76,2,0.1);color:#FC4C02;border:1px solid rgba(252,76,2,0.3);text-decoration:none;font-size:12px;padding:8px 14px;text-align:center"><i class="fab fa-strava"></i> Ver en Strava</a>` : ''}
       <button data-panel-delete class="btn" style="flex:1;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:12px"><i class="fas fa-trash"></i> Eliminar</button>
     </div>
-  `;
+  `; } catch(err) {
+    document.getElementById('panel-content').innerHTML = '<p style="color:var(--accent-red);padding:16px">Error al cargar detalle: ' + err.message + '</p>';
+  }
 
   const panelDelBtn = document.querySelector('[data-panel-delete]');
-  if (panelDelBtn) panelDelBtn.onclick = () => confirmDelete(act.id);
+  if (panelDelBtn) panelDelBtn.onclick = function() { confirmDelete(act.id); };
 
   document.getElementById('detail-panel').scrollTop = 0;
   document.getElementById('detail-panel').classList.add('open');
@@ -1000,6 +987,22 @@ function showToast(msg, type = 'info') {
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
 }
+
+// Event delegation — un único listener sobre el contenedor estable
+document.getElementById('activities-list').addEventListener('click', function(e) {
+  var detailBtn = e.target.closest('[data-detail-id]');
+  var deleteBtn = e.target.closest('[data-delete-id]');
+  var row       = e.target.closest('[data-act-id]');
+  if (detailBtn) {
+    e.stopPropagation();
+    showActivityDetail(detailBtn.getAttribute('data-detail-id'));
+  } else if (deleteBtn) {
+    e.stopPropagation();
+    confirmDelete(deleteBtn.getAttribute('data-delete-id'));
+  } else if (row) {
+    showActivityDetail(row.getAttribute('data-act-id'));
+  }
+});
 
 initActivities().then(() => {
   if (typeof BackendSync !== 'undefined') BackendSync.autoSyncIfNeeded();
