@@ -2029,26 +2029,32 @@ Si el plan ya es óptimo → devolver "modifications": []`;
     // Salvaguarda determinista: descanso roto + exceso reciente + calidad manana.
     const normFeedback = String(feedback || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const wantsRideToday = /\b(salir|salgo|rodar|rodaje|bici|entrenar|entreno|hacer algo|suave)\b/.test(normFeedback);
+    const feedbackMentionsExcess = /\b(exced|exceso|me pase|pasado|demasiad|mas tss|mucho tss|fatiga|cargad)\b/.test(normFeedback);
     const originalTodayWasRest = !!plan.sessions[todayIdx]?.isRest;
     const recentExcessTSS = Math.max(
+      Number(neighborhoodContext?.recentTssDelta || 0),
       Number(yesterdayContext?.actual?.tssDelta || 0),
       Number(contextDays.find(d => d.dayIndex === todayIdx - 2)?.actual?.tssDelta || 0)
     );
     const todayBecameTraining = originalTodayWasRest && !newSessions[todayIdx]?.isRest;
-    if (allowToday && originalTodayWasRest && wantsRideToday && newSessions[todayIdx]?.isRest) {
+    const mustKeepTodayEasy = allowToday && originalTodayWasRest && wantsRideToday && (recentExcessTSS > 20 || feedbackMentionsExcess);
+    if (allowToday && originalTodayWasRest && wantsRideToday) {
+      const easyOnly = mustKeepTodayEasy || tomorrowIsQuality;
       newSessions[todayIdx] = {
         ...newSessions[todayIdx],
         isRest: false,
-        type: 'recovery',
-        name: 'Salida recovery corta',
+        type: easyOnly ? 'recovery' : 'endurance',
+        name: easyOnly ? 'Salida recovery corta' : 'Z2 corta no planificada',
         emoji: '😴',
-        durationMin: 35,
-        tss: 20,
-        ifTarget: 0.52,
-        advice: 'Puedes salir, pero solo muy suave: venias con carga extra y manana habia calidad.'
+        durationMin: easyOnly ? 35 : 50,
+        tss: easyOnly ? 20 : 35,
+        ifTarget: easyOnly ? 0.52 : 0.62,
+        advice: easyOnly
+          ? 'Puedes salir, pero solo muy suave: venias con carga extra o manana habia calidad.'
+          : 'Salida corta en Z2: sumamos movimiento sin convertir el descanso en una sesion de calidad.'
       };
     }
-    if ((todayBecameTraining || (allowToday && originalTodayWasRest && wantsRideToday)) && recentExcessTSS > 20 && tomorrowIsQuality) {
+    if ((todayBecameTraining || (allowToday && originalTodayWasRest && wantsRideToday)) && (recentExcessTSS > 20 || feedbackMentionsExcess) && tomorrowIsQuality) {
       const i = todayIdx + 1;
       if (i < 7 && newSessions[i] && !newSessions[i].isRest) {
         const originalTSS = Number(newSessions[i].tss || tomorrowContext?.planned?.tss || 60);
@@ -2185,6 +2191,26 @@ Si el plan ya es óptimo → devolver "modifications": []`;
     }
 
     // ── Fallback determinista escenario 1: si la IA ignoró la regla ──────────────
+    // Si no hay sesiones futuras para intercambiar, evitamos terminar con bloque
+    // sabado-domingo de descanso convirtiendo uno en recuperacion activa corta.
+    for (let i = Math.max(todayIdx + 1, 1); i < 6; i++) {
+      if (newSessions[i].isRest && newSessions[i + 1].isRest) {
+        newSessions[i] = {
+          ...newSessions[i],
+          isRest: false,
+          type: 'recovery',
+          name: 'Recuperacion activa',
+          emoji: '😴',
+          durationMin: 35,
+          tss: 18,
+          ifTarget: 0.50,
+          advice: 'Evitamos dos descansos seguidos: solo movilidad o Z1 muy suave, sin convertirlo en carga real.',
+          description: 'Recuperacion activa muy suave.'
+        };
+        break;
+      }
+    }
+
     if (scenario1) {
       const nextSess = newSessions[nextDayIdx];
       if (nextSess && nextSess.type !== 'long' && nextSess.type !== 'endurance') {
