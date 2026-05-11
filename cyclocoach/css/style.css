@@ -231,7 +231,7 @@ input, select, textarea, button { font-family: inherit; }
 /* Reducir el tamaño del logo en el menú lateral */
 .sidebar-logo img {
   max-width: 140px !important; /* 50% de 280px */
-  width: 100%;
+  width: 50%;
   height: auto;
 }
 
