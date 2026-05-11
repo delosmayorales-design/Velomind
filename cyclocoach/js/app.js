@@ -2251,6 +2251,7 @@ document.addEventListener('DOMContentLoaded', () => {
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
       }
+      .data-table td { white-space: nowrap !important; }
       
       /* Desenrollar Grids rígidos de PC a 1 columna (Móvil) */
       div[style*="grid-template-columns: 1fr 1fr"],

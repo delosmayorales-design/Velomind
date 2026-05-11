@@ -223,7 +223,25 @@ function isLegacyDemoActivity(a) {
   /** Elimina una actividad del backend */
   async function deleteActivity(id) {
     try {
-      return await apiFetch(`/activities/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/activities/${id}`, { method: 'DELETE' });
+      
+      // 1. Eliminar del estado global local (localStorage y AppState)
+      AppState.removeActivity(id);
+      
+      // 2. Refrescar la UI de la tabla de actividades automáticamente
+      if (typeof window.renderActivities === 'function') {
+        if (typeof window.allActivities !== 'undefined') {
+          window.allActivities = window.allActivities.filter(a => String(a.id) !== String(id));
+          window.renderActivities(window.allActivities);
+        } else {
+          window.renderActivities(AppState.activities);
+        }
+      }
+      
+      // 3. Refrescar el Dashboard si el usuario eliminó desde allí
+      if (typeof window.loadDashboard === 'function') window.loadDashboard();
+      
+      return res;
     } catch (e) {
       console.warn('[BackendSync] deleteActivity error:', e.message);
       return null;

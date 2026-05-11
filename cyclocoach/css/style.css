@@ -834,6 +834,7 @@ html.light-theme .modal-close-x:hover {
   text-align: center;
   gap: 16px;
   height: 100%;
+  min-height: 320px;
   transition: var(--transition);
 }
 .integration-card:hover { 
