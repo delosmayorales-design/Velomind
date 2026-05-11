@@ -1,6 +1,4 @@
-﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
-﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
-<html lang="es">
+﻿﻿<html lang="es">
 <head>
   <script>
     (function() {
@@ -1788,8 +1786,6 @@ async function calcRoute(type) {
     if (elevGain != null) {
       document.getElementById('stat-elev').textContent = elevGain;
       if (elevs?.length) renderElevChart(elevs);
-    } else {
-      fetchElevation(latLngs, type, distKm);
     } else if (latLngs.length > 1) { // Only fetch elevation if there's a valid route
       fetchElevation(latLngs);
     }
@@ -3208,7 +3204,6 @@ async function generateWindRoute() {
       if (elevs?.length) renderElevChart(elevs);
     } else {
       fetchElevation(latLngs);
-      fetchElevation(latLngs, type, distKm);
     }
     closeWindRouteModal();
     showToast(`Ruta generada: ${distKm.toFixed(1)} km · ${degToCompass(windDeg)} → ${degToCompass((windDeg+180)%360)} a favor`, 'info');
