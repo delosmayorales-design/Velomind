@@ -323,9 +323,46 @@
       .fg-row { grid-template-columns: 1fr; }
       .bike-detail-header { flex-direction: column; align-items: flex-start; }
       .ci-stats { grid-template-columns: 1fr 1fr 1fr; }
-      .header-actions .btn-label { display: none; }
-      .header-actions { gap: 6px; }
+      .header-actions { display: none !important; }
+      .garage-fab-bar { display: flex !important; }
+      .page-body { padding-bottom: 90px !important; }
     }
+
+    /* FAB bar para móvil — oculto en escritorio */
+    .garage-fab-bar {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 150;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      padding: 8px 12px max(12px, env(safe-area-inset-bottom));
+      gap: 6px;
+      justify-content: stretch;
+      align-items: stretch;
+    }
+    .garage-fab-bar .gfab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 8px 4px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+      font-family: 'Inter', sans-serif;
+    }
+    .garage-fab-bar .gfab i { font-size: 16px; }
+    .garage-fab-bar .gfab:active { transform: scale(0.95); }
+    .garage-fab-bar .gfab.primary { background: rgba(158,214,43,0.12); color: var(--primary); border-color: rgba(158,214,43,0.3); }
+    .garage-fab-bar .gfab.strava  { background: rgba(252,76,2,0.10);  color: #FC4C02;           border-color: rgba(252,76,2,0.3); }
   </style>
 </head>
 <body>
@@ -426,6 +463,26 @@
 
   </div>
 </main>
+
+<!-- FAB bar móvil -->
+<div class="garage-fab-bar">
+  <button class="gfab strava" id="fab-import-strava" onclick="G.importFromStrava()">
+    <i class="fab fa-strava"></i>
+    <span>Importar Strava</span>
+  </button>
+  <button class="gfab primary" onclick="G.openAddBike()">
+    <i class="fas fa-plus"></i>
+    <span>Nueva bici</span>
+  </button>
+  <button class="gfab" onclick="G.syncActivities()">
+    <i class="fas fa-sync-alt"></i>
+    <span>Actualizar km</span>
+  </button>
+  <button class="gfab" onclick="G.exportPDF()">
+    <i class="fas fa-file-pdf"></i>
+    <span>PDF</span>
+  </button>
+</div>
 
 <!-- ═══════ MODAL: CHECK-IN ═══════════════════════════════════ -->
 <div id="m-checkin" class="g-modal">
@@ -811,9 +868,9 @@ const G = (() => {
 
   // ─── Importar bicis desde Strava ─────────────────────────
   async function importFromStrava() {
-    const btn = document.getElementById('btn-import-strava');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...';
+    const btn    = document.getElementById('btn-import-strava');
+    const fabBtn = document.getElementById('fab-import-strava');
+    [btn, fabBtn].forEach(b => { if (!b) return; b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...'; });
     try {
       const r = await fetch(`${window.API_URL}/garage/import-strava`, {
         method: 'POST',
@@ -835,8 +892,8 @@ const G = (() => {
     } catch(e) {
       toast('red', 'Error', 'Sin conexión con el servidor');
     } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fab fa-strava"></i> Importar bicis de Strava';
+      if (btn)    { btn.disabled = false;    btn.innerHTML    = '<i class="fab fa-strava"></i><span class="btn-label"> Importar Strava</span>'; }
+      if (fabBtn) { fabBtn.disabled = false; fabBtn.innerHTML = '<i class="fab fa-strava"></i><span>Importar Strava</span>'; }
     }
   }
 
