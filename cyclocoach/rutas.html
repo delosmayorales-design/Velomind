@@ -608,21 +608,28 @@
       bottom: 14px;
       right: 14px;
       z-index: 600;
-      width: 44px;
-      height: 44px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
-      background: var(--bg-card);
-      border: 1px solid rgba(0,212,255,0.35);
-      color: var(--text-muted);
-      font-size: 16px;
+      background: rgba(10,12,18,0.55);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.38);
+      font-size: 14px;
       cursor: pointer;
       align-items: center;
       justify-content: center;
-      box-shadow: var(--shadow-md);
-      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      opacity: 0.6;
+      transition: opacity 0.2s, transform 0.2s, background 0.2s, color 0.2s, border-color 0.2s;
     }
-    #mob-wind-fab.active { background: rgba(0,212,255,0.15); color: #00D4FF; border-color: rgba(0,212,255,0.6); }
-    #mob-wind-fab.loading { opacity: 0.55; pointer-events: none; }
+    #mob-wind-fab:active { transform: scale(0.9); opacity: 1; }
+    #mob-wind-fab.active {
+      opacity: 1;
+      width: 44px; height: 44px; font-size: 16px;
+      background: rgba(0,212,255,0.15); color: #00D4FF; border-color: rgba(0,212,255,0.6);
+      box-shadow: var(--shadow-md);
+    }
+    #mob-wind-fab.loading { opacity: 0.3; pointer-events: none; }
 
     /* FAB rutas guardadas — solo visible en móvil */
     #mob-routes-fab {
@@ -630,17 +637,24 @@
       position: absolute;
       bottom: 14px; left: 14px;
       z-index: 600;
-      width: 44px; height: 44px;
+      width: 36px; height: 36px;
       border-radius: 50%;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 16px; cursor: pointer;
+      background: rgba(10,12,18,0.55);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.38);
+      font-size: 14px; cursor: pointer;
       align-items: center; justify-content: center;
-      box-shadow: var(--shadow-md);
-      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      opacity: 0.6;
+      transition: opacity 0.2s, transform 0.2s, background 0.2s, color 0.2s, border-color 0.2s;
     }
-    #mob-routes-fab.active { background: rgba(255,107,53,0.15); color: var(--primary); border-color: rgba(255,107,53,0.5); }
+    #mob-routes-fab:active { transform: scale(0.9); opacity: 1; }
+    #mob-routes-fab.active {
+      opacity: 1;
+      width: 44px; height: 44px; font-size: 16px;
+      background: rgba(255,107,53,0.15); color: var(--primary); border-color: rgba(255,107,53,0.5);
+      box-shadow: var(--shadow-md);
+    }
 
     /* Overlay oscuro al abrir panel de rutas en móvil */
     #routes-panel-overlay {
