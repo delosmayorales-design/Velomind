@@ -379,8 +379,7 @@ function renderActivities(activities) {
       + '<td><span style="font-weight:700;color:' + tssColor + '">' + (a.tss || '--') + '</span></td>'
       + '<td style="color:var(--text-muted)">' + (estimatedCal(a) ? Math.round(estimatedCal(a)) + 'kcal' : '--') + '</td>'
       + '<td style="white-space:nowrap">'
-        + '<button onclick="event.stopPropagation(); showActivityDetail(\'' + id + '\')" class="btn btn-ghost btn-sm" style="padding:4px 8px" title="Detalle"><i class="fas fa-info-circle"></i></button>'
-        + '<button onclick="event.stopPropagation(); confirmDelete(event, \'' + id + '\')" class="btn btn-ghost btn-sm" style="color:var(--accent-red);padding:4px 8px" title="Eliminar"><i class="fas fa-trash"></i></button>'
+        + '<button onclick="event.stopPropagation(); confirmDelete(event, \'' + id + '\')" class="btn btn-ghost" style="color:var(--accent-red);padding:10px 14px;font-size:20px" title="Eliminar"><i class="fas fa-trash"></i></button>'
       + '</td></tr>';
   }).join('');
   container.innerHTML = '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Actividad</th><th>Fecha</th><th>Duracion</th><th>Distancia</th><th>Pot. Media</th><th>NP</th><th>IF</th><th>FC Media</th><th>Cad.</th><th>Desnivel</th><th>TSS</th><th>kcal</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
@@ -1082,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', function() {
       '    width: auto !important;',
       '    min-width: 32px !important;',
       '    margin: 0 !important;',
-      '    padding: 4px 8px !important;',
+      '    padding: 8px 12px !important;',
       '    pointer-events: auto !important;',
       '    position: relative !important;',
       '    z-index: 2 !important;',

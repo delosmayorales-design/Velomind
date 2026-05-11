@@ -1455,6 +1455,8 @@ html.light-theme .left-panel img[src*="logo2" i] {
   filter: drop-shadow(0 4px 15px rgba(0,0,0,0.05)) !important;
 }
 .sidebar-logo img {
+  display: block;
+  margin: 0 auto !important;
   width: 140px !important;
   height: auto;
 }
