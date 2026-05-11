@@ -1484,6 +1484,7 @@ router.post('/today-adaptation', async (req, res) => {
 
     const estadoUsuario  = req.body?.estado_usuario  || {};
     const sesionOriginal = req.body?.sesion_original  || null;
+    const proximaSesion  = req.body?.proxima_sesion   || null;
     const esManana       = req.body?.es_manana        || false;
     const ftp = user.ftp || 200;
 
@@ -1532,6 +1533,12 @@ Sesión planificada para ${diaRef}:
 - Descripción: ${sesionOriginal.description}
 ` : `Sin sesión específica planificada para ${diaRef}.`;
 
+    const proximaBlock = proximaSesion ? `
+Sesión de MAÑANA:
+- Tipo: ${proximaSesion.type}
+- TSS: ${proximaSesion.tss}
+` : '';
+
     const tssOrig = sesionOriginal?.tss || 50;
     const tssMax  = Math.round(tssOrig * 1.25);
     const tssMin  = Math.round(tssOrig * 0.75);
@@ -1576,8 +1583,14 @@ Sesión planificada para ${diaRef}:
     const userMsg = `Atleta: FTP ${ftp}W, objetivo: ${user.goal || 'resistencia'}.
 CTL ${Math.round(latestPMC.ctl)} / ATL ${Math.round(latestPMC.atl)} / TSB ${Math.round(latestPMC.tsb)}.
 Sesión planificada para ${diaRef}: tipo="${tipoSesion}", ${sesionOriginal?.durationMin || 0} min, TSS=${tssOrig}, IF=${sesionOriginal?.ifTarget || 0}.
+${proximaBlock}
 Input del atleta: "${contexto || 'no especificado'}".
 Carga últimos 7 días: ${recentHours.toFixed(1)}h, ${recentTSS} TSS.
+Última actividad (ayer): ${actsCompact[0] ? `TSS ${actsCompact[0].tss}, NP ${actsCompact[0].np}` : 'ninguna'}.
+
+REGLAS DE SEGURIDAD OBLIGATORIAS:
+1. Si ayer el TSS fue > CTL + 20 (sobrecarga), hoy DEBE ser descanso o recuperación suave, aunque el usuario quiera "más".
+2. Si hoy es descanso y MAÑANA tocan series (vo2max, threshold, tempo), hoy SOLO puedes recomendar Z2 suave (Endurance). PROHIBIDO series hoy si mañana hay series.
 
 APLICA LA PRIMERA REGLA QUE COINCIDA CON EL INPUT:
 
@@ -1889,9 +1902,8 @@ Recalcular la semana optimizando rendimiento (NO solo fatiga), manteniendo estí
 ════════════════════════════════════
 CONSTRAINTS DUROS (OBLIGATORIOS)
 ════════════════════════════════════
-1. PROHIBIDO más de 1 día de descanso consecutivo.
-2. Mínimo 4 días de entrenamiento en la semana.
-3. Debe existir al menos:
+1. SI EL USUARIO SE EXCEDIÓ AYER: Prioriza sesiones de recuperación (Z2) los próximos 2 días para evitar el colapso del TSB.
+2. PROHIBIDO 2 días consecutivos de alta intensidad (vo2max, threshold, sprint).
    * 1 sesión VO2max o alta intensidad
    * 1 sesión threshold/tempo/sweetspot
    * 1 sesión endurance o long
