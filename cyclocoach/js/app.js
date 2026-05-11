@@ -669,9 +669,8 @@ const TrainingPlanGenerator = {
       // ── Consejo de terreno con segmentos locales ──
       let terrainAdvice = '';
       if (t.type === 'sprint') {
-        const segs = this._activeSegments || this._LOCAL_SEGMENTS;
-        const seg = segs[0] || { name: 'una subida corta', km: 1, grad: 5 };
-        terrainAdvice = ` ⚡ Terreno ideal: ${seg.name} (${seg.km} km / ${seg.grad}%) — arranca en la entrada y da todo.`;
+        const seg = (this._activeSegments && this._activeSegments[0]) || { name: 'una subida corta de ~1 min', km: 1, grad: 5 };
+        terrainAdvice = ` ⚡ Terreno ideal: ${seg.name}${seg.km && seg.grad && !seg.name.includes('~') ? ` (${seg.km} km / ${seg.grad}%)` : ''} — arranca en la entrada y da todo.`;
       } else if (t.type === 'vo2max') {
         const repDur = intervals.find(iv => iv.label.includes('VO₂') || iv.label.includes('Micro'))?.dur;
         const mins = repDur ? parseFloat(repDur) : 4;
@@ -877,20 +876,16 @@ const TrainingPlanGenerator = {
     return goalMap[phase] || goalMap['base'];
   },
 
-  /** Segmentos locales ordenados por duración estimada al umbral */
-  _LOCAL_SEGMENTS: [
-    { name: 'El Angel',    km: 1.0, grad: 5,   minThresh: 3.5, minVO2: 2.5 },
-    { name: 'Siles',       km: 1.5, grad: 4,   minThresh: 5,   minVO2: 4   },
-    { name: 'La Garganta', km: 2.3, grad: 4.5, minThresh: 8,   minVO2: 6   },
-    { name: 'Los Chozos',  km: 3.9, grad: 4,   minThresh: 9,   minVO2: 6.5 },
-  ],
+  /** Sin segmentos predefinidos — el usuario configura los suyos en ajustes */
+  _LOCAL_SEGMENTS: [],
 
   /** Devuelve el segmento configurado cuya duración estimada más se acerca a targetMin */
   _pickSegment(targetMin, intensityKey = 'minThresh') {
-    const segs = this._activeSegments || this._LOCAL_SEGMENTS;
-    if (!segs || segs.length === 0) {
-      // Sin segmentos configurados: devolver descripción genérica
-      return { name: 'una subida local', km: 2, grad: 5, minThresh: targetMin, minVO2: targetMin };
+    const segs = this._activeSegments && this._activeSegments.length ? this._activeSegments : null;
+    if (!segs) {
+      // Sin segmentos configurados: descripción genérica con duración aproximada
+      const mins = Math.round(targetMin);
+      return { name: `una subida de ~${mins} min`, km: Math.round(targetMin * 0.3 * 10) / 10, grad: 5, minThresh: targetMin, minVO2: targetMin };
     }
     return segs.reduce((best, s) =>
       Math.abs(s[intensityKey] - targetMin) < Math.abs(best[intensityKey] - targetMin) ? s : best
@@ -1039,8 +1034,7 @@ const TrainingPlanGenerator = {
       }
 
       case 'sprint': {
-        const segsArr = this._activeSegments || this._LOCAL_SEGMENTS;
-        const sprintSeg = segsArr[0] || { name: 'una subida corta', km: 1, grad: 5, minThresh: 3.5, minVO2: 2.5 };
+        const sprintSeg = (this._activeSegments && this._activeSegments[0]) || { name: 'una subida corta de ~1 min', km: 1, grad: 5, minThresh: 3.5, minVO2: 2.5 };
         intervals.push({ label: 'Calentamiento extenso', dur: `${warm} min`, watts: `${pct(0.55)}–${pct(0.70)} W`, rpm: '88-95 rpm', desc: 'Activación completa.' });
         if (variant === 'main') {
           let sprintReps = Math.floor(main / 3);
