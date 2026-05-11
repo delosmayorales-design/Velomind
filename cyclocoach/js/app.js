@@ -2226,7 +2226,8 @@ document.addEventListener('DOMContentLoaded', () => {
       .integration-card {
         flex-direction: column !important;
         align-items: stretch !important;
-        gap: 12px !important;
+        gap: 18px !important;
+        padding: 32px 20px !important;
         text-align: center !important;
         height: auto !important;
       }

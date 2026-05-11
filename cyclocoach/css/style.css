@@ -816,8 +816,9 @@ html.light-theme .modal-close-x:hover {
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 20px;
-  display: flex; align-items: center; gap: 16px;
+  padding: 28px 24px;
+  min-height: 110px;
+  display: flex; align-items: center; gap: 20px;
   transition: var(--transition);
 }
 .integration-card:hover { border-color: rgba(158,214,43,0.15); }
