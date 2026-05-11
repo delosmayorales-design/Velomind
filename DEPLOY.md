@@ -30,4 +30,4 @@ Debes añadir las siguientes variables en el panel de control de tu hosting (Ren
 * `GROQ_API_KEY`: API Key de Groq (Opcional, modelo Llama rápido)
 * `STRAVA_CLIENT_ID`: ID de tu app de Strava
 * `STRAVA_CLIENT_SECRET`: Secreto de tu app de Strava
-* `STRAVA_REDIRECT_URI`: Ej: https://tu-app.onrender.com/integrations.html
+* `STRAVA_REDIRECT_URI`: Ej: https://api.velomind.org/api/providers/strava/callback

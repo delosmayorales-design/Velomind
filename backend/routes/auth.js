@@ -159,7 +159,7 @@ router.post('/forgot-password', async (req, res) => {
     const resetUrl = `${frontendUrl}/reset-password.html?token=${token}`;
 
     await sgMail.send({
-      from: { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || 'delosmayorales@gmail.com' },
+      from: { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || 'info@velomind.org' },
       to: emailNorm,
       subject: 'Recupera tu contraseña — VeloMind',
       html: `

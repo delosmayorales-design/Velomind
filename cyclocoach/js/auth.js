@@ -14,7 +14,7 @@
 const API_URL = window.API_URL ||
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
-    : 'https://velomind-backend.onrender.com/api');
+    : 'https://api.velomind.org/api');
 
 const Auth = (() => {
   const TOKEN_KEY  = 'velomind_token';
