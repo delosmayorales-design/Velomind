@@ -1387,11 +1387,9 @@ html.light-theme .modal-title, html.light-theme .modal-header button { color: #1
    AJUSTES GLOBALES PARA MODO CLARO (Logo y Contraste Verde)
    ══════════════════════════════════════════════════════════ */
 
-/* El sidebar en modo claro es verde oscuro (#1A2E18), el logo ya es para fondo oscuro */
-html.light-theme .sidebar-logo img {
-  content: url("../logoPerfil.PNG");
-  opacity: 1;
-}
+/* The sidebar in light mode is dark green (#1A2E18), the logo is already for a dark background */
+/* Removed override to ensure logo2.png is used consistently */
+
 
 /* Forzar texto blanco inmaculado en todas las cajas y botones con fondos verdes oscuros
    Se aplican combinaciones exhaustivas (con/sin espacios) para atrapar clases Tailwind y estilos RGB */
@@ -1446,11 +1444,11 @@ html.light-theme [style*="background-color:var(--primary)" i] {
 /* ══════════════════════════════════════════════════════════
    AUMENTAR TAMAÑO DEL LOGO (Pantallas Login y Perfil)
    ══════════════════════════════════════════════════════════ */
-img[src*="logoPerfil" i] {
+img[src*="logo2" i] {
   width: 280px !important;
   max-width: 90vw !important;
 }
-html.light-theme img[src*="logoPerfil" i] {
+html.light-theme img[src*="logo2" i] {
   filter: drop-shadow(0 4px 15px rgba(0,0,0,0.05)) !important;
 }
 
