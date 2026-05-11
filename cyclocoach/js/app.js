@@ -70,11 +70,14 @@ const Utils = {
   formatPower(w) { return w ? Math.round(w) + ' W' : '--'; },
   formatDate(d) {
     if (!d) return '--';
-    const dt = new Date(d + 'T00:00:00');
+    const dateStr = String(d).substring(0, 10);
+    const dt = new Date(dateStr + 'T00:00:00');
+    if (isNaN(dt.getTime())) return dateStr || '--';
     return dt.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   },
   daysAgo(dateStr) {
-    return Math.floor((Date.now() - new Date(dateStr + 'T00:00:00')) / 86400000);
+    const s = String(dateStr || '').substring(0, 10);
+    return Math.floor((Date.now() - new Date(s + 'T00:00:00')) / 86400000);
   },
   getPowerZone(watts, ftp) {
     if (!watts || !ftp) return null;

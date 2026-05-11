@@ -222,8 +222,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="js/app.js?v=101"></script>
-<script src="js/backend-sync.js?v=102"></script>
+<script src="js/app.js?v=103"></script>
+<script src="js/backend-sync.js?v=103"></script>
 <script>
 var allActivities = [];
 let zoneChartInst = null;
@@ -515,7 +515,8 @@ function generateCoachComment(act, pmcSnap, allActs) {
   const tsb    = typeof pmcSnap?.tsb === 'number' ? Math.round(pmcSnap.tsb) : null;
 
   // ── Buscar sesión planificada para el día de la actividad ─────
-  const actDOW     = (new Date(act.date + 'T12:00:00').getDay() + 6) % 7; // 0=Lun … 6=Dom
+  const _actDate   = String(act.date || '').substring(0, 10);
+  const actDOW     = _actDate ? (new Date(_actDate + 'T12:00:00').getDay() + 6) % 7 : 0; // 0=Lun … 6=Dom
   const planSess   = trainingPlan?.sessions?.[actDOW] || null;
   const weekTSS    = trainingPlan?.tss_target || trainingPlan?.targetTSS || 400;
   const plannedTSS = planSess && !planSess.isRest
@@ -604,7 +605,7 @@ function generateCoachComment(act, pmcSnap, allActs) {
       .filter(a => a.id !== act.id && a.date < act.date)
       .sort((a, b) => b.date.localeCompare(a.date));
     const daysSince = prevActs.length
-      ? Math.round((new Date(act.date + 'T12:00:00') - new Date(prevActs[0].date + 'T12:00:00')) / 86400000)
+      ? Math.round((new Date(_actDate + 'T12:00:00') - new Date(String(prevActs[0].date || '').substring(0, 10) + 'T12:00:00')) / 86400000)
       : null;
     const avgPrevTSS = prevActs.length
       ? Math.round(prevActs.slice(0, 5).reduce((s, a) => s + (a.tss || 0), 0) / Math.min(prevActs.length, 5))
@@ -691,7 +692,8 @@ function showActivityDetail(actId) {
 
   const idStr = String(act.id || '');
   const sid = act.strava_id || (idStr.startsWith('strava_') ? idStr.replace('strava_', '') : null);
-  const coachComment = generateCoachComment(act, pmcSnap, allActivities);
+  let coachComment = null;
+  try { coachComment = generateCoachComment(act, pmcSnap, allActivities); } catch(_) {}
 
   try { document.getElementById('panel-content').innerHTML = `
     <!-- CABECERA -->
