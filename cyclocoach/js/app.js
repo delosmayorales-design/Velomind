@@ -2227,7 +2227,8 @@ document.addEventListener('DOMContentLoaded', () => {
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 18px !important;
-        padding: 32px 20px !important;
+        padding: 50px 24px !important;
+        min-height: 220px !important;
         text-align: center !important;
         height: auto !important;
       }
