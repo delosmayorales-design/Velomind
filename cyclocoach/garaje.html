@@ -324,45 +324,77 @@
       .bike-detail-header { flex-direction: column; align-items: flex-start; }
       .ci-stats { grid-template-columns: 1fr 1fr 1fr; }
       .header-actions { display: none !important; }
-      .garage-fab-bar { display: flex !important; }
-      .page-body { padding-bottom: 90px !important; }
+      .garage-fab { display: flex !important; }
+      .page-body { padding-bottom: 110px !important; }
     }
 
-    /* FAB bar para móvil — oculto en escritorio */
-    .garage-fab-bar {
+    /* Speed-dial FAB — solo en móvil */
+    .garage-fab {
       display: none;
       position: fixed;
-      bottom: 0; left: 0; right: 0;
-      z-index: 150;
-      background: var(--bg-card);
-      border-top: 1px solid var(--border);
-      padding: 8px 12px max(12px, env(safe-area-inset-bottom));
-      gap: 6px;
-      justify-content: stretch;
-      align-items: stretch;
+      bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+      right: 18px;
+      z-index: 9500;
+      flex-direction: column-reverse;
+      align-items: flex-end;
+      gap: 10px;
     }
-    .garage-fab-bar .gfab {
-      flex: 1;
+    .garage-fab-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+    }
+    .garage-fab.open .garage-fab-backdrop { display: block; }
+    .garage-fab-actions {
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      padding: 8px 4px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: var(--bg-input);
-      color: var(--text-secondary);
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.18s;
-      font-family: 'Inter', sans-serif;
+      flex-direction: column-reverse;
+      gap: 8px;
+      align-items: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
     }
-    .garage-fab-bar .gfab i { font-size: 16px; }
-    .garage-fab-bar .gfab:active { transform: scale(0.95); }
-    .garage-fab-bar .gfab.primary { background: rgba(158,214,43,0.12); color: var(--primary); border-color: rgba(158,214,43,0.3); }
-    .garage-fab-bar .gfab.strava  { background: rgba(252,76,2,0.10);  color: #FC4C02;           border-color: rgba(252,76,2,0.3); }
+    .garage-fab.open .garage-fab-actions {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    .garage-fab-action {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 24px;
+      padding: 10px 18px 10px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      font-family: 'Inter', sans-serif;
+      transition: transform 0.12s;
+    }
+    .garage-fab-action:active { transform: scale(0.96); }
+    .garage-fab-action i { font-size: 15px; width: 18px; text-align: center; }
+    .garage-fab-trigger {
+      width: 54px; height: 54px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #0a0b0f;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 22px rgba(158,214,43,0.42);
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+      flex-shrink: 0;
+    }
+    .garage-fab-trigger:active { transform: scale(0.92); }
+    .garage-fab.open .garage-fab-trigger { transform: rotate(45deg); }
   </style>
 </head>
 <body>
@@ -464,23 +496,25 @@
   </div>
 </main>
 
-<!-- FAB bar móvil -->
-<div class="garage-fab-bar">
-  <button class="gfab strava" id="fab-import-strava" onclick="G.importFromStrava()">
-    <i class="fab fa-strava"></i>
-    <span>Importar Strava</span>
-  </button>
-  <button class="gfab primary" onclick="G.openAddBike()">
+<!-- Speed-dial FAB (solo móvil) -->
+<div class="garage-fab" id="garage-fab">
+  <div class="garage-fab-backdrop" onclick="closeFab()"></div>
+  <div class="garage-fab-actions">
+    <button class="garage-fab-action" onclick="G.exportPDF();closeFab()">
+      <i class="fas fa-file-pdf" style="color:var(--text-muted)"></i> PDF
+    </button>
+    <button class="garage-fab-action" onclick="G.syncActivities();closeFab()">
+      <i class="fas fa-sync-alt" style="color:var(--accent)"></i> Actualizar km
+    </button>
+    <button class="garage-fab-action" onclick="G.openAddBike();closeFab()">
+      <i class="fas fa-plus" style="color:var(--primary)"></i> Nueva bici
+    </button>
+    <button class="garage-fab-action" onclick="G.importFromStrava();closeFab()">
+      <i class="fab fa-strava" style="color:#FC4C02"></i> Importar Strava
+    </button>
+  </div>
+  <button class="garage-fab-trigger" id="garage-fab-trigger" onclick="toggleGarageFab()">
     <i class="fas fa-plus"></i>
-    <span>Nueva bici</span>
-  </button>
-  <button class="gfab" onclick="G.syncActivities()">
-    <i class="fas fa-sync-alt"></i>
-    <span>Actualizar km</span>
-  </button>
-  <button class="gfab" onclick="G.exportPDF()">
-    <i class="fas fa-file-pdf"></i>
-    <span>PDF</span>
   </button>
 </div>
 
@@ -868,9 +902,8 @@ const G = (() => {
 
   // ─── Importar bicis desde Strava ─────────────────────────
   async function importFromStrava() {
-    const btn    = document.getElementById('btn-import-strava');
-    const fabBtn = document.getElementById('fab-import-strava');
-    [btn, fabBtn].forEach(b => { if (!b) return; b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...'; });
+    const btn = document.getElementById('btn-import-strava');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...'; }
     try {
       const r = await fetch(`${window.API_URL}/garage/import-strava`, {
         method: 'POST',
@@ -892,8 +925,7 @@ const G = (() => {
     } catch(e) {
       toast('red', 'Error', 'Sin conexión con el servidor');
     } finally {
-      if (btn)    { btn.disabled = false;    btn.innerHTML    = '<i class="fab fa-strava"></i><span class="btn-label"> Importar Strava</span>'; }
-      if (fabBtn) { fabBtn.disabled = false; fabBtn.innerHTML = '<i class="fab fa-strava"></i><span>Importar Strava</span>'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fab fa-strava"></i><span class="btn-label"> Importar Strava</span>'; }
     }
   }
 
@@ -1685,6 +1717,13 @@ const G = (() => {
 
   return { init, showOverview, showBike, openCheckin, confirmCheckin, openEditComp, saveCompEdit, searchPrice, searchInModal, openEditBike, saveBikeConfig, openAddKm, confirmAddKm, openHistory, openModal, closeModal, syncActivities, exportPDF, importFromStrava, openAddBike, saveNewBike, deleteBike };
 })();
+
+function toggleGarageFab() {
+  document.getElementById('garage-fab')?.classList.toggle('open');
+}
+function closeFab() {
+  document.getElementById('garage-fab')?.classList.remove('open');
+}
 
 document.addEventListener('DOMContentLoaded', G.init);
 
