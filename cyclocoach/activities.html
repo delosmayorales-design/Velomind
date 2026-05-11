@@ -54,6 +54,8 @@
       font-size: 14px;
     }
     .activity-delete-btn:hover { background: rgba(248,113,113,0.10); color: var(--danger); }
+    .activity-delete-cell { text-align: center; cursor: default; }
+    .activity-delete-cell .activity-delete-btn { margin: 0 auto; }
     @media (max-width: 768px) {
       .activities-table { min-width: 560px; font-size: 12px; }
       .activities-table th,
@@ -412,8 +414,8 @@ function renderActivities(activities) {
       + '<td class="col-elev">' + (a.elevation ? '&uarr;' + a.elevation + 'm' : '--') + '</td>'
       + '<td><span style="font-weight:700;color:' + tssColor + '">' + (a.tss || '--') + '</span></td>'
       + '<td class="col-kcal" style="color:var(--text-muted)">' + (estimatedCal(a) ? Math.round(estimatedCal(a)) + 'kcal' : '--') + '</td>'
-      + '<td style="white-space:nowrap">'
-        + '<button type="button" data-delete-id="' + id + '" class="btn btn-ghost activity-delete-btn" title="Eliminar actividad" aria-label="Eliminar actividad"><i class="fas fa-trash"></i></button>'
+      + '<td class="activity-delete-cell" data-delete-id="' + id + '" style="white-space:nowrap">'
+        + '<button type="button" class="btn btn-ghost activity-delete-btn" title="Eliminar actividad" aria-label="Eliminar actividad"><i class="fas fa-trash"></i></button>'
       + '</td></tr>';
   }).join('');
   container.innerHTML = '<div class="activities-table-wrap"><table class="data-table activities-table"><thead><tr><th>Actividad</th><th>Fecha</th><th>Duracion</th><th>Distancia</th><th>Pot. Media</th><th class="col-np">NP</th><th class="col-if">IF</th><th class="col-hr">FC Media</th><th class="col-cad">Cad.</th><th class="col-elev">Desnivel</th><th>TSS</th><th class="col-kcal">kcal</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
