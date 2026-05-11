@@ -131,6 +131,7 @@ input, select, textarea, button { font-family: inherit; }
   padding: 20px 18px 16px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  justify-content: center; /* Centra el logo horizontalmente */
 }
 
 .logo-icon {
