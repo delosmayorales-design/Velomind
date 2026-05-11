@@ -7,7 +7,7 @@ const router = express.Router();
 
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
-    `mailto:${process.env.VAPID_EMAIL || 'admin@velomind.app'}`,
+    `mailto:${process.env.VAPID_EMAIL || 'info@velomind.org'}`,
     process.env.VAPID_PUBLIC_KEY,
     process.env.VAPID_PRIVATE_KEY
   );
