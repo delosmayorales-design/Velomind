@@ -3802,7 +3802,7 @@ function _onTrkPos(pos) {
     if (d > maxDist) return;
 
     const hasTrackGap = dt > 30 && d > 50;
-    if (hasTrackGap && !_trkPaused) {
+    if (hasTrackGap) {
       _trkSegmentId++;
       _trkPolyline = L.polyline([], { color: '#ff3b3b', weight: 4, opacity: 0.85 }).addTo(map);
       _trkPolylines.push(_trkPolyline);
@@ -3827,15 +3827,12 @@ function _onTrkPos(pos) {
     } else {
       _trkPauseCount = 0;
       if (_trkPaused) {
-        // Reanudar: crear nuevo segmento de polyline
+        // Reanudar métricas. El dibujo del track continúa hasta pulsar Detener.
         _trkPaused = false;
         document.getElementById('tracking-hud')?.classList.remove('paused');
         document.querySelector('.g-rec-dot')?.classList.remove('g-paused');
         const lbl = document.getElementById('g-pause-lbl');
         if (lbl) lbl.style.display = 'none';
-        _trkPolyline = L.polyline([], { color: '#ff3b3b', weight: 4, opacity: 0.85 }).addTo(map);
-        _trkPolylines.push(_trkPolyline);
-        _trkSegmentId++;
       }
       // Acumular métricas solo cuando hay movimiento real
       if (!hasTrackGap) {
@@ -3863,10 +3860,9 @@ function _onTrkPos(pos) {
 
   _trkPoints.push({ lat, lng, alt, ts, speed: speedKmh, paused: _trkPaused && !isFirst, segmentId: _trkSegmentId, accuracy });
 
-  // Solo añadir a la polilínea si está en movimiento (o es el primer punto)
-  if (!_trkPaused || isFirst) {
-    _trkPolyline.addLatLng([lat, lng]);
-  }
+  // El track visual siempre se dibuja mientras la grabación está activa.
+  // La auto-pausa solo congela métricas de movimiento, no la geometría.
+  _trkPolyline.addLatLng([lat, lng]);
 
   // Mover marcador siempre
   _trkMarker.setLatLng([lat, lng]);
@@ -4071,12 +4067,6 @@ function _buildTrackGeoJSON() {
   let currentId = null;
 
   _trkPoints.forEach((p, idx) => {
-    if (p.paused) {
-      if (current.length >= 2) segments.push(current);
-      current = [];
-      currentId = null;
-      return;
-    }
     const sid = Number.isFinite(p.segmentId) ? p.segmentId : 0;
     if (currentId !== null && sid !== currentId) {
       if (current.length >= 2) segments.push(current);

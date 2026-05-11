@@ -35,6 +35,40 @@
     .detail-metric-mini .value { font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;line-height:1; }
     .detail-section-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:18px 0 10px; }
     .chart-wrap { background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px 16px; }
+    .activities-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .activities-table { min-width: 980px; }
+    .activities-table th,
+    .activities-table td { padding: 8px 10px; }
+    .activities-table tbody tr { cursor: pointer; }
+    .activity-name-cell { min-width: 220px; }
+    .activity-name-main { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .activity-name-title { font-size: 13px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .activity-badges { display: flex; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
+    .activity-badges .badge { padding: 1px 6px; font-size: 9px; line-height: 1.35; }
+    .activity-delete-btn {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border-radius: 8px;
+      color: var(--accent-red);
+      font-size: 14px;
+    }
+    .activity-delete-btn:hover { background: rgba(248,113,113,0.10); color: var(--danger); }
+    @media (max-width: 768px) {
+      .activities-table { min-width: 560px; font-size: 12px; }
+      .activities-table th,
+      .activities-table td { padding: 6px 8px; }
+      .activity-name-cell { min-width: 160px; max-width: 180px; }
+      .activity-name-title { max-width: 132px; font-size: 12px; }
+      .activity-badges .badge { padding: 1px 5px; font-size: 8px; }
+      .activity-delete-btn { width: 28px; height: 28px; font-size: 12px; }
+      .activities-table .col-np,
+      .activities-table .col-if,
+      .activities-table .col-hr,
+      .activities-table .col-cad,
+      .activities-table .col-elev,
+      .activities-table .col-kcal { display: none; }
+    }
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
@@ -363,26 +397,38 @@ function renderActivities(activities) {
     const tssColor = (a.tss > 100) ? 'var(--accent-red)' : (a.tss > 60) ? 'var(--primary)' : 'var(--accent-yellow)';
     const sid = a.strava_id || (a.id?.toString().startsWith('strava_') ? a.id.toString().replace('strava_', '') : null);
     const id = esc(a.id);
-    return '<tr data-act-id="' + id + '" style="cursor:pointer" onclick="showActivityDetail(\'' + id + '\')">'
-      + '<td><div style="display:flex;align-items:center;gap:6px"><div class="value-bold" style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(a.name || 'Entrenamiento') + '">' + esc(a.name || 'Entrenamiento') + '</div>'
-      + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.7"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '')
-      + '</div><div style="display:flex;gap:4px;margin-top:2px"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + ';font-size:9px">' + esc(zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue" style="font-size:9px">' + esc(a.source || 'CSV') + '</span></div></td>'
+    return '<tr data-act-id="' + id + '">'
+      + '<td class="activity-name-cell"><div class="activity-name-main"><div class="value-bold activity-name-title" title="' + esc(a.name || 'Entrenamiento') + '">' + esc(a.name || 'Entrenamiento') + '</div>'
+      + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.75"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '')
+      + '</div><div class="activity-badges"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + '">' + esc(zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue">' + esc(a.source || 'CSV') + '</span></div></td>'
       + '<td style="white-space:nowrap">' + Utils.formatDate(a.date) + '</td>'
       + '<td class="value-bold">' + Utils.formatDuration(a.duration) + '</td>'
       + '<td>' + Utils.formatDistance(a.distance) + '</td>'
       + '<td>' + (a.avg_power ? '<span style="color:var(--primary);font-weight:600">' + a.avg_power + 'W</span>' : '--') + '</td>'
-      + '<td>' + (a.np ? '<span style="color:var(--primary-light);font-weight:600">' + a.np + 'W</span>' : '--') + '</td>'
-      + '<td style="color:var(--text-secondary)">' + (a.if_value ? a.if_value.toFixed(2) : '--') + '</td>'
-      + '<td>' + (a.avg_hr ? a.avg_hr + ' bpm' : '--') + '</td>'
-      + '<td>' + (a.avg_cadence ? a.avg_cadence + ' rpm' : '--') + '</td>'
-      + '<td>' + (a.elevation ? '↑' + a.elevation + 'm' : '--') + '</td>'
+      + '<td class="col-np">' + (a.np ? '<span style="color:var(--primary-light);font-weight:600">' + a.np + 'W</span>' : '--') + '</td>'
+      + '<td class="col-if" style="color:var(--text-secondary)">' + (a.if_value ? a.if_value.toFixed(2) : '--') + '</td>'
+      + '<td class="col-hr">' + (a.avg_hr ? a.avg_hr + ' bpm' : '--') + '</td>'
+      + '<td class="col-cad">' + (a.avg_cadence ? a.avg_cadence + ' rpm' : '--') + '</td>'
+      + '<td class="col-elev">' + (a.elevation ? '&uarr;' + a.elevation + 'm' : '--') + '</td>'
       + '<td><span style="font-weight:700;color:' + tssColor + '">' + (a.tss || '--') + '</span></td>'
-      + '<td style="color:var(--text-muted)">' + (estimatedCal(a) ? Math.round(estimatedCal(a)) + 'kcal' : '--') + '</td>'
+      + '<td class="col-kcal" style="color:var(--text-muted)">' + (estimatedCal(a) ? Math.round(estimatedCal(a)) + 'kcal' : '--') + '</td>'
       + '<td style="white-space:nowrap">'
-        + '<button onclick="event.stopPropagation(); confirmDelete(event, \'' + id + '\')" class="btn btn-ghost" style="color:var(--accent-red);padding:10px 14px;font-size:20px" title="Eliminar"><i class="fas fa-trash"></i></button>'
+        + '<button type="button" data-delete-id="' + id + '" class="btn btn-ghost activity-delete-btn" title="Eliminar actividad" aria-label="Eliminar actividad"><i class="fas fa-trash"></i></button>'
       + '</td></tr>';
   }).join('');
-  container.innerHTML = '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Actividad</th><th>Fecha</th><th>Duracion</th><th>Distancia</th><th>Pot. Media</th><th>NP</th><th>IF</th><th>FC Media</th><th>Cad.</th><th>Desnivel</th><th>TSS</th><th>kcal</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  container.innerHTML = '<div class="activities-table-wrap"><table class="data-table activities-table"><thead><tr><th>Actividad</th><th>Fecha</th><th>Duracion</th><th>Distancia</th><th>Pot. Media</th><th class="col-np">NP</th><th class="col-if">IF</th><th class="col-hr">FC Media</th><th class="col-cad">Cad.</th><th class="col-elev">Desnivel</th><th>TSS</th><th class="col-kcal">kcal</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  const tableWrap = container.querySelector('.activities-table-wrap');
+  tableWrap.addEventListener('click', e => {
+    const deleteBtn = e.target.closest('[data-delete-id]');
+    if (deleteBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      confirmDelete(deleteBtn.dataset.deleteId);
+      return;
+    }
+    const row = e.target.closest('tr[data-act-id]');
+    if (row) showActivityDetail(row.dataset.actId);
+  });
 
 }
 
@@ -951,39 +997,42 @@ function confirmDelete(id) {
   document.body.appendChild(overlay);
 }
 
-function deleteActivity(id) {
+async function deleteActivity(id) {
+  const initialActivities = [...allActivities];
+  const initialAppActivities = [...(AppState.activities || [])];
+
   AppState.removeActivity(id);
-  if (typeof BackendSync !== 'undefined') BackendSync.deleteActivity(id).catch(() => {});
-  // Optimistic UI update
-  const initialActivities = [...allActivities]; // Keep a copy for rollback
   allActivities = allActivities.filter(a => String(a.id) !== String(id));
   renderActivities(allActivities);
   closePanel();
   document.getElementById('total-count').textContent = allActivities.length + ' actividades';
+  document.getElementById('clear-btn').style.display = allActivities.length ? 'flex' : 'none';
 
-  if (typeof BackendSync !== 'undefined') {
-    BackendSync.deleteActivity(id) // Esta función ahora solo hace la llamada a la API
-      .then(() => {
-        AppState.removeActivity(id); // Eliminar de AppState solo si la eliminación en el backend fue exitosa
-        showToast('Actividad eliminada correctamente', 'success');
-      })
-      .catch(e => {
-        console.error('[Activities] Error al eliminar actividad en backend:', e);
-        showToast('Error al eliminar la actividad: ' + e.message, 'error');
-        // Rollback UI if backend deletion fails
-        allActivities = initialActivities;
-        renderActivities(allActivities);
-        document.getElementById('total-count').textContent = allActivities.length + ' actividades';
-      });
-  } else {
+  if (typeof BackendSync === 'undefined') {
     showToast('Actividad eliminada localmente (sin conexión al servidor)', 'info');
+    return;
+  }
+
+  try {
+    await BackendSync.deleteActivity(id);
+    showToast('Actividad eliminada correctamente', 'success');
+  } catch(e) {
+    console.error('[Activities] Error al eliminar actividad en backend:', e);
+    allActivities = initialActivities;
+    AppState.activities = initialAppActivities;
+    localStorage.setItem('velomind_activities', JSON.stringify(initialAppActivities));
+    AppState.pmcData = PMC.compute(AppState.activities, 120);
+    renderActivities(allActivities);
+    document.getElementById('total-count').textContent = allActivities.length + ' actividades';
+    document.getElementById('clear-btn').style.display = allActivities.length ? 'flex' : 'none';
+    showToast('No se pudo eliminar la actividad: ' + (e.message || 'error desconocido'), 'error');
   }
 }
 
 async function clearAll() {
   if (!confirm('Eliminar TODAS las actividades? Esta accion no se puede deshacer.')) return;
   try {
-    const res = await fetch(window.API_URL + '/activities/all', {
+    const res = await fetch(window.API_URL + '/activities', {
       method: 'DELETE',
       headers: Auth.getHeaders()
     });
@@ -1008,14 +1057,6 @@ function showToast(msg, type = 'info') {
   setTimeout(() => toast.remove(), 4000);
 }
 
-// Event delegation — un único listener sobre el contenedor estable
-document.getElementById('activities-list').removeEventListener('click', function(e) {
-  // This listener is now redundant as clicks are handled directly on buttons or TDs
-  // It's safer to remove it if it was implicitly handling row clicks
-  // However, since it's an anonymous function, it cannot be directly removed.
-  // The new onclicks on TDs and buttons will handle it.
-});
-
 initActivities().then(() => {
   if (typeof BackendSync !== 'undefined') BackendSync.autoSyncIfNeeded();
 });
@@ -1036,65 +1077,21 @@ async function syncFromProvider(provider) {
   const btn = document.querySelector('#act-sync-btn button');
   if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...'; btn.disabled = true; }
   try {
-    const result = await BackendSync.syncStrava((msg) => { if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + msg; });
+    const syncFn = provider === 'garmin' ? BackendSync.syncGarmin : BackendSync.syncStrava;
+    const result = await syncFn((msg) => { if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + msg; });
     allActivities = [...AppState.activities].sort((a,b) => String(b.date || '').localeCompare(String(a.date || '')));
     renderActivities(allActivities);
     document.getElementById('total-count').textContent = allActivities.length + ' actividades';
     if (btn) { btn.innerHTML = '<i class="fas fa-check" style="color:#00c882"></i> ' + (result.synced || result.saved || '?') + ' importadas'; }
   } catch(e) { if (btn) btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error: ' + e.message; }
-  setTimeout(() => { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt" style="color:#FC4C02"></i> Importar desde Strava'; } }, 3000);
+  setTimeout(() => {
+    if (!btn) return;
+    btn.disabled = false;
+    btn.innerHTML = provider === 'garmin'
+      ? '<i class="fas fa-sync-alt" style="color:#007AC7"></i> Importar desde Garmin'
+      : '<i class="fas fa-sync-alt" style="color:#FC4C02"></i> Importar desde Strava';
+  }, 3000);
 }
-</script>
-<script>
-// Inyectar overrides DESPUÉS de que app.js aplique su CSS global (DOMContentLoaded + setTimeout)
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(function() {
-    var s = document.createElement('style');
-    s.textContent = [
-      '@media (max-width: 768px) {',
-      /* Permitir que el contenedor padre no corte el scroll horizontal */
-      '  html, body { overflow-x: auto !important; }',
-      '  .main-content { overflow-x: visible !important; }',
-      /* Wrapper de la tabla: scroll horizontal táctil */
-      '  #activities-list > div {',
-      '    overflow-x: scroll !important;',
-      '    -webkit-overflow-scrolling: touch !important;',
-      '    max-width: calc(100vw - 28px) !important;',
-      '    width: 100% !important;',
-      '  }',
-      /* Restaurar tabla como tabla, no bloque */
-      '  #activities-list table {',
-      '    display: table !important;',
-      '    width: auto !important;',
-      '    max-width: none !important;',
-      '    min-width: 720px;',
-      '  }',
-      /* Restaurar flex horizontal dentro de celdas (ej: nombre + badge) */
-      '  #activities-list td > div[style] {',
-      '    flex-direction: row !important;',
-      '    align-items: center !important;',
-      '    text-align: left !important;',
-      '    height: auto !important;',
-      '  }',
-      /* Restaurar tamaño normal de botones dentro de la tabla */
-      '  #activities-list td button {',
-      '    width: auto !important;',
-      '    min-width: 32px !important;',
-      '    margin: 0 !important;',
-      '    padding: 8px 12px !important;',
-      '    pointer-events: auto !important;',
-      '    position: relative !important;',
-      '    z-index: 2 !important;',
-      '  }',
-      '  #activities-list tr[data-act-id] {',
-      '    pointer-events: auto !important;',
-      '    cursor: pointer !important;',
-      '  }',
-      '}'
-    ].join('\n');
-    document.head.appendChild(s);
-  }, 0);
-});
 </script>
 </body>
 </html>

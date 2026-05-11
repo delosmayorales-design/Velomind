@@ -20,16 +20,30 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <style>
+    .integrations-layout {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(360px, 1fr));
+      gap: 24px;
+      align-items: stretch;
+      width: 100%;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
     .integration-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 32px;
-      max-width: 700px;
+      max-width: none;
       width: 100%;
-      margin: 0 auto;
+      min-height: 520px;
+      height: 100%;
+      margin: 0;
       position: relative;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
     .integration-card::before {
       content: '';
@@ -93,7 +107,7 @@
     }
     .int-feature i { color: var(--primary); font-size: 11px; }
 
-    .int-actions { display: flex; flex-direction: column; gap: 10px; }
+    .int-actions { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
 
     .btn-strava-connect {
       display: inline-flex;
@@ -270,8 +284,21 @@
     .log-line.info { color: #38bdf8; }
 
     /* ── Responsive ─────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .integrations-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
     @media (max-width: 600px) {
-      .integration-card { padding: 20px 16px; border-radius: var(--radius-md); }
+      .integrations-layout {
+        gap: 16px;
+      }
+      .integration-card {
+        padding: 20px 16px;
+        border-radius: var(--radius-md);
+        min-height: 0;
+      }
       .int-features { grid-template-columns: 1fr; gap: 8px; }
       .btn-strava-connect,
       .btn-strava-sync,
@@ -334,6 +361,8 @@
 
   <div class="page-body">
 
+    <div class="integrations-layout">
+
     <div class="integration-card" id="card-strava">
 
       <div class="int-header">
@@ -370,7 +399,7 @@
 
     </div>
 
-    <div class="integration-card garmin-card" id="card-garmin" style="margin-top:24px">
+    <div class="integration-card garmin-card" id="card-garmin">
 
       <div class="int-header">
         <div class="int-logo" style="background:rgba(0,122,199,0.12)">
@@ -403,6 +432,8 @@
       <div class="integration-note">
         Garmin Connect no ofrece acceso abierto como Strava. Para activar esta integración necesitas que Garmin apruebe tu app en el Garmin Connect Developer Program y habilite Activity API para tus credenciales.
       </div>
+
+    </div>
 
     </div>
 

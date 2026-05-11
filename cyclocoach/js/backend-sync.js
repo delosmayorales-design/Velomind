@@ -244,7 +244,7 @@ function isLegacyDemoActivity(a) {
       return res;
     } catch (e) {
       console.warn('[BackendSync] deleteActivity error:', e.message);
-      return null;
+      throw e;
     }
   }
 

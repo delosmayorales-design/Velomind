@@ -135,6 +135,19 @@ router.post('/batch', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Compatibilidad con clientes antiguos que llamaban DELETE /activities/all
+router.delete('/all', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const { count } = await supabase.from('activities').select('*', { count: 'exact', head: true }).eq('user_id', uid);
+    const { error: err1 } = await supabase.from('activities').delete().eq('user_id', uid);
+    if (err1) throw err1;
+    const { error: err2 } = await supabase.from('pmc').delete().eq('user_id', uid);
+    if (err2) throw err2;
+    res.json({ message: `${count || 0} actividades eliminadas y mÃ©tricas reseteadas` });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Eliminar una
 router.delete('/:id', async (req, res) => {
   await supabase.from('activities').delete().eq('id', req.params.id).eq('user_id', req.user.id);
