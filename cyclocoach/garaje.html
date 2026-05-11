@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -962,24 +962,36 @@ const G = (() => {
   }
 
   async function syncActivities() {
+    const btns = document.querySelectorAll('button[onclick*="G.syncActivities"]');
+    const origHtmls = Array.from(btns).map(b => b.innerHTML);
+    btns.forEach(b => { b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...'; });
+
     // 1. Refrescar desde backend si disponible
     if (typeof BackendSync !== 'undefined') {
       try {
+        // Forzar sincronización de Strava primero si está conectado
+        if (localStorage.getItem('velomind_strava_connected') === '1') {
+          await BackendSync.syncStrava().catch(() => {});
+        }
         const data = await BackendSync.loadGarage();
+        await BackendSync.loadActivities(); // Asegurar que tenemos las actividades más recientes
         if (data?.garage?.bikes?.length) {
           try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) {}
           try { hist = JSON.parse(localStorage.getItem(HK) || '[]'); } catch(e) { hist = []; }
         }
       } catch(e) {
         toast('red', 'Error', 'No se pudo conectar con el servidor.');
+        btns.forEach((b, i) => { b.disabled = false; b.innerHTML = origHtmls[i]; });
         return;
       }
     }
     // 2. Reconstruir km desde actividades locales y renderizar
     const matched = rebuildFromLocalActivities();
     recalc(); render(); save();
-    if (matched) { checkAlerts(); toast('green', '✅ Actualizado', 'Km de componentes recalculados desde tus actividades Strava.'); }
-    else toast('info', 'Sin novedades', 'No hay actividades Strava vinculadas a tus bicis (comprueba el Gear ID en Strava).');
+    if (matched) { checkAlerts(); toast('green', '✅ Actualizado', 'Km actualizados con tus últimas actividades.'); }
+    else toast('info', 'Sin novedades', 'No hay actividades vinculadas a tus bicis (comprueba el Gear ID en Strava).');
+
+    btns.forEach((b, i) => { b.disabled = false; b.innerHTML = origHtmls[i]; });
   }
 
   // ─── Alerts ───────────────────────────────────────────────
@@ -1719,6 +1731,7 @@ const G = (() => {
     // para que los km de componentes siempre estén al día al entrar en la página
     if (typeof BackendSync !== 'undefined') {
       Promise.all([
+        BackendSync.autoSyncIfNeeded().catch(() => null),
         BackendSync.loadGarage().catch(() => null),
         BackendSync.loadActivities().catch(() => null),
       ]).then(() => {
@@ -1760,4 +1773,3 @@ requestAnimationFrame(() => document.documentElement.style.removeProperty('opaci
 </script>
 </body>
 </html>
-
