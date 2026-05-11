@@ -1,4 +1,4 @@
-﻿﻿<html lang="es">
+﻿<html lang="es">
 <head>
   <script>
     (function() {
@@ -1819,7 +1819,11 @@ async function fetchElevation(latLngs) {
     if (data.status !== 'OK') return;
     const elevs = data.results.map(r => r.elevation ?? 0);
     document.getElementById('stat-elev').textContent = calcElevGain(elevs);
-    renderElevChart(elevs);
+    if (elevs.length > 0) {
+      renderElevChart(elevs);
+    } else {
+      console.warn('[Rutas] OpenTopoData devolvió datos de elevación vacíos.');
+    }
   } catch { /* silencioso */ }
 }
 
@@ -2137,7 +2141,6 @@ function openRouteOnMap(id) {
   routeGeoJSON = route.geojson;
   const isGps   = route.notes?.startsWith('GPS ·');
   const color   = routeColor(route);
-  const latLngs = route.geojson.coordinates.map(([ln,la]) => [la,ln]);
   if (routeLayer) map.removeLayer(routeLayer);
   routeLayer = L.polyline(latLngs, { color, weight: 4, opacity: 0.9 }).addTo(map);
   map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
@@ -2185,6 +2188,11 @@ async function shareWhatsApp(id) {
   openRouteOnMap(id);
 
   if (typeof leafletImage !== 'undefined' && navigator.canShare) {
+    // Show loading indicator
+    const shareBtn = event.target.closest('.ri-btn');
+    const originalContent = shareBtn.innerHTML;
+    shareBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    shareBtn.disabled = true;
     try {
       // Esperar fin de animación fitBounds
       await new Promise(res => {
@@ -2308,7 +2316,13 @@ async function shareWhatsApp(id) {
         } catch(e) { rej(e); }
       }, 'image/png'));
       return;
-    } catch(e) { /* fallback a texto */ }
+    } catch(e) {
+      console.error('Error sharing image:', e);
+      showToast('No se pudo generar la imagen para compartir. Compartiendo solo texto.', 'warning');
+    } finally {
+      shareBtn.innerHTML = originalContent;
+      shareBtn.disabled = false;
+    }
   }
 
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
