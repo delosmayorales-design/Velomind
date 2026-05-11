@@ -41,15 +41,6 @@ router.get('/:id', async (req, res) => {
   res.json(act);
 });
 
-// Borrar todas las actividades
-router.delete('/all', async (req, res) => {
-  try {
-    const { error } = await supabase.from('activities').delete().eq('user_id', req.user.id);
-    if (error) throw error;
-    res.json({ message: 'Todas las actividades eliminadas' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 // Crear/actualizar
 router.post('/', async (req, res) => {
   try {
@@ -157,12 +148,21 @@ router.delete('/:id', async (req, res) => {
   res.json({ message: 'Eliminada' });
 });
 
-// Eliminar todas
+// Eliminar todas (Vaciado completo del historial)
 router.delete('/', async (req, res) => {
-  const { count } = await supabase.from('activities').select('*', { count: 'exact', head: true }).eq('user_id', req.user.id);
-  await supabase.from('activities').delete().eq('user_id', req.user.id);
-  await supabase.from('pmc').delete().eq('user_id', req.user.id);
-  res.json({ message: `${count || 0} actividades eliminadas` });
+  try {
+    const uid = req.user.id;
+    const { count } = await supabase.from('activities').select('*', { count: 'exact', head: true }).eq('user_id', uid);
+    
+    const { error: err1 } = await supabase.from('activities').delete().eq('user_id', uid);
+    if (err1) throw err1;
+    
+    // También limpiamos el PMC ya que no quedan datos para calcularlo
+    const { error: err2 } = await supabase.from('pmc').delete().eq('user_id', uid);
+    if (err2) throw err2;
+
+    res.json({ message: `${count || 0} actividades eliminadas y métricas reseteadas` });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 async function updateGarageStats(userId, gearId, distance, durationSeconds, isMeters = true) {
@@ -190,4 +190,3 @@ async function updateGarageStats(userId, gearId, distance, durationSeconds, isMe
     }
   }
 }
-

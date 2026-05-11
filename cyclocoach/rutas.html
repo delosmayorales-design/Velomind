@@ -1,4 +1,5 @@
 ﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -1769,6 +1770,11 @@ async function calcRoute(type) {
     const result = await routeWithFallback(type);
 
     const { latLngs, distKm, durMin, elevGain, elevs } = result;
+
+    if (!latLngs || latLngs.length < 2) {
+      throw new Error('La ruta calculada no tiene suficientes puntos para dibujar.');
+    }
+
     routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la, ln]) => [ln, la]) };
 
     const color = type === 'gravel' ? '#F59E0B' : type === 'mtb' ? '#10B981' : '#FF6B35';
@@ -1784,6 +1790,7 @@ async function calcRoute(type) {
       if (elevs?.length) renderElevChart(elevs);
     } else {
       fetchElevation(latLngs, type, distKm);
+    } else if (latLngs.length > 1) { // Only fetch elevation if there's a valid route
       fetchElevation(latLngs);
     }
   } catch (e) {
@@ -1940,6 +1947,11 @@ function importGPX(input) {
 
       const latLngs = pts.map(p => [parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))]);
       const elevs   = pts.map(p => { const el = p.querySelector('ele'); return el ? parseFloat(el.textContent) : null; }).filter(v => v !== null);
+
+      if (!latLngs || latLngs.length < 2) {
+        alert('El archivo GPX/TCX no contiene suficientes puntos para dibujar una ruta.');
+        return;
+      }
 
       drawingActive = false;
       clearRoute();
@@ -2115,6 +2127,13 @@ function renderRouteList() {
 function openRouteOnMap(id) {
   const route = allRoutes.find(r => r.id === id);
   if (!route?.geojson) return;
+
+  const latLngs = route.geojson.coordinates.map(([ln,la]) => [la,ln]);
+  if (!latLngs || latLngs.length < 2) {
+    showToast('La ruta guardada no tiene suficientes puntos para dibujar.', 'error');
+    return;
+  }
+
   drawingActive = false;
   clearRoute();
   document.getElementById('map').classList.remove('drawing');
@@ -3161,6 +3180,11 @@ async function generateWindRoute() {
     const result = await routeWithFallback(type);
     const { latLngs, distKm, durMin, elevGain, elevs } = result;
     routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la,ln]) => [ln,la]) };
+
+    if (!latLngs || latLngs.length < 2) {
+      throw new Error('La ruta generada por viento no tiene suficientes puntos para dibujar.');
+    }
+
 
     const color = type === 'gravel' ? '#F59E0B' : type === 'mtb' ? '#10B981' : '#00D4FF';
     if (routeLayer) map.removeLayer(routeLayer);
