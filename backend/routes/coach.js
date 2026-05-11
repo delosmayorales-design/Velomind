@@ -2228,6 +2228,29 @@ Si el plan ya es óptimo → devolver "modifications": []`;
       }
     }
 
+    // Validacion final anti-series consecutivas. Esta regla manda sobre la IA.
+    const isQualitySession = (s) => {
+      if (!s || s.isRest) return false;
+      return ['tempo', 'threshold', 'vo2max', 'sprint', 'race'].includes(s.type) || Number(s.ifTarget || 0) >= 0.78;
+    };
+    for (let i = Math.max(todayIdx + 1, 1); i < 7; i++) {
+      if (isQualitySession(newSessions[i - 1]) && isQualitySession(newSessions[i])) {
+        const originalTSS = Number(newSessions[i].tss || 55);
+        newSessions[i] = {
+          ...newSessions[i],
+          isRest: false,
+          type: 'endurance',
+          name: 'Z2 suave (evitar series consecutivas)',
+          emoji: '🔵',
+          durationMin: Math.max(40, Math.round((newSessions[i].durationMin || 75) * 0.65)),
+          tss: Math.max(25, Math.round(originalTSS * 0.55)),
+          ifTarget: 0.62,
+          advice: 'Rebajamos esta sesion porque no debes encadenar dos dias de series. Conservamos carga aerobica sin sumar fatiga de calidad.',
+          _adapted: true
+        };
+      }
+    }
+
     return res.json({ ok: true, newPlan: { mensaje_coach: result.mensaje_coach, sessions: newSessions } });
   } catch (e) {
     res.status(500).json({ error: e.message });
