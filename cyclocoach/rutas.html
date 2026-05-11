@@ -3498,6 +3498,7 @@ let _trkPauseCount  = 0;     // lecturas consecutivas lentas
 let _trkGpsLost     = false; // señal GPS perdida
 let _trkGpsRetry    = null;  // timeout para reintentar watchPosition
 let _trkBackupTimer = null;  // intervalo de backup en IndexedDB
+let _trkAltSmooth   = null;  // altitud suavizada (EMA) para evitar saltos de pantalla
 
 // ── IndexedDB backup ──────────────────────────────────────────────
 const _IDB_NAME = 'velotrack_v1';
@@ -3654,6 +3655,7 @@ function _startTracking() {
       _trkLastTs     = null;
       _trkPaused     = false;
       _trkPauseCount = 0;
+      _trkAltSmooth  = null;
       _trkPolylines  = [];
       _trkStartTime  = Date.now();
       _resetSensorAccumulators();
@@ -3720,13 +3722,16 @@ function _onTrkPos(pos) {
     const maxDist = Math.max(30, dt * 28);
     if (d > maxDist) return;
 
-    // Velocidad: GPS si disponible, si no, calculada
-    const spd = (speedKmh != null && speedKmh > 0) ? speedKmh : (d / dt) * 3.6;
+    // Velocidad calculada desde distancia/tiempo
+    const calcSpd = (d / dt) * 3.6;
+    // Para auto-pause usar el MÍNIMO de GPS y calculada: evita que el ruido GPS
+    // (2-5 km/h estando parado) impida activar el pause.
+    const spd = speedKmh != null ? Math.min(speedKmh, calcSpd) : calcSpd;
 
     // ── Auto-pause ─────────────────────────────────────────────
-    if (spd < 1.5) {
+    if (spd < 3.0) {
       _trkPauseCount++;
-      if (_trkPauseCount >= 3 && !_trkPaused) {
+      if (_trkPauseCount >= 2 && !_trkPaused) {
         _trkPaused = true;
         document.getElementById('tracking-hud')?.classList.add('paused');
         document.querySelector('.g-rec-dot')?.classList.add('g-paused');
@@ -3745,18 +3750,25 @@ function _onTrkPos(pos) {
         _trkPolyline = L.polyline([], { color: '#ff3b3b', weight: 4, opacity: 0.85 }).addTo(map);
         _trkPolylines.push(_trkPolyline);
       }
-      // Acumular métricas solo cuando hay movimiento
+      // Acumular métricas solo cuando hay movimiento real
       _trkMovingTime += dt;
       _trkDist += d;
+      // Velocidad máxima: solo en movimiento (evita picos de ruido GPS parado)
+      const displaySpd = speedKmh ?? calcSpd;
+      if (displaySpd > _trkMaxSpeed) _trkMaxSpeed = displaySpd;
+      // Desnivel: umbral 1 m para filtrar ruido de altitud GPS
       if (alt != null && _trkLastAlt != null) {
         const diff = alt - _trkLastAlt;
-        if (diff > 0.5) _trkElevGain += diff;
+        if (diff > 1.0) _trkElevGain += diff;
       }
     }
   }
 
-  if (alt != null) _trkLastAlt = alt;
-  if (speedKmh != null && speedKmh > _trkMaxSpeed) _trkMaxSpeed = speedKmh;
+  // Altitud suavizada (EMA α=0.25) para que la pantalla no salte con ruido GPS
+  if (alt != null) {
+    _trkLastAlt   = alt;
+    _trkAltSmooth = _trkAltSmooth == null ? alt : _trkAltSmooth * 0.75 + alt * 0.25;
+  }
 
   _trkPoints.push({ lat, lng, alt, ts, speed: speedKmh, paused: _trkPaused && !isFirst });
 
@@ -3780,8 +3792,8 @@ function _onTrkPos(pos) {
 
   // Actualizar pantalla Garmin
   _gUpdate('g-speed', _trkPaused ? '–' : curSpeed.toFixed(1));
-  if (alt != null) _gUpdate('g-alt', Math.round(alt), false);
-  else             _gUpdate('g-alt', '--', true);
+  if (_trkAltSmooth != null) _gUpdate('g-alt', Math.round(_trkAltSmooth), false);
+  else                       _gUpdate('g-alt', '--', true);
 }
 
 function _onTrkErr(err) {
