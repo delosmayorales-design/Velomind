@@ -375,7 +375,7 @@ const TrainingPlanGenerator = {
     }
 
     const advice = this._getAdvice(tsb, ctl, effectivePhase);
-    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week, athlete.segments);
+    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week, athlete.segments, cycleInfo.weekInCycle);
 
     // Tasa de progresión: ΔCTLsemana ≈ (carga_diaria - CTL) × (1 - e^(-7/42)) ≈ × 0.154
     const rampRate = Math.round((targetTSS / 7 - ctl) * 0.154 * 10) / 10;
@@ -569,7 +569,7 @@ const TrainingPlanGenerator = {
     return parts.join(' + ');
   },
 
-  _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week = 5, userSegments = null) {
+  _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week = 5, userSegments = null, weekInCycle = 1) {
     // Cargar segmentos configurados por el usuario (o usar los por defecto hardcoded como fallback)
     if (userSegments && Array.isArray(userSegments) && userSegments.length > 0) {
       this._activeSegments = userSegments.map(s => ({
@@ -622,12 +622,22 @@ const TrainingPlanGenerator = {
       });
     }
 
+    // Progresión de intensidad intra-fase: semana 1=base, 2=+1%, 3=+2%, 4(recuperación)=-5%
+    // Solo se aplica a sesiones de calidad; Z2/recuperación/long no cambian de IF
+    const INTENSITY_BOOST = { 1: 1.00, 2: 1.01, 3: 1.02, 4: 0.95 };
+    const intensityBoost = INTENSITY_BOOST[weekInCycle] || 1.00;
+    // Alternancia de variante de intervalos: semanas impares → main, pares → alt
+    const intervalVariant = (weekInCycle % 2 === 1) ? 'main' : 'alt';
+
     // Calcular duración de cada sesión en minutos a partir de la distribución de TSS
     return templates.map(t => {
       if (t.isRest) return t;
 
       let sessTSS  = Math.round(t.tssShare * targetTSS);
-      const ifTarget = t.ifTarget || 0.65;
+      // Progresión: intensidad sube 1-2% en sesiones de calidad conforme avanza el ciclo 3:1
+      const isQuality = ['threshold', 'vo2max', 'tempo', 'sprint', 'strength'].includes(t.type);
+      const rawIF  = t.ifTarget || 0.65;
+      const ifTarget = isQuality ? Math.min(1.05, Math.round(rawIF * intensityBoost * 100) / 100) : rawIF;
       // Duración: TSS = (dur_h * NP * IF) / (FTP * 3600) * 100 → dur_h = TSS/(IF²*100) h
       let durMin = Math.round((sessTSS / (Math.pow(ifTarget, 2) * 100)) * 60);
 
@@ -647,9 +657,10 @@ const TrainingPlanGenerator = {
         sessTSS = Math.round((durMin / 60) * Math.pow(ifTarget, 2) * 100);
       }
 
-      // Generar estructura de intervalos real
-      const intervals = this._buildIntervals(t.type, ftp, durMin, sessTSS, t.ifTarget, 'main');
-      const alt_intervals = this._buildIntervals(t.type, ftp, durMin, sessTSS, t.ifTarget, 'alt');
+      // Generar intervalos: variante activa según semana del ciclo, alternando cada semana
+      const intervals     = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, intervalVariant);
+      const altVariant    = intervalVariant === 'main' ? 'alt' : 'main';
+      const alt_intervals = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, altVariant);
 
       // Construir descripción dinámica que coincida exactamente con los intervalos
       let dynamicDesc = this._buildDesc(intervals);
