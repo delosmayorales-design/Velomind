@@ -2459,6 +2459,63 @@ function toggleRealityForm(idx) {
   if (open) document.getElementById(`reality-input-${idx}`)?.focus();
 }
 
+function buildReplanContext(idx) {
+  const monday = new Date();
+  monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1);
+  monday.setHours(0, 0, 0, 0);
+  const activities = AppState.activities || [];
+  const dateKeyFor = (dayIdx) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + dayIdx);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  };
+
+  const days = [];
+  for (let i = idx - 2; i <= idx + 1; i++) {
+    if (i < 0 || i > 6) continue;
+    const sess = currentPlan?.sessions?.[i] || {};
+    const date = dateKeyFor(i);
+    const dayActs = activities.filter(a => a.date?.slice(0, 10) === date);
+    const actualTSS = Math.round(dayActs.reduce((sum, a) => sum + (Number(a.tss) || 0), 0));
+    const actualDurationMin = Math.round(dayActs.reduce((sum, a) => sum + (Number(a.duration) || 0), 0) / 60);
+    const maxIF = dayActs.reduce((max, a) => Math.max(max, Number(a.if_value) || 0), 0);
+    const plannedTSS = sess.isRest ? 0 : Math.round(Number(sess.tss) || ((sess.tssShare || 0) * (currentPlan?.targetTSS || 0)));
+
+    days.push({
+      dayIndex: i,
+      relation: i === idx ? 'hoy' : i === idx - 1 ? 'ayer' : i === idx - 2 ? 'anteayer' : 'manana',
+      day: sess.day,
+      date,
+      planned: {
+        isRest: !!sess.isRest,
+        type: sess.type || 'recovery',
+        name: sess.name || '',
+        durationMin: Number(sess.durationMin) || 0,
+        tss: plannedTSS,
+        ifTarget: Number(sess.ifTarget) || 0
+      },
+      actual: {
+        hasActivity: dayActs.length > 0,
+        activityNames: dayActs.map(a => a.name).filter(Boolean).slice(0, 3),
+        durationMin: actualDurationMin,
+        tss: actualTSS,
+        maxIF: Math.round(maxIF * 100) / 100,
+        tssDelta: actualTSS - plannedTSS
+      }
+    });
+  }
+
+  return {
+    window: 'anteayer-ayer-hoy-manana',
+    targetDayIndex: idx,
+    days,
+    recentTssDelta: days
+      .filter(d => d.dayIndex < idx)
+      .reduce((sum, d) => sum + (d.actual.tssDelta || 0), 0),
+    tomorrow: days.find(d => d.dayIndex === idx + 1) || null
+  };
+}
+
 // ── Sincronización Proactiva del Plan con Actividades Reales ─────────
 function syncPlanWithReality() {
   if (!currentPlan?.sessions || !AppState.activities) return;
@@ -2774,7 +2831,13 @@ async function recalculateWeek(idx) {
     try { // `res` is the raw response from the backend.
       const res = await fetch(`${API}/coach/recalculate-week`, { // Calls the backend to recalculate the week.
       method: 'POST', headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: currentPlan, todayIdx: idx, feedback, allowToday: true })
+      body: JSON.stringify({
+        plan: currentPlan,
+        todayIdx: idx,
+        feedback,
+        allowToday: true,
+        replanContext: buildReplanContext(idx)
+      })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al recalcular la semana');
@@ -3877,7 +3940,12 @@ async function _recalcFromModal() {
   try {
     const res = await fetch(`${API}/coach/recalculate-week`, {
       method: 'POST', headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: currentPlan, todayIdx: sessIdx, feedback: autoFeedback })
+      body: JSON.stringify({
+        plan: currentPlan,
+        todayIdx: sessIdx,
+        feedback: autoFeedback,
+        replanContext: buildReplanContext(sessIdx)
+      })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al recalcular');

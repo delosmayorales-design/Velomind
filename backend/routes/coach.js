@@ -1862,7 +1862,7 @@ router.post('/recalculate-week', async (req, res) => {
     if (!anthropicKey && !openaiKey && !googleKey && !groqKey)
       return res.status(503).json({ error: 'No hay API Keys configuradas.' });
 
-    const { plan, todayIdx, feedback, allowToday = false, cancelledIdx = -1, cancelledType = '' } = req.body;
+    const { plan, todayIdx, feedback, allowToday = false, cancelledIdx = -1, cancelledType = '', replanContext = null } = req.body;
 
     // Resumimos el plan (sin intervals ni descripciones largas)
     const planResumido = plan.sessions.map((s, i) => ({
@@ -1872,6 +1872,31 @@ router.post('/recalculate-week', async (req, res) => {
     }));
 
     const totalTrainingDays = plan.sessions.filter(s => !s.isRest).length;
+    const contextDays = Array.isArray(replanContext?.days)
+      ? replanContext.days
+      : planResumido
+        .filter(d => d.dayIndex >= todayIdx - 2 && d.dayIndex <= todayIdx + 1)
+        .map(d => ({
+          dayIndex: d.dayIndex,
+          relation: d.dayIndex === todayIdx ? 'hoy' : d.dayIndex === todayIdx - 1 ? 'ayer' : d.dayIndex === todayIdx - 2 ? 'anteayer' : 'manana',
+          day: d.day,
+          planned: { isRest: d.isRest, type: d.type, durationMin: d.durationMin, tss: d.tss },
+          actual: { hasActivity: false, durationMin: 0, tss: 0, maxIF: 0, tssDelta: 0 }
+        }));
+    const neighborhoodContext = {
+      window: 'anteayer-ayer-hoy-manana',
+      targetDayIndex: todayIdx,
+      recentTssDelta: Number(replanContext?.recentTssDelta || 0),
+      tomorrow: replanContext?.tomorrow || contextDays.find(d => d.dayIndex === todayIdx + 1) || null,
+      days: contextDays
+    };
+    const todayContext = contextDays.find(d => d.dayIndex === todayIdx);
+    const yesterdayContext = contextDays.find(d => d.dayIndex === todayIdx - 1);
+    const tomorrowContext = contextDays.find(d => d.dayIndex === todayIdx + 1);
+    const tomorrowIsQuality = !!tomorrowContext && ['threshold', 'vo2max', 'sprint', 'race'].includes(tomorrowContext.planned?.type);
+    const nearWindowHint = todayContext?.planned?.isRest && (yesterdayContext?.actual?.tssDelta || 0) > 20 && tomorrowIsQuality
+      ? `\nCASO CRITICO DETECTADO: hoy estaba planificado como descanso, ayer hubo exceso de carga (+${Math.round(yesterdayContext.actual.tssDelta)} TSS), y manana hay calidad (${tomorrowContext.planned.type}). Si el usuario quiere salir hoy, hoy debe ser muy suave/corto o manana debe bajar a Z2/descanso; no mantengas series FTP/VO2max al dia siguiente de una carga extra.`
+      : '';
 
     // ── Escenario 1: sesión tempo/threshold cancelada + siguiente día = long ──────
     const INTENSAS = ['tempo', 'threshold', 'sweet_spot'];
@@ -1896,8 +1921,11 @@ router.post('/recalculate-week', async (req, res) => {
 * Semana actual:
 ${JSON.stringify(planResumido, null, 2)}
 
+* Ventana obligatoria de contexto (anteayer, ayer, hoy y manana):
+${JSON.stringify(neighborhoodContext, null, 2)}
+
 "* Día modificado por el usuario (HOY = índice ${todayIdx}):
-"${feedback}"${scenario1Hint}
+"${feedback}"${scenario1Hint}${nearWindowHint}
 
 OBJETIVO:
 Recalcular la semana optimizando rendimiento (NO solo fatiga), manteniendo estímulos fisiológicos clave y una distribución realista de carga.
@@ -1913,6 +1941,8 @@ CONSTRAINTS DUROS (OBLIGATORIOS)
 4. PROHIBIDO 2 días consecutivos de alta intensidad (vo2max, threshold, sprint).
 5. Mantener alternancia carga–recuperación (estructura realista de ciclista).
 6. NO eliminar sesiones clave salvo fatiga extrema (TSB < -30).
+7. CONTEXTO CERCANO OBLIGATORIO: evalua SIEMPRE anteayer, ayer, hoy y manana antes de modificar. Usa TSS real, IF real y desviacion real de esos dias.
+8. Si ayer o anteayer hubo exceso de carga y hoy era descanso, cualquier salida propuesta hoy debe ser recovery/endurance corta. Si manana hay threshold, vo2max, sprint o race, reduce manana a Z2/descanso o mueve esa calidad a otro dia futuro viable.
 
 ════════════════════════════════════
 REGLAS DE ENTRENAMIENTO (CRÍTICAS)
@@ -1929,6 +1959,7 @@ REGLAS DE ENTRENAMIENTO (CRÍTICAS)
    ❌ NO eliminar días completos
 4. El día previo a VO2max o threshold:
    * debe ser descanso o Z2 suave
+   * si el usuario sale ese dia pese a estar marcado descanso, la sesion de VO2max/threshold del dia siguiente NO puede mantenerse intacta
 5. Identificar automáticamente sesiones clave:
    * VO2max
    * Threshold / Sweetspot
@@ -1995,6 +2026,46 @@ Si el plan ya es óptimo → devolver "modifications": []`;
     }
 
     // ── Fallback determinista Límite de Días ──────────────
+    // Salvaguarda determinista: descanso roto + exceso reciente + calidad manana.
+    const normFeedback = String(feedback || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const wantsRideToday = /\b(salir|salgo|rodar|rodaje|bici|entrenar|entreno|hacer algo|suave)\b/.test(normFeedback);
+    const originalTodayWasRest = !!plan.sessions[todayIdx]?.isRest;
+    const recentExcessTSS = Math.max(
+      Number(yesterdayContext?.actual?.tssDelta || 0),
+      Number(contextDays.find(d => d.dayIndex === todayIdx - 2)?.actual?.tssDelta || 0)
+    );
+    const todayBecameTraining = originalTodayWasRest && !newSessions[todayIdx]?.isRest;
+    if (allowToday && originalTodayWasRest && wantsRideToday && newSessions[todayIdx]?.isRest) {
+      newSessions[todayIdx] = {
+        ...newSessions[todayIdx],
+        isRest: false,
+        type: 'recovery',
+        name: 'Salida recovery corta',
+        emoji: '😴',
+        durationMin: 35,
+        tss: 20,
+        ifTarget: 0.52,
+        advice: 'Puedes salir, pero solo muy suave: venias con carga extra y manana habia calidad.'
+      };
+    }
+    if ((todayBecameTraining || (allowToday && originalTodayWasRest && wantsRideToday)) && recentExcessTSS > 20 && tomorrowIsQuality) {
+      const i = todayIdx + 1;
+      if (i < 7 && newSessions[i] && !newSessions[i].isRest) {
+        const originalTSS = Number(newSessions[i].tss || tomorrowContext?.planned?.tss || 60);
+        newSessions[i] = {
+          ...newSessions[i],
+          isRest: false,
+          type: 'endurance',
+          name: 'Z2 suave (series aplazadas)',
+          emoji: '🔵',
+          durationMin: Math.max(40, Math.round((newSessions[i].durationMin || 75) * 0.65)),
+          tss: Math.max(25, Math.round(originalTSS * 0.55)),
+          ifTarget: 0.62,
+          advice: `Bajamos las series por el exceso reciente (+${Math.round(recentExcessTSS)} TSS) y la salida extra de hoy.`
+        };
+      }
+    }
+
     const finalTrainingDays = newSessions.filter(s => !s.isRest).length;
     if (finalTrainingDays > totalTrainingDays) {
       let excess = finalTrainingDays - totalTrainingDays;
