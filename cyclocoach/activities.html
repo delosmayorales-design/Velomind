@@ -1,3 +1,4 @@
+﻿<!DOCTYPE html>
 ﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -954,10 +955,30 @@ function confirmDelete(id) {
 function deleteActivity(id) {
   AppState.removeActivity(id);
   if (typeof BackendSync !== 'undefined') BackendSync.deleteActivity(id).catch(() => {});
+  // Optimistic UI update
+  const initialActivities = [...allActivities]; // Keep a copy for rollback
   allActivities = allActivities.filter(a => String(a.id) !== String(id));
   renderActivities(allActivities);
   closePanel();
   document.getElementById('total-count').textContent = allActivities.length + ' actividades';
+
+  if (typeof BackendSync !== 'undefined') {
+    BackendSync.deleteActivity(id) // Esta función ahora solo hace la llamada a la API
+      .then(() => {
+        AppState.removeActivity(id); // Eliminar de AppState solo si la eliminación en el backend fue exitosa
+        showToast('Actividad eliminada correctamente', 'success');
+      })
+      .catch(e => {
+        console.error('[Activities] Error al eliminar actividad en backend:', e);
+        showToast('Error al eliminar la actividad: ' + e.message, 'error');
+        // Rollback UI if backend deletion fails
+        allActivities = initialActivities;
+        renderActivities(allActivities);
+        document.getElementById('total-count').textContent = allActivities.length + ' actividades';
+      });
+  } else {
+    showToast('Actividad eliminada localmente (sin conexión al servidor)', 'info');
+  }
 }
 
 async function clearAll() {

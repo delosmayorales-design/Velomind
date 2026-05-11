@@ -223,25 +223,9 @@ function isLegacyDemoActivity(a) {
   /** Elimina una actividad del backend */
   async function deleteActivity(id) {
     try {
-      const result = await apiFetch(`/activities/${id}`, { method: 'DELETE' });
-      
-      // Actualizar estado local inmediatamente tras el éxito en el servidor
-      if (window.AppState) {
-        AppState.removeActivity(id);
-      }
-
-      // Forzar renderizado de la UI si la función existe (mismo patrón que en saveActivity)
-      if (typeof window.renderActivities === 'function') {
-        const activities = (AppState.activities || []).sort((a, b) => 
-          String(b.date || '').localeCompare(String(a.date || ''))
-        );
-        window.renderActivities(activities);
-      }
-
-      return result;
+      return await apiFetch(`/activities/${id}`, { method: 'DELETE' });
     } catch (e) {
       console.warn('[BackendSync] deleteActivity error:', e.message);
-      if (window.AppState) AppState.removeActivity(id);
       return null;
     }
   }
