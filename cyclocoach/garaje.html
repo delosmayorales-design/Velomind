@@ -318,6 +318,8 @@
     .g-view { display: none; }
     .g-view.active { display: block; }
 
+    .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
     @media (max-width: 768px) {
       .garage-grid, .comp-grid { grid-template-columns: 1fr; }
       .fg-row { grid-template-columns: 1fr; }
@@ -454,7 +456,7 @@
       <h1>Mi Garaje</h1>
       <p class="subtitle">Mantenimiento predictivo · Sistema semáforo · Historial de componentes</p>
     </div>
-    <div class="header-actions" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div class="header-actions">
       <button class="btn btn-primary btn-sm" id="btn-import-strava" onclick="G.importFromStrava()">
         <i class="fab fa-strava"></i><span class="btn-label"> Importar Strava</span>
       </button>
