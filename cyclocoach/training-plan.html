@@ -3212,6 +3212,8 @@ function showSessionDetail(idx, showAlt = false) {
       </div>`;
   }
   document.getElementById('session-modal').style.display = 'flex';
+  document.getElementById('plan-side-tab')?.classList.add('sp-hidden');
+  document.getElementById('plan-side-panel')?.classList.add('sp-hidden');
 }
 
 function getSessionTip(type) {
@@ -3228,7 +3230,11 @@ function getSessionTip(type) {
   return tips[type] || 'Escucha a tu cuerpo y adapta la intensidad a cómo te sientes.';
 }
 
-function closeSessionModal() { document.getElementById('session-modal').style.display = 'none'; }
+function closeSessionModal() {
+  document.getElementById('session-modal').style.display = 'none';
+  document.getElementById('plan-side-tab')?.classList.remove('sp-hidden');
+  document.getElementById('plan-side-panel')?.classList.remove('sp-hidden');
+}
 
 function showToast(text, color = 'var(--primary)') {
   const t = document.createElement('div');
@@ -3836,6 +3842,8 @@ function openPostEntrenoModal(sessIdx) {
   const overlay = document.getElementById('post-modal-overlay');
   overlay.style.display = 'flex';
   document.body.style.overflow = 'hidden';
+  document.getElementById('plan-side-tab')?.classList.add('sp-hidden');
+  document.getElementById('plan-side-panel')?.classList.add('sp-hidden');
 }
 
 function _buildAutoFeedback(acts, tssA, tssP, durA, durP, ifA, ifP, hrAvg, ratio) {
@@ -3928,6 +3936,8 @@ function closePostModal() {
   const overlay = document.getElementById('post-modal-overlay');
   if (overlay) overlay.style.display = 'none';
   document.body.style.overflow = '';
+  document.getElementById('plan-side-tab')?.classList.remove('sp-hidden');
+  document.getElementById('plan-side-panel')?.classList.remove('sp-hidden');
 }
 
 // ── Adaptar a rodillo ────────────────────────────────────────
@@ -4070,6 +4080,8 @@ function closeModal(id) {
     }
     #plan-side-tab:active { background: rgba(255,255,255,0.12); }
     #plan-side-tab.sp-open { background: rgba(158,214,43,0.13); color: #9ED62B; border-color: rgba(158,214,43,0.32); }
+    #plan-side-tab.sp-hidden,
+    #plan-side-panel.sp-hidden { display: none !important; }
     #plan-side-panel {
       position: fixed; right: 28px; top: 50%;
       transform: translateY(-50%);

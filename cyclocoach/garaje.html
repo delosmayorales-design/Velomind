@@ -392,6 +392,9 @@
     .gsp-btn:active { background: rgba(255,255,255,0.08); }
     .gsp-btn i { width: 18px; text-align: center; font-size: 15px; flex-shrink: 0; opacity: 0.85; }
     .gsp-btn span { font-weight: 700; }
+    /* Ocultar tab en vistas de detalle y modales */
+    #garage-side-tab.sp-hidden,
+    #garage-side-panel.sp-hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -992,6 +995,8 @@ const G = (() => {
     curBike = null;
     document.getElementById('view-overview').classList.add('active');
     document.getElementById('view-bike').classList.remove('active');
+    document.getElementById('garage-side-tab')?.classList.remove('sp-hidden');
+    document.getElementById('garage-side-panel')?.classList.remove('sp-hidden');
     renderOverview();
   }
 
@@ -999,6 +1004,9 @@ const G = (() => {
     curBike = id;
     document.getElementById('view-overview').classList.remove('active');
     document.getElementById('view-bike').classList.add('active');
+    closeGarageSide();
+    document.getElementById('garage-side-tab')?.classList.add('sp-hidden');
+    document.getElementById('garage-side-panel')?.classList.add('sp-hidden');
     renderBike(id);
   }
 
@@ -1655,8 +1663,20 @@ const G = (() => {
   }
 
   // ─── Modals ───────────────────────────────────────────────
-  function openModal(id)  { document.getElementById(id).classList.add('show'); }
-  function closeModal(id) { document.getElementById(id).classList.remove('show'); if (id==='m-checkin') pendCI=null; }
+  function openModal(id) {
+    document.getElementById(id).classList.add('show');
+    closeGarageSide();
+    document.getElementById('garage-side-tab')?.classList.add('sp-hidden');
+    document.getElementById('garage-side-panel')?.classList.add('sp-hidden');
+  }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+    if (id === 'm-checkin') pendCI = null;
+    if (!curBike) {
+      document.getElementById('garage-side-tab')?.classList.remove('sp-hidden');
+      document.getElementById('garage-side-panel')?.classList.remove('sp-hidden');
+    }
+  }
 
   document.querySelectorAll('.g-modal').forEach(m => {
     m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
