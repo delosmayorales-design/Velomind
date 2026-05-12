@@ -177,6 +177,7 @@ function isLegacyDemoActivity(a) {
       }
       AppState.saveActivity(activity);
       await loadActivities();
+      await loadGarage(); // Mantener el garaje sincronizado
       if (typeof window.renderActivities === 'function') {
         if (typeof window.allActivities !== 'undefined') {
           window.allActivities = [...AppState.activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
@@ -203,6 +204,7 @@ function isLegacyDemoActivity(a) {
       });
       for (const a of activities) AppState.saveActivity(a);
       await loadActivities();
+      await loadGarage(); // Mantener el garaje sincronizado
       if (typeof window.renderActivities === 'function') {
         if (typeof window.allActivities !== 'undefined') {
           window.allActivities = [...AppState.activities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
@@ -227,6 +229,7 @@ function isLegacyDemoActivity(a) {
       
       // 1. Eliminar del estado global local (localStorage y AppState)
       AppState.removeActivity(id);
+      await loadGarage(); // Mantener el garaje sincronizado
       
       // 2. Refrescar la UI de la tabla de actividades automáticamente
       if (typeof window.renderActivities === 'function') {
@@ -309,6 +312,7 @@ function isLegacyDemoActivity(a) {
     const data = await apiFetch('/providers/strava/sync', { method: 'POST' });
     if (onProgress) onProgress(`${data.synced || data.saved || 0} actividades sincronizadas`, 100);
     await loadActivities();
+    await loadGarage(); // Sincronizar kilómetros de la bici
     return data;
   }
 
@@ -333,6 +337,7 @@ function isLegacyDemoActivity(a) {
 
       await apiFetch('/providers/strava/sync', { method: 'POST', body });
       await loadActivities();
+      await loadGarage(); // Sincronizar kilómetros de la bici
 
       const after = (window.AppState?.activities || []).length;
       const newCount = Math.max(0, after - before);
@@ -356,6 +361,7 @@ function isLegacyDemoActivity(a) {
     const data = await apiFetch('/providers/garmin/sync', { method: 'POST' });
     if (onProgress) onProgress(`${data.synced || data.saved || 0} actividades sincronizadas`, 100);
     await loadActivities();
+    await loadGarage(); // Sincronizar kilómetros de la bici
     return data;
   }
 
