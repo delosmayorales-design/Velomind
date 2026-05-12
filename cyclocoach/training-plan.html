@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -2011,116 +2011,6 @@ function undoOverrideRest(idx) {
   showToast('↩ Sesión restaurada', 'var(--primary)');
 }
 
-async function planCustomSession(idx) {
-  const input  = document.getElementById(`override-input-${idx}`);
-  const btn    = document.getElementById(`override-btn-${idx}`);
-  const result = document.getElementById(`override-result-${idx}`);
-  const text   = input?.value?.trim();
-  if (!text) { input?.focus(); return; }
-
-  // Detección rápida de descanso en el cliente — sin llamar a la IA
-  const restWords = ['descanso', 'descansar', 'no salgo', 'no entreno', 'rest day', 'día libre'];
-  if (restWords.some(w => text.toLowerCase().includes(w))) {
-    overrideToRest(idx);
-    const body = document.getElementById(`override-body-${idx}`);
-    if (body) body.style.display = 'none';
-    const chev = document.getElementById(`override-chev-${idx}`);
-    if (chev) chev.style.transform = '';
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Planificando...';
-
-  try {
-    const res = await fetch(`${API}/coach/session-guidance`, {
-      method: 'POST',
-      headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        description: text,
-        metrics: AppState.getCurrentMetrics()
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
-    if (!data.guidance) throw new Error('El coach no devolvió un plan.');
-
-    const g = data.guidance;
-    const sess = currentPlan.sessions[idx];
-
-    // Guardar la sesión original y actualizar con los datos del plan
-    if (!sess._origSession) {
-      sess._origSession = { type: sess.type, name: sess.name, emoji: sess.emoji, isRest: sess.isRest, description: sess.description, durationMin: sess.durationMin, tssShare: sess.tssShare, ifTarget: sess.ifTarget };
-    }
-    const tipoEmoji = { montana:'🏔️', llano:'🚴', recuperacion:'🛌', suave:'🚴', umbral:'⚡', vo2:'🔥' };
-    const tipoType  = { montana:'long', llano:'endurance', recuperacion:'recovery', suave:'recovery', umbral:'threshold', vo2:'vo2max' };
-    const tipo = g.tipo || 'llano';
-    sess._adapted  = true;
-    sess.name      = g.titulo || sess.name;
-    sess.emoji     = tipoEmoji[tipo] || '🚴';
-    sess.type      = tipoType[tipo]  || 'endurance';
-    sess.advice    = g.pacing || '';
-    if (g.duracion_min  > 0) sess.durationMin = g.duracion_min;
-    if (g.tss_estimado  > 0) sess.tssShare    = g.tss_estimado / (currentPlan.targetTSS || 300);
-    if (g.if_estimado   > 0) sess.ifTarget    = g.if_estimado;
-    silentSavePlan();
-
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const card    = (label, icon, color, text) => text ? `
-      <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid ${isLight ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.05)'}">
-        <i class="fas ${icon}" style="color:${color};font-size:12px;margin-top:2px;flex-shrink:0;width:14px;text-align:center"></i>
-        <div>
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${color};margin-bottom:2px">${label}</div>
-          <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${text}</div>
-        </div>
-      </div>` : '';
-
-    result.innerHTML = `
-      <div style="background:${isLight ? 'rgba(0,0,0,.02)' : 'rgba(0,0,0,.25)'};border:1px solid ${isLight ? 'rgba(0,0,0,.1)' : 'rgba(255,255,255,.08)'};border-radius:10px;overflow:hidden">
-        <!-- Cabecera -->
-        <div style="padding:12px 14px;border-bottom:1px solid ${isLight ? 'rgba(0,0,0,.07)' : 'rgba(255,255,255,.07)'}">
-          <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:4px">${tipoEmoji[tipo] || '🚴'} ${g.titulo || 'Salida personalizada'}</div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap">
-            ${g.duracion_min  > 0  ? `<span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-clock" style="margin-right:3px"></i>${Math.round(g.duracion_min/60*10)/10}h (${g.duracion_min} min)</span>` : ''}
-            ${g.distancia_km       ? `<span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-road" style="margin-right:3px"></i>${g.distancia_km} km</span>` : ''}
-            ${g.tss_estimado  > 0  ? `<span style="font-size:11px;color:var(--accent)"><i class="fas fa-star" style="margin-right:3px"></i>TSS ~${g.tss_estimado}</span>` : ''}
-            ${g.if_estimado   > 0  ? `<span style="font-size:11px;color:var(--primary)"><i class="fas fa-bolt" style="margin-right:3px"></i>IF ${g.if_estimado}</span>` : ''}
-          </div>
-          ${g.intensidad ? `<div style="font-size:11px;color:var(--primary);font-weight:600;margin-top:5px"><i class="fas fa-gauge-high" style="margin-right:4px"></i>${g.intensidad}</div>` : ''}
-        </div>
-        <!-- Detalles -->
-        <div style="padding:6px 14px 10px">
-          ${card('Estrategia de ritmo', 'fa-route', '#38BDF8', g.pacing)}
-          ${card('Antes de salir', 'fa-egg', '#F97316', g.nutricion_pre)}
-          ${card('Durante la salida', 'fa-candy-cane', '#10b981', g.nutricion_durante)}
-          ${card('Recuperación post', 'fa-drumstick-bite', '#a78bfa', g.nutricion_post)}
-          ${card('Hidratación', 'fa-droplet', '#60a5fa', g.hidratacion)}
-          ${g.advertencias ? `
-          <div style="margin-top:8px;padding:7px 10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:7px;font-size:11px;color:#fbbf24;line-height:1.45">
-            <i class="fas fa-triangle-exclamation" style="margin-right:5px"></i>${g.advertencias}
-          </div>` : ''}
-        </div>
-        <!-- Descartar -->
-        <div style="padding:8px 14px;border-top:1px solid ${isLight ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.05)'}">
-          <button onclick="undoOverrideRest(${idx});document.getElementById('override-result-${idx}').style.display='none';document.getElementById('override-btn-${idx}').style.display='';document.getElementById('override-input-${idx}').style.display=''"
-            style="padding:5px 12px;background:none;border:1px solid rgba(100,116,139,.25);border-radius:6px;color:var(--text-muted);font-size:11px;cursor:pointer;font-family:inherit">
-            <i class="fas fa-rotate-left"></i> Descartar
-          </button>
-        </div>
-      </div>`;
-    result.style.display = '';
-    btn.style.display    = 'none';
-    input.style.display  = 'none';
-
-  } catch(e) {
-    console.error('[planCustomSession]', e);
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-magic"></i> Planificar esta salida';
-    result.innerHTML = `<div style="padding:4px;font-size:12px;color:#f87171"><i class="fas fa-exclamation-circle"></i> ${e.message}</div>`;
-    result.style.display = '';
-  }
-}
-
 // ── Check-in pre-entreno (3 botones: mal / normal / fuerte) ──────
 async function applyCheckIn(idx, feeling) {
   if (!currentPlan?.sessions?.[idx]) return;
@@ -2768,10 +2658,16 @@ async function markTodayAsRest(idx, userNote) {
   await silentSavePlan();
 }
 
-async function recalculateWeek(idx) {
-  const input = document.getElementById(`reality-input-${idx}`);
-  const btn = document.getElementById(`reality-btn-${idx}`);
-  const result = document.getElementById(`reality-result-${idx}`);
+async function recalculateWeek(idx, isFuture = false) {
+  const inputId = isFuture ? `override-input-${idx}` : `reality-input-${idx}`;
+  const btnId   = isFuture ? `override-btn-${idx}`   : `reality-btn-${idx}`;
+  const resId   = isFuture ? `override-result-${idx}`: `reality-result-${idx}`;
+
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  const result = document.getElementById(resId);
+  if (!input) return;
+
   const feedback = input.value.trim();
 
   if (!feedback) { input.focus(); return; }
@@ -2819,21 +2715,23 @@ async function recalculateWeek(idx) {
   // Patrón texto: "ayer X pero hoy no"
   const _ayerHoyNo = /ayer.{0,40}hoy no\b|hoy no (sal|entr|pued|voy|puedo)\b/i.test(fbNorm);
 
-  if (_stravaConfirmsNoTraining || _ayerHoyNo || KW_NO_SALIR.some(k => fbNorm.includes(k.normalize('NFD').replace(/[̀-ͯ]/g, '')))) {
+  if ((!isFuture && _stravaConfirmsNoTraining) || _ayerHoyNo || KW_NO_SALIR.some(k => fbNorm.includes(k.normalize('NFD').replace(/[̀-ͯ]/g, '')))) {
     markTodayAsRest(idx, feedback);
     return;
   }
 
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recalculando semana...';
+  btn.innerHTML = isFuture ? '<i class="fas fa-spinner fa-spin"></i> Adaptando plan...' : '<i class="fas fa-spinner fa-spin"></i> Recalculando semana...';
   result.style.display = 'none';
 
     try { // `res` is the raw response from the backend.
+      const todayIdxNow = (new Date().getDay() + 6) % 7;
       const res = await fetch(`${API}/coach/recalculate-week`, { // Calls the backend to recalculate the week.
       method: 'POST', headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({
         plan: currentPlan,
-        todayIdx: idx,
+        todayIdx: todayIdxNow,
+        targetIdx: idx,
         feedback,
         allowToday: true,
         replanContext: buildReplanContext(idx)
