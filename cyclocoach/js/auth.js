@@ -128,6 +128,7 @@ const Auth = (() => {
       window.AppState.athlete = data.user;
       if (remember) {
         localStorage.setItem('velomind_athlete', JSON.stringify(data.user));
+        localStorage.setItem('velomind_last_email', email);
       } else {
         sessionStorage.setItem('velomind_athlete', JSON.stringify(data.user));
       }
@@ -532,6 +533,19 @@ function injectRememberMe() {
     // Buscar cualquier botón dentro del formulario, no solo type="submit"
     const submitBtn = form ? (form.querySelector('button[type="submit"]') || form.querySelector('button') || form.querySelector('.btn')) : null;
     
+    // Asegurar compatibilidad con el llavero de contraseñas de iOS (FaceID/TouchID)
+    if (form) {
+      const emailInput = form.querySelector('input[type="email"], input[id="email"], input[name="email"]');
+      const passInput = form.querySelector('input[type="password"], input[id="password"], input[name="password"]');
+      
+      if (emailInput) {
+        emailInput.setAttribute('autocomplete', 'username');
+        const lastEmail = localStorage.getItem('velomind_last_email');
+        if (lastEmail && !emailInput.value) emailInput.value = lastEmail;
+      }
+      if (passInput) passInput.setAttribute('autocomplete', 'current-password');
+    }
+
     if (form && !document.getElementById('remember-me')) {
       const rememberDiv = document.createElement('div');
       rememberDiv.className = 'form-group';
