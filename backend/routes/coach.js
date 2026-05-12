@@ -1862,7 +1862,9 @@ router.post('/recalculate-week', async (req, res) => {
     if (!anthropicKey && !openaiKey && !googleKey && !groqKey)
       return res.status(503).json({ error: 'No hay API Keys configuradas.' });
 
-    const { plan, todayIdx, feedback, allowToday = false, cancelledIdx = -1, cancelledType = '', replanContext = null } = req.body;
+    const { plan, todayIdx, targetIdx, feedback, allowToday = false, cancelledIdx = -1, cancelledType = '', replanContext = null } = req.body;
+
+    const activeIdx = targetIdx !== undefined ? targetIdx : todayIdx;
 
     // Resumimos el plan (sin intervals ni descripciones largas)
     const planResumido = plan.sessions.map((s, i) => ({
@@ -1875,27 +1877,27 @@ router.post('/recalculate-week', async (req, res) => {
     const contextDays = Array.isArray(replanContext?.days)
       ? replanContext.days
       : planResumido
-        .filter(d => d.dayIndex >= todayIdx - 2 && d.dayIndex <= todayIdx + 1)
+        .filter(d => d.dayIndex >= activeIdx - 2 && d.dayIndex <= activeIdx + 1)
         .map(d => ({
           dayIndex: d.dayIndex,
-          relation: d.dayIndex === todayIdx ? 'hoy' : d.dayIndex === todayIdx - 1 ? 'ayer' : d.dayIndex === todayIdx - 2 ? 'anteayer' : 'manana',
+          relation: d.dayIndex === activeIdx ? 'dia_objetivo' : d.dayIndex === activeIdx - 1 ? 'previo' : d.dayIndex === activeIdx - 2 ? 'previo_2' : 'siguiente',
           day: d.day,
           planned: { isRest: d.isRest, type: d.type, durationMin: d.durationMin, tss: d.tss },
           actual: { hasActivity: false, durationMin: 0, tss: 0, maxIF: 0, tssDelta: 0 }
         }));
     const neighborhoodContext = {
-      window: 'anteayer-ayer-hoy-manana',
-      targetDayIndex: todayIdx,
+      window: 'entorno-dia-modificado',
+      targetDayIndex: activeIdx,
       recentTssDelta: Number(replanContext?.recentTssDelta || 0),
-      tomorrow: replanContext?.tomorrow || contextDays.find(d => d.dayIndex === todayIdx + 1) || null,
+      tomorrow: replanContext?.tomorrow || contextDays.find(d => d.dayIndex === activeIdx + 1) || null,
       days: contextDays
     };
-    const todayContext = contextDays.find(d => d.dayIndex === todayIdx);
-    const yesterdayContext = contextDays.find(d => d.dayIndex === todayIdx - 1);
-    const tomorrowContext = contextDays.find(d => d.dayIndex === todayIdx + 1);
+    const todayContext = contextDays.find(d => d.dayIndex === activeIdx);
+    const yesterdayContext = contextDays.find(d => d.dayIndex === activeIdx - 1);
+    const tomorrowContext = contextDays.find(d => d.dayIndex === activeIdx + 1);
     const tomorrowIsQuality = !!tomorrowContext && ['threshold', 'vo2max', 'sprint', 'race'].includes(tomorrowContext.planned?.type);
     const nearWindowHint = todayContext?.planned?.isRest && (yesterdayContext?.actual?.tssDelta || 0) > 20 && tomorrowIsQuality
-      ? `\nCASO CRITICO DETECTADO: hoy estaba planificado como descanso, ayer hubo exceso de carga (+${Math.round(yesterdayContext.actual.tssDelta)} TSS), y manana hay calidad (${tomorrowContext.planned.type}). Si el usuario quiere salir hoy, hoy debe ser muy suave/corto o manana debe bajar a Z2/descanso; no mantengas series FTP/VO2max al dia siguiente de una carga extra.`
+      ? `\nCASO CRITICO DETECTADO: el día a modificar estaba planificado como descanso, el día previo hubo exceso de carga, y al día siguiente hay calidad (${tomorrowContext.planned.type}). Adapta con cuidado.`
       : '';
 
     // ── Escenario 1: sesión tempo/threshold cancelada + siguiente día = long ──────
@@ -1912,19 +1914,21 @@ router.post('/recalculate-week', async (req, res) => {
       ? `\n⚠️ ESCENARIO ESPECIAL: la sesión cancelada (dayIndex ${cancelledIdx}) era "${cancelledType}" con ${cancelledTSS} TSS, y el día siguiente (dayIndex ${nextDayIdx}) es un FONDO LARGO. En este caso: NO sustituyas el fondo largo por intervalos FTP. En su lugar, amplía el fondo largo añadiendo 2×15 min de bloques Sweet Spot (0.88-0.92 FTP) y aumenta su TSS en ${Math.round(cancelledTSS * 0.6)} TSS. Pon name="Fondo largo + bloques Sweet Spot".`
       : '';
 
-    const hoyRegla = allowToday
-      ? `HOY (índice ${todayIdx}) PUEDE ser modificado (puedes cambiar de descanso a entreno o viceversa). NO modifiques índices anteriores a ${todayIdx}.`
-      : `🛑 NUNCA modifiques HOY (índice ${todayIdx}) ni días anteriores. Solo días FUTUROS (índice > ${todayIdx}).`;
+    const hoyRegla = (activeIdx === todayIdx) 
+      ? (allowToday 
+        ? `DÍA OBJETIVO (índice ${activeIdx}) PUEDE ser modificado. NO modifiques índices anteriores a ${todayIdx}.` 
+        : `🛑 NUNCA modifiques HOY (índice ${todayIdx}) ni días anteriores. Solo días FUTUROS (índice > ${todayIdx}).`)
+      : `Estás modificando un día futuro (índice ${activeIdx}). Puedes adaptarlo libremente, pero NO modifiques días pasados ni HOY (índice < ${todayIdx}).`;
 
     const systemPrompt = 'Actúa como un entrenador experto en ciclismo basado en métricas (TSS, CTL, ATL, TSB, IF, FTP) y planificación tipo TrainingPeaks/WKO. Responde SOLO con JSON válido, sin markdown ni texto extra.';
     const userMsg = `INPUT:
 * Semana actual:
 ${JSON.stringify(planResumido, null, 2)}
 
-* Ventana obligatoria de contexto (anteayer, ayer, hoy y manana):
+    * Ventana obligatoria de contexto alrededor del día a modificar:
 ${JSON.stringify(neighborhoodContext, null, 2)}
 
-"* Día modificado por el usuario (HOY = índice ${todayIdx}):
+"* Día modificado por el usuario (Índice Objetivo = ${activeIdx}):
 "${feedback}"${scenario1Hint}${nearWindowHint}
 
 OBJETIVO:
@@ -2021,7 +2025,7 @@ Si el plan ya es óptimo → devolver "modifications": []`;
     const newSessions = [...plan.sessions];
     for (const mod of result.modifications) {
       const idx = Number(mod.dayIndex);
-      const allowed = allowToday ? idx >= todayIdx : idx > todayIdx;
+      const allowed = idx >= todayIdx; // Permitir afectar a partir de HOY, pero NUNCA en el pasado
       if (allowed && idx < 7 && mod.changes) {
         newSessions[idx] = { ...newSessions[idx], ...mod.changes };
       }
@@ -2032,21 +2036,21 @@ Si el plan ya es óptimo → devolver "modifications": []`;
     const normFeedback = String(feedback || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const wantsRideToday = /\b(salir|salgo|rodar|rodaje|bici|entrenar|entreno|hacer algo|suave)\b/.test(normFeedback);
     const feedbackMentionsExcess = /\b(exced|exceso|me pase|pasado|demasiad|mas tss|mucho tss|fatiga|cargad)\b/.test(normFeedback);
-    const originalTodayWasRest = !!plan.sessions[todayIdx]?.isRest;
+    const originalTargetWasRest = !!plan.sessions[activeIdx]?.isRest;
     const recentExcessTSS = Math.max(
       Number(neighborhoodContext?.recentTssDelta || 0),
       Number(yesterdayContext?.actual?.tssDelta || 0),
-      Number(contextDays.find(d => d.dayIndex === todayIdx - 2)?.actual?.tssDelta || 0)
+      Number(contextDays.find(d => d.dayIndex === activeIdx - 2)?.actual?.tssDelta || 0)
     );
-    const todayBecameTraining = originalTodayWasRest && !newSessions[todayIdx]?.isRest;
-    const mustKeepTodayEasy = allowToday && originalTodayWasRest && wantsRideToday && (recentExcessTSS > 20 || feedbackMentionsExcess);
-    if (allowToday && originalTodayWasRest && wantsRideToday) {
-      const easyOnly = mustKeepTodayEasy || tomorrowIsQuality;
-      newSessions[todayIdx] = {
-        ...newSessions[todayIdx],
+    const targetBecameTraining = originalTargetWasRest && !newSessions[activeIdx]?.isRest;
+    const mustKeepTargetEasy = (allowToday || activeIdx > todayIdx) && originalTargetWasRest && wantsRideToday && (recentExcessTSS > 20 || feedbackMentionsExcess);
+    if ((allowToday || activeIdx > todayIdx) && originalTargetWasRest && wantsRideToday) {
+      const easyOnly = mustKeepTargetEasy || tomorrowIsQuality;
+      newSessions[activeIdx] = {
+        ...newSessions[activeIdx],
         isRest: false,
         type: easyOnly ? 'recovery' : 'endurance',
-        name: easyOnly ? 'Salida recovery corta' : 'Z2 corta no planificada',
+        name: easyOnly ? 'Salida recovery corta' : 'Z2 corta modificada',
         emoji: '😴',
         durationMin: easyOnly ? 35 : 50,
         tss: easyOnly ? 20 : 35,
@@ -2056,8 +2060,8 @@ Si el plan ya es óptimo → devolver "modifications": []`;
           : 'Salida corta en Z2: sumamos movimiento sin convertir el descanso en una sesion de calidad.'
       };
     }
-    if ((todayBecameTraining || (allowToday && originalTodayWasRest && wantsRideToday)) && (recentExcessTSS > 20 || feedbackMentionsExcess) && tomorrowIsQuality) {
-      const i = todayIdx + 1;
+    if ((targetBecameTraining || ((allowToday || activeIdx > todayIdx) && originalTargetWasRest && wantsRideToday)) && (recentExcessTSS > 20 || feedbackMentionsExcess) && tomorrowIsQuality) {
+      const i = activeIdx + 1;
       if (i < 7 && newSessions[i] && !newSessions[i].isRest) {
         const originalTSS = Number(newSessions[i].tss || tomorrowContext?.planned?.tss || 60);
         newSessions[i] = {
