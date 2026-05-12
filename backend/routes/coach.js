@@ -1938,7 +1938,8 @@ CONSTRAINTS DUROS (OBLIGATORIOS)
    * 1 sesión VO2max o alta intensidad
    * 1 sesión threshold/tempo/sweetspot
    * 1 sesión endurance o long
-4. PROHIBIDO 2 días consecutivos de alta intensidad (vo2max, threshold, sprint).
+3. PROHIBIDO 2 días consecutivos de descanso. Si añades un descanso para compensar, asegúrate de que no caiga pegado a otro.
+4. PROHIBIDO 2 días consecutivos de alta intensidad (vo2max, threshold, sprint, race).
 5. Mantener alternancia carga–recuperación (estructura realista de ciclista).
 6. NO eliminar sesiones clave salvo fatiga extrema (TSB < -30).
 7. CONTEXTO CERCANO OBLIGATORIO: evalua SIEMPRE anteayer, ayer, hoy y manana antes de modificar. Usa TSS real, IF real y desviacion real de esos dias.
@@ -1978,6 +1979,7 @@ LÓGICA DE REPLANIFICACIÓN
   * distribución homogénea
   * consistencia semanal
   * estímulo fisiológico correcto
+  * coherencia con la fatiga acumulada (TSB/CTL/ATL) y los días disponibles para entrenar.
 * Si hay conflicto:
   → ajustar volumen antes que eliminar sesiones
 
