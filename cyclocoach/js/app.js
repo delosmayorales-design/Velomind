@@ -215,7 +215,7 @@ const AppState = {
   },
 
   _loadAthlete() {
-    try { return JSON.parse(localStorage.getItem('velomind_athlete')) || null; } catch { return null; }
+    try { return JSON.parse(localStorage.getItem('velomind_athlete') || sessionStorage.getItem('velomind_athlete')) || null; } catch { return null; }
   },
   _loadActivities() {
     try { return JSON.parse(localStorage.getItem('velomind_activities')) || []; } catch { return []; }

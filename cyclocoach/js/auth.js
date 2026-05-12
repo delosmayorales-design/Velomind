@@ -22,14 +22,16 @@ const Auth = (() => {
 
   // ─── Token ──────────────────────────────────────────────────
   function getToken() {
-    const t = localStorage.getItem(TOKEN_KEY);
+    const t = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
     if (t === 'null' || t === 'undefined' || !t) return null;
     return t;
   }
 
-  function setToken(token) {
+  function setToken(token, remember = true) {
     if (!token || token === 'null' || token === 'undefined') {
-      return localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      return;
     }
     // Si no tiene 3 partes (header.payload.signature), NO es un JWT de sesión
     if (token.split('.').length !== 3) {
@@ -37,15 +39,23 @@ const Auth = (() => {
       return;
     }
 
-    localStorage.setItem(TOKEN_KEY, token);
+    if (remember) {
+      localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      sessionStorage.setItem(TOKEN_KEY, token);
+    }
   }
 
   function getUser() {
-    try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch { return null; }
+    try { return JSON.parse(localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY)); } catch { return null; }
   }
 
-  function setUser(user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  function setUser(user, remember = true) {
+    if (remember) {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    } else {
+      sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+    }
   }
 
   function isAuthenticated() {
@@ -70,11 +80,11 @@ const Auth = (() => {
 
   // ─── Limpieza de sesión ──────────────────────────────────────
   function clearSessionData() {
-    const keys = Object.keys(localStorage);
-    keys.forEach(key => {
-      if (key.startsWith('velomind_') || key.startsWith('cyclocoach_')) {
-        localStorage.removeItem(key);
-      }
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('velomind_') || key.startsWith('cyclocoach_')) localStorage.removeItem(key);
+    });
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('velomind_') || key.startsWith('cyclocoach_')) sessionStorage.removeItem(key);
     });
   }
 
@@ -93,7 +103,7 @@ const Auth = (() => {
   }
 
   // ─── Login ────────────────────────────────────────────────────
-  async function login(email, password) {
+  async function login(email, password, remember = true) {
     // Limpiar rastro de sesiones anteriores antes de iniciar una nueva para evitar fugas de datos
     clearSessionData();
 
@@ -104,12 +114,16 @@ const Auth = (() => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Credenciales incorrectas');
-    setToken(data.token);
-    setUser(data.user);
+    setToken(data.token, remember);
+    setUser(data.user, remember);
     // Sincronizar perfil completo al appState si existe
     if (data.user && window.AppState) {
       window.AppState.athlete = data.user;
-      localStorage.setItem('velomind_athlete', JSON.stringify(data.user));
+      if (remember) {
+        localStorage.setItem('velomind_athlete', JSON.stringify(data.user));
+      } else {
+        sessionStorage.setItem('velomind_athlete', JSON.stringify(data.user));
+      }
     }
     return data;
   }
