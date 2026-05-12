@@ -2217,12 +2217,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .card-header, .card-body { padding: 12px !important; }
 
       /* ── ARREGLO PARA INTEGRACIONES Y PANELES FLEXIBLES ── */
-      /* Aplica a cualquier fila flex anidada en tarjetas para que no se escapen (Strava/Garmin) */
-      .card [style*="display: flex"],
-      .card [style*="display:flex"],
-      .card [style*="justify-content: space-between"],
-      .modal-body [style*="display: flex"],
-      .modal-body [style*="display:flex"],
       .integration-card {
         flex-direction: column !important;
         align-items: stretch !important;
