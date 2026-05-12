@@ -103,9 +103,16 @@ const Auth = (() => {
   }
 
   // ─── Login ────────────────────────────────────────────────────
-  async function login(email, password, remember = true) {
+  async function login(email, password, rememberParam = null) {
     // Limpiar rastro de sesiones anteriores antes de iniciar una nueva para evitar fugas de datos
     clearSessionData();
+
+    // Si no se pasó explícitamente el parámetro remember, leerlo del checkbox automáticamente
+    let remember = rememberParam;
+    if (remember === null) {
+      const chk = document.getElementById('remember-me');
+      remember = chk ? chk.checked : true;
+    }
 
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
@@ -518,29 +525,39 @@ if (!window.CYCLOCOACH_PUBLIC) {
 }
 
 // Inyectar checkbox "Recordar" en la página de login si no existe
-document.addEventListener('DOMContentLoaded', () => {
-  // Solo actuar en login.html o en la raíz del sitio si es la página de login
-  if (window.location.pathname.includes('login.html') || window.location.pathname.endsWith('/cyclocoach/') || window.location.pathname.endsWith('/')) {
+function injectRememberMe() {
+  // Verificar de forma más amplia si estamos en una página de login (por URL o buscando el campo de contraseña)
+  if (window.location.href.includes('login') || document.querySelector('input[type="password"]')) {
     const form = document.querySelector('form');
-    const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+    // Buscar cualquier botón dentro del formulario, no solo type="submit"
+    const submitBtn = form ? (form.querySelector('button[type="submit"]') || form.querySelector('button') || form.querySelector('.btn')) : null;
     
-    // Asegurarse de que el formulario existe y el checkbox no ha sido añadido ya
-    if (form && submitBtn && !document.getElementById('remember-me')) {
+    if (form && !document.getElementById('remember-me')) {
       const rememberDiv = document.createElement('div');
       rememberDiv.className = 'form-group';
       rememberDiv.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;';
       rememberDiv.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" id="remember-me" checked style="width: auto; height: auto;">
+          <input type="checkbox" id="remember-me" checked style="width: auto; height: auto; margin: 0; cursor: pointer;">
           <label for="remember-me" style="margin: 0; cursor: pointer; font-size: 13px; color: var(--text-secondary); font-weight: 500;">Mantener sesión</label>
         </div>
         <a href="javascript:alert('Función de recuperación de contraseña no implementada.')" style="font-size: 12px; color: var(--text-muted);">¿Olvidaste la contraseña?</a>
       `;
-      // Insertar el div del checkbox antes del botón de submit
-      submitBtn.parentNode.insertBefore(rememberDiv, submitBtn);
+      if (submitBtn) {
+        submitBtn.parentNode.insertBefore(rememberDiv, submitBtn);
+      } else {
+        form.appendChild(rememberDiv);
+      }
     }
   }
-});
+}
+
+// Ejecutar inmediatamente si el DOM ya cargó, o esperar al evento
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', injectRememberMe);
+} else {
+  injectRememberMe();
+}
 
 // ── Navigation UX: barra de progreso + prefetch en hover ─────────
 (function () {
