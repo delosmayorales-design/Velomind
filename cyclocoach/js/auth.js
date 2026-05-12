@@ -517,6 +517,31 @@ if (!window.CYCLOCOACH_PUBLIC) {
   Auth.init();
 }
 
+// Inyectar checkbox "Recordar" en la página de login si no existe
+document.addEventListener('DOMContentLoaded', () => {
+  // Solo actuar en login.html o en la raíz del sitio si es la página de login
+  if (window.location.pathname.includes('login.html') || window.location.pathname.endsWith('/cyclocoach/') || window.location.pathname.endsWith('/')) {
+    const form = document.querySelector('form');
+    const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+    
+    // Asegurarse de que el formulario existe y el checkbox no ha sido añadido ya
+    if (form && submitBtn && !document.getElementById('remember-me')) {
+      const rememberDiv = document.createElement('div');
+      rememberDiv.className = 'form-group';
+      rememberDiv.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;';
+      rememberDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="remember-me" checked style="width: auto; height: auto;">
+          <label for="remember-me" style="margin: 0; cursor: pointer; font-size: 13px; color: var(--text-secondary); font-weight: 500;">Mantener sesión</label>
+        </div>
+        <a href="javascript:alert('Función de recuperación de contraseña no implementada.')" style="font-size: 12px; color: var(--text-muted);">¿Olvidaste la contraseña?</a>
+      `;
+      // Insertar el div del checkbox antes del botón de submit
+      submitBtn.parentNode.insertBefore(rememberDiv, submitBtn);
+    }
+  }
+});
+
 // ── Navigation UX: barra de progreso + prefetch en hover ─────────
 (function () {
   let bar, hideTimer;
