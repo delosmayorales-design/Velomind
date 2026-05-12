@@ -1718,43 +1718,6 @@ function renderPlan(plan, athlete) {
         `}
       </div>` : '';
 
-    // ── Zona de modificación para días futuros ──────────────────
-    const isFuture = i > todayIdx;
-    const overrideZone = (isFuture && !sess.completed) ? `
-      <div class="adapt-zone" style="background:rgba(158,214,43,.02);border-top:1px solid rgba(158,214,43,.08)" onclick="event.stopPropagation()">
-        ${sess._overriddenToRest ? `
-        <div class="adapt-trigger" style="color:#38BDF8;cursor:pointer" onclick="event.stopPropagation();undoOverrideRest(${i})">
-          <i class="fas fa-rotate-left" style="font-size:10px"></i>
-          <span>Restaurar sesión original</span>
-        </div>
-        <div class="adapt-trigger" onclick="toggleOverrideForm(${i})" style="border-top:1px solid rgba(158,214,43,.06)">
-          <i class="fas fa-pencil" style="font-size:10px"></i>
-          <span>Cambiar a otra sesión</span>
-          <i class="fas fa-chevron-down" id="override-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
-        </div>` : `
-        <div class="adapt-trigger" onclick="toggleOverrideForm(${i})">
-          <i class="fas fa-pencil" style="font-size:10px"></i>
-          <span>Modificar esta sesión</span>
-          <i class="fas fa-chevron-down" id="override-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
-        </div>`}
-        <div id="override-body-${i}" class="adapt-body" style="display:none">
-          ${!sess._overriddenToRest ? `
-          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-            <button onclick="event.stopPropagation();overrideToRest(${i})"
-              style="flex:1;min-width:120px;padding:9px 14px;background:rgba(100,116,139,.1);border:1px solid rgba(100,116,139,.25);color:var(--text-secondary);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s"
-              onmouseover="this.style.background='rgba(100,116,139,.2)'" onmouseout="this.style.background='rgba(100,116,139,.1)'">
-              🛌 Cambiar a descanso
-            </button>
-          </div>` : ''}
-          <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Describe tu sesión:</div>
-          <textarea class="adapt-input" id="override-input-${i}" placeholder="Ej: puertos 125km 2000m+, rodaje llano 2h, salida suave recuperación..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px;width:100%;box-sizing:border-box"></textarea>
-          <button class="adapt-submit" id="override-btn-${i}" onclick="planCustomSession(${i})">
-            <i class="fas fa-magic"></i> Planificar esta salida
-          </button>
-          <div id="override-result-${i}" style="display:none;margin-top:8px"></div>
-        </div>
-      </div>` : '';
-
     const isPastOrToday = i <= todayIdx;
     const objective     = SESSION_OBJECTIVES[sess.type] || 'Entrenamiento';
     const wkSummary     = buildWorkoutSummary(sess.description, durMin, _cardMainIv);
