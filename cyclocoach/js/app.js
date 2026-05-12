@@ -2473,6 +2473,54 @@ document.addEventListener('DOMContentLoaded', () => {
     headerTitle.appendChild(btn);
     headerTitle.appendChild(textWrapper);
   }
+
+  // PWA Installation Prompt for Mobile
+  if (window.matchMedia('(display-mode: browser)').matches && (navigator.userAgent.includes("iPhone") || navigator.userAgent.includes("Android"))) {
+    const installPromptId = 'pwa-install-prompt';
+    // Only show once per session
+    if (!sessionStorage.getItem(installPromptId)) {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+        const banner = document.createElement('div');
+        banner.id = installPromptId;
+        banner.style.cssText = `
+            position: fixed;
+            bottom: calc(75px + env(safe-area-inset-bottom, 0px));
+            left: 12px; right: 12px;
+            background: var(--bg-card, #0E1117);
+            color: var(--text-primary, #EEF2FF);
+            padding: 16px;
+            border-radius: 14px;
+            border: 1px solid var(--border-light);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transform: translateY(200%);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        `;
+        
+        const instructions = isIOS
+            ? `Pulsa el botón de <strong>Compartir</strong> <i class="fas fa-share-square"></i> y luego <strong>"Añadir a pantalla de inicio"</strong>.`
+            : `Pulsa el botón de <strong>menú (⋮)</strong> y luego <strong>"Instalar aplicación"</strong>.`;
+
+        banner.innerHTML = `
+            <img src="logo2.png" alt="VeloMind Logo" style="width: 48px; height: 48px; border-radius: 10px;">
+            <div style="flex: 1;">
+                <h4 style="margin: 0 0 4px 0; font-size: 15px; font-family: 'Plus Jakarta Sans', sans-serif;">Instala VeloMind en tu móvil</h4>
+                <p style="margin: 0; font-size: 12px; color: var(--text-secondary, #CBD5E1); line-height: 1.5;">
+                    Para una experiencia sin distracciones y a pantalla completa. ${instructions}
+                </p>
+            </div>
+            <button id="close-install-prompt" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; align-self: flex-start;">&times;</button>
+        `;
+
+        document.body.appendChild(banner);
+        setTimeout(() => { banner.style.transform = 'translateY(0)'; }, 500);
+        banner.querySelector('#close-install-prompt').addEventListener('click', () => { banner.style.transform = 'translateY(200%)'; sessionStorage.setItem(installPromptId, 'dismissed'); setTimeout(() => banner.remove(), 500); });
+    }
+  }
 });
 
 /* ══════════════════════════════════════════════════════════════
