@@ -1549,6 +1549,44 @@ function renderPlan(plan, athlete) {
     sessDate.setDate(mondayDate.getDate() + i);
 
     const isToday_rest = i === todayIdx;
+    const isFutureOrToday = i >= todayIdx;
+
+    // ── Zona de modificación (Aplica a HOY y FUTURO siempre, ignorando si está completado) ──
+    const overrideZone = isFutureOrToday ? `
+      <div class="adapt-zone" style="background:rgba(158,214,43,.02);border-top:1px solid rgba(158,214,43,.08)" onclick="event.stopPropagation()">
+        ${sess._overriddenToRest ? `
+        <div class="adapt-trigger" style="color:#38BDF8;cursor:pointer" onclick="event.stopPropagation();undoOverrideRest(${i})">
+          <i class="fas fa-rotate-left" style="font-size:10px"></i>
+          <span>Restaurar sesión original</span>
+        </div>
+        <div class="adapt-trigger" onclick="toggleOverrideForm(${i})" style="border-top:1px solid rgba(158,214,43,.06)">
+          <i class="fas fa-pencil" style="font-size:10px"></i>
+          <span>Cambiar a otra sesión</span>
+          <i class="fas fa-chevron-down" id="override-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
+        </div>` : `
+        <div class="adapt-trigger" onclick="toggleOverrideForm(${i})">
+          <i class="fas fa-pencil" style="font-size:12px; ${sess.isRest ? 'color:var(--primary);' : ''}"></i>
+          <span style="${sess.isRest ? 'color:var(--primary); font-weight:800; font-size:13px;' : ''}">${sess.isRest ? 'Modificar el día / Añadir entreno' : 'Modificar esta sesión'}</span>
+          <i class="fas fa-chevron-down" id="override-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
+        </div>`}
+        <div id="override-body-${i}" class="adapt-body" style="display:none">
+          ${!sess._overriddenToRest && !sess.isRest ? `
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <button onclick="event.stopPropagation();overrideToRest(${i})"
+              style="flex:1;min-width:120px;padding:9px 14px;background:rgba(100,116,139,.1);border:1px solid rgba(100,116,139,.25);color:var(--text-secondary);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s"
+              onmouseover="this.style.background='rgba(100,116,139,.2)'" onmouseout="this.style.background='rgba(100,116,139,.1)'">
+              🛌 Cambiar a descanso
+            </button>
+          </div>` : ''}
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">${sess.isRest ? '¿Qué vas a entrenar?' : 'Describe tu sesión:'}</div>
+          <textarea class="adapt-input" id="override-input-${i}" placeholder="Ej: puertos 125km 2000m+, rodaje llano 2h, salida suave recuperación..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px;width:100%;box-sizing:border-box"></textarea>
+          <button class="adapt-submit" id="override-btn-${i}" onclick="recalculateWeek(${i}, true)">
+            <i class="fas fa-magic"></i> Adaptar plan a esta salida
+          </button>
+          <div id="override-result-${i}" style="display:none;margin-top:8px"></div>
+        </div>
+      </div>` : '';
+
     if (sess.isRest) {
       const sessDayKeyRest = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
       const dayActsRest = (i <= todayIdx) ? (AppState.activities || []).filter(a => a.date && a.date.slice(0, 10) === sessDayKeyRest) : [];
@@ -1611,7 +1649,6 @@ function renderPlan(plan, athlete) {
               <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
             </div>
           </div>` : ''}
-          ${overrideZone}
         </div>`;
     }
 
