@@ -3966,12 +3966,29 @@ function adaptToRoller(idx) {
   const _rollerIvs = window.TrainingPlanGenerator
     ? TrainingPlanGenerator._buildIntervals(sess.type, ftp, rollerDur, rollerTSS, sess.ifTarget || 0.75, 'main')
     : (sess.intervals || []);
+  const _getRollerReps = (lbl) => {
+    const m = String(lbl || '').match(/\(×\s*(\d+(?:-\d+)?)/i);
+    if (!m) return 1;
+    const p = m[1].split('-').map(Number);
+    return p.length === 2 ? Math.round((p[0] + p[1]) / 2) : (parseInt(m[1], 10) || 1);
+  };
+  const _isRollerRec = (lbl) => /(recuper|descanso)/i.test(String(lbl || ''));
   const _rollerExpanded = [];
-  (_rollerIvs || []).forEach(iv => {
-    const _rm = iv.label.match(/\(×(\d+)/);
-    const _n = _rm ? parseInt(_rm[1]) : 1;
-    for (let _r = 0; _r < _n; _r++) _rollerExpanded.push(iv);
-  });
+  for (let _i = 0; _i < (_rollerIvs || []).length; _i++) {
+    const _iv = _rollerIvs[_i];
+    const _reps = _getRollerReps(_iv.label);
+    const _nextIv = _rollerIvs[_i + 1];
+    const _nextReps = _nextIv ? _getRollerReps(_nextIv.label) : 0;
+    if (_reps > 1 && _nextIv && _isRollerRec(_nextIv.label)) {
+      for (let _r = 0; _r < _reps; _r++) {
+        _rollerExpanded.push(_iv);
+        if (_r < _nextReps) _rollerExpanded.push(_nextIv);
+      }
+      _i++;
+    } else {
+      for (let _r = 0; _r < Math.max(1, _reps); _r++) _rollerExpanded.push(_iv);
+    }
+  }
   const _rollerChartBars = _rollerExpanded.map(iv => {
     const _dm = String(iv.dur || '').match(/(\d+(?:\.\d+)?)/);
     const _dMin = _dm ? parseFloat(_dm[1]) : 1;
