@@ -13,6 +13,8 @@
   "routes": [
     { "src": "^/$", "dest": "/cyclocoach/login.html" },
     { "src": "^/index\\.html$", "dest": "/cyclocoach/login.html" },
+    { "src": "^/support$", "dest": "/cyclocoach/support.html" },
+    { "src": "^/support\\.html$", "dest": "/cyclocoach/support.html" },
     { "src": "/api/(.*)", "dest": "backend/server.js" },
     { "src": "/app/(.*)", "dest": "/cyclocoach/$1" },
     { "handle": "filesystem" },
