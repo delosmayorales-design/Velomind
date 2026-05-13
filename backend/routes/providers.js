@@ -764,7 +764,7 @@ router.get('/fitbit/connect', requireAuth, (req, res) => {
     ].join(' '),
     redirect_uri: GFIT_RDR, state, access_type: 'offline', prompt: 'consent'
   });
-  res.redirect(`${GFIT_AUTH_URL}?${params}`);
+  res.json({ url: `${GFIT_AUTH_URL}?${params}` });
 });
 
 router.get('/fitbit/callback', async (req, res) => {
