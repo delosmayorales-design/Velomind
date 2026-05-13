@@ -339,6 +339,7 @@
     <div class="nav-section-title">Cuenta</div>
     <a href="integrations.html" class="nav-item active"><i class="fas fa-plug"></i> Integraciones</a>
     <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+    <a href="support.html" class="nav-item"><i class="fas fa-life-ring"></i> Soporte</a>
   </div>
   <div class="sidebar-footer">
     <div class="athlete-card">
@@ -437,6 +438,38 @@
 
     </div>
 
+    </div>
+
+    <!-- Zona de cuenta -->
+    <div id="delete" style="margin-top:32px;border:1px solid rgba(239,68,68,.25);border-radius:var(--radius-lg);padding:28px;background:rgba(239,68,68,.04)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <i class="fas fa-exclamation-triangle" style="color:#ef4444;font-size:16px"></i>
+        <span style="font-size:15px;font-weight:700;color:var(--text-primary)">Zona de peligro</span>
+      </div>
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;line-height:1.5">
+        Al eliminar tu cuenta se borran permanentemente todos tus datos: actividades, plan de entrenamiento, nutrición, métricas, garaje y configuración. Esta acción <strong>no se puede deshacer</strong>.
+      </p>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button onclick="confirmDeleteAccount()" style="padding:10px 20px;background:transparent;border:1px solid #ef4444;border-radius:var(--radius-md);color:#ef4444;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s">
+          <i class="fas fa-trash-alt"></i> Eliminar mi cuenta
+        </button>
+        <a href="support.html" style="font-size:13px;color:var(--text-muted);text-decoration:underline">¿Necesitas ayuda? Contacta con soporte</a>
+      </div>
+    </div>
+
+    <!-- Modal confirmación eliminar cuenta -->
+    <div id="delete-account-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;max-width:400px;width:100%">
+        <div style="font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:12px"><i class="fas fa-exclamation-triangle" style="color:#ef4444"></i> ¿Eliminar cuenta?</div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;line-height:1.5">Esta acción borrará todos tus datos de forma permanente. Escribe <strong>ELIMINAR</strong> para confirmar.</p>
+        <input id="delete-confirm-input" type="text" placeholder="Escribe ELIMINAR" style="width:100%;padding:10px 12px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);font-size:14px;font-family:inherit;margin-bottom:16px;box-sizing:border-box">
+        <div style="display:flex;gap:10px">
+          <button onclick="document.getElementById('delete-account-modal').style.display='none'" style="flex:1;padding:10px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg-input);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
+          <button id="btn-confirm-delete" onclick="executeDeleteAccount()" style="flex:1;padding:10px;border-radius:var(--radius-md);border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Eliminar todo</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </main>
 
@@ -457,6 +490,38 @@
   })();
 
   if (typeof AppState !== 'undefined') AppState.init();
+
+  // ── Eliminar cuenta ──────────────────────────────────────────
+  function confirmDeleteAccount() {
+    document.getElementById('delete-confirm-input').value = '';
+    document.getElementById('delete-account-modal').style.display = 'flex';
+  }
+  async function executeDeleteAccount() {
+    const val = document.getElementById('delete-confirm-input').value.trim().toUpperCase();
+    if (val !== 'ELIMINAR') {
+      document.getElementById('delete-confirm-input').style.borderColor = '#ef4444';
+      document.getElementById('delete-confirm-input').focus();
+      return;
+    }
+    const btn = document.getElementById('btn-confirm-delete');
+    btn.disabled = true;
+    btn.textContent = 'Eliminando...';
+    try {
+      const res = await fetch(window.API_URL + '/auth/account', {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Error');
+      // Limpiar todo local
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = 'login.html?deleted=1';
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Eliminar todo';
+      alert('Error al eliminar la cuenta: ' + e.message);
+    }
+  }
 
   // ── Render accciones según estado ────────────────────────────
   function renderDisconnected() {
