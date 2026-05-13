@@ -229,6 +229,33 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// Eliminar cuenta y todos los datos del usuario
+router.delete('/account', requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.id;
+    // Borrar datos en orden (dependencias primero)
+    await supabase.from('push_subscriptions').delete().eq('user_id', uid);
+    await supabase.from('password_reset_tokens').delete().eq('user_id', uid);
+    await supabase.from('pmc').delete().eq('user_id', uid);
+    await supabase.from('activities').delete().eq('user_id', uid);
+    await supabase.from('weight_log').delete().eq('user_id', uid);
+    // Componentes e historial ligados a las bicis del usuario
+    const { data: bikes } = await supabase.from('bikes').select('id').eq('user_id', uid);
+    if (bikes?.length) {
+      const bikeIds = bikes.map(b => b.id);
+      await supabase.from('component_history').delete().in('bike_id', bikeIds);
+      await supabase.from('bike_components').delete().in('bike_id', bikeIds);
+    }
+    await supabase.from('bikes').delete().eq('user_id', uid);
+    // Finalmente el usuario
+    await supabase.from('users').delete().eq('id', uid);
+    res.json({ message: 'Cuenta eliminada correctamente' });
+  } catch (e) {
+    console.error('[auth/delete-account]', e.message);
+    res.status(500).json({ error: 'Error al eliminar la cuenta' });
+  }
+});
+
 function safeUser(u) {
   if (!u) return null;
   const { password, strava_token, strava_refresh, garmin_token, ...safe } = u;
