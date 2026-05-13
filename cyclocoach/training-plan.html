@@ -1549,7 +1549,7 @@ function renderPlan(plan, athlete) {
     const isFutureOrToday = i >= todayIdx;
 
     // ── Zona de modificación (Aplica a HOY y FUTURO siempre, ignorando si está completado) ──
-    const overrideZone = isFutureOrToday ? `
+    const overrideZone = isFutureOrToday && !sess.completed ? `
       <div class="adapt-zone" style="background:rgba(158,214,43,.02);border-top:1px solid rgba(158,214,43,.08)" onclick="event.stopPropagation()">
         ${sess._overriddenToRest ? `
         <div class="adapt-trigger" style="color:#38BDF8;cursor:pointer" onclick="event.stopPropagation();undoOverrideRest(${i})">
@@ -1705,7 +1705,7 @@ function renderPlan(plan, athlete) {
     const isToday = i === todayIdx;
     const checkinApplied = sess._checkin; // 'fuerte' | 'normal' | 'mal' | undefined
 
-    const adaptZone = isToday && !sess.isRest ? `
+    const adaptZone = isToday && !sess.isRest && !sess.completed ? `
       <div class="checkin-zone" onclick="event.stopPropagation()">
         <div class="checkin-label">¿Cómo te encuentras hoy?</div>
         <div class="checkin-btns">
