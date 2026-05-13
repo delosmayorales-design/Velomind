@@ -2644,7 +2644,10 @@ document.addEventListener('DOMContentLoaded', () => {
     _fabBL = r.left; _fabBT = r.top;
     _themeBtn.style.transition = 'none';
     _themeBtn.style.cursor = 'grabbing';
-    e.preventDefault();
+    // Solo en ratón: evita selección de texto durante arrastre.
+    // En touch NO se llama preventDefault para que el navegador
+    // genere el click sintético y el cambio de tema funcione.
+    if (!e.touches) e.preventDefault();
   };
   const _fabMove = (e) => {
     if (!_fabDrag) return;
