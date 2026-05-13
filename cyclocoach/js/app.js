@@ -2079,6 +2079,35 @@ window.TrainingPlanGenerator = TrainingPlanGenerator;
 window.NutritionPlanner = NutritionPlanner;
 
 /* ══════════════════════════════════════════════════════════════
+   GEO CACHE — evita pedir permiso de ubicación en cada pantalla
+   Guarda coordenadas en sessionStorage hasta 15 min.
+══════════════════════════════════════════════════════════════ */
+window.getGeoPosition = function() {
+  return new Promise((resolve, reject) => {
+    try {
+      const _raw = sessionStorage.getItem('_vm_geo');
+      if (_raw) {
+        const _c = JSON.parse(_raw);
+        if (Date.now() - _c.ts < 15 * 60 * 1000) {
+          resolve({ coords: { latitude: _c.lat, longitude: _c.lon, accuracy: _c.acc || 100 } });
+          return;
+        }
+      }
+    } catch (_) {}
+    if (!navigator.geolocation) { reject(new Error('no-geo')); return; }
+    navigator.geolocation.getCurrentPosition(pos => {
+      try {
+        sessionStorage.setItem('_vm_geo', JSON.stringify({
+          lat: pos.coords.latitude, lon: pos.coords.longitude,
+          acc: pos.coords.accuracy, ts: Date.now()
+        }));
+      } catch (_) {}
+      resolve(pos);
+    }, reject, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+  });
+};
+
+/* ══════════════════════════════════════════════════════════════
    RESPONSIVE MOBILE ADAPTER (Injected Globally)
 ══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {

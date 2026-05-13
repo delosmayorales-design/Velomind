@@ -1088,11 +1088,11 @@ function getRouteRec(code, wind, precip, temp, sess) {
 
 async function fetchWeather() {
   const el = document.getElementById('wx-content');
-  if (!navigator.geolocation) {
+  if (!navigator.geolocation && !window.getGeoPosition) {
     el.innerHTML = `<div class="empty-state"><i class="fas fa-map-marker-alt"></i> Geolocalización no disponible</div>`;
     return;
   }
-  navigator.geolocation.getCurrentPosition(async pos => {
+  (window.getGeoPosition ? window.getGeoPosition() : new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej))).then(async pos => {
     try {
       const { latitude: lat, longitude: lon } = pos.coords;
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&wind_speed_unit=kmh&timezone=auto`;
@@ -1136,7 +1136,7 @@ async function fetchWeather() {
     } catch {
       el.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> No se pudo obtener el tiempo</div>`;
     }
-  }, () => {
+  }).catch(() => {
     el.innerHTML = `<div class="empty-state" style="padding:16px 0"><i class="fas fa-map-marker-slash"></i> Permite el acceso a tu ubicación para ver el tiempo y la ropa recomendada</div>`;
   });
 }

@@ -1635,21 +1635,6 @@ function renderPlan(plan, athlete) {
               <span>Restaurar sesión original</span>
             </div>
           </div>` : ''}
-          ${isToday_rest ? `
-          <div class="adapt-zone" style="background:rgba(255,107,53,.03);border-top:1px solid rgba(255,107,53,.1)" onclick="event.stopPropagation()">
-            <div class="adapt-trigger" onclick="toggleRealityForm(${i})" style="color:#FF6B35">
-              <i class="fas fa-pen-to-square" style="font-size:10px"></i>
-              <span>Registrar lo que realmente hice hoy (Post-entreno)</span>
-              <i class="fas fa-chevron-down" id="reality-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
-            </div>
-            <div id="reality-body-${i}" class="adapt-body" style="display:none">
-              <textarea class="adapt-input" id="reality-input-${i}" placeholder="Día de descanso — ¿hiciste algo? Ej: Salí 30 min a caminar, estiramientos..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px"></textarea>
-              <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:#38BDF8;color:#0f172a !important;border:none;width:100%;display:flex;justify-content:center;align-items:center;gap:8px;transition:background 0.2s" onmouseover="this.style.background='#0ea5e9'" onmouseout="this.style.background='#38BDF8'">
-                <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
-              </button>
-              <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
-            </div>
-          </div>` : ''}
           ${overrideZone}
         </div>`;
     }
@@ -1734,29 +1719,15 @@ function renderPlan(plan, athlete) {
           </button>
         </div>
       </div>
+      ${dayActs.length > 0 ? `
       <div class="adapt-zone" style="background:rgba(255,107,53,.03);border-top:1px solid rgba(255,107,53,.1)" onclick="event.stopPropagation()">
-        ${dayActs.length > 0 ? `
         <button onclick="event.stopPropagation();openPostEntrenoModal(${i})"
           style="display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:8px 20px;cursor:pointer;font-family:inherit;color:#FF6B35;font-size:11px;font-weight:600;text-align:left">
           <i class="fas fa-chart-bar" style="font-size:10px"></i>
           <span>Ver análisis del entreno y recalcular semana</span>
           <i class="fas fa-arrow-right" style="font-size:9px;margin-left:auto;opacity:.7"></i>
         </button>
-        ` : `
-        <div class="adapt-trigger" onclick="toggleRealityForm(${i})" style="color:#FF6B35">
-          <i class="fas fa-pen-to-square" style="font-size:10px"></i>
-          <span>Registrar lo que realmente hice hoy (Post-entreno)</span>
-          <i class="fas fa-chevron-down" id="reality-chev-${i}" style="font-size:9px;margin-left:auto;transition:transform .2s"></i>
-        </div>
-        <div id="reality-body-${i}" class="adapt-body" style="display:none">
-          <textarea class="adapt-input" id="reality-input-${i}" placeholder="Ej: Tuve un imprevisto e hice 30 min suaves. Me comí un bocadillo en vez de la ensalada..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px"></textarea>
-          <button class="adapt-submit" id="reality-btn-${i}" onclick="recalculateWeek(${i})" style="background:#38BDF8;color:#0f172a !important;border:none;width:100%;display:flex;justify-content:center;align-items:center;gap:8px;transition:background 0.2s" onmouseover="this.style.background='#0ea5e9'" onmouseout="this.style.background='#38BDF8'">
-            <i class="fas fa-sync-alt"></i> Recalcular resto de la semana
-          </button>
-          <div id="reality-result-${i}" style="display:none;margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
-        </div>
-        `}
-      </div>` : '';
+      </div>` : ''}` : '';
 
     const isPastOrToday = i <= todayIdx;
     const objective     = SESSION_OBJECTIVES[sess.type] || 'Entrenamiento';

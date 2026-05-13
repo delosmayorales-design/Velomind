@@ -14,7 +14,7 @@
     html[data-theme="light"] .sidebar-logo img { filter: invert(1) hue-rotate(180deg); opacity: 0.85; }
   </style>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Rutas — VeloMind</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺️</text></svg>">
   <link rel="stylesheet" href="css/style.css">
@@ -1585,11 +1585,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   mapWindControl = new WindCtrl().addTo(map);
 
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      p => map.setView([p.coords.latitude, p.coords.longitude], 13),
-      () => {}
-    );
+  if (window.getGeoPosition) {
+    window.getGeoPosition().then(p => map.setView([p.coords.latitude, p.coords.longitude], 13)).catch(() => {});
+  } else if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(p => map.setView([p.coords.latitude, p.coords.longitude], 13), () => {});
   }
 
   loadRoutes();
@@ -2400,11 +2399,11 @@ async function showWindSuggestion() {
   document.getElementById('wind-body').innerHTML =
     '<div style="color:var(--text-muted);font-size:13px"><i class="fas fa-circle-notch fa-spin"></i> Obteniendo datos...</div>';
 
-  if (!navigator.geolocation) {
+  if (!navigator.geolocation && !window.getGeoPosition) {
     document.getElementById('wind-body').innerHTML = '<div style="color:#ff4757;font-size:12px">Geolocalización no disponible.</div>';
     return;
   }
-  navigator.geolocation.getCurrentPosition(async pos => {
+  (window.getGeoPosition ? window.getGeoPosition() : new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej))).then(async pos => {
     try {
       const { latitude: lat, longitude: lon } = pos.coords;
       const res  = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kmh&timezone=auto&forecast_days=2`);
@@ -2530,7 +2529,7 @@ async function showWindSuggestion() {
     } catch(e) {
       document.getElementById('wind-body').innerHTML = `<div style="color:#ff4757;font-size:12px">Error: ${e.message}</div>`;
     }
-  }, () => {
+  }).catch(() => {
     document.getElementById('wind-body').innerHTML = '<div style="color:#ff4757;font-size:12px">Activa la ubicación en el navegador.</div>';
   });
 }
@@ -3135,12 +3134,12 @@ async function openWindRouteModal() {
   // Reset selector a "Hoy"
   document.querySelectorAll('.wr-day-btn').forEach(b => b.classList.toggle('active', b.dataset.day === 'today'));
 
-  if (!navigator.geolocation) {
+  if (!navigator.geolocation && !window.getGeoPosition) {
     document.getElementById('wr-wind-status').innerHTML =
       '<span style="color:#ff4757">⚠️ Geolocalización no disponible.</span>';
     return;
   }
-  navigator.geolocation.getCurrentPosition(async pos => {
+  (window.getGeoPosition ? window.getGeoPosition() : new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej))).then(async pos => {
     const { latitude: lat, longitude: lon } = pos.coords;
     try {
       const res  = await fetch(
@@ -3173,7 +3172,7 @@ async function openWindRouteModal() {
       document.getElementById('wr-wind-status').innerHTML =
         `<span style="color:#ff4757">Error al obtener el viento: ${e.message}</span>`;
     }
-  }, () => {
+  }).catch(() => {
     document.getElementById('wr-wind-status').innerHTML =
       '<span style="color:#ff4757">⚠️ Activa la ubicación para continuar.</span>';
   });
