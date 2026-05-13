@@ -3320,9 +3320,11 @@ async function generateWindRoute() {
     routeLayer = L.polyline(latLngs, { color, weight: 5, opacity: 0.9, interactive: false }).addTo(map);
     map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
 
-    L.circleMarker([lat, lon], {
-      radius: 10, fillColor: '#00D4FF', color: '#fff', weight: 3, fillOpacity: 1, interactive: false
-    }).addTo(map).bindPopup('📍 Salida / Llegada').openPopup();
+    // Crear marcadores arrastrables para cada waypoint (el último siempre duplica el inicio,
+    // no se muestra para evitar solapamiento; la ruta lo añade internamente al recalcular).
+    waypoints.slice(0, -1).forEach(w => waypointMarkers.push(createWaypointMarker(w.lat, w.lng)));
+    drawingActive = true;
+    document.getElementById('map').classList.add('drawing');
 
     document.getElementById('stat-dist').textContent = distKm.toFixed(1);
     document.getElementById('stat-time').textContent = formatTime(durMin);
