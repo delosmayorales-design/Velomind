@@ -531,6 +531,92 @@
     .trk-s-lbl  { font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.5px;margin-top:1px; }
     .trk-s-sep  { width:1px;height:24px;background:rgba(255,255,255,0.08);flex-shrink:0;align-self:center; }
 
+    /* ── Weather Timeline ──────────────────────────────────────── */
+    #weather-timeline {
+      display: none;
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(10,11,15,0.93);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255,255,255,0.10);
+      z-index: 750;
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+    }
+    html[data-theme="light"] #weather-timeline {
+      background: rgba(248,250,252,0.95);
+      border-top-color: rgba(0,0,0,0.10);
+    }
+    #wtl-info {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 12px 4px;
+      font-size: 12px;
+    }
+    #wtl-time { font-weight: 800; color: #fff; min-width: 90px; font-size: 13px; }
+    html[data-theme="light"] #wtl-time { color: #1a1d26; }
+    #wtl-wind-val, #wtl-rain-val { font-size: 12px; }
+    #wtl-sep { color: rgba(255,255,255,0.2); }
+    html[data-theme="light"] #wtl-sep { color: rgba(0,0,0,0.2); }
+    #wtl-close {
+      margin-left: auto; background: none; border: none;
+      color: rgba(255,255,255,0.35); font-size: 16px; cursor: pointer;
+      line-height: 1; padding: 2px 4px; border-radius: 4px; transition: color .15s;
+    }
+    #wtl-close:hover { color: rgba(255,255,255,0.8); }
+    html[data-theme="light"] #wtl-close { color: rgba(0,0,0,0.3); }
+    html[data-theme="light"] #wtl-close:hover { color: rgba(0,0,0,0.7); }
+    #wtl-strip {
+      display: flex; overflow-x: auto; overflow-y: hidden;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+      padding: 0 8px 8px; gap: 3px;
+    }
+    #wtl-strip::-webkit-scrollbar { display: none; }
+    .wtl-col {
+      flex-shrink: 0; width: 38px;
+      display: flex; flex-direction: column; align-items: center;
+      position: relative; border-radius: 8px;
+      cursor: pointer; overflow: hidden; padding: 4px 2px 4px;
+      transition: background .15s, outline .15s;
+      min-height: 48px;
+    }
+    .wtl-col:hover { background: rgba(255,255,255,0.07); }
+    .wtl-col.wtl-active {
+      background: rgba(255,255,255,0.12);
+      outline: 1.5px solid rgba(255,255,255,0.3);
+    }
+    .wtl-col.wtl-now { background: rgba(0,212,255,0.07); }
+    .wtl-col.wtl-now.wtl-active {
+      background: rgba(0,212,255,0.16);
+      outline-color: rgba(0,212,255,0.55);
+    }
+    html[data-theme="light"] .wtl-col:hover { background: rgba(0,0,0,0.05); }
+    html[data-theme="light"] .wtl-col.wtl-active { background: rgba(0,0,0,0.08); outline-color: rgba(0,0,0,0.25); }
+    .wtl-wind-dot {
+      width: 9px; height: 9px; border-radius: 50%; margin-bottom: 3px; flex-shrink: 0;
+    }
+    .wtl-rain-bar-wrap {
+      width: 22px; height: 20px; display: flex; align-items: flex-end; margin-bottom: 2px;
+    }
+    .wtl-rain-bar {
+      width: 100%; border-radius: 3px 3px 0 0;
+      background: rgba(96,165,250,0.65);
+    }
+    .wtl-label {
+      font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.5);
+      white-space: nowrap; line-height: 1;
+    }
+    .wtl-col.wtl-active .wtl-label,
+    .wtl-col.wtl-now .wtl-label { color: rgba(255,255,255,0.9); }
+    html[data-theme="light"] .wtl-label { color: rgba(0,0,0,0.4); }
+    html[data-theme="light"] .wtl-col.wtl-active .wtl-label,
+    html[data-theme="light"] .wtl-col.wtl-now .wtl-label { color: rgba(0,0,0,0.8); }
+    #btn-timeline.active {
+      background: rgba(158,214,43,0.12) !important;
+      border-color: rgba(158,214,43,0.45) !important;
+      color: #9ED62B !important;
+    }
+
     /* ── GPS Tracking HUD ──────────────────────────────────────── */
     #tracking-hud {
       position: absolute;
@@ -1052,6 +1138,9 @@
       <button class="btn btn-secondary btn-sm" id="btn-weather-zone" onclick="toggleWeatherDrawer()" title="Tiempo en la zona">
         <i class="fas fa-cloud-sun"></i><span class="btn-label"> Tiempo zona</span>
       </button>
+      <button class="btn btn-secondary btn-sm" id="btn-timeline" onclick="toggleWeatherTimeline()" title="Timeline de viento y lluvia">
+        <i class="fas fa-clock"></i><span class="btn-label"> Previsión 24h</span>
+      </button>
     </div>
   </header>
 
@@ -1213,6 +1302,19 @@
             <p style="font-size:12px;line-height:1.5;margin:0">Busca un lugar por nombre<br>o haz clic en el mapa</p>
           </div>
         </div>
+      </div>
+
+      <!-- Weather Timeline (24h) -->
+      <div id="weather-timeline">
+        <div id="wtl-info">
+          <div id="wtl-time">--:--</div>
+          <div id="wtl-sep">·</div>
+          <div id="wtl-wind-val">--</div>
+          <div id="wtl-sep">·</div>
+          <div id="wtl-rain-val">--</div>
+          <button id="wtl-close" onclick="toggleWeatherTimeline()"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="wtl-strip"></div>
       </div>
 
       <!-- El mapa -->
@@ -3695,6 +3797,122 @@ async function toggleRainLayer() {
   }
 }
 
+// ══ WEATHER TIMELINE (24H) ═════════════════════════════════════
+
+let _wtlActive = false;
+let _wtlData = null;
+
+async function toggleWeatherTimeline() {
+  const btn = document.getElementById('btn-timeline');
+  const tl = document.getElementById('weather-timeline');
+
+  if (_wtlActive) {
+    _wtlActive = false;
+    tl.style.display = 'none';
+    btn?.classList.remove('active');
+    windHourOverride = null;
+    _windOverrideLabel = null;
+    _refreshWeatherBadge();
+    return;
+  }
+
+  btn?.classList.add('loading');
+  const center = map.getCenter();
+
+  try {
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${center.lat}&longitude=${center.lng}&hourly=wind_speed_10m,wind_direction_10m,precipitation_probability&wind_speed_unit=kmh&timezone=auto&forecast_days=2`);
+    if (!res.ok) throw new Error('Error al cargar previsión 24h');
+    const data = await res.json();
+
+    _wtlActive = true;
+    tl.style.display = 'block';
+    btn?.classList.remove('loading');
+    btn?.classList.add('active');
+
+    // Activar las flechas animadas en el mapa si están apagadas
+    if (!windArrowsActive) await toggleWindArrows();
+
+    _renderTimelineStrip(data);
+
+  } catch (e) {
+    console.error('[Timeline]', e);
+    btn?.classList.remove('loading');
+    showToast('No se pudo cargar la timeline de tiempo', 'error');
+  }
+}
+
+function _renderTimelineStrip(data) {
+  const nowTs = Date.now();
+  const hours = data.hourly.time.map((t, i) => ({
+    time: t,
+    spd: Math.round(data.hourly.wind_speed_10m[i]),
+    deg: data.hourly.wind_direction_10m[i],
+    rain: data.hourly.precipitation_probability[i] || 0
+  })).filter(h => new Date(h.time).getTime() >= nowTs - 3600000).slice(0, 25);
+
+  _wtlData = hours;
+  const strip = document.getElementById('wtl-strip');
+
+  strip.innerHTML = hours.map((h, i) => {
+    const dt = new Date(h.time);
+    const isNow = i === 0;
+    const hLabel = isNow ? 'Ah.' : dt.getHours() + 'h';
+    const windColor = _windColor(h.spd);
+    
+    // Altura y opacidad visual para la lluvia (mínimo 2px, máximo 20px)
+    const rainH = Math.max(2, (h.rain / 100) * 20); 
+    const rainOpacity = h.rain > 0 ? 1 : 0.2;
+
+    return `<div class="wtl-col ${isNow ? 'wtl-now wtl-active' : ''}" onclick="selectTimelineHour(${i})" id="wtl-col-${i}">
+      <div class="wtl-wind-dot" style="background:${windColor}"></div>
+      <div class="wtl-rain-bar-wrap" title="${h.rain}% de lluvia">
+        <div class="wtl-rain-bar" style="height:${rainH}px; opacity:${rainOpacity}"></div>
+      </div>
+      <div class="wtl-label">${hLabel}</div>
+    </div>`;
+  }).join('');
+
+  if (hours.length > 0) selectTimelineHour(0);
+}
+
+function selectTimelineHour(idx) {
+  document.querySelectorAll('.wtl-col').forEach((c, i) => c.classList.toggle('wtl-active', i === idx));
+  const h = _wtlData[idx];
+  if (!h) return;
+
+  const dt = new Date(h.time);
+  const today = new Date();
+  const tom = new Date(today); tom.setDate(tom.getDate() + 1);
+
+  let dayStr = dt.toLocaleDateString('es', {weekday: 'short'});
+  if (dt.toDateString() === today.toDateString()) dayStr = 'Hoy';
+  else if (dt.toDateString() === tom.toDateString()) dayStr = 'Mañ.';
+
+  const timeLabel = `${dayStr} ${String(dt.getHours()).padStart(2, '0')}:00`;
+
+  // Actualizar la cabecera
+  document.getElementById('wtl-time').textContent = timeLabel;
+  document.getElementById('wtl-wind-val').innerHTML = `<span style="color:${_windColor(h.spd)}">${h.spd} km/h</span> &nbsp;${degToCompass(h.deg)}`;
+  document.getElementById('wtl-rain-val').innerHTML = `<span style="color:#60a5fa"><i class="fas fa-cloud-rain"></i> ${h.rain}%</span>`;
+
+  // Sobrescribir las animaciones del mapa 
+  const u = Math.sin((h.deg + 180) * Math.PI / 180) * h.spd;
+  const v = -Math.cos((h.deg + 180) * Math.PI / 180) * h.spd;
+
+  windHourOverride = { deg: h.deg, spd: h.spd, u, v, color: _windColor(h.spd) };
+  _windOverrideLabel = timeLabel;
+  _refreshWeatherBadge();
+
+  // Centrar la columna seleccionada si hay scroll
+  const strip = document.getElementById('wtl-strip');
+  const col = document.getElementById('wtl-col-' + idx);
+  if (strip && col) {
+    const stripCenter = strip.offsetWidth / 2;
+    const colCenter = col.offsetLeft + col.offsetWidth / 2;
+    strip.scrollTo({ left: colCenter - stripCenter, behavior: 'smooth' });
+  }
+}
+
 // ── GPS Tracking ─────────────────────────────────────────────────
 
 let _trkActive      = false;
@@ -4989,4 +5207,3 @@ requestAnimationFrame(() => document.documentElement.style.removeProperty('opaci
 </script>
 </body>
 </html>
-
