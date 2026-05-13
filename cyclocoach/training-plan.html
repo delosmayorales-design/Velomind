@@ -2461,10 +2461,11 @@ function syncPlanWithReality() {
       }
     } else {
       let actType = 'endurance';
-      if (maxIF > 0.90) actType = 'vo2max';
-      else if (maxIF > 0.80) actType = 'threshold';
-      else if (maxIF > 0.70) actType = 'tempo';
-      else if (maxIF < 0.60) actType = 'recovery';
+      if (maxIF > 0.90)       actType = 'vo2max';
+      else if (maxIF > 0.80)  actType = 'threshold';
+      else if (maxIF > 0.70)  actType = 'tempo';
+      else if (maxIF > 0 && maxIF < 0.60) actType = 'recovery';
+      else if (maxIF === 0)   actType = sess.isRest ? 'endurance' : (sess.type || 'endurance'); // sin potencia: usar tipo planificado
 
       accumTSSDeviation += diffTSS;
       if (isToday) todayActualType = actType;
@@ -2514,7 +2515,7 @@ function syncPlanWithReality() {
   if (todayActualType && QUALITY_TYPES.includes(todayActualType)) {
     const tomorrowIdx  = todayIdx + 1;
     const tomorrowSess = tomorrowIdx < 7 ? currentPlan.sessions[tomorrowIdx] : null;
-    if (tomorrowSess && !tomorrowSess.isRest && QUALITY_TYPES.includes(tomorrowSess.type) && !tomorrowSess._adapted) {
+    if (tomorrowSess && !tomorrowSess.isRest && QUALITY_TYPES.includes(tomorrowSess.type)) {
       const newType = HIGH_INTENSITY.includes(todayActualType) ? 'recovery' : 'endurance';
       const newIF   = newType === 'recovery' ? 0.55 : 0.65;
       const prevTSS = tomorrowSess.tss || Math.round((tomorrowSess.tssShare || 0) * (currentPlan.targetTSS || 400));
@@ -3270,8 +3271,13 @@ function regeneratePlan() {
       adaptation: savedPlan.adaptation || null,
     };
     _patchSegmentDistances(currentPlan);
-    // Resetear flags de evaluación para que syncPlanWithReality re-evalúe todo
-    currentPlan.sessions.forEach(s => { delete s._evaluated; delete s._missed; });
+    // Resetear flags para que syncPlanWithReality re-evalúe todo
+    const _todayI = (new Date().getDay() + 6) % 7;
+    currentPlan.sessions.forEach((s, i) => {
+      delete s._evaluated;
+      delete s._missed;
+      if (i > _todayI) delete s._adapted; // sesiones futuras: permitir re-adaptación
+    });
     syncPlanWithReality();
     renderPlan(currentPlan, AppState.athlete);
     silentSavePlan();
