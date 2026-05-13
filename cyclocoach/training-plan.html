@@ -3939,10 +3939,13 @@ function adaptToRoller(idx) {
   if (!sess || sess.isRest) return;
 
   const ftp = AppState.athlete?.ftp || 200;
-  const originalDur = sess.durationMin || Math.round(sess.tssShare * currentPlan.targetTSS / Math.pow(sess.ifTarget || 0.65, 2));
+  const sessTSS = Number.isFinite(sess.tss) && sess.tss > 0
+    ? sess.tss
+    : Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
+  const originalDur = sess.durationMin || Math.round(sessTSS / Math.pow(sess.ifTarget || 0.65, 2) * 60);
   const maxRollerDur = 87; // 1.45 horas máximo
   const rollerDur = Math.min(Math.round(originalDur * 0.75), maxRollerDur);
-  const rollerTSS = Math.round((sess.tssShare * currentPlan.targetTSS) * (rollerDur / originalDur));
+  const rollerTSS = Math.round(sessTSS * (rollerDur / originalDur));
   const rollerPct = Math.round(100 * rollerDur / originalDur);
   const rollerDurNote = rollerDur >= maxRollerDur
     ? `máximo recomendado para rodillo estático (${rollerPct}% del original de ${originalDur} min)`
@@ -4011,7 +4014,7 @@ function adaptToRoller(idx) {
         <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
           <div style="flex:1;min-width:120px">
             <div style="font-size:12px;color:var(--text-muted)">TSS original</div>
-            <div style="font-size:16px;font-weight:700;color:var(--text-primary)">${Math.round(sess.tssShare * currentPlan.targetTSS)}</div>
+            <div style="font-size:16px;font-weight:700;color:var(--text-primary)">${sessTSS}</div>
           </div>
           <div style="flex:1;min-width:120px">
             <div style="font-size:12px;color:var(--text-muted)">TSS rodillo</div>
