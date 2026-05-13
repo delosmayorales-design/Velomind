@@ -542,16 +542,14 @@
   }
 
   // ── Google Fit / Fitbit ───────────────────────────────────────
-  function renderFitbitDisconnected(configured = false) {
+  function renderFitbitDisconnected() {
     const card = document.getElementById('card-fitbit');
     const status = document.getElementById('fitbit-status');
     if (card) card.classList.remove('connected');
     if (status) { status.className = 'int-status disconnected'; status.innerHTML = '<i class="fas fa-circle" style="font-size:8px"></i> No conectado'; }
     const el = document.getElementById('fitbit-actions');
     if (!el) return;
-    el.innerHTML = configured
-      ? `<button onclick="connectFitbit()" style="background:#4285F4;color:#fff;border:none;padding:11px 22px;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:all 0.2s;width:fit-content"><i class="fab fa-google"></i> Conectar con Google Fit</button>`
-      : `<button disabled style="background:#4285F4;color:#fff;border:none;padding:11px 22px;border-radius:var(--radius-sm);font-size:14px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:8px;width:fit-content;opacity:.5;cursor:not-allowed"><i class="fab fa-google"></i> Google Fit (requiere credenciales)</button>`;
+    el.innerHTML = `<button onclick="connectFitbit()" style="background:#4285F4;color:#fff;border:none;padding:11px 22px;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:all 0.2s;width:fit-content"><i class="fab fa-google"></i> Conectar con Google Fit</button>`;
   }
 
   function renderFitbitConnected() {
