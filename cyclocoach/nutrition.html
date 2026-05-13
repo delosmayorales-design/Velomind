@@ -171,6 +171,7 @@
     <div class="nav-section-title">Cuenta</div>
     <a href="integrations.html" class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
     <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+    <a href="support.html" class="nav-item"><i class="fas fa-life-ring"></i> Soporte</a>
   </div>
   <div class="sidebar-footer">
     <div class="athlete-card">
@@ -977,8 +978,11 @@ function generateMenus() {
 }
 
 var _lightColors = {'#3B82F6':'#1d4ed8','#F59E0B':'#92400e','#10B981':'#374151','#8B5CF6':'#5b21b6','#6B7280':'#374151'};
+var _lastTimingIdx = null;
+var _lastTiming = null;
 
 function renderTimingForDay(idx) {
+  _lastTimingIdx = idx;
   const card    = document.getElementById('timing-for-day');
   const content = document.getElementById('timing-for-day-content');
   const label   = document.getElementById('timing-day-label');
@@ -1058,6 +1062,7 @@ function renderTimingForDay(idx) {
 }
 
 function renderTiming(timing) {
+  _lastTiming = timing;
   const el = document.getElementById('menus-timing');
   if (!el) return;
   if (!timing) { el.style.display = 'none'; el.innerHTML = ''; return; }
@@ -1399,6 +1404,20 @@ if (reminderIsActive()) {
     updateReminderBtn(false);
   }
 }
+
+// Re-render timing blocks when theme toggles so colors update correctly
+(function() {
+  var _prevTheme = document.documentElement.classList.contains('light-theme') ? 'light' : 'dark';
+  new MutationObserver(function() {
+    var nowLight = document.documentElement.classList.contains('light-theme');
+    var nowTheme = nowLight ? 'light' : 'dark';
+    if (nowTheme !== _prevTheme) {
+      _prevTheme = nowTheme;
+      if (_lastTimingIdx !== null) renderTimingForDay(_lastTimingIdx);
+      if (_lastTiming !== null) renderTiming(_lastTiming);
+    }
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+}());
 </script>
 </body>
 </html>
