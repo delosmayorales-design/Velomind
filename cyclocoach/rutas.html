@@ -1693,7 +1693,7 @@ async function routeBRouter(type) {
 // Valhalla OSM — perfiles road/gravel/MTB
 async function routeValhalla(type) {
   const costing = 'bicycle';
-  const opts    = type === 'road'   ? { bicycle: { bicycle_type: 'Road',     use_roads: 1.0, avoid_bad_surfaces: 1.0, use_hills: 0.5, surface_factor: 1.0 } }
+  const opts    = type === 'road'   ? { bicycle: { bicycle_type: 'Road',     use_roads: 1.0, avoid_bad_surfaces: 1.0, use_hills: 0.5, surface_factor: 1.0, use_tracks: 0.0 } }
                 : type === 'gravel' ? { bicycle: { bicycle_type: 'Cross',    use_roads: 0.1, avoid_bad_surfaces: 0.0, use_hills: 0.6 } }
                 :                     { bicycle: { bicycle_type: 'Mountain', use_roads: 0.0, avoid_bad_surfaces: 0.0, use_hills: 1.0, use_tracks: 1.0 } };
 
@@ -1757,14 +1757,12 @@ async function routeWithFallback(type) {
       }
     }
   }
-  // Road: Valhalla primero (avoid_bad_surfaces:1.0) → BRouter fastbike → OSRM driving (solo carreteras)
+  // Road: Valhalla primero (avoid_bad_surfaces:1.0) → OSRM driving (solo carreteras asfaltadas)
+  // BRouter "fastbike" se omite porque puede incluir caminos de tierra
   if (type === 'road') {
     try { return await routeValhalla('road'); } catch(e1) {
-      console.warn('[Rutas] Valhalla road falló (' + e1.message + '), usando BRouter…');
-      try { return await routeBRouter('road'); } catch(e2) {
-        console.warn('[Rutas] BRouter road falló (' + e2.message + '), usando OSRM driving…');
-        return await routeOSRM('road');
-      }
+      console.warn('[Rutas] Valhalla road falló (' + e1.message + '), usando OSRM driving…');
+      return await routeOSRM('road');
     }
   }
   // Gravel: Valhalla Cross → OSRM cycling
@@ -4847,3 +4845,4 @@ requestAnimationFrame(() => document.documentElement.style.removeProperty('opaci
 </script>
 </body>
 </html>
+

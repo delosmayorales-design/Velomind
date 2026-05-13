@@ -2088,6 +2088,9 @@ document.addEventListener('DOMContentLoaded', () => {
     @media (max-width: 768px) {
       /* Prevenir desbordamiento de pantalla (scroll horizontal accidental). Evitamos 100vw que puede dar problemas. */
       html, body { overflow-x: hidden; }
+      /* Usar altura de viewport estable para evitar que Safari reserve espacio para su barra de navegación */
+      html { height: -webkit-fill-available; }
+      body { min-height: -webkit-fill-available; }
       * { box-sizing: border-box !important; }
 
       /* Menú Lateral (Sidebar) Off-Canvas — estilo Garmin Connect */
@@ -2448,6 +2451,15 @@ document.addEventListener('DOMContentLoaded', () => {
       _bnTimer = setTimeout(_hideBN, 4000);
     };
     document.addEventListener('touchstart', window._showBottomNav, { passive: true });
+
+    // Ocultar al instante cuando el usuario pulsa un ítem de navegación
+    bottomNav.querySelectorAll('.bottom-nav-item:not(#bottom-nav-menu-btn)').forEach(item => {
+      item.addEventListener('click', () => {
+        clearTimeout(_bnTimer);
+        bottomNav.classList.add('mob-hidden');
+      });
+    });
+
     // Mostrar al inicio y luego ocultar
     setTimeout(_hideBN, 4000);
   }
@@ -2524,45 +2536,65 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ══════════════════════════════════════════════════════════════
-   THEME ADAPTER (Light / Dark Mode)
+   THEME ADAPTER (Light / Dark Mode) — botón flotante global
 ══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  const sidebarNav = document.querySelector('.sidebar-nav');
-  if (sidebarNav) {
-    const sectionTitle = document.createElement('div');
-    sectionTitle.className = 'nav-section-title';
-    sectionTitle.textContent = 'Apariencia';
-    
-    const toggleBtn = document.createElement('a');
-    toggleBtn.href = '#';
-    toggleBtn.className = 'nav-item theme-toggle';
-    
-    const updateBtnUI = () => {
-      toggleBtn.innerHTML = document.documentElement.getAttribute('data-theme') === 'light' 
-        ? '<i class="fas fa-moon"></i> Modo Oscuro' 
-        : '<i class="fas fa-sun"></i> Modo Claro';
-    };
-    
-    updateBtnUI();
-    
-    toggleBtn.onclick = (e) => {
-      e.preventDefault();
-      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-      const newTheme = isLight ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      if (newTheme === 'light') document.documentElement.classList.add('light-theme');
-      else document.documentElement.classList.remove('light-theme');
-      localStorage.setItem('velomind_theme', newTheme);
-      
-      const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-      if (themeColorMeta) themeColorMeta.content = newTheme === 'light' ? '#ffffff' : '#0a0b0f';
-      
-      updateBtnUI();
-    };
-    
-    sidebarNav.appendChild(sectionTitle);
-    sidebarNav.appendChild(toggleBtn);
-  }
+  // Función compartida de cambio de tema
+  const _applyTheme = (newTheme) => {
+    document.documentElement.setAttribute('data-theme', newTheme);
+    if (newTheme === 'light') document.documentElement.classList.add('light-theme');
+    else document.documentElement.classList.remove('light-theme');
+    localStorage.setItem('velomind_theme', newTheme);
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) themeColorMeta.content = newTheme === 'light' ? '#ffffff' : '#0a0b0f';
+  };
+
+  // Botón flotante de tema — visible en cualquier pantalla, un solo click
+  const _themeBtn = document.createElement('button');
+  _themeBtn.id = 'global-theme-fab';
+  _themeBtn.title = 'Cambiar tema';
+  _themeBtn.setAttribute('aria-label', 'Alternar modo claro/oscuro');
+
+  const _updateThemeFab = () => {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    _themeBtn.innerHTML = isLight
+      ? '<i class="fas fa-moon"></i>'
+      : '<i class="fas fa-sun"></i>';
+    _themeBtn.style.background = isLight
+      ? 'rgba(0,0,0,0.08)'
+      : 'rgba(255,255,255,0.08)';
+    _themeBtn.style.color = isLight ? '#374151' : '#cbd5e1';
+    _themeBtn.style.borderColor = isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.12)';
+  };
+
+  _themeBtn.style.cssText = `
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 9998;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.12);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+    -webkit-tap-highlight-color: transparent;
+  `;
+  _updateThemeFab();
+
+  _themeBtn.addEventListener('click', () => {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    _applyTheme(isLight ? 'dark' : 'light');
+    _updateThemeFab();
+    _themeBtn.style.transform = 'scale(0.85)';
+    setTimeout(() => { _themeBtn.style.transform = 'scale(1)'; }, 160);
+  });
+
+  document.body.appendChild(_themeBtn);
 
   /* ══════════════════════════════════════════════════════════════
      PWA (Progressive Web App) - Instalación y Service Worker

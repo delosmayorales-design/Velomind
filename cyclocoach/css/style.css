@@ -1457,7 +1457,6 @@ html.light-theme [style*="background: green" i], html.light-theme [style*="backg
 html.light-theme [style*="background-color: green" i], html.light-theme [style*="background-color: green" i] *,
 html.light-theme [style*="background: darkgreen" i], html.light-theme [style*="background: darkgreen" i] *,
 html.light-theme [style*="background-color: darkgreen" i], html.light-theme [style*="background-color: darkgreen" i] *,
-html.light-theme .btn-full,
 html.light-theme .calc-btn,
 html.light-theme .btn-checkin,
 html.light-theme .dt-btn.save,
@@ -1468,6 +1467,11 @@ html.light-theme [style*="background-color: var(--primary)" i],
 html.light-theme [style*="background-color:var(--primary)" i] {
   color: #ffffff !important;
 }
+/* btn-secondary.btn-full: texto oscuro siempre, aunque .btn-full haya heredado blanco */
+html.light-theme .btn-secondary.btn-full,
+html.light-theme .btn-secondary.btn-full *,
+html.light-theme .btn-ghost.btn-full,
+html.light-theme .btn-ghost.btn-full * { color: #111827 !important; }
 
 /* ══════════════════════════════════════════════════════════
    AUMENTAR TAMAÑO DEL LOGO (Pantallas Login y Perfil)

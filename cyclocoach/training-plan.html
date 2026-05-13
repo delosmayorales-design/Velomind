@@ -1219,11 +1219,8 @@ async function initTrainingPlan() {
       fillAdjustmentForm();
       if (currentPlan) {
         renderPlan(currentPlan, AppState.athlete);
-        // Si el plan cacheado no tiene adaptation, regenerar en background para obtenerla
-        if (!currentPlan.adaptation) {
-          generatePlan();
-          silentSavePlan();
-        }
+        // No regenerar plan aunque falte adaptation: las sesiones del usuario se respetan
+        // loadCoachData() se encarga del análisis IA por separado
       } else {
         generatePlan();
         silentSavePlan();
@@ -3282,6 +3279,7 @@ async function savePlan() {
       phase:            currentPlan.phase        || null,
       ftp_at_creation:  AppState.athlete?.ftp    || null,
       advice:           currentPlan.advice       || null,
+      adaptation:       currentPlan.adaptation   || null,
     };
 
     // Guardar en localStorage (copia local inmediata)
