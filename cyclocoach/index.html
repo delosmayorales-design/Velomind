@@ -108,7 +108,7 @@
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border-radius:var(--radius-md, 8px);font-size:14px;cursor:pointer;transition:all 0.2s ease;}
     .btn-primary{background:var(--primary);color:#111;flex:1;border:none;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;}
     .btn-primary:hover{background:var(--primary-dark, #84B422);box-shadow:0 4px 16px rgba(158,214,43,0.3);transform:translateY(-1px);}
-    .btn-back{background:var(--bg-input, rgba(255,255,255,0.05));color:var(--text-secondary, #cbd5e1);border:1px solid var(--border, rgba(255,255,255,0.1));font-weight:600;font-family:inherit;}
+    .btn-back{background:var(--bg-input, rgba(255,255,255,0.05));color:var(--text-secondary, #cbd5e1);border:1px solid var(--border, rgba(255,255,255,0.1));font-weight:600;font-family:inherit;flex:1;}
     .btn-back:hover{background:var(--bg-card-hover, rgba(255,255,255,0.08));color:var(--text-primary, #fff);border-color:var(--primary);transform:translateY(-1px);}
 
     /* Info boxes */
@@ -280,7 +280,7 @@
         </select>
       </div>
       <div class="btn-row">
-        <button class="btn btn-back" onclick="backStep(2)"><i class="fas fa-arrow-left"></i></button>
+        <button class="btn btn-back" onclick="backStep(2)"><i class="fas fa-arrow-left"></i> Volver</button>
         <button class="btn btn-primary" onclick="goStep(2)">Continuar <i class="fas fa-arrow-right"></i></button>
       </div>
     </div>
@@ -356,7 +356,7 @@
         <div class="form-hint">El plan se periodiza hacia esta fecha automáticamente</div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-back" onclick="backStep(3)"><i class="fas fa-arrow-left"></i></button>
+        <button class="btn btn-back" onclick="backStep(3)"><i class="fas fa-arrow-left"></i> Volver</button>
         <button class="btn btn-primary" onclick="goStep(3)">Ver mi perfil <i class="fas fa-arrow-right"></i></button>
       </div>
     </div>
@@ -381,7 +381,7 @@
       <label class="form-label" style="margin-bottom:8px">Zonas de potencia Coggan</label>
       <div class="zones-list" id="summary-zones"></div>
       <div class="btn-row" style="margin-top:10px">
-        <button class="btn btn-back" onclick="backStep(4)"><i class="fas fa-arrow-left"></i></button>
+        <button class="btn btn-back" onclick="backStep(4)"><i class="fas fa-arrow-left"></i> Volver</button>
         <button class="btn btn-primary" id="btn-save" onclick="saveAndGo()">
           <i class="fas fa-rocket"></i> Empezar a entrenar
         </button>
