@@ -3626,6 +3626,7 @@ let _trkPauseCount  = 0;     // lecturas consecutivas lentas
 let _trkGpsLost     = false; // señal GPS perdida
 let _trkGpsRetry    = null;  // timeout para reintentar watchPosition
 let _trkBackupTimer = null;  // intervalo de backup en IndexedDB
+let _trkWakeLock    = null;  // Screen Wake Lock para evitar suspensión
 let _trkAltSmooth   = null;  // altitud suavizada (EMA) para evitar saltos de pantalla
 let _trkSegmentId   = 0;     // separa pausas/reconexiones para no dibujar rectas falsas
 
@@ -3809,6 +3810,14 @@ function _startTracking() {
       // Backup en IndexedDB cada 30s
       _trkBackupTimer = setInterval(_saveTrackBackup, 30000);
 
+      // Wake Lock: mantener pantalla activa durante la grabación
+      if ('wakeLock' in navigator) {
+        navigator.wakeLock.request('screen').then(wl => {
+          _trkWakeLock = wl;
+          _trkWakeLock.addEventListener('release', () => { _trkWakeLock = null; });
+        }).catch(e => console.warn('[Track] WakeLock no disponible:', e));
+      }
+
       document.getElementById('tracking-hud').classList.add('visible');
       const btn = document.getElementById('btn-track');
       btn.classList.add('recording');
@@ -3885,20 +3894,16 @@ function _onTrkPos(pos) {
         const lbl = document.getElementById('g-pause-lbl');
         if (lbl) lbl.style.display = 'none';
       }
-      // Acumular métricas solo cuando hay movimiento real
-      if (!hasTrackGap) {
-        _trkMovingTime += dt;
-        _trkDist += d;
-      }
-      if (!hasTrackGap) {
-        // Velocidad máxima: solo en movimiento (evita picos de ruido GPS parado)
-        const displaySpd = speedKmh ?? calcSpd;
-        if (displaySpd > _trkMaxSpeed) _trkMaxSpeed = displaySpd;
-        // Desnivel: umbral 1 m para filtrar ruido de altitud GPS
-        if (alt != null && _trkLastAlt != null) {
-          const diff = alt - _trkLastAlt;
-          if (diff > 1.0) _trkElevGain += diff;
-        }
+      // Acumular métricas de movimiento (el hasTrackGap solo afecta al dibujo)
+      _trkMovingTime += dt;
+      _trkDist += d;
+      // Velocidad máxima: solo en movimiento (evita picos de ruido GPS parado)
+      const displaySpd = speedKmh ?? calcSpd;
+      if (displaySpd > _trkMaxSpeed) _trkMaxSpeed = displaySpd;
+      // Desnivel: umbral 1 m para filtrar ruido de altitud GPS
+      if (alt != null && _trkLastAlt != null) {
+        const diff = alt - _trkLastAlt;
+        if (diff > 1.0) _trkElevGain += diff;
       }
     }
   }
@@ -4029,6 +4034,7 @@ function _stopTracking() {
   if (_trkBackupTimer) { clearInterval(_trkBackupTimer); _trkBackupTimer = null; }
   clearTimeout(_trkGpsRetry); _trkGpsRetry = null;
   _trkGpsLost = false;
+  if (_trkWakeLock) { _trkWakeLock.release().catch(()=>{}); _trkWakeLock = null; }
   document.getElementById('trk-gps-lost-lbl')?.remove();
   _trkActive = false;
 
@@ -4251,20 +4257,27 @@ function closeGarminOverlay() {
   _releaseWakeLock();
 }
 
-function _releaseWakeLock() {
-  if (_wakeLock) { _wakeLock.release().catch(() => {}); _wakeLock = null; }
-}
-
 // Verificar si hay sesión GPS sin guardar al cargar la página
 document.addEventListener('DOMContentLoaded', () => setTimeout(_checkAndOfferRestore, 800));
 
-// Re-adquirir wake lock si la página vuelve al foco
+// Re-adquirir wake lock y reiniciar GPS si la página vuelve al foco (llamada, cambio de app)
 document.addEventListener('visibilitychange', async () => {
-  if (document.visibilityState === 'visible' && _trkActive && !_wakeLock) {
+  if (document.visibilityState !== 'visible' || !_trkActive) return;
+  // Re-adquirir wake lock (el sistema lo libera al ir a background)
+  if ('wakeLock' in navigator && !_trkWakeLock) {
     try {
-      if ('wakeLock' in navigator)
-        _wakeLock = await navigator.wakeLock.request('screen');
+      _trkWakeLock = await navigator.wakeLock.request('screen');
+      _trkWakeLock.addEventListener('release', () => { _trkWakeLock = null; });
     } catch(_) {}
+  }
+  // Reiniciar watchPosition si se perdió durante la interrupción
+  if (_trkWatchId === null) {
+    clearTimeout(_trkGpsRetry);
+    _trkWatchId = navigator.geolocation.watchPosition(_onTrkPos, _onTrkErr, {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 15000,
+    });
   }
 });
 

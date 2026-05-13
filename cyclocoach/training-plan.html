@@ -2472,7 +2472,21 @@ function syncPlanWithReality() {
       }
 
       if (sess.isRest) {
-        if (!sess.advice || !sess.advice.includes('Entrenaste')) {
+        if (isToday) {
+          // Hoy era descanso pero ya hay actividad registrada: mostrar lo que se hizo
+          sess.isRest       = false;
+          sess.completed    = true;
+          sess._fromRestOverride = true;
+          sess.type         = actType;
+          sess.tss          = actTSS;
+          sess.durationMin  = actDur;
+          sess.name         = actTypeStr || 'Actividad realizada';
+          const _wt = window.WORKOUT_TYPES || {};
+          sess.emoji        = (_wt[actType] || {}).emoji || '🚴';
+          sess.advice       = `Actividad registrada hoy: ${actDur} min · ${actTSS} TSS. El plan del resto de la semana se ajusta a tu fatiga real.`;
+          changesSummary.push({ icon: '✅', day: sess.day, desc: `Actividad registrada hoy: ${actTSS} TSS.` });
+          changed = true;
+        } else if (!sess.advice || !sess.advice.includes('Entrenaste')) {
           sess.advice = `Entrenaste en tu día de descanso (${actDur} min, ${actTSS} TSS). Acumulas fatiga extra que ajustaremos.`;
           changesSummary.push({ icon: '⚠️', day: sess.day, desc: `Entrenaste en descanso: ${actTSS} TSS añadidos.` });
           changed = true;
@@ -3202,19 +3216,44 @@ function showToast(text, color = 'var(--primary)') {
 }
 
 function regeneratePlan() {
-  // Preserve completed states before regeneration (syncPlanWithReality resets them on new plan)
-  const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
-  generatePlan();
-  // Re-apply: union of activity-based detection + manual marks
-  if (currentPlan?.sessions && prevCompleted.length) {
-    let anyChange = false;
-    currentPlan.sessions.forEach((s, i) => {
-      if (!s.completed && prevCompleted[i]) { s.completed = true; anyChange = true; }
-    });
-    if (anyChange) renderPlan(currentPlan, AppState.athlete);
+  // Si hay plan guardado para esta semana, recargarlo y resincronizar con la actividad real.
+  // Solo generar desde cero si no existe plan guardado (primera vez o semana nueva).
+  let savedPlan = null;
+  try {
+    const s = JSON.parse(localStorage.getItem('cyclocoach_training_plan'));
+    if (s?.sessions && s.week_start === getMondayString()) savedPlan = s;
+  } catch(_) {}
+
+  if (savedPlan) {
+    // Recargar el plan guardado (deep copy para no mutar localStorage)
+    currentPlan = {
+      sessions:   JSON.parse(JSON.stringify(savedPlan.sessions)),
+      phase:      savedPlan.phase      || null,
+      targetTSS:  savedPlan.tss_target || null,
+      advice:     savedPlan.advice     || {},
+      adaptation: savedPlan.adaptation || null,
+    };
+    _patchSegmentDistances(currentPlan);
+    // Resetear flags de evaluación para que syncPlanWithReality re-evalúe todo
+    currentPlan.sessions.forEach(s => { delete s._evaluated; delete s._missed; });
+    syncPlanWithReality();
+    renderPlan(currentPlan, AppState.athlete);
+    silentSavePlan();
+    showToast('✅ Plan actualizado con tu actividad real', 'var(--accent-green)');
+  } else {
+    // Sin plan guardado: generar desde cero preservando estados completados manuales
+    const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
+    generatePlan();
+    if (currentPlan?.sessions && prevCompleted.length) {
+      let anyChange = false;
+      currentPlan.sessions.forEach((s, i) => {
+        if (!s.completed && prevCompleted[i]) { s.completed = true; anyChange = true; }
+      });
+      if (anyChange) renderPlan(currentPlan, AppState.athlete);
+    }
+    silentSavePlan();
+    showToast('✅ Plan de entrenamiento generado', 'var(--accent-green)');
   }
-  silentSavePlan();
-  showToast('✅ Plan de entrenamiento y nutrición recalculado', 'var(--accent-green)');
 }
 
 async function applyAdjustments() {
