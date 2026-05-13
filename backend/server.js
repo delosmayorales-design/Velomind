@@ -35,6 +35,7 @@ app.use('/api/plans',      require('./routes/plans'));
 app.use('/api/payments',   require('./routes/payments'));
 app.use('/api/routes',     require('./routes/routes'));
 app.use('/api/push',       require('./routes/push'));
+app.use('/api/wellness',   require('./routes/wellness'));
 
 // ─────────────────────────────────────────
 // 404

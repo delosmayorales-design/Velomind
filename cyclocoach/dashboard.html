@@ -498,6 +498,12 @@
     .week-card   { animation: fadeUp .35s ease .16s both; }
     #training-ctx-card { animation: fadeUp .35s ease .19s both; }
     .last-act-card { animation: fadeUp .35s ease .22s both; }
+    #wellness-card { animation: fadeUp .35s ease .20s both; }
+    .w-pills { display:flex; flex-wrap:wrap; gap:8px; }
+    .w-pill  { display:flex; flex-direction:column; align-items:center; background:var(--bg-input,rgba(255,255,255,0.05)); border:1px solid var(--border); border-radius:10px; padding:8px 12px; min-width:64px; gap:2px; }
+    .w-pill-icon { font-size:16px; }
+    .w-val  { font-size:14px; font-weight:700; color:var(--text-primary); }
+    .w-lbl  { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; }
 
     /* Training context chips */
     .ctx-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:12px; }
@@ -737,6 +743,12 @@
     <div class="card" id="training-ctx-card" style="margin-bottom:16px;display:none">
       <div class="card-eyebrow"><i class="fas fa-layer-group" style="color:var(--primary)"></i> Contexto de entrenamiento</div>
       <div id="training-ctx-content"></div>
+    </div>
+
+    <!-- ── RECUPERACIÓN / WELLNESS ── -->
+    <div class="card" id="wellness-card" style="margin-bottom:16px;display:none">
+      <div class="card-eyebrow"><i class="fas fa-heart-pulse" style="color:#ef4444"></i> Recuperación de hoy</div>
+      <div id="wellness-content"></div>
     </div>
 
     <!-- ── ÚLTIMA ACTIVIDAD ── -->
@@ -1353,6 +1365,7 @@ function renderMacrocycle() {
   fetchWeather();
   await loadPlan();
   renderMacrocycle();
+  loadWellness();
 
   BackendSync.loadActivities().then(() => {
     const m = AppState.pmcData?.length ? AppState.getCurrentMetrics() : null;
@@ -1379,6 +1392,60 @@ function renderMacrocycle() {
 
   requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
 })();
+
+// ── WELLNESS / RECUPERACIÓN ──────────────────────────────────
+async function loadWellness() {
+  const card = document.getElementById('wellness-card');
+  const content = document.getElementById('wellness-content');
+  if (!card || !content) return;
+  try {
+    const r = await fetch(window.API_URL + '/wellness/today', { headers: Auth.getHeaders() });
+    if (!r.ok) return;
+    const w = await r.json();
+    if (!w) return;
+
+    const sleepH = w.sleep_seconds ? (w.sleep_seconds / 3600).toFixed(1) : null;
+    const sleepScore = w.sleep_score || null;
+    const hrv = w.hrv_last_night || w.hrv_weekly_avg || null;
+    const restHr = w.resting_hr || null;
+    const battery = w.body_battery_high || null;
+    const stress = w.stress_avg || null;
+    const spo2 = w.spo2_avg || null;
+
+    // Score de recuperación 0-100 simple
+    let score = 0, factors = 0;
+    if (sleepH) { score += Math.min(sleepH / 8, 1) * 40; factors++; }
+    if (hrv) { score += Math.min(hrv / 60, 1) * 30; factors++; }
+    if (restHr) { score += Math.max(0, (70 - restHr) / 20) * 20; factors++; }
+    if (battery) { score += (battery / 100) * 10; factors++; }
+    if (factors === 0) return;
+    const pct = Math.round(score);
+    const color = pct >= 70 ? '#10B981' : pct >= 45 ? '#F59E0B' : '#EF4444';
+    const label = pct >= 70 ? 'Buena recuperación' : pct >= 45 ? 'Recuperación moderada' : 'Recuperación baja';
+
+    const pills = [
+      sleepH   ? `<div class="w-pill"><span class="w-pill-icon">😴</span><span class="w-val">${sleepH}h</span><span class="w-lbl">Sueño</span></div>` : '',
+      hrv      ? `<div class="w-pill"><span class="w-pill-icon">💓</span><span class="w-val">${hrv}</span><span class="w-lbl">HRV</span></div>` : '',
+      restHr   ? `<div class="w-pill"><span class="w-pill-icon">❤️</span><span class="w-val">${restHr}</span><span class="w-lbl">FC reposo</span></div>` : '',
+      battery  ? `<div class="w-pill"><span class="w-pill-icon">🔋</span><span class="w-val">${battery}%</span><span class="w-lbl">Body Battery</span></div>` : '',
+      stress   ? `<div class="w-pill"><span class="w-pill-icon">🧠</span><span class="w-val">${stress}</span><span class="w-lbl">Estrés</span></div>` : '',
+      spo2     ? `<div class="w-pill"><span class="w-pill-icon">🫁</span><span class="w-val">${spo2}%</span><span class="w-lbl">SpO2</span></div>` : '',
+    ].filter(Boolean).join('');
+
+    content.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div style="width:52px;height:52px;border-radius:50%;background:conic-gradient(${color} ${pct}%,rgba(255,255,255,0.06) 0);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--bg-card);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${color}">${pct}</div>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:${color}">${label}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Fuente: ${w.source === 'garmin' ? 'Garmin Connect' : 'Fitbit'} · ${w.date}</div>
+        </div>
+      </div>
+      <div class="w-pills">${pills}</div>`;
+    card.style.display = '';
+  } catch (_) {}
+}
 
 // ── RESUMEN SEMANA ANTERIOR ──────────────────────────────────
 function renderWeeklySummary() {

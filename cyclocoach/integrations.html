@@ -438,6 +438,69 @@
 
     </div>
 
+    <!-- ── SALUD Y BIENESTAR ───────────────────────────────── -->
+    <div style="margin-top:32px">
+      <h2 style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:4px"><i class="fas fa-heart-pulse" style="color:#ef4444"></i> Salud y Bienestar</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Sincroniza sueño, HRV, FC en reposo y recuperación desde tu pulsera o reloj inteligente.</p>
+
+      <div class="integrations-layout">
+
+        <!-- Garmin wellness -->
+        <div class="integration-card garmin-card" id="card-garmin-wellness">
+          <div class="int-header">
+            <div class="int-logo" style="background:rgba(0,122,199,0.12)">
+              <i class="fas fa-bed" style="color:#007AC7;font-size:22px"></i>
+            </div>
+            <div>
+              <div class="int-name">Garmin · Datos de salud</div>
+              <div class="int-tagline">Sueño, HRV, FC reposo, Body Battery, SpO2 y estrés desde Garmin Connect</div>
+              <div class="int-status" id="garmin-wellness-status" style="font-size:11px;margin-top:4px">
+                <i class="fas fa-circle" style="font-size:8px"></i> Requiere Garmin conectado
+              </div>
+            </div>
+          </div>
+          <div class="int-features">
+            <div class="int-feature"><i class="fas fa-check"></i> Sueño: horas, fases, puntuación</div>
+            <div class="int-feature"><i class="fas fa-check"></i> HRV nocturno y media semanal</div>
+            <div class="int-feature"><i class="fas fa-check"></i> FC en reposo diaria</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Body Battery y nivel de estrés</div>
+            <div class="int-feature"><i class="fas fa-check"></i> SpO2 nocturna</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Tarjeta de recuperación en Dashboard</div>
+          </div>
+          <div class="int-actions" id="garmin-wellness-actions" style="margin-top:14px"></div>
+          <div class="sync-log" id="garmin-wellness-log"></div>
+        </div>
+
+        <!-- Fitbit -->
+        <div class="integration-card" id="card-fitbit">
+          <div class="int-header">
+            <div class="int-logo" style="background:rgba(0,178,164,0.12)">
+              <i class="fas fa-wave-square" style="color:#00B2A4;font-size:22px"></i>
+            </div>
+            <div>
+              <div class="int-name" style="color:#00B2A4">Fitbit</div>
+              <div class="int-tagline">Sueño, HRV y FC en reposo desde Fitbit / Google Pixel Watch</div>
+              <div class="int-status disconnected" id="fitbit-status">
+                <i class="fas fa-circle" style="font-size:8px"></i> No conectado
+              </div>
+            </div>
+          </div>
+          <div class="int-features">
+            <div class="int-feature"><i class="fas fa-check"></i> Sueño con fases detalladas</div>
+            <div class="int-feature"><i class="fas fa-check"></i> HRV diario (RMSSD)</div>
+            <div class="int-feature"><i class="fas fa-check"></i> FC en reposo</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Últimos 7 días sincronizados</div>
+          </div>
+          <div class="int-actions" id="fitbit-actions" style="margin-top:14px"></div>
+          <div class="sync-log" id="fitbit-log"></div>
+          <div class="integration-note">
+            Necesitas crear una app en <strong>dev.fitbit.com</strong> y añadir FITBIT_CLIENT_ID y FITBIT_CLIENT_SECRET en las variables de entorno del backend.
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     </div>
 
     <!-- Zona de cuenta -->
@@ -607,6 +670,92 @@
     }
   }
 
+  // ── Garmin Wellness ──────────────────────────────────────────
+  function renderGarminWellness(garminConnected) {
+    const el = document.getElementById('garmin-wellness-actions');
+    const st = document.getElementById('garmin-wellness-status');
+    if (!el) return;
+    if (!garminConnected) {
+      if (st) { st.innerHTML = '<i class="fas fa-circle" style="font-size:8px"></i> Requiere Garmin conectado'; st.className = 'int-status disconnected'; }
+      el.innerHTML = `<a href="#card-garmin" class="btn-garmin-connect" style="text-decoration:none"><i class="fas fa-arrow-up"></i> Conectar Garmin primero</a>`;
+      return;
+    }
+    if (st) { st.innerHTML = '<i class="fas fa-check-circle" style="font-size:8px"></i> Disponible'; st.className = 'int-status connected'; }
+    el.innerHTML = `<button class="btn-garmin-sync" id="btn-garmin-wellness" onclick="doGarminWellnessSync()"><i class="fas fa-bed"></i> Sincronizar datos de salud</button>`;
+  }
+
+  async function doGarminWellnessSync() {
+    const btn = document.getElementById('btn-garmin-wellness');
+    const log = document.getElementById('garmin-wellness-log');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...'; }
+    try {
+      const r = await fetch(`${window.API_URL}/providers/garmin/wellness-sync`, { method: 'POST', headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' } });
+      const d = await r.json();
+      if (log) log.innerHTML = r.ok ? `<div class="sync-result success"><i class="fas fa-check-circle"></i> ${d.message || 'Sync OK'} · ${d.days} días sincronizados</div>` : `<div class="sync-result error"><i class="fas fa-exclamation-circle"></i> ${d.error}</div>`;
+    } catch (e) {
+      if (log) log.innerHTML = `<div class="sync-result error"><i class="fas fa-exclamation-circle"></i> ${e.message}</div>`;
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-bed"></i> Sincronizar datos de salud'; }
+    }
+  }
+
+  // ── Fitbit ────────────────────────────────────────────────────
+  function renderFitbitDisconnected(configured = false) {
+    const card = document.getElementById('card-fitbit');
+    const status = document.getElementById('fitbit-status');
+    if (card) card.classList.remove('connected');
+    if (status) { status.className = 'int-status disconnected'; status.innerHTML = '<i class="fas fa-circle" style="font-size:8px"></i> No conectado'; }
+    const el = document.getElementById('fitbit-actions');
+    if (!el) return;
+    el.innerHTML = configured
+      ? `<button class="btn-garmin-connect" onclick="connectFitbit()" style="background:#00B2A4;border-color:#00B2A4"><i class="fas fa-wave-square"></i> Conectar con Fitbit</button>`
+      : `<button class="btn-garmin-connect" disabled style="opacity:.5"><i class="fas fa-wave-square"></i> Fitbit (requiere credenciales)</button>`;
+  }
+
+  function renderFitbitConnected() {
+    const card = document.getElementById('card-fitbit');
+    const status = document.getElementById('fitbit-status');
+    if (card) card.classList.add('connected');
+    if (status) { status.className = 'int-status connected'; status.innerHTML = '<i class="fas fa-check-circle" style="font-size:10px"></i> Conectado'; }
+    const el = document.getElementById('fitbit-actions');
+    if (!el) return;
+    el.innerHTML = `
+      <button id="btn-fitbit-sync" onclick="doFitbitWellnessSync()" style="background:#00B2A4;color:#fff;border:none;padding:10px 18px;border-radius:var(--radius-md);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px"><i class="fas fa-sync-alt"></i> Sincronizar Fitbit</button>
+      <button onclick="doFitbitDisconnect()" class="btn-disconnect"><i class="fas fa-unlink"></i> Desconectar</button>`;
+  }
+
+  async function connectFitbit() {
+    try {
+      const r = await fetch(`${window.API_URL}/providers/fitbit/connect`, { headers: Auth.getHeaders() });
+      if (r.status === 501) { const d = await r.json(); alert(d.error); return; }
+      if (r.redirected) { window.location.href = r.url; return; }
+      const d = await r.json();
+      if (d.redirectUrl) window.location.href = d.redirectUrl;
+    } catch (e) { alert('Error al conectar Fitbit: ' + e.message); }
+  }
+
+  async function doFitbitWellnessSync() {
+    const btn = document.getElementById('btn-fitbit-sync');
+    const log = document.getElementById('fitbit-log');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...'; }
+    try {
+      const r = await fetch(`${window.API_URL}/providers/fitbit/wellness-sync`, { method: 'POST', headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' } });
+      const d = await r.json();
+      if (log) log.innerHTML = r.ok ? `<div class="sync-result success"><i class="fas fa-check-circle"></i> ${d.message} · ${d.days} días sincronizados</div>` : `<div class="sync-result error"><i class="fas fa-exclamation-circle"></i> ${d.error}</div>`;
+    } catch (e) {
+      if (log) log.innerHTML = `<div class="sync-result error"><i class="fas fa-exclamation-circle"></i> ${e.message}</div>`;
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar Fitbit'; }
+    }
+  }
+
+  async function doFitbitDisconnect() {
+    if (!confirm('¿Desconectar Fitbit?')) return;
+    await fetch(`${window.API_URL}/providers/fitbit/disconnect`, { method: 'DELETE', headers: Auth.getHeaders() });
+    localStorage.removeItem('velomind_fitbit_connected');
+    renderFitbitDisconnected(false);
+  }
+
   // ── Init estado ──────────────────────────────────────────────
   function initStatus() {
     if (localStorage.getItem('velomind_strava_connected') === '1') {
@@ -614,11 +763,11 @@
     } else {
       renderDisconnected();
     }
-    if (localStorage.getItem('velomind_garmin_connected') === '1') {
-      renderGarminConnected();
-    } else {
-      renderGarminDisconnected(false);
-    }
+    const garminOk = localStorage.getItem('velomind_garmin_connected') === '1';
+    if (garminOk) renderGarminConnected(); else renderGarminDisconnected(false);
+    renderGarminWellness(garminOk);
+    if (localStorage.getItem('velomind_fitbit_connected') === '1') renderFitbitConnected();
+    else renderFitbitDisconnected(false);
   }
   initStatus();
 
@@ -629,12 +778,12 @@
         localStorage.setItem('velomind_strava_connected', '1');
         renderConnected();
       }
-      if (s?.garmin?.connected) {
-        localStorage.setItem('velomind_garmin_connected', '1');
-        renderGarminConnected();
-      } else {
-        renderGarminDisconnected(!!s?.garmin?.configured);
-      }
+      const garminOk = !!s?.garmin?.connected;
+      if (garminOk) { localStorage.setItem('velomind_garmin_connected', '1'); renderGarminConnected(); }
+      else renderGarminDisconnected(!!s?.garmin?.configured);
+      renderGarminWellness(garminOk);
+      if (s?.fitbit?.connected) { localStorage.setItem('velomind_fitbit_connected', '1'); renderFitbitConnected(); }
+      else renderFitbitDisconnected(!!s?.fitbit?.configured);
     }).catch(() => {});
   }
 
@@ -662,6 +811,16 @@
     if (params.get('garmin') === 'error') {
       history.replaceState({}, '', window.location.pathname);
       alert('Garmin no se pudo conectar: ' + (params.get('reason') || 'error desconocido'));
+    }
+    if (params.get('fitbit') === 'connected') {
+      history.replaceState({}, '', window.location.pathname);
+      localStorage.setItem('velomind_fitbit_connected', '1');
+      renderFitbitConnected();
+      await doFitbitWellnessSync().catch(() => {});
+    }
+    if (params.get('fitbit') === 'error') {
+      history.replaceState({}, '', window.location.pathname);
+      alert('Fitbit no se pudo conectar: ' + (params.get('reason') || 'error desconocido'));
     }
   })();
 

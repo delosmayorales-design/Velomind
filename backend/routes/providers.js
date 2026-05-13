@@ -688,17 +688,193 @@ router.delete('/garmin/disconnect', requireAuth, async (req, res) => {
   }
 });
 
+// ── GARMIN WELLNESS SYNC ────────────────────────────────────────
+router.post('/garmin/wellness-sync', requireAuth, async (req, res) => {
+  const uid = req.user.id;
+  const { data: user } = await supabase.from('users').select('*').eq('id', uid).single();
+  if (!user?.garmin_token) return res.status(400).json({ error: 'Garmin no conectado' });
+  try {
+    const token = await refreshGarminIfNeeded(user);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const start = nowSec - 7 * 86400;
+    const params = new URLSearchParams({
+      uploadStartTimeInSeconds: String(start),
+      uploadEndTimeInSeconds: String(nowSec)
+    });
+    const headers = { Authorization: `Bearer ${token}` };
+    const [sleepRes, dailiesRes, hrvRes] = await Promise.all([
+      fetch(`${GARMIN_API_BASE}/sleeps?${params}`, { headers }),
+      fetch(`${GARMIN_API_BASE}/dailies?${params}`, { headers }),
+      fetch(`${GARMIN_API_BASE}/hrv?${params}`, { headers })
+    ]);
+    const [sleepData, dailiesData, hrvData] = await Promise.all([
+      sleepRes.ok ? sleepRes.json().catch(() => ({})) : {},
+      dailiesRes.ok ? dailiesRes.json().catch(() => ({})) : {},
+      hrvRes.ok ? hrvRes.json().catch(() => ({})) : {}
+    ]);
+    const byDate = {};
+    for (const s of (sleepData.sleeps || [])) {
+      if (!s.calendarDate) continue;
+      const d = byDate[s.calendarDate] = byDate[s.calendarDate] || {};
+      d.sleep_seconds = s.sleepTimeSeconds || null;
+      d.sleep_score = s.overallSleepScore || null;
+      d.deep_sleep_seconds = s.deepSleepDurationInSeconds || null;
+      d.rem_sleep_seconds = s.remSleepInSeconds || null;
+      d.spo2_avg = s.averageSpO2Value || null;
+    }
+    for (const d of (dailiesData.dailies || [])) {
+      if (!d.calendarDate) continue;
+      const r = byDate[d.calendarDate] = byDate[d.calendarDate] || {};
+      r.resting_hr = d.restingHeartRateInBeatsPerMinute || null;
+      r.stress_avg = d.averageStressLevel || null;
+      r.body_battery_high = d.bodyBatteryHighestValue || null;
+      r.body_battery_low = d.bodyBatteryLowestValue || null;
+    }
+    for (const h of (hrvData.hrv || [])) {
+      if (!h.calendarDate) continue;
+      const r = byDate[h.calendarDate] = byDate[h.calendarDate] || {};
+      r.hrv_weekly_avg = h.weeklyAvg || null;
+      r.hrv_last_night = h.lastNight || null;
+    }
+    const rows = Object.entries(byDate).map(([date, d]) => ({ user_id: uid, date, source: 'garmin', ...d }));
+    if (rows.length) await supabase.from('wellness_log').upsert(rows, { onConflict: 'user_id,date,source' });
+    res.json({ message: 'Wellness sync OK', days: rows.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── FITBIT ──────────────────────────────────────────────────────
+const FITBIT_ID     = process.env.FITBIT_CLIENT_ID;
+const FITBIT_SECRET = process.env.FITBIT_CLIENT_SECRET;
+const FITBIT_RDR    = process.env.FITBIT_REDIRECT_URI || 'https://velomind-backend.onrender.com/api/providers/fitbit/callback';
+const FITBIT_AUTH_URL  = 'https://www.fitbit.com/oauth2/authorize';
+const FITBIT_TOKEN_URL = 'https://api.fitbit.com/oauth2/token';
+const FITBIT_API_BASE  = 'https://api.fitbit.com';
+
+router.get('/fitbit/connect', requireAuth, (req, res) => {
+  if (!FITBIT_ID) return res.status(501).json({ error: 'Fitbit no configurado. Añade FITBIT_CLIENT_ID y FITBIT_CLIENT_SECRET en las variables de entorno.' });
+  const state = encodeState({ userId: req.user.id });
+  const params = new URLSearchParams({
+    client_id: FITBIT_ID, response_type: 'code',
+    scope: 'sleep heartrate activity profile',
+    redirect_uri: FITBIT_RDR, state, expires_in: '604800'
+  });
+  res.redirect(`${FITBIT_AUTH_URL}?${params}`);
+});
+
+router.get('/fitbit/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error) return res.redirect(`${FRONTEND_URL}/integrations.html?fitbit=error&reason=${encodeURIComponent(error)}`);
+  try {
+    const decoded = decodeState(state);
+    if (!decoded?.userId) return res.redirect(`${FRONTEND_URL}/integrations.html?fitbit=error&reason=invalid_state`);
+    const body = new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: FITBIT_RDR });
+    const tokenRes = await fetch(FITBIT_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + Buffer.from(`${FITBIT_ID}:${FITBIT_SECRET}`).toString('base64')
+      }, body
+    });
+    const token = await tokenRes.json();
+    if (!tokenRes.ok) throw new Error(token.errors?.[0]?.message || 'Fitbit token error');
+    await supabase.from('users').update({
+      fitbit_token: token.access_token, fitbit_refresh: token.refresh_token,
+      fitbit_expires_at: Math.floor(Date.now() / 1000) + Number(token.expires_in || 28800),
+      fitbit_user_id: token.user_id
+    }).eq('id', decoded.userId);
+    res.redirect(`${FRONTEND_URL}/integrations.html?fitbit=connected`);
+  } catch (e) {
+    res.redirect(`${FRONTEND_URL}/integrations.html?fitbit=error&reason=${encodeURIComponent(e.message)}`);
+  }
+});
+
+async function refreshFitbitIfNeeded(user) {
+  let token = user.fitbit_token;
+  const expiresAt = Number(user.fitbit_expires_at || 0);
+  if (expiresAt && Date.now() / 1000 <= expiresAt - 600) return token;
+  if (!user.fitbit_refresh) throw new Error('Fitbit necesita reconexión: falta refresh token.');
+  const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: user.fitbit_refresh });
+  const r = await fetch(FITBIT_TOKEN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Basic ' + Buffer.from(`${FITBIT_ID}:${FITBIT_SECRET}`).toString('base64')
+    }, body
+  });
+  const data = await r.json();
+  token = data.access_token;
+  await supabase.from('users').update({
+    fitbit_token: data.access_token, fitbit_refresh: data.refresh_token,
+    fitbit_expires_at: Math.floor(Date.now() / 1000) + Number(data.expires_in || 28800)
+  }).eq('id', user.id);
+  return token;
+}
+
+router.post('/fitbit/wellness-sync', requireAuth, async (req, res) => {
+  const uid = req.user.id;
+  const { data: user } = await supabase.from('users').select('*').eq('id', uid).single();
+  if (!user?.fitbit_token) return res.status(400).json({ error: 'Fitbit no conectado' });
+  try {
+    const token = await refreshFitbitIfNeeded(user);
+    const rows = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const date = d.toISOString().substring(0, 10);
+      const headers = { Authorization: `Bearer ${token}` };
+      const [sleepRes, hrRes, hrvRes] = await Promise.all([
+        fetch(`${FITBIT_API_BASE}/1.2/user/-/sleep/date/${date}.json`, { headers }),
+        fetch(`${FITBIT_API_BASE}/1/user/-/activities/heart/date/${date}/1d.json`, { headers }),
+        fetch(`${FITBIT_API_BASE}/1/user/-/hrv/date/${date}.json`, { headers })
+      ]);
+      const [sleepData, hrData, hrvData] = await Promise.all([
+        sleepRes.ok ? sleepRes.json().catch(() => ({})) : {},
+        hrRes.ok ? hrRes.json().catch(() => ({})) : {},
+        hrvRes.ok ? hrvRes.json().catch(() => ({})) : {}
+      ]);
+      const mainSleep = sleepData.sleep?.find(s => s.isMainSleep) || sleepData.sleep?.[0];
+      const restingHr = hrData['activities-heart']?.[0]?.value?.restingHeartRate;
+      const hrv = hrvData.hrv?.[0]?.value?.dailyRmssd;
+      if (mainSleep || restingHr || hrv) {
+        rows.push({
+          user_id: uid, date, source: 'fitbit',
+          sleep_seconds: mainSleep ? Math.round((mainSleep.duration || 0) / 1000) : null,
+          resting_hr: restingHr || null,
+          hrv_last_night: hrv ? Math.round(hrv) : null
+        });
+      }
+    }
+    if (rows.length) await supabase.from('wellness_log').upsert(rows, { onConflict: 'user_id,date,source' });
+    res.json({ message: 'Fitbit wellness sync OK', days: rows.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/fitbit/disconnect', requireAuth, async (req, res) => {
+  try {
+    await supabase.from('users').update({
+      fitbit_token: null, fitbit_refresh: null, fitbit_expires_at: null, fitbit_user_id: null
+    }).eq('id', req.user.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/status', requireAuth, async (req, res) => {
   try {
     const { data: user } = await supabase
       .from('users')
-      .select('strava_token, garmin_token')
+      .select('strava_token, garmin_token, fitbit_token')
       .eq('id', req.user.id)
       .single();
 
     res.json({
       strava: { connected: !!user?.strava_token, configured: !!STRAVA_ID },
-      garmin: { connected: !!user?.garmin_token, configured: !!GARMIN_ID }
+      garmin: { connected: !!user?.garmin_token, configured: !!GARMIN_ID },
+      fitbit: { connected: !!user?.fitbit_token, configured: !!FITBIT_ID }
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
