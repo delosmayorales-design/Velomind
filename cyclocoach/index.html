@@ -105,7 +105,7 @@
 
     /* Buttons */
     .btn-row{display:flex;gap:10px;margin-top:22px;}
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border-radius:var(--radius-md, 8px);font-size:14px;cursor:pointer;transition:all 0.2s ease;}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:var(--radius-md, 8px);font-size:13px;cursor:pointer;transition:all 0.2s ease;}
     .btn-primary{background:var(--primary);color:#111;flex:1;border:none;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;}
     .btn-primary:hover{background:var(--primary-dark, #84B422);box-shadow:0 4px 16px rgba(158,214,43,0.3);transform:translateY(-1px);}
     .btn-back{background:var(--bg-input, rgba(255,255,255,0.05));color:var(--text-secondary, #cbd5e1);border:1px solid var(--border, rgba(255,255,255,0.1));font-weight:600;font-family:inherit;flex:1;}
@@ -237,7 +237,8 @@
         </div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="goStep(1)">Continuar <i class="fas fa-arrow-right"></i></button>
+        <button class="btn btn-back" onclick="Utils.goBack()">Volver</button>
+        <button class="btn btn-primary" onclick="goStep(1)">Continuar</button>
       </div>
     </div>
 
@@ -280,8 +281,8 @@
         </select>
       </div>
       <div class="btn-row">
-        <button class="btn btn-back" onclick="backStep(2)"><i class="fas fa-arrow-left"></i> Volver</button>
-        <button class="btn btn-primary" onclick="goStep(2)">Continuar <i class="fas fa-arrow-right"></i></button>
+        <button class="btn btn-back" onclick="backStep(2)">Volver</button>
+        <button class="btn btn-primary" onclick="goStep(2)">Continuar</button>
       </div>
     </div>
 
@@ -356,8 +357,8 @@
         <div class="form-hint">El plan se periodiza hacia esta fecha automáticamente</div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-back" onclick="backStep(3)"><i class="fas fa-arrow-left"></i> Volver</button>
-        <button class="btn btn-primary" onclick="goStep(3)">Ver mi perfil <i class="fas fa-arrow-right"></i></button>
+        <button class="btn btn-back" onclick="backStep(3)">Volver</button>
+        <button class="btn btn-primary" onclick="goStep(3)">Ver mi perfil</button>
       </div>
     </div>
 
@@ -381,10 +382,8 @@
       <label class="form-label" style="margin-bottom:8px">Zonas de potencia Coggan</label>
       <div class="zones-list" id="summary-zones"></div>
       <div class="btn-row" style="margin-top:10px">
-        <button class="btn btn-back" onclick="backStep(4)"><i class="fas fa-arrow-left"></i> Volver</button>
-        <button class="btn btn-primary" id="btn-save" onclick="saveAndGo()">
-          <i class="fas fa-rocket"></i> Empezar a entrenar
-        </button>
+        <button class="btn btn-back" onclick="backStep(4)">Volver</button>
+        <button class="btn btn-primary" id="btn-save" onclick="saveAndGo()">Empezar a entrenar</button>
       </div>
       <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:14px">
         Podrás modificar estos datos en cualquier momento desde el Plan de Entrenamiento.
@@ -392,11 +391,6 @@
     </div>
 
   </div>
-</div>
-<div style="position:fixed;bottom:24px;left:0;right:0;display:flex;justify-content:center;pointer-events:none;z-index:50;">
-  <button onclick="Utils.goBack()" class="btn btn-back" style="padding:10px 20px;font-size:13px;pointer-events:auto;">
-    <i class="fas fa-arrow-left"></i> Volver a Métricas
-  </button>
 </div>
 
 <script src="js/app.js"></script>
