@@ -971,6 +971,8 @@ function generateMenus() {
   }
 }
 
+var _lightColors = {'#3B82F6':'#1d4ed8','#F59E0B':'#92400e','#10B981':'#065f46','#8B5CF6':'#5b21b6','#6B7280':'#374151'};
+
 function renderTimingForDay(idx) {
   const card    = document.getElementById('timing-for-day');
   const content = document.getElementById('timing-for-day-content');
@@ -1007,9 +1009,11 @@ function renderTimingForDay(idx) {
   }
 
   function tBlock(title, color, icon, lines) {
-    var tc = document.documentElement.classList.contains('light-theme') ? '#1e293b' : 'var(--text-secondary)';
+    var isLight = document.documentElement.classList.contains('light-theme');
+    var tc = isLight ? '#374151' : 'var(--text-secondary)';
+    var hc = isLight ? (_lightColors[color] || color) : color;
     return '<div style="background:' + color + '10;border-left:3px solid ' + color + ';border-radius:0 8px 8px 0;padding:11px 14px;margin-bottom:8px">' +
-      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + color + ';margin-bottom:5px">' + icon + ' ' + title + '</div>' +
+      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + hc + ';margin-bottom:5px">' + icon + ' ' + title + '</div>' +
       lines.map(function(l){ return '<div class="tbl" style="font-size:13px;color:' + tc + ';line-height:1.6">' + l + '</div>'; }).join('') +
       '</div>';
   }
@@ -1052,9 +1056,11 @@ function renderTiming(timing) {
   if (!timing) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
   function timingBlock(title, color, icon, lines) {
-    var tc = document.documentElement.classList.contains('light-theme') ? '#1e293b' : 'var(--text-secondary)';
+    var isLight = document.documentElement.classList.contains('light-theme');
+    var tc = isLight ? '#374151' : 'var(--text-secondary)';
+    var hc = isLight ? (_lightColors[color] || color) : color;
     return '<div style="background:' + color + '12;border-left:3px solid ' + color + ';border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">' +
-      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + color + ';margin-bottom:4px">' + icon + ' ' + title + '</div>' +
+      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + hc + ';margin-bottom:4px">' + icon + ' ' + title + '</div>' +
       lines.map(function(l) { return '<div class="tbl" style="font-size:12px;color:' + tc + ';line-height:1.5">' + l + '</div>'; }).join('') +
       '</div>';
   }
