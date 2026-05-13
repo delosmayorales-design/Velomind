@@ -3247,6 +3247,40 @@ function _applyAntiBackToBack(plan, todayIdx, ftp) {
   }
 }
 
+// Corrige sesiones con valores inconsistentes o que superan los límites actuales.
+// Necesario para planes guardados con versiones antiguas del generador.
+function _sanitizePlanSessions(plan) {
+  if (!plan?.sessions) return;
+  const MAX_DUR  = { long: 240, endurance: 210, recovery: 90, tempo: 150, threshold: 150, vo2max: 150, sprint: 150, strength: 150 };
+  const MAX_TSS  = { long: 185, endurance: 140, recovery: 45, tempo: 115, threshold: 115, vo2max: 115, sprint: 100, strength: 100 };
+  const DEF_IF   = { long: 0.64, endurance: 0.64, recovery: 0.50, tempo: 0.76, threshold: 0.83, vo2max: 0.87, sprint: 0.80, strength: 0.75 };
+
+  plan.sessions.forEach(sess => {
+    if (sess.isRest || !sess.type) return;
+    const maxDur = MAX_DUR[sess.type] || 210;
+    const maxTSS = MAX_TSS[sess.type] || 140;
+    const ifVal  = sess.ifTarget || DEF_IF[sess.type] || 0.65;
+
+    // Detectar TSS inconsistente con duración e IF (plan generado con código antiguo)
+    if (sess.durationMin && sess.tss) {
+      const expectedTSS = Math.round((sess.durationMin / 60) * Math.pow(ifVal, 2) * 100);
+      if (sess.tss > expectedTSS * 1.4) {
+        sess.tss = expectedTSS; // recalcular desde duración+IF reales
+      }
+    }
+
+    // Aplicar límites de duración y TSS actuales
+    if (sess.durationMin > maxDur) {
+      sess.durationMin = maxDur;
+      sess.tss = Math.round((maxDur / 60) * Math.pow(ifVal, 2) * 100);
+    }
+    if (sess.tss > maxTSS) {
+      sess.tss = maxTSS;
+      sess.durationMin = Math.min(maxDur, Math.round((maxTSS / (Math.pow(ifVal, 2) * 100)) * 60));
+    }
+  });
+}
+
 function regeneratePlan() {
   // Si hay plan guardado para esta semana, recargarlo y resincronizar con la actividad real.
   // Solo generar desde cero si no existe plan guardado (primera vez o semana nueva).
@@ -3275,6 +3309,8 @@ function regeneratePlan() {
       advice:     savedPlan.advice     || {},
       adaptation: savedPlan.adaptation || null,
     };
+    // Sanear sesiones con TSS/duración inconsistentes o que superan los límites actuales
+    _sanitizePlanSessions(currentPlan);
     _patchSegmentDistances(currentPlan);
     // Resetear flags para que syncPlanWithReality re-evalúe todo
     const _todayI = (new Date().getDay() + 6) % 7;
