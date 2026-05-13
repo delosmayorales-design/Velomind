@@ -1593,12 +1593,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadRoutes();
 
-  // iOS Safari: forzar ocultación de barra inferior — la página usa 100lvh (lvh > dvh cuando
-  // las barras están visibles), lo que crea 1px de scroll; lo activamos programáticamente.
+  // iOS Safari: forzar ocultación de la barra inferior.
+  // La CSS de app.js fija html a -webkit-fill-available (área visible exacta),
+  // por lo que el documento nunca tiene scroll. Sobrescribimos temporalmente
+  // html y body a innerHeight+1 para crear 1px de scroll, disparamos el scroll,
+  // Safari oculta sus barras y luego restauramos.
   if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !window.navigator.standalone) {
     setTimeout(() => {
-      window.scrollTo({ top: 1, behavior: 'instant' });
-    }, 400);
+      const h = window.innerHeight + 1;
+      document.documentElement.style.height = h + 'px';
+      document.body.style.height = h + 'px';
+      window.scrollTo(0, 1);
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.style.height = '';
+        document.body.style.height = '';
+      }, 500);
+    }, 600);
   }
 });
 
