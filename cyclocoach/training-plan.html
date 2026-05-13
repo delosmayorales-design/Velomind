@@ -85,32 +85,27 @@
     /* ── Check-in zone (pre-entreno simplificado) ───── */
     .checkin-zone {
       border-top: 1px solid rgba(196,239,68,.08);
-      padding: 6px 16px;
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 16px;
+      display: flex; flex-direction: column; gap: 8px;
     }
     .checkin-label {
       font-size: 10px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .5px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0;
+      letter-spacing: .5px; color: var(--text-muted);
     }
-    .checkin-btns { display: flex; gap: 6px; flex: 1; min-width: 0; }
+    .checkin-btns { display: flex; gap: 8px; }
     .checkin-btn {
-      flex: 1; min-width: 0; padding: 10px 8px;
+      flex: 1; padding: 10px 6px;
       background: var(--bg-input, rgba(255,255,255,0.05)); border: 1px solid var(--border, rgba(255,255,255,0.1));
       border-radius: var(--radius-md, 8px); cursor: pointer; font-family: inherit;
       font-size: 12px; font-weight: 600; color: var(--text-secondary, #cbd5e1);
-      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-      transition: all 0.2s ease; white-space: nowrap; overflow: hidden;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: all 0.2s ease;
     }
     .checkin-btn:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); border-color: var(--primary); color: var(--text-primary, #fff); transform: translateY(-1px); }
     .checkin-btn.ci-mal.selected     { border-color: rgba(251,191,36,.6); background: rgba(251,191,36,.08); color: #fbbf24; }
     .checkin-btn.ci-normal.selected  { border-color: rgba(196,239,68,.6); background: rgba(196,239,68,.08); color: var(--primary); }
     .checkin-btn.ci-fuerte.selected  { border-color: rgba(239,68,68,.5);  background: rgba(239,68,68,.08);  color: #f87171; }
     .checkin-btn .ci-emoji { font-size: 14px; line-height: 1; flex-shrink: 0; }
-    @media (max-width: 400px) {
-      .checkin-zone { padding: 10px 14px; gap: 6px; }
-      .checkin-label { width: 100%; }
-      .checkin-btns { width: 100%; }
-    }
 
     /* ══ LIGHT MODE — overrides completos (flat CSS para compatibilidad Android) ══════ */
     html[data-theme="light"], html.light-theme { --divider: rgba(0,0,0,.08); }
