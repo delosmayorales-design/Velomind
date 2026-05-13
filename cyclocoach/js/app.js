@@ -2457,7 +2457,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (document.getElementById('garmin-overlay')?.classList.contains('visible')) return;
       bottomNav.classList.remove('mob-hidden');
       clearTimeout(_bnTimer);
-      _bnTimer = setTimeout(_hideBN, 4000);
+      _bnTimer = setTimeout(_hideBN, 2000);
     };
     document.addEventListener('touchstart', window._showBottomNav, { passive: true });
 
@@ -2491,7 +2491,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Mostrar al inicio y luego ocultar
-    setTimeout(_hideBN, 4000);
+    setTimeout(_hideBN, 2000);
   }
 
   // 3. Botón hamburguesa en el page-header — solo si existe el header

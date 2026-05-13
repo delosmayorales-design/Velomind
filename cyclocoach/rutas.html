@@ -1593,23 +1593,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadRoutes();
 
-  // iOS Safari: forzar ocultación de la barra inferior.
-  // La CSS de app.js fija html a -webkit-fill-available (área visible exacta),
-  // por lo que el documento nunca tiene scroll. Sobrescribimos temporalmente
-  // html y body a innerHeight+1 para crear 1px de scroll, disparamos el scroll,
-  // Safari oculta sus barras y luego restauramos.
+  // iOS Safari: mantener la barra inferior oculta en esta página de mapa.
+  // Estrategia: min-height > 100vh crea 1px de scroll aunque app.js fije html height.
+  // Se re-dispara automáticamente si las barras reaparecen (visualViewport resize).
   if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !window.navigator.standalone) {
-    setTimeout(() => {
-      const h = window.innerHeight + 1;
-      document.documentElement.style.height = h + 'px';
-      document.body.style.height = h + 'px';
-      window.scrollTo(0, 1);
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-        document.documentElement.style.height = '';
-        document.body.style.height = '';
-      }, 500);
-    }, 600);
+    const _hideSafariBars = () => {
+      document.documentElement.style.minHeight = 'calc(100vh + 2px)';
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          document.documentElement.style.minHeight = '';
+        }, 350);
+      });
+    };
+
+    // Disparo inicial — esperar a que el mapa cargue
+    setTimeout(_hideSafariBars, 700);
+
+    // Re-disparar cada vez que el usuario vuelve a la página
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) setTimeout(_hideSafariBars, 300);
+    });
+
+    // Re-disparar cuando las barras reaparecen (viewport se reduce)
+    if (window.visualViewport) {
+      let _lastVVH = window.visualViewport.height;
+      window.visualViewport.addEventListener('resize', () => {
+        const h = window.visualViewport.height;
+        if (h < _lastVVH - 20) setTimeout(_hideSafariBars, 100); // barras aparecieron
+        _lastVVH = h;
+      });
+    }
   }
 });
 
