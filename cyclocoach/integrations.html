@@ -474,27 +474,27 @@
         <!-- Fitbit -->
         <div class="integration-card" id="card-fitbit">
           <div class="int-header">
-            <div class="int-logo" style="background:rgba(0,178,164,0.12)">
-              <i class="fas fa-wave-square" style="color:#00B2A4;font-size:22px"></i>
+            <div class="int-logo" style="background:rgba(66,133,244,0.12)">
+              <i class="fab fa-google" style="color:#4285F4;font-size:22px"></i>
             </div>
             <div>
-              <div class="int-name" style="color:#00B2A4">Fitbit</div>
-              <div class="int-tagline">Sueño, HRV y FC en reposo desde Fitbit / Google Pixel Watch</div>
+              <div class="int-name" style="color:#4285F4">Google Fit / Fitbit</div>
+              <div class="int-tagline">Sueño y FC en reposo desde Google Fit, Fitbit, Pixel Watch y Wear OS</div>
               <div class="int-status disconnected" id="fitbit-status">
                 <i class="fas fa-circle" style="font-size:8px"></i> No conectado
               </div>
             </div>
           </div>
           <div class="int-features">
-            <div class="int-feature"><i class="fas fa-check"></i> Sueño con fases detalladas</div>
-            <div class="int-feature"><i class="fas fa-check"></i> HRV diario (RMSSD)</div>
-            <div class="int-feature"><i class="fas fa-check"></i> FC en reposo</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Sueño con fases (ligero, profundo, REM)</div>
+            <div class="int-feature"><i class="fas fa-check"></i> FC en reposo diaria</div>
+            <div class="int-feature"><i class="fas fa-check"></i> Compatible con Fitbit, Pixel Watch, Wear OS</div>
             <div class="int-feature"><i class="fas fa-check"></i> Últimos 7 días sincronizados</div>
           </div>
           <div class="int-actions" id="fitbit-actions" style="margin-top:14px"></div>
           <div class="sync-log" id="fitbit-log"></div>
           <div class="integration-note">
-            Necesitas crear una app en <strong>dev.fitbit.com</strong> y añadir FITBIT_CLIENT_ID y FITBIT_CLIENT_SECRET en las variables de entorno del backend.
+            Crea un proyecto en <strong>Google Cloud Console</strong> → APIs → Fitness API, genera credenciales OAuth2 y añade <code>GOOGLE_FIT_CLIENT_ID</code> y <code>GOOGLE_FIT_CLIENT_SECRET</code> en las variables de entorno del backend.
           </div>
         </div>
 
@@ -708,8 +708,8 @@
     const el = document.getElementById('fitbit-actions');
     if (!el) return;
     el.innerHTML = configured
-      ? `<button class="btn-garmin-connect" onclick="connectFitbit()" style="background:#00B2A4;border-color:#00B2A4"><i class="fas fa-wave-square"></i> Conectar con Fitbit</button>`
-      : `<button class="btn-garmin-connect" disabled style="opacity:.5"><i class="fas fa-wave-square"></i> Fitbit (requiere credenciales)</button>`;
+      ? `<button class="btn-garmin-connect" onclick="connectFitbit()" style="background:#4285F4;border-color:#4285F4"><i class="fab fa-google"></i> Conectar con Google Fit</button>`
+      : `<button class="btn-garmin-connect" disabled style="opacity:.5"><i class="fab fa-google"></i> Google Fit (requiere credenciales)</button>`;
   }
 
   function renderFitbitConnected() {
@@ -720,7 +720,7 @@
     const el = document.getElementById('fitbit-actions');
     if (!el) return;
     el.innerHTML = `
-      <button id="btn-fitbit-sync" onclick="doFitbitWellnessSync()" style="background:#00B2A4;color:#fff;border:none;padding:10px 18px;border-radius:var(--radius-md);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px"><i class="fas fa-sync-alt"></i> Sincronizar Fitbit</button>
+      <button id="btn-fitbit-sync" onclick="doFitbitWellnessSync()" style="background:#4285F4;color:#fff;border:none;padding:10px 18px;border-radius:var(--radius-md);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px"><i class="fas fa-sync-alt"></i> Sincronizar Google Fit</button>
       <button onclick="doFitbitDisconnect()" class="btn-disconnect"><i class="fas fa-unlink"></i> Desconectar</button>`;
   }
 

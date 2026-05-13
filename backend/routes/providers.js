@@ -744,23 +744,27 @@ router.post('/garmin/wellness-sync', requireAuth, async (req, res) => {
   }
 });
 
-// ── FITBIT ──────────────────────────────────────────────────────
-const FITBIT_ID     = process.env.FITBIT_CLIENT_ID;
-const FITBIT_SECRET = process.env.FITBIT_CLIENT_SECRET;
-const FITBIT_RDR    = process.env.FITBIT_REDIRECT_URI || 'https://velomind-backend.onrender.com/api/providers/fitbit/callback';
-const FITBIT_AUTH_URL  = 'https://www.fitbit.com/oauth2/authorize';
-const FITBIT_TOKEN_URL = 'https://api.fitbit.com/oauth2/token';
-const FITBIT_API_BASE  = 'https://api.fitbit.com';
+// ── GOOGLE FIT (migración Fitbit → Google Health API) ───────────
+const GFIT_ID     = process.env.GOOGLE_FIT_CLIENT_ID;
+const GFIT_SECRET = process.env.GOOGLE_FIT_CLIENT_SECRET;
+const GFIT_RDR    = process.env.GOOGLE_FIT_REDIRECT_URI || 'https://velomind-backend.onrender.com/api/providers/fitbit/callback';
+const GFIT_AUTH_URL  = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GFIT_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GFIT_API_BASE  = 'https://www.googleapis.com/fitness/v1';
 
 router.get('/fitbit/connect', requireAuth, (req, res) => {
-  if (!FITBIT_ID) return res.status(501).json({ error: 'Fitbit no configurado. Añade FITBIT_CLIENT_ID y FITBIT_CLIENT_SECRET en las variables de entorno.' });
+  if (!GFIT_ID) return res.status(501).json({ error: 'Google Fit no configurado. Añade GOOGLE_FIT_CLIENT_ID y GOOGLE_FIT_CLIENT_SECRET en las variables de entorno del backend.' });
   const state = encodeState({ userId: req.user.id });
   const params = new URLSearchParams({
-    client_id: FITBIT_ID, response_type: 'code',
-    scope: 'sleep heartrate activity profile',
-    redirect_uri: FITBIT_RDR, state, expires_in: '604800'
+    client_id: GFIT_ID, response_type: 'code',
+    scope: [
+      'https://www.googleapis.com/auth/fitness.sleep.read',
+      'https://www.googleapis.com/auth/fitness.heart_rate.read',
+      'https://www.googleapis.com/auth/fitness.body.read'
+    ].join(' '),
+    redirect_uri: GFIT_RDR, state, access_type: 'offline', prompt: 'consent'
   });
-  res.redirect(`${FITBIT_AUTH_URL}?${params}`);
+  res.redirect(`${GFIT_AUTH_URL}?${params}`);
 });
 
 router.get('/fitbit/callback', async (req, res) => {
@@ -769,20 +773,19 @@ router.get('/fitbit/callback', async (req, res) => {
   try {
     const decoded = decodeState(state);
     if (!decoded?.userId) return res.redirect(`${FRONTEND_URL}/integrations.html?fitbit=error&reason=invalid_state`);
-    const body = new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: FITBIT_RDR });
-    const tokenRes = await fetch(FITBIT_TOKEN_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + Buffer.from(`${FITBIT_ID}:${FITBIT_SECRET}`).toString('base64')
-      }, body
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code', code, redirect_uri: GFIT_RDR,
+      client_id: GFIT_ID, client_secret: GFIT_SECRET
+    });
+    const tokenRes = await fetch(GFIT_TOKEN_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body
     });
     const token = await tokenRes.json();
-    if (!tokenRes.ok) throw new Error(token.errors?.[0]?.message || 'Fitbit token error');
+    if (!tokenRes.ok) throw new Error(token.error_description || token.error || 'Google Fit token error');
     await supabase.from('users').update({
       fitbit_token: token.access_token, fitbit_refresh: token.refresh_token,
-      fitbit_expires_at: Math.floor(Date.now() / 1000) + Number(token.expires_in || 28800),
-      fitbit_user_id: token.user_id
+      fitbit_expires_at: Math.floor(Date.now() / 1000) + Number(token.expires_in || 3600),
+      fitbit_user_id: 'google'
     }).eq('id', decoded.userId);
     res.redirect(`${FRONTEND_URL}/integrations.html?fitbit=connected`);
   } catch (e) {
@@ -794,20 +797,20 @@ async function refreshFitbitIfNeeded(user) {
   let token = user.fitbit_token;
   const expiresAt = Number(user.fitbit_expires_at || 0);
   if (expiresAt && Date.now() / 1000 <= expiresAt - 600) return token;
-  if (!user.fitbit_refresh) throw new Error('Fitbit necesita reconexión: falta refresh token.');
-  const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: user.fitbit_refresh });
-  const r = await fetch(FITBIT_TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Basic ' + Buffer.from(`${FITBIT_ID}:${FITBIT_SECRET}`).toString('base64')
-    }, body
+  if (!user.fitbit_refresh) throw new Error('Google Fit necesita reconexión: falta refresh token.');
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token', refresh_token: user.fitbit_refresh,
+    client_id: GFIT_ID, client_secret: GFIT_SECRET
+  });
+  const r = await fetch(GFIT_TOKEN_URL, {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body
   });
   const data = await r.json();
   token = data.access_token;
   await supabase.from('users').update({
-    fitbit_token: data.access_token, fitbit_refresh: data.refresh_token,
-    fitbit_expires_at: Math.floor(Date.now() / 1000) + Number(data.expires_in || 28800)
+    fitbit_token: data.access_token,
+    fitbit_refresh: data.refresh_token || user.fitbit_refresh,
+    fitbit_expires_at: Math.floor(Date.now() / 1000) + Number(data.expires_in || 3600)
   }).eq('id', user.id);
   return token;
 }
@@ -815,38 +818,75 @@ async function refreshFitbitIfNeeded(user) {
 router.post('/fitbit/wellness-sync', requireAuth, async (req, res) => {
   const uid = req.user.id;
   const { data: user } = await supabase.from('users').select('*').eq('id', uid).single();
-  if (!user?.fitbit_token) return res.status(400).json({ error: 'Fitbit no conectado' });
+  if (!user?.fitbit_token) return res.status(400).json({ error: 'Google Fit no conectado' });
   try {
     const token = await refreshFitbitIfNeeded(user);
-    const rows = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      const date = d.toISOString().substring(0, 10);
-      const headers = { Authorization: `Bearer ${token}` };
-      const [sleepRes, hrRes, hrvRes] = await Promise.all([
-        fetch(`${FITBIT_API_BASE}/1.2/user/-/sleep/date/${date}.json`, { headers }),
-        fetch(`${FITBIT_API_BASE}/1/user/-/activities/heart/date/${date}/1d.json`, { headers }),
-        fetch(`${FITBIT_API_BASE}/1/user/-/hrv/date/${date}.json`, { headers })
-      ]);
-      const [sleepData, hrData, hrvData] = await Promise.all([
-        sleepRes.ok ? sleepRes.json().catch(() => ({})) : {},
-        hrRes.ok ? hrRes.json().catch(() => ({})) : {},
-        hrvRes.ok ? hrvRes.json().catch(() => ({})) : {}
-      ]);
-      const mainSleep = sleepData.sleep?.find(s => s.isMainSleep) || sleepData.sleep?.[0];
-      const restingHr = hrData['activities-heart']?.[0]?.value?.restingHeartRate;
-      const hrv = hrvData.hrv?.[0]?.value?.dailyRmssd;
-      if (mainSleep || restingHr || hrv) {
-        rows.push({
-          user_id: uid, date, source: 'fitbit',
-          sleep_seconds: mainSleep ? Math.round((mainSleep.duration || 0) / 1000) : null,
-          resting_hr: restingHr || null,
-          hrv_last_night: hrv ? Math.round(hrv) : null
-        });
+    const endMs = Date.now();
+    const startMs = endMs - 7 * 86400000;
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+    const [sleepRes, hrRes] = await Promise.all([
+      fetch(`${GFIT_API_BASE}/users/me/dataset:aggregate`, {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          aggregateBy: [{ dataTypeName: 'com.google.sleep.segment' }],
+          bucketByTime: { durationMillis: 86400000 },
+          startTimeMillis: startMs, endTimeMillis: endMs
+        })
+      }),
+      fetch(`${GFIT_API_BASE}/users/me/dataset:aggregate`, {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          aggregateBy: [{ dataTypeName: 'com.google.heart_rate.summary' }],
+          bucketByTime: { durationMillis: 86400000 },
+          startTimeMillis: startMs, endTimeMillis: endMs
+        })
+      })
+    ]);
+    const [sleepData, hrData] = await Promise.all([
+      sleepRes.ok ? sleepRes.json().catch(() => ({})) : {},
+      hrRes.ok ? hrRes.json().catch(() => ({})) : {}
+    ]);
+
+    // Sleep: stages 2=general 3=light 4=deep 5=REM
+    const sleepByDate = {};
+    for (const bucket of (sleepData.bucket || [])) {
+      const date = new Date(parseInt(bucket.startTimeMillis)).toISOString().substring(0, 10);
+      let totalMs = 0, deepMs = 0, remMs = 0;
+      for (const ds of (bucket.dataset || [])) {
+        for (const pt of (ds.point || [])) {
+          const stage = pt.value?.[0]?.intVal;
+          const dur = parseInt(pt.endTimeNanos) / 1e6 - parseInt(pt.startTimeNanos) / 1e6;
+          if ([2,3,4,5].includes(stage)) totalMs += dur;
+          if (stage === 4) deepMs += dur;
+          if (stage === 5) remMs += dur;
+        }
+      }
+      if (totalMs > 0) sleepByDate[date] = {
+        sleep_seconds: Math.round(totalMs / 1000),
+        deep_sleep_seconds: Math.round(deepMs / 1000),
+        rem_sleep_seconds: Math.round(remMs / 1000)
+      };
+    }
+
+    // HR: value[0]=min (proxy resting HR)
+    const hrByDate = {};
+    for (const bucket of (hrData.bucket || [])) {
+      const date = new Date(parseInt(bucket.startTimeMillis)).toISOString().substring(0, 10);
+      for (const ds of (bucket.dataset || [])) {
+        for (const pt of (ds.point || [])) {
+          const minHr = pt.value?.[0]?.fpVal;
+          if (minHr && minHr > 30) hrByDate[date] = Math.round(minHr);
+        }
       }
     }
+
+    const rows = [];
+    for (const date of new Set([...Object.keys(sleepByDate), ...Object.keys(hrByDate)])) {
+      rows.push({ user_id: uid, date, source: 'fitbit', ...(sleepByDate[date] || {}), resting_hr: hrByDate[date] || null });
+    }
     if (rows.length) await supabase.from('wellness_log').upsert(rows, { onConflict: 'user_id,date,source' });
-    res.json({ message: 'Fitbit wellness sync OK', days: rows.length });
+    res.json({ message: 'Google Fit wellness sync OK', days: rows.length });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
