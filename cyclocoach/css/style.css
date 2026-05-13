@@ -1270,6 +1270,8 @@ html.light-theme .sidebar-logo img { filter: brightness(0.72) saturate(1.15); }
 html.light-theme .page-header { background: rgba(244,248,236,0.94) !important; border-bottom-color: rgba(0,0,0,0.08) !important; }
 
 html.light-theme {
+  --text-secondary: #374151;
+  --text-muted:     #4b5563;
   background-color: #f1f5f9 !important;
   color-scheme: light;
 }
