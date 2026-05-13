@@ -570,7 +570,7 @@
       if (r.status === 501) { const d = await r.json(); alert(d.error); return; }
       if (r.redirected) { window.location.href = r.url; return; }
       const d = await r.json();
-      if (d.redirectUrl) window.location.href = d.redirectUrl;
+      if (d.url) window.location.href = d.url;
     } catch (e) { alert('Error al conectar Fitbit: ' + e.message); }
   }
 
