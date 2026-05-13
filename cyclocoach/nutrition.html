@@ -1040,6 +1040,9 @@ function renderTimingForDay(idx) {
   }
 
   content.innerHTML = html;
+  if (document.documentElement.classList.contains('light-theme')) {
+    content.querySelectorAll('.tbl, .tbl *').forEach(function(e) { e.style.color = '#374151'; });
+  }
   card.style.display = '';
 }
 
@@ -1083,6 +1086,9 @@ function renderTiming(timing) {
   }
 
   el.innerHTML = html;
+  if (document.documentElement.classList.contains('light-theme')) {
+    el.querySelectorAll('.tbl, .tbl *').forEach(function(e) { e.style.color = '#374151'; });
+  }
   el.style.display = '';
 }
 
