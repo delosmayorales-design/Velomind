@@ -84,9 +84,10 @@
 
     /* ── Check-in zone (pre-entreno simplificado) ───── */
     .checkin-zone {
-      border-top: 1px solid rgba(196,239,68,.08);
-      padding: 10px 16px;
-      display: flex; flex-direction: column; gap: 8px;
+      border-top: 1px solid rgba(196,239,68,.15);
+      padding: 12px 16px;
+      background: rgba(196,239,68,.04);
+      display: flex; flex-direction: column; gap: 10px;
     }
     .checkin-label {
       font-size: 10px; font-weight: 700; text-transform: uppercase;
@@ -95,13 +96,15 @@
     .checkin-btns { display: flex; gap: 8px; }
     .checkin-btn {
       flex: 1; padding: 10px 6px;
-      background: var(--bg-input, rgba(255,255,255,0.05)); border: 1px solid var(--border, rgba(255,255,255,0.1));
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.16);
       border-radius: var(--radius-md, 8px); cursor: pointer; font-family: inherit;
       font-size: 12px; font-weight: 600; color: var(--text-secondary, #cbd5e1);
       display: flex; align-items: center; justify-content: center; gap: 5px;
       transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
     }
-    .checkin-btn:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); border-color: var(--primary); color: var(--text-primary, #fff); transform: translateY(-1px); }
+    .checkin-btn:hover,
+    .checkin-btn:active { background: rgba(255,255,255,0.13); border-color: var(--primary); color: var(--text-primary, #fff); }
     .checkin-btn.ci-mal.selected     { border-color: rgba(251,191,36,.6); background: rgba(251,191,36,.08); color: #fbbf24; }
     .checkin-btn.ci-normal.selected  { border-color: rgba(196,239,68,.6); background: rgba(196,239,68,.08); color: var(--primary); }
     .checkin-btn.ci-fuerte.selected  { border-color: rgba(239,68,68,.5);  background: rgba(239,68,68,.08);  color: #f87171; }
@@ -187,8 +190,9 @@
     html.light-theme .adapt-submit:hover { background: var(--primary-dark); }
 
     html.light-theme .checkin-zone { border-top-color: rgba(0,0,0,.08); }
-    html.light-theme .checkin-btn { background: #ffffff; border-color: rgba(0,0,0,.1); color: #475569; }
-    html.light-theme .checkin-btn:hover { border-color: var(--primary); color: #1e293b; }
+    html.light-theme .checkin-btn { background: #ffffff; border-color: rgba(0,0,0,.2); color: #374151; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    html.light-theme .checkin-btn:hover,
+    html.light-theme .checkin-btn:active { border-color: var(--primary); color: #1e293b; background: rgba(196,239,68,.06); }
     html.light-theme .checkin-btn.ci-mal.selected { border-color: rgba(217,119,6,.5); background: rgba(217,119,6,.06); color: #b45309; }
     html.light-theme .checkin-btn.ci-normal.selected { border-color: var(--primary); background: rgba(158,214,43,.06); color: var(--primary); }
     html.light-theme .checkin-btn.ci-fuerte.selected { border-color: rgba(220,38,38,.4); background: rgba(220,38,38,.06); color: #dc2626; }
@@ -3024,8 +3028,9 @@ function showSessionDetail(idx, showAlt = false) {
         <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
         <span style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">${sess.type || ''} — ${sess.name || 'Sesión'}</span>
       </div>
-      ${sess.advice ? `<p style="color:var(--text-primary);font-size:14px;font-weight:600;margin-bottom:8px">${sess.advice}</p>` : ''}
-      <p style="color:var(--text-secondary);font-size:13px;line-height:1.5;margin-bottom:20px">${currentDesc}</p>
+      ${sess.terrain ? `<div style="font-size:12px;font-weight:700;color:${color};letter-spacing:.3px;margin-bottom:6px;opacity:.9">${sess.terrain}</div>` : ''}
+      <p style="color:var(--text-secondary);font-size:13px;line-height:1.5;margin-bottom:${sess.advice ? '8px' : '20px'}">${currentDesc}</p>
+      ${sess.advice ? `<p style="color:var(--text-primary);font-size:13px;font-weight:600;margin-bottom:20px;padding:10px 12px;background:rgba(196,239,68,.07);border-left:3px solid var(--primary);border-radius:0 6px 6px 0">${sess.advice}</p>` : ''}
       <div class="session-metrics-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:20px">
         <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);text-align:center">
           <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:700;color:${color}">${tss}</div>
