@@ -2397,11 +2397,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 2. Overlay + Bottom Nav — se inyectan en CUALQUIER página que tenga sidebar
   if (document.querySelector('.sidebar')) {
-    // Autocerrar el menú al tocar cualquier enlace
-    document.querySelectorAll('.sidebar a').forEach(link => {
-      link.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
-    });
-
     // Swipe para abrir/cerrar el sidebar
     let _swipeStartX = null;
     let _swipeStartY = null;
@@ -2409,27 +2404,9 @@ document.addEventListener('DOMContentLoaded', () => {
       _swipeStartX = e.touches[0].clientX;
       _swipeStartY = e.touches[0].clientY;
     }, { passive: true });
-    document.addEventListener('touchend', e => {
-      if (_swipeStartX === null) return;
-      const dx = e.changedTouches[0].clientX - _swipeStartX;
-      const dy = e.changedTouches[0].clientY - _swipeStartY;
-      // Solo activar si el movimiento es más horizontal que vertical
-      if (Math.abs(dx) < Math.abs(dy) * 1.2 || Math.abs(dx) < 40) return;
-      const sidebarOpen = document.body.classList.contains('sidebar-open');
-      if (dx > 0 && !sidebarOpen && _swipeStartX < 40) {
-        // Deslizar derecha desde el borde izquierdo → abrir
-        document.body.classList.add('sidebar-open');
-      } else if (dx < 0 && sidebarOpen) {
-        // Deslizar izquierda → cerrar
-        document.body.classList.remove('sidebar-open');
-      }
-      _swipeStartX = null;
-      _swipeStartY = null;
-    }, { passive: true });
 
     const overlay = document.createElement('div');
     overlay.className = 'sidebar-overlay';
-    overlay.onclick = () => document.body.classList.remove('sidebar-open');
     document.body.appendChild(overlay);
 
     // Bottom Navigation Bar
@@ -2472,7 +2449,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Auto-ocultar menú inferior tras 4s, mostrar al tocar pantalla
     let _bnTimer;
-    const _hideBN = () => bottomNav.classList.add('mob-hidden');
+    const _hideBN = () => {
+      clearTimeout(_bnTimer);
+      bottomNav.classList.add('mob-hidden');
+    };
     window._showBottomNav = () => {
       if (document.getElementById('garmin-overlay')?.classList.contains('visible')) return;
       bottomNav.classList.remove('mob-hidden');
@@ -2481,12 +2461,33 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     document.addEventListener('touchstart', window._showBottomNav, { passive: true });
 
-    // Ocultar al instante cuando el usuario pulsa un ítem de navegación
+    // Cerrar sidebar + ocultar nav al instante: enlaces del sidebar, overlay y swipe izquierda
+    const _closeSidebar = () => {
+      document.body.classList.remove('sidebar-open');
+      _hideBN();
+    };
+    document.querySelectorAll('.sidebar a').forEach(link => {
+      link.addEventListener('click', _closeSidebar);
+    });
+    overlay.onclick = _closeSidebar;
+    document.addEventListener('touchend', e => {
+      if (_swipeStartX === null) return;
+      const dx = e.changedTouches[0].clientX - _swipeStartX;
+      const dy = e.changedTouches[0].clientY - _swipeStartY;
+      if (Math.abs(dx) < Math.abs(dy) * 1.2 || Math.abs(dx) < 40) return;
+      const sidebarOpen = document.body.classList.contains('sidebar-open');
+      if (dx > 0 && !sidebarOpen && _swipeStartX < 40) {
+        document.body.classList.add('sidebar-open');
+      } else if (dx < 0 && sidebarOpen) {
+        _closeSidebar();
+      }
+      _swipeStartX = null;
+      _swipeStartY = null;
+    }, { passive: true });
+
+    // Ocultar al instante cuando el usuario pulsa un ítem de navegación directo
     bottomNav.querySelectorAll('.bottom-nav-item:not(#bottom-nav-menu-btn)').forEach(item => {
-      item.addEventListener('click', () => {
-        clearTimeout(_bnTimer);
-        bottomNav.classList.add('mob-hidden');
-      });
+      item.addEventListener('click', _hideBN);
     });
 
     // Mostrar al inicio y luego ocultar
