@@ -1593,35 +1593,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadRoutes();
 
-  // iOS Safari: mantener la barra inferior oculta en esta página de mapa.
-  // Estrategia: min-height > 100vh crea 1px de scroll aunque app.js fije html height.
-  // Se re-dispara automáticamente si las barras reaparecen (visualViewport resize).
+  // iOS Safari: ocultar barra inferior en página de mapa (no hay scroll natural).
+  // Usamos screen.height (siempre > viewport) para garantizar overflow, doble RAF
+  // para que el layout se aplique, y scrollingElement para el scroll programático.
   if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !window.navigator.standalone) {
+    const _se = document.scrollingElement || document.documentElement;
     const _hideSafariBars = () => {
-      document.documentElement.style.minHeight = 'calc(100vh + 2px)';
+      document.documentElement.style.minHeight = (window.screen.height + 2) + 'px';
       requestAnimationFrame(() => {
-        window.scrollTo(0, 1);
-        setTimeout(() => {
-          window.scrollTo(0, 0);
-          document.documentElement.style.minHeight = '';
-        }, 350);
+        requestAnimationFrame(() => {
+          _se.scrollTop = 1;
+          setTimeout(() => {
+            _se.scrollTop = 0;
+            document.documentElement.style.minHeight = '';
+          }, 500);
+        });
       });
     };
 
-    // Disparo inicial — esperar a que el mapa cargue
-    setTimeout(_hideSafariBars, 700);
+    setTimeout(_hideSafariBars, 800);
 
-    // Re-disparar cada vez que el usuario vuelve a la página
+    // Navegación bfcache (volver desde otra página)
+    window.addEventListener('pageshow', e => {
+      if (e.persisted) setTimeout(_hideSafariBars, 300);
+    });
+
+    // Volver a la pestaña
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) setTimeout(_hideSafariBars, 300);
     });
 
-    // Re-disparar cuando las barras reaparecen (viewport se reduce)
+    // Barras reaparecen → viewport se reduce
     if (window.visualViewport) {
       let _lastVVH = window.visualViewport.height;
       window.visualViewport.addEventListener('resize', () => {
         const h = window.visualViewport.height;
-        if (h < _lastVVH - 20) setTimeout(_hideSafariBars, 100); // barras aparecieron
+        if (h < _lastVVH - 20) setTimeout(_hideSafariBars, 100);
         _lastVVH = h;
       });
     }
