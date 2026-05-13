@@ -2509,59 +2509,43 @@ function syncPlanWithReality() {
     }
   }
 
-  if (changed && Math.abs(accumTSSDeviation) > 20) {
+  // Ajuste conservador: solo reducimos carga cuando hay fatiga acumulada real.
+  // NUNCA aumentamos carga para compensar sesiones perdidas — la consistencia
+  // a largo plazo vale más que recuperar TSS de una semana.
+  if (changed && accumTSSDeviation > 30) {
     for (let i = todayIdx + 1; i < 7; i++) {
       const sess = currentPlan.sessions[i];
-      if (sess.isRest) continue;
+      if (sess.isRest || accumTSSDeviation <= 20) continue;
 
-      let planTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
-
+      const planTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
       const _maxDurForType = { long: 300, endurance: 240, recovery: 90, tempo: 150, threshold: 150, vo2max: 150, sprint: 150, strength: 150 };
       const _maxDur = _maxDurForType[sess.type] || 240;
 
-      if (accumTSSDeviation > 30) {
-        const reduction = Math.min(accumTSSDeviation, Math.round(planTSS * 0.35));
-        sess.tss = Math.max(20, planTSS - reduction);
-        sess.durationMin = Math.min(_maxDur, Math.round((sess.durationMin || 60) * (sess.tss / planTSS)));
-        accumTSSDeviation -= reduction;
-        
-        if (['vo2max', 'threshold', 'sprint'].includes(sess.type)) {
-          sess.type = 'endurance';
-          sess.ifTarget = 0.65;
-          if (window.WORKOUT_TYPES) {
-            sess.emoji = window.WORKOUT_TYPES['endurance'].emoji;
-            sess.name = 'Z2 (Ajuste por fatiga)';
-          }
+      // Reducción máx 20% por sesión; preferimos subentrenar antes que acumular fatiga
+      const reduction = Math.min(accumTSSDeviation, Math.round(planTSS * 0.20));
+      if (reduction < 5) continue;
+      sess.tss = Math.max(20, planTSS - reduction);
+      sess.durationMin = Math.min(_maxDur, Math.round((sess.durationMin || 60) * (sess.tss / planTSS)));
+      accumTSSDeviation -= reduction;
+
+      // Solo suavizar tipo cuando la fatiga es muy alta (>60 TSS acumulados) y la sesión es de alta intensidad
+      if (accumTSSDeviation > 60 && ['vo2max', 'sprint'].includes(sess.type)) {
+        sess.type = 'endurance';
+        sess.ifTarget = 0.64;
+        if (window.WORKOUT_TYPES) {
+          sess.emoji = window.WORKOUT_TYPES['endurance'].emoji;
+          sess.name = 'Z2 (Reducido por fatiga)';
         }
-        
-        sess._adapted = true;
-        sess.advice = `Reducimos la carga (${sess.tss} TSS) para compensar el exceso de fatiga acumulado a principios de semana.`;
-        changesSummary.push({ icon: '📉', day: sess.day, desc: `Carga reducida a ${sess.tss} TSS por fatiga acumulada.` });
-
-      } else if (accumTSSDeviation < -30) {
-        const addition = Math.min(Math.abs(accumTSSDeviation), Math.round(planTSS * 0.35));
-        sess.tss = planTSS + addition;
-        sess.durationMin = Math.min(_maxDur, Math.round((sess.durationMin || 60) * (sess.tss / planTSS)));
-        accumTSSDeviation += addition;
-
-        if (missedIntensity && sess.type === 'endurance') {
-          sess.type = 'tempo';
-          sess.ifTarget = 0.78;
-          if (window.WORKOUT_TYPES) {
-            sess.emoji = window.WORKOUT_TYPES['tempo'].emoji;
-            sess.name = 'Tempo (Recuperar intensidad)';
-          }
-          missedIntensity = false;
-        }
-
-        sess._adapted = true;
-        sess.advice = `Aumentamos volumen/intensidad a ${sess.tss} TSS para recuperar parte de la carga perdida.`;
-        changesSummary.push({ icon: '📈', day: sess.day, desc: `Carga aumentada a ${sess.tss} TSS para compensar.` });
       }
-      
-      if (sess._adapted && window.TrainingPlanGenerator) {
-        sess.intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'main');
-        sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'alt');
+
+      sess._adapted = true;
+      sess.advice = `Sesión reducida a ${sess.tss} TSS para proteger la frescura del resto de la semana. Subentrenar ligeramente hoy es mejor que llegar cansado al próximo entrenamiento clave.`;
+      changesSummary.push({ icon: '📉', day: sess.day, desc: `Carga ajustada a ${sess.tss} TSS (fatiga acumulada).` });
+
+      if (window.TrainingPlanGenerator) {
+        const _if = sess.ifTarget || 0.65;
+        sess.intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, _if, 'main');
+        sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, _if, 'alt');
         if (TrainingPlanGenerator._buildDesc) {
           sess.description = TrainingPlanGenerator._buildDesc(sess.intervals);
           sess.alt_description = TrainingPlanGenerator._buildDesc(sess.alt_intervals);
@@ -2569,6 +2553,7 @@ function syncPlanWithReality() {
       }
     }
   }
+  // Sesiones perdidas: el plan continúa normal. No se redistribuye carga.
 
   // Pase final anti-back-to-back (siempre, independientemente de `changed`)
   _applyAntiBackToBack(currentPlan, todayIdx, ftp);

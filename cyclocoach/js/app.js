@@ -637,7 +637,10 @@ const TrainingPlanGenerator = {
       // Progresión: intensidad sube 1-2% en sesiones de calidad conforme avanza el ciclo 3:1
       const isQuality = ['threshold', 'vo2max', 'tempo', 'sprint', 'strength'].includes(t.type);
       const rawIF  = t.ifTarget || 0.65;
-      const ifTarget = isQuality ? Math.min(1.05, Math.round(rawIF * intensityBoost * 100) / 100) : rawIF;
+      // Endurance y long: IF máx 0.68 para mantener estabilidad aeróbica y baja fatiga
+      const isAerobic = ['endurance', 'long'].includes(t.type);
+      const cappedIF = isAerobic ? Math.min(0.68, rawIF) : rawIF;
+      const ifTarget = isQuality ? Math.min(1.05, Math.round(cappedIF * intensityBoost * 100) / 100) : cappedIF;
       // Duración: TSS = (dur_h * NP * IF) / (FTP * 3600) * 100 → dur_h = TSS/(IF²*100) h
       let durMin = Math.round((sessTSS / (Math.pow(ifTarget, 2) * 100)) * 60);
 
@@ -663,6 +666,12 @@ const TrainingPlanGenerator = {
       if (durMin > maxDur) {
         durMin = maxDur;
         sessTSS = Math.round((durMin / 60) * Math.pow(ifTarget, 2) * 100);
+      }
+
+      // Fondos y endurance: cap de 250 TSS para proteger de carga excesiva en semanas normales
+      if (isAerobic && sessTSS > 250) {
+        sessTSS = 250;
+        durMin = Math.min(maxDur, Math.round((sessTSS / (Math.pow(ifTarget, 2) * 100)) * 60));
       }
 
       // Generar intervalos: variante activa según semana del ciclo, alternando cada semana
@@ -767,7 +776,7 @@ const TrainingPlanGenerator = {
         { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa', description: 'Rodaje fluido, enfocándote en cadencia alta.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
         { day: 'Jueves',   type: 'vo2max',   name: 'VO₂ Max agudeza', description: 'Activa el sistema aeróbico superior sin generar fatiga residual.', tssShare: 0.12, ifTarget: 0.85, emoji: '🔴' },
         { day: 'Viernes',  isRest: true,  description: 'Descanso. Preparación mental' },
-        { day: 'Sábado',   type: 'endurance', name: 'Rodada moderada', description: 'Mantén la tensión muscular correcta para evitar aletargamiento.', tssShare: 0.16, ifTarget: 0.70, emoji: '🔵' },
+        { day: 'Sábado',   type: 'endurance', name: 'Rodada moderada', description: 'Mantén la tensión muscular correcta para evitar aletargamiento.', tssShare: 0.16, ifTarget: 0.66, emoji: '🔵' },
         { day: 'Domingo',  type: 'recovery',  name: 'Recuperación activa', description: 'Pedaleo muy suave. Visualiza tu estrategia.', tssShare: 0.05, ifTarget: 0.52, emoji: '😴' },
       ];
     }
@@ -874,7 +883,7 @@ const TrainingPlanGenerator = {
           { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa Z1', description: 'Asimilación pura, no vayas a buscar picos de potencia.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
           { day: 'Jueves',   type: 'tempo',    name: 'Bloque sweetspot', description: 'Eleva el umbral aeróbico para aguantar mejor la zona media.', tssShare: 0.22, ifTarget: 0.78, emoji: '🟢' },
           { day: 'Viernes',  type: 'endurance', name: 'Z2 moderado', description: 'Mantiene las piernas fluidas sin añadir estrés de cara al finde.', tssShare: 0.13, ifTarget: 0.65, emoji: '🔵' },
-          { day: 'Sábado',   type: 'long',    name: 'Gran fondo largo con bloques', description: 'Prepara para las subidas fatigosas en medio de recorridos eternos.', tssShare: 0.32, ifTarget: 0.70, emoji: '🩵' },
+          { day: 'Sábado',   type: 'long',    name: 'Gran fondo largo con bloques', description: 'Prepara para las subidas fatigosas en medio de recorridos eternos.', tssShare: 0.32, ifTarget: 0.68, emoji: '🩵' },
           { day: 'Domingo',  type: 'endurance', name: 'Vuelta de acumulación Z2', description: 'Imprescindible para enseñarle al cuerpo a digerir la fatiga crónica.', tssShare: 0.18, ifTarget: 0.65, emoji: '🔵' },
         ],
       },
