@@ -2279,7 +2279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         max-width: 100vw !important;
         padding: 14px 12px !important;
         overflow-x: hidden !important;
-        padding-bottom: 85px !important; /* Espacio extra para que la Bottom Bar no tape contenido */
+        padding-bottom: 100px !important; /* Espacio extra para que la Bottom Bar no tape contenido */
       }
       .page-header { flex-direction: column; align-items: flex-start !important; gap: 12px; margin-bottom: 20px; width: 100%; }
       
@@ -2406,9 +2406,9 @@ document.addEventListener('DOMContentLoaded', () => {
       /* ── Barra de Navegación Inferior — Glass Morphism Flotante ── */
       .bottom-nav {
         position: fixed !important;
-        bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-        left: 12px; right: 12px;
-        height: 62px;
+        bottom: calc(2px + env(safe-area-inset-bottom, 0px));
+        left: 8px; right: 8px;
+        height: 60px;
         background: rgba(10, 12, 18, 0.90) !important;
         backdrop-filter: blur(28px) saturate(180%) !important;
         -webkit-backdrop-filter: blur(28px) saturate(180%) !important;

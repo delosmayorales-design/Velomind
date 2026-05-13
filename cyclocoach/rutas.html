@@ -275,7 +275,7 @@
     #wind-body ::-webkit-scrollbar { display:none; }
 
     /* Wind map info panel */
-    #wind-info-panel { display:none;position:absolute;bottom:calc(82px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);z-index:800;
+    #wind-info-panel { display:none;position:absolute;bottom:calc(104px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);z-index:800;
       background:rgba(10,11,15,0.97);border:1px solid rgba(0,212,255,0.35);border-radius:14px;
       padding:16px 18px;max-width:290px;width:calc(100vw - 40px);font-size:12px;
       color:var(--text-primary);line-height:1.6;box-shadow:0 4px 24px rgba(0,0,0,0.6); }
@@ -709,7 +709,7 @@
     #mob-wind-fab {
       display: none;
       position: absolute;
-      bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+      bottom: calc(104px + env(safe-area-inset-bottom, 0px));
       right: 14px;
       z-index: 600;
       width: 36px;
@@ -739,7 +739,7 @@
     #mob-routes-fab {
       display: none;
       position: absolute;
-      bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+      bottom: calc(104px + env(safe-area-inset-bottom, 0px));
       left: 14px;
       z-index: 600;
       width: 36px; height: 36px;
@@ -1021,7 +1021,7 @@
       .stat-v { font-size: 15px; }
 
       /* Draw toolbar — por encima del menú inferior */
-      .draw-toolbar { left: 8px; bottom: calc(82px + env(safe-area-inset-bottom, 0px)); flex-wrap: wrap; }
+      .draw-toolbar { left: 8px; bottom: calc(104px + env(safe-area-inset-bottom, 0px)); flex-wrap: wrap; }
       .dt-btn { padding: 6px 10px; font-size: 11px; }
 
       /* FABs circulares — reemplazados por panel lateral */
@@ -1035,7 +1035,7 @@
         width: 100% !important; max-width: 100% !important;
         border-radius: 16px 16px 0 0 !important;
         border-left: none !important; border-right: none !important; border-bottom: none !important;
-        padding: 14px 16px calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+        padding: 14px 16px calc(104px + env(safe-area-inset-bottom, 0px)) !important;
         max-height: 60vh; overflow-y: auto;
         z-index: 1200 !important;
         box-shadow: 0 -4px 24px rgba(0,0,0,0.5) !important;
@@ -1066,7 +1066,7 @@
 
       /* Elevar el timeline de previsión 24h para no pisar el menú inferior */
       #weather-timeline {
-        bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+        bottom: calc(104px + env(safe-area-inset-bottom, 0px)) !important;
         left: 10px !important;
         right: 10px !important;
         border-radius: 14px;
@@ -1266,7 +1266,7 @@
 
       <!-- FAB volver a pantalla datos (visible solo durante grabación) -->
       <button id="fab-garmin" onclick="openGarminOverlay()" title="Pantalla de datos"
-        style="display:none;position:absolute;bottom:calc(82px + env(safe-area-inset-bottom, 0px));left:14px;z-index:600;
+        style="display:none;position:absolute;bottom:calc(104px + env(safe-area-inset-bottom, 0px));left:14px;z-index:600;
                width:48px;height:48px;border-radius:50%;
                background:#0a0a0a;border:2px solid rgba(158,214,43,0.6);
                color:#9ED62B;font-size:18px;cursor:pointer;
@@ -3070,7 +3070,7 @@ function toggleWindInfo() {
   if (!panel) {
     panel = document.createElement('div');
     panel.id = 'wind-info-panel';
-    panel.style.cssText = 'display:none;position:absolute;bottom:calc(82px + env(safe-area-inset-bottom, 0px));left:50%;' +
+    panel.style.cssText = 'display:none;position:absolute;bottom:calc(104px + env(safe-area-inset-bottom, 0px));left:50%;' +
       'transform:translateX(-50%);z-index:800;background:rgba(10,11,15,0.97);' +
       'border:1px solid rgba(0,212,255,0.35);border-radius:14px;padding:16px 18px;' +
       'max-width:290px;width:calc(100vw - 40px);font-size:12px;color:var(--text-primary);' +
