@@ -641,20 +641,26 @@ const TrainingPlanGenerator = {
       const isAerobic = ['endurance', 'long'].includes(t.type);
       const cappedIF = isAerobic ? Math.min(0.68, rawIF) : rawIF;
       const ifTarget = isQuality ? Math.min(1.05, Math.round(cappedIF * intensityBoost * 100) / 100) : cappedIF;
+
+      // Cap de TSS por sesión ANTES del cálculo de duración.
+      // Evita que la normalización de días_semana concentre TSS absurdos en una sola sesión.
+      const MAX_TSS_PER_TYPE = { long: 185, endurance: 140, recovery: 45, tempo: 115, threshold: 115, vo2max: 115, sprint: 100, strength: 100 };
+      sessTSS = Math.min(MAX_TSS_PER_TYPE[t.type] || 140, sessTSS);
+
       // Duración: TSS = (dur_h * NP * IF) / (FTP * 3600) * 100 → dur_h = TSS/(IF²*100) h
       let durMin = Math.round((sessTSS / (Math.pow(ifTarget, 2) * 100)) * 60);
 
       // Salvaguarda fisiológica: límites mínimos y máximos de duración
-      let minDur = 30, maxDur = 300;
+      let minDur = 30, maxDur = 240;
       if (['vo2max', 'threshold', 'tempo', 'sprint', 'strength'].includes(t.type)) {
         minDur = (exp === 'avanzado') ? 65 : 45;
         maxDur = 150;
       } else if (t.type === 'long') {
-        minDur = (exp === 'avanzado') ? 150 : 90;
-        maxDur = 300;
+        minDur = (exp === 'avanzado') ? 120 : 90;
+        maxDur = 240; // máx 4h — fondos de 5h no son sostenibles semana a semana
       } else if (t.type === 'endurance') {
         minDur = (exp === 'avanzado') ? 75 : 45;
-        maxDur = 240;
+        maxDur = 210;
       } else if (t.type === 'recovery') {
         maxDur = 90;
       }
@@ -666,12 +672,6 @@ const TrainingPlanGenerator = {
       if (durMin > maxDur) {
         durMin = maxDur;
         sessTSS = Math.round((durMin / 60) * Math.pow(ifTarget, 2) * 100);
-      }
-
-      // Fondos y endurance: cap de 250 TSS para proteger de carga excesiva en semanas normales
-      if (isAerobic && sessTSS > 250) {
-        sessTSS = 250;
-        durMin = Math.min(maxDur, Math.round((sessTSS / (Math.pow(ifTarget, 2) * 100)) * 60));
       }
 
       // Generar intervalos: variante activa según semana del ciclo, alternando cada semana
