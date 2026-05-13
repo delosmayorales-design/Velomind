@@ -1587,9 +1587,14 @@ function renderPlan(plan, athlete) {
         </div>
       </div>` : '';
 
-    if (sess.isRest) {
-      const sessDayKeyRest = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
-      const dayActsRest = (i <= todayIdx) ? (AppState.activities || []).filter(a => a.date && a.date.slice(0, 10) === sessDayKeyRest) : [];
+    const _sessDayKeyForMissed = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
+    const _isPastDay = i < todayIdx;
+    const _dayActsForMissed = _isPastDay ? (AppState.activities || []).filter(a => a.date && a.date.slice(0, 10) === _sessDayKeyForMissed) : [];
+    const isMissedPast = _isPastDay && !sess.isRest && _dayActsForMissed.length === 0;
+
+    if (sess.isRest || isMissedPast) {
+      const sessDayKeyRest = _sessDayKeyForMissed;
+      const dayActsRest = _dayActsForMissed;
       let restExecBadge = '';
       if (dayActsRest.length > 0) {
         const actualTSS = Math.round(dayActsRest.reduce((s, a) => s + (Number(a.tss) || 0), 0));
@@ -1618,7 +1623,7 @@ function renderPlan(plan, athlete) {
             <div style="font-size:20px;flex-shrink:0">😴</div>
             <div>
               <div style="font-size:15px;font-weight:600;color:var(--text-secondary)">Descanso</div>
-              <div class="session-wksummary" style="font-size:12px;color:var(--text-muted)">${sess.description}</div>
+              <div class="session-wksummary" style="font-size:12px;color:var(--text-muted)">${isMissedPast ? (sess.name || sess.type || 'Entrenamiento') + ' · no realizada' : sess.description}</div>
             </div>
           </div>
           ${sess._trainedOnRest ? `
@@ -1881,6 +1886,25 @@ async function adaptSession(idx, dayOffset) {
   const tssVal = Math.round(sess.tssShare * currentPlan.targetTSS);
   const durMin = sess.durationMin || Math.round(tssVal / Math.pow(sess.ifTarget || 0.65, 2));
 
+  // Detectar si ayer había sesión planificada que no se realizó
+  let sesionPerdidaAyer = null;
+  const _prevIdx = idx - 1;
+  if (_prevIdx >= 0) {
+    const _prevSess = currentPlan.sessions[_prevIdx];
+    if (_prevSess && !_prevSess.isRest) {
+      const _monday4Adapt = new Date();
+      _monday4Adapt.setDate(_monday4Adapt.getDate() - (_monday4Adapt.getDay() || 7) + 1);
+      _monday4Adapt.setHours(0, 0, 0, 0);
+      const _prevDate = new Date(_monday4Adapt);
+      _prevDate.setDate(_monday4Adapt.getDate() + _prevIdx);
+      const _prevKey = `${_prevDate.getFullYear()}-${String(_prevDate.getMonth()+1).padStart(2,'0')}-${String(_prevDate.getDate()).padStart(2,'0')}`;
+      const _prevActs = (AppState.activities || []).filter(a => a.date?.slice(0, 10) === _prevKey);
+      if (_prevActs.length === 0) {
+        sesionPerdidaAyer = { type: _prevSess.type, name: _prevSess.name, tss: _prevSess.tss, durationMin: _prevSess.durationMin, ifTarget: _prevSess.ifTarget };
+      }
+    }
+  }
+
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
@@ -1895,6 +1919,7 @@ async function adaptSession(idx, dayOffset) {
           ifTarget: sess.ifTarget, targetWatts: sess.targetWatts || Math.round(ftp * (sess.ifTarget || 0.75)),
           description: sess.description, tss: tssVal,
         },
+        sesion_perdida_ayer: sesionPerdidaAyer,
         es_manana: dayOffset > 0,
         metrics: AppState.getCurrentMetrics()
       }),
@@ -3934,6 +3959,37 @@ function adaptToRoller(idx) {
     '📊 Monitorea potencia, no velocidad.'
   ];
 
+  // Intervalos adaptados para la duración de rodillo
+  const _rollerIvs = window.TrainingPlanGenerator
+    ? TrainingPlanGenerator._buildIntervals(sess.type, ftp, rollerDur, rollerTSS, sess.ifTarget || 0.75, 'main')
+    : (sess.intervals || []);
+  const _rollerExpanded = [];
+  (_rollerIvs || []).forEach(iv => {
+    const _rm = iv.label.match(/\(×(\d+)/);
+    const _n = _rm ? parseInt(_rm[1]) : 1;
+    for (let _r = 0; _r < _n; _r++) _rollerExpanded.push(iv);
+  });
+  const _rollerChartBars = _rollerExpanded.map(iv => {
+    const _dm = String(iv.dur || '').match(/(\d+(?:\.\d+)?)/);
+    const _dMin = _dm ? parseFloat(_dm[1]) : 1;
+    const _wn = (String(iv.watts || '').match(/\d+/g) || []).map(Number);
+    let _in = 0.35;
+    if (_wn.length >= 2) _in = Math.max(0.2, Math.min(1.1, (_wn[0] + _wn[1]) / 2 / ftp));
+    else if (_wn.length === 1) _in = Math.max(0.2, Math.min(1.1, _wn[0] / ftp));
+    else if (iv.label.toLowerCase().includes('recuper')) _in = 0.4;
+    const _h = Math.round(16 + _in * 44);
+    const _op = (0.45 + Math.min(0.5, _in * 0.35)).toFixed(2);
+    return `<div title="${iv.label} · ${iv.dur}${iv.watts ? ' · ' + iv.watts : ''}" style="flex:${Math.max(0.5, _dMin)};min-width:3px;height:${_h}px;background:#6366f1;opacity:${_op};border-radius:3px 3px 0 0"></div>`;
+  }).join('');
+  const _rollerChartHtml = _rollerExpanded.length
+    ? `<div style="display:flex;align-items:flex-end;gap:2px;height:60px;padding:0 4px;background:rgba(99,102,241,.06);border-radius:8px;overflow:hidden">${_rollerChartBars}</div>`
+    : '';
+  const _rollerIvListHtml = (_rollerIvs || []).length
+    ? `<div style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto">${
+        (_rollerIvs || []).map((iv, _i) => `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(99,102,241,.06);border-left:3px solid rgba(99,102,241,.5);border-radius:0 6px 6px 0"><span style="font-size:11px;font-weight:700;color:#818cf8;min-width:16px">${_i + 1}.</span><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${iv.label}</div><div style="display:flex;gap:10px;margin-top:2px;font-size:11px;color:var(--text-muted)"><span>⏱ ${iv.dur}</span>${iv.watts ? `<span>⚡ ${iv.watts}</span>` : ''}${iv.rpm ? `<span>🔄 ${iv.rpm}</span>` : ''}</div></div></div>`).join('')
+      }</div>`
+    : '';
+
   const modalContent = `
     <div style="padding:20px;padding-top:52px;max-width:min(500px, 90vw);width:100%;box-sizing:border-box">
       <h3 style="margin:0 0 16px 0;font-size:18px;color:var(--text-primary);display:flex;align-items:center;gap:8px">
@@ -3966,6 +4022,14 @@ function adaptToRoller(idx) {
           ⏱️ En rodillo harás <strong>${rollerDur} min</strong> — ${rollerDurNote}.
         </div>
       </div>
+      ${(_rollerChartHtml || _rollerIvListHtml) ? `
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+        <h4 style="margin:0 0 10px 0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:flex;align-items:center;gap:6px">
+          <i class="fas fa-chart-bar" style="color:#6366f1"></i> Estructura de la sesión
+        </h4>
+        ${_rollerChartHtml ? `<div style="margin-bottom:10px">${_rollerChartHtml}</div>` : ''}
+        ${_rollerIvListHtml}
+      </div>` : ''}
       <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:16px;margin-bottom:16px">
         <h4 style="margin:0 0 12px 0;font-size:14px;color:#6366f1;display:flex;align-items:center;gap:6px">
           <i class="fas fa-lightbulb"></i> Pautas para rodillo

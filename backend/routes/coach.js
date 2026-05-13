@@ -1482,10 +1482,11 @@ router.post('/today-adaptation', async (req, res) => {
     const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    const estadoUsuario  = req.body?.estado_usuario  || {};
-    const sesionOriginal = req.body?.sesion_original  || null;
-    const proximaSesion  = req.body?.proxima_sesion   || null;
-    const esManana       = req.body?.es_manana        || false;
+    const estadoUsuario    = req.body?.estado_usuario    || {};
+    const sesionOriginal   = req.body?.sesion_original   || null;
+    const proximaSesion    = req.body?.proxima_sesion    || null;
+    const esManana         = req.body?.es_manana         || false;
+    const sesionPerdidaAyer = req.body?.sesion_perdida_ayer || null;
     const ftp = user.ftp || 200;
 
     // Últimas 7 actividades para contexto de carga reciente
@@ -1580,20 +1581,25 @@ Sesión de MAÑANA:
     // ───────────────────────────────────────────────────────────────────
 
     const systemPrompt = 'Eres un coach de ciclismo experto. Responde SOLO con JSON válido, sin markdown, sin texto extra.';
+    const perdidaBlock = sesionPerdidaAyer
+      ? `\nSESIÓN PERDIDA AYER (no se realizó): tipo="${sesionPerdidaAyer.type}", nombre="${sesionPerdidaAyer.name || sesionPerdidaAyer.type}", ${sesionPerdidaAyer.durationMin} min, TSS=${sesionPerdidaAyer.tss}, IF=${sesionPerdidaAyer.ifTarget}.`
+      : '';
+
     const userMsg = `Atleta: FTP ${ftp}W, objetivo: ${user.goal || 'resistencia'}.
 CTL ${Math.round(latestPMC.ctl)} / ATL ${Math.round(latestPMC.atl)} / TSB ${Math.round(latestPMC.tsb)}.
 Sesión planificada para ${diaRef}: tipo="${tipoSesion}", ${sesionOriginal?.durationMin || 0} min, TSS=${tssOrig}, IF=${sesionOriginal?.ifTarget || 0}.
-${proximaBlock}
+${proximaBlock}${perdidaBlock}
 Input del atleta: "${contexto || 'no especificado'}".
 Carga últimos 7 días: ${recentHours.toFixed(1)}h, ${recentTSS} TSS.
 HISTORIAL RECIENTE:
-- Ayer: ${actsCompact[0] ? `TSS ${actsCompact[0].tss}, NP ${actsCompact[0].np}, Tipo ${actsCompact[0].tipo}` : 'descanso'}
+- Ayer: ${actsCompact[0] ? `TSS ${actsCompact[0].tss}, NP ${actsCompact[0].np}, Tipo ${actsCompact[0].tipo}` : 'descanso (sin actividad registrada)'}
 - Hace 2 días: ${actsCompact[1] ? `TSS ${actsCompact[1].tss}, NP ${actsCompact[1].np}` : 'descanso'}
 
 REGLAS DE SEGURIDAD OBLIGATORIAS:
 1. ANÁLISIS DE FATIGA: Si el TSS de ayer fue > (CTL + 15) O si los últimos 2 días suman > (CTL * 2), hoy DEBES denegar intensidad. Si el usuario pide salir, recomienda SOLO Z1/Z2 suave (Endurance) max 60 min.
 2. PREVENCIÓN BACK-TO-BACK: Si mañana hay sesión de calidad (VO2, Threshold, Tempo), hoy NO puedes hacer calidad. Máximo Z2 suave.
 3. SI HOY ES DESCANSO Y EL USUARIO PIDE SALIR: Debes proponer una sesión para HOY que sea compatible con la fatiga acumulada de ayer y el entreno de mañana. No cambies el de mañana en este endpoint, céntrate en HOY.
+4. SESIÓN PERDIDA AYER: Si hay sesión perdida ayer de calidad (threshold, vo2max, tempo) y el atleta quiere salir hoy con energía positiva (sin fatiga reportada), y TSB > -20, propón realizar esa sesión perdida hoy en lugar de la planificada. Ajusta volumen si hace falta. recomendacion:"adaptado".
 
 APLICA LA PRIMERA REGLA QUE COINCIDA CON EL INPUT:
 

@@ -1407,6 +1407,18 @@
         <button class="sensor-btn connect" id="pow-btn" onclick="connectSensor('power')">Conectar</button>
       </div>
 
+      <!-- Potencia virtual (sin medidor) -->
+      <div class="sensor-row" id="vp-sensor-row">
+        <div class="sensor-info">
+          <div class="sensor-icon">🧮</div>
+          <div>
+            <div class="sensor-name">Potencia virtual</div>
+            <div class="sensor-status" id="vp-status">Estimada por velocidad GPS y peso</div>
+          </div>
+        </div>
+        <button class="sensor-btn connect" id="vp-btn" onclick="toggleVirtualPower()">Activar</button>
+      </div>
+
       <div class="sensor-bt-note">Los sensores permanecen conectados mientras grabás.<br>Podés conectar antes o durante la grabación.</div>
       <div style="margin-top:14px;text-align:right">
         <button class="modal-btn modal-btn-cancel" style="width:auto;padding:8px 20px" onclick="closeSensorsModal()">Cerrar</button>
@@ -3917,6 +3929,17 @@ function _onTrkErr(err) {
 
 function _trkTick() {
   // Muestra de 1Hz exacto para NP/FC — igual que Garmin Connect
+  // Potencia virtual: inyectar muestra antes de promediar el segundo
+  if (_virtualPow && !_bt.power.connected) {
+    const _lastPt = _trkPoints.length > 0 ? _trkPoints[_trkPoints.length - 1] : null;
+    const _vpSpd = (_lastPt && !_lastPt.paused) ? (_lastPt.speed || 0) : 0;
+    const _vpW = _calcVirtualPower(_vpSpd);
+    _btData._powAccum.sum += _vpW;
+    _btData._powAccum.count++;
+    document.getElementById('trk-s-pow').textContent = _vpW;
+    _gUpdate('g-power', _vpW, false);
+    if (_vpW > _btData.maxPow) _btData.maxPow = _vpW;
+  }
   // Potencia: promedio del segundo o 0 si no hubo pedaleo (coasting incluido)
   const w1s = _btData._powAccum.count > 0
     ? Math.round(_btData._powAccum.sum / _btData._powAccum.count)
@@ -4238,6 +4261,8 @@ const _BT_CFG = {
   },
 };
 
+let _virtualPow = false; // potencia virtual activa (sin sensor real)
+
 // Estado de cada sensor  (intentional=true → desconexión manual, no reintentar)
 const _bt = {
   hr:      { device: null, char: null, connected: false, intentional: false },
@@ -4264,6 +4289,45 @@ const _btData = {
 
 function openSensorsModal()  { document.getElementById('sensors-modal').style.display = ''; }
 function closeSensorsModal() { document.getElementById('sensors-modal').style.display = 'none'; }
+
+function toggleVirtualPower() {
+  if (_bt.power.connected) {
+    showToast('Desconecta el potenciómetro antes de usar potencia virtual.', 'warning');
+    return;
+  }
+  _virtualPow = !_virtualPow;
+  const btn = document.getElementById('vp-btn');
+  btn.textContent = _virtualPow ? 'Desactivar' : 'Activar';
+  btn.className = 'sensor-btn ' + (_virtualPow ? 'disconnect' : 'connect');
+  const kg = AppState?.athlete?.weight || 75;
+  document.getElementById('vp-status').textContent = _virtualPow
+    ? `Activa — velocidad GPS + ${kg} kg`
+    : 'Estimada por velocidad GPS y peso';
+  _updateSensorHUD('power', _virtualPow);
+  if (!_virtualPow) {
+    document.getElementById('trk-s-pow').textContent = '--';
+    _gUpdate('g-power', '--', true);
+  }
+}
+
+function _calcVirtualPower(speedKmh) {
+  const v = speedKmh / 3.6;
+  if (v < 0.5) return 0;
+  const kg = (AppState?.athlete?.weight || 75) + 8; // ciclista + bicicleta
+  const grade = (() => {
+    if (_trkPoints.length < 3) return 0;
+    const recent = _trkPoints.slice(-6).filter(p => !p.paused);
+    if (recent.length < 2) return 0;
+    const p0 = recent[0], pN = recent[recent.length - 1];
+    const dAlt = (pN.alt || 0) - (p0.alt || 0);
+    const dDist = _haversine(p0.lat, p0.lng, pN.lat, pN.lng);
+    return dDist > 3 ? Math.max(-0.25, Math.min(0.25, dAlt / dDist)) : 0;
+  })();
+  const Froll = 0.004 * kg * 9.81;
+  const Faero = 0.5 * 0.32 * 1.225 * v * v;
+  const Fgrav = kg * 9.81 * grade;
+  return Math.max(0, Math.round((Froll + Faero + Fgrav) * v / 0.976));
+}
 
 async function connectSensor(type) {
   if (!navigator.bluetooth) {
@@ -4338,7 +4402,7 @@ function _disconnectSensor(type) {
   try { _bt[type].device?.gatt?.disconnect(); } catch(_) {}
   _bt[type] = { device: null, char: null, connected: false, intentional: false };
   _setSensorStatus(type, 'Sin conectar', false);
-  _updateSensorHUD(type, false);
+  _updateSensorHUD(type, type === 'power' ? _virtualPow : false);
   _updateSensorsBtnHeader();
 }
 
@@ -4346,7 +4410,7 @@ function _onSensorDisconnected(type) {
   if (_bt[type].intentional) return;   // lo desconectó el usuario → no reintentar
   _bt[type].connected = false;
   _setSensorStatus(type, 'Sin señal…', false);
-  _updateSensorHUD(type, false);
+  _updateSensorHUD(type, type === 'power' ? _virtualPow : false);
   _updateSensorsBtnHeader();
   // Reintento inmediato (el device sigue en memoria)
   setTimeout(() => _reconnectSensor(type), 1500);
