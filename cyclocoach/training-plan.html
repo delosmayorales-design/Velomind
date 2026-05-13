@@ -1204,7 +1204,7 @@ async function initTrainingPlan() {
     try {
       const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan'));
       if (local?.sessions) {
-        if (local.week_start === currentWeekStart) {
+        if (!local.week_start || local.week_start.slice(0, 10) === currentWeekStart) {
           currentPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {}, adaptation: local.adaptation || null };
         }
       }
@@ -1257,7 +1257,9 @@ async function initTrainingPlan() {
       .then(savedPlan => {
         if (_fetchToken !== _bgSyncToken) return; // El usuario ya guardó localmente — ignorar respuesta antigua
         
-        if (savedPlan?.week_start && savedPlan.week_start !== currentWeekStart) {
+        // Normalizar week_start: Supabase puede devolver timestamp completo ('2026-05-11T00:00:00+00:00')
+        const remoteWeekStart = (savedPlan?.week_start || '').slice(0, 10);
+        if (remoteWeekStart && remoteWeekStart !== currentWeekStart) {
           return; // Plan remoto es de otra semana
         }
 
@@ -1281,7 +1283,8 @@ async function initTrainingPlan() {
           currentPlan = { sessions: savedPlan.sessions, phase: savedPlan.phase, targetTSS: savedPlan.tss_target, advice: savedPlan.advice || {} };
           _patchSegmentDistances(currentPlan);
           syncPlanWithReality();
-          localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...savedPlan, savedAt: Date.now() }));
+          // Normalizar week_start a YYYY-MM-DD antes de guardar en localStorage
+          localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...savedPlan, week_start: remoteWeekStart || currentWeekStart, savedAt: Date.now() }));
           if (AppState.athlete) renderPlan(currentPlan, AppState.athlete);
         }
       }).catch(e => console.log('[TP] Usando caché local'));
@@ -3263,10 +3266,20 @@ function regeneratePlan() {
   // Si hay plan guardado para esta semana, recargarlo y resincronizar con la actividad real.
   // Solo generar desde cero si no existe plan guardado (primera vez o semana nueva).
   let savedPlan = null;
+  const _monday = getMondayString();
+  const _matchWeek = s => s?.sessions && (!s.week_start || s.week_start.slice(0, 10) === _monday);
+  // 1. Prioridad: snapshot explícito del botón "Guardar plan"
   try {
-    const s = JSON.parse(localStorage.getItem('cyclocoach_training_plan'));
-    if (s?.sessions && s.week_start === getMondayString()) savedPlan = s;
+    const snap = JSON.parse(localStorage.getItem('cyclocoach_plan_snapshot'));
+    if (_matchWeek(snap)) savedPlan = snap;
   } catch(_) {}
+  // 2. Fallback: plan de trabajo (puede tener modificaciones automáticas)
+  if (!savedPlan) {
+    try {
+      const s = JSON.parse(localStorage.getItem('cyclocoach_training_plan'));
+      if (_matchWeek(s)) savedPlan = s;
+    } catch(_) {}
+  }
 
   if (savedPlan) {
     // Recargar el plan guardado (deep copy para no mutar localStorage)
@@ -3348,8 +3361,10 @@ async function savePlan() {
       adaptation:       currentPlan.adaptation   || null,
     };
 
-    // Guardar en localStorage (copia local inmediata)
-    localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...planData, savedAt: Date.now() }));
+    // Guardar en localStorage (copia local inmediata + snapshot explícito para "Regenerar")
+    const withMeta = JSON.stringify({ ...planData, savedAt: Date.now() });
+    localStorage.setItem('cyclocoach_training_plan', withMeta);
+    localStorage.setItem('cyclocoach_plan_snapshot', withMeta);
 
     // Guardar en Supabase (persistencia permanente)
     const r = await fetch(`${window.API_URL}/plans/training`, {
