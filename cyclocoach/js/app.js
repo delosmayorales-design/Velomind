@@ -641,19 +641,27 @@ const TrainingPlanGenerator = {
       // Duración: TSS = (dur_h * NP * IF) / (FTP * 3600) * 100 → dur_h = TSS/(IF²*100) h
       let durMin = Math.round((sessTSS / (Math.pow(ifTarget, 2) * 100)) * 60);
 
-      // Salvaguarda fisiológica: Tiempos mínimos lógicos según el nivel del atleta
-      let minDur = 30;
+      // Salvaguarda fisiológica: límites mínimos y máximos de duración
+      let minDur = 30, maxDur = 300;
       if (['vo2max', 'threshold', 'tempo', 'sprint', 'strength'].includes(t.type)) {
         minDur = (exp === 'avanzado') ? 65 : 45;
+        maxDur = 150;
       } else if (t.type === 'long') {
         minDur = (exp === 'avanzado') ? 150 : 90;
+        maxDur = 300;
       } else if (t.type === 'endurance') {
         minDur = (exp === 'avanzado') ? 75 : 45;
+        maxDur = 240;
+      } else if (t.type === 'recovery') {
+        maxDur = 90;
       }
 
       if (durMin < minDur) {
         durMin = minDur;
-        // Recalcular el TSS para reflejar la duración extra
+        sessTSS = Math.round((durMin / 60) * Math.pow(ifTarget, 2) * 100);
+      }
+      if (durMin > maxDur) {
+        durMin = maxDur;
         sessTSS = Math.round((durMin / 60) * Math.pow(ifTarget, 2) * 100);
       }
 

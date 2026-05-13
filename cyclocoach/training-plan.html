@@ -2414,7 +2414,6 @@ function syncPlanWithReality() {
   const changesSummary = [];
   let accumTSSDeviation = 0;
   let missedIntensity = false;
-  let todayActualType = null; // tipo real de sesión hecha hoy
 
   for (let i = 0; i <= todayIdx; i++) {
     const sess = currentPlan.sessions[i];
@@ -2468,7 +2467,6 @@ function syncPlanWithReality() {
       else if (maxIF === 0)   actType = sess.isRest ? 'endurance' : (sess.type || 'endurance'); // sin potencia: usar tipo planificado
 
       accumTSSDeviation += diffTSS;
-      if (isToday) todayActualType = actType;
       if (!sess.completed) {
         sess.completed = true;
         changed = true;
@@ -2508,40 +2506,6 @@ function syncPlanWithReality() {
     }
   }
 
-  // ── Regla anti-back-to-back calidad ──────────────────────────────
-  // Si hoy se hizo una sesión de calidad, mañana no puede ser otra sesión de calidad.
-  const QUALITY_TYPES = ['tempo', 'threshold', 'vo2max', 'sprint', 'strength'];
-  const HIGH_INTENSITY  = ['threshold', 'vo2max', 'sprint'];
-  if (todayActualType && QUALITY_TYPES.includes(todayActualType)) {
-    const tomorrowIdx  = todayIdx + 1;
-    const tomorrowSess = tomorrowIdx < 7 ? currentPlan.sessions[tomorrowIdx] : null;
-    if (tomorrowSess && !tomorrowSess.isRest && QUALITY_TYPES.includes(tomorrowSess.type)) {
-      const newType = HIGH_INTENSITY.includes(todayActualType) ? 'recovery' : 'endurance';
-      const newIF   = newType === 'recovery' ? 0.55 : 0.65;
-      const prevTSS = tomorrowSess.tss || Math.round((tomorrowSess.tssShare || 0) * (currentPlan.targetTSS || 400));
-      tomorrowSess.type       = newType;
-      tomorrowSess.ifTarget   = newIF;
-      tomorrowSess.tss        = Math.round(prevTSS * 0.70);
-      tomorrowSess.durationMin = Math.round((tomorrowSess.durationMin || 60) * 0.70);
-      tomorrowSess._adapted   = true;
-      if (window.WORKOUT_TYPES) {
-        tomorrowSess.emoji = window.WORKOUT_TYPES[newType].emoji;
-        tomorrowSess.name  = newType === 'recovery' ? 'Recuperación activa' : 'Rodaje suave Z2';
-      }
-      tomorrowSess.advice = `Sesión rebajada a ${newType === 'recovery' ? 'recuperación' : 'Z2'} porque hoy hiciste ${todayActualType}. Dos sesiones de calidad seguidas aumentan el riesgo de sobreentrenamiento.`;
-      if (window.TrainingPlanGenerator) {
-        tomorrowSess.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, tomorrowSess.durationMin, tomorrowSess.tss, newIF, 'main');
-        tomorrowSess.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, tomorrowSess.durationMin, tomorrowSess.tss, newIF, 'alt');
-        if (TrainingPlanGenerator._buildDesc) {
-          tomorrowSess.description     = TrainingPlanGenerator._buildDesc(tomorrowSess.intervals);
-          tomorrowSess.alt_description = TrainingPlanGenerator._buildDesc(tomorrowSess.alt_intervals);
-        }
-      }
-      changed = true;
-      changesSummary.push({ icon: '🔄', day: tomorrowSess.day, desc: `Rebajado a ${newType} para evitar dos sesiones de calidad seguidas.` });
-    }
-  }
-
   if (changed && Math.abs(accumTSSDeviation) > 20) {
     for (let i = todayIdx + 1; i < 7; i++) {
       const sess = currentPlan.sessions[i];
@@ -2549,10 +2513,13 @@ function syncPlanWithReality() {
 
       let planTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
 
+      const _maxDurForType = { long: 300, endurance: 240, recovery: 90, tempo: 150, threshold: 150, vo2max: 150, sprint: 150, strength: 150 };
+      const _maxDur = _maxDurForType[sess.type] || 240;
+
       if (accumTSSDeviation > 30) {
         const reduction = Math.min(accumTSSDeviation, Math.round(planTSS * 0.35));
         sess.tss = Math.max(20, planTSS - reduction);
-        sess.durationMin = Math.round((sess.durationMin || 60) * (sess.tss / planTSS));
+        sess.durationMin = Math.min(_maxDur, Math.round((sess.durationMin || 60) * (sess.tss / planTSS)));
         accumTSSDeviation -= reduction;
         
         if (['vo2max', 'threshold', 'sprint'].includes(sess.type)) {
@@ -2571,7 +2538,7 @@ function syncPlanWithReality() {
       } else if (accumTSSDeviation < -30) {
         const addition = Math.min(Math.abs(accumTSSDeviation), Math.round(planTSS * 0.35));
         sess.tss = planTSS + addition;
-        sess.durationMin = Math.round((sess.durationMin || 60) * (sess.tss / planTSS));
+        sess.durationMin = Math.min(_maxDur, Math.round((sess.durationMin || 60) * (sess.tss / planTSS)));
         accumTSSDeviation += addition;
 
         if (missedIntensity && sess.type === 'endurance') {
@@ -2600,12 +2567,15 @@ function syncPlanWithReality() {
     }
   }
 
+  // Pase final anti-back-to-back (siempre, independientemente de `changed`)
+  _applyAntiBackToBack(currentPlan, todayIdx, ftp);
+
   if (changed) {
     if (changesSummary.length > 0) {
-      currentPlan._recalcSummary = { 
-        timestamp: Date.now(), 
-        feedback: 'Adaptación automática proactiva basada en tus actividades reales de esta semana.', 
-        changes: changesSummary 
+      currentPlan._recalcSummary = {
+        timestamp: Date.now(),
+        feedback: 'Adaptación automática proactiva basada en tus actividades reales de esta semana.',
+        changes: changesSummary
       };
     }
     silentSavePlan();
@@ -3252,6 +3222,43 @@ function showToast(text, color = 'var(--primary)') {
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 3500);
 }
 
+// Garantiza que nunca haya dos sesiones de calidad consecutivas.
+// Se aplica SIEMPRE como pase final tras syncPlanWithReality.
+function _applyAntiBackToBack(plan, todayIdx, ftp) {
+  if (!plan?.sessions) return;
+  const QUALITY = ['tempo', 'threshold', 'vo2max', 'sprint', 'strength'];
+  const HIGH    = ['threshold', 'vo2max', 'sprint'];
+  const todaySess    = plan.sessions[todayIdx];
+  const tomorrowSess = plan.sessions[todayIdx + 1];
+
+  if (!todaySess || todaySess.isRest || !todaySess.completed) return;
+  if (!tomorrowSess || tomorrowSess.isRest) return;
+  if (!QUALITY.includes(todaySess.type)) return;
+  if (!QUALITY.includes(tomorrowSess.type)) return;  // ya está bien
+
+  const newType = HIGH.includes(todaySess.type) ? 'recovery' : 'endurance';
+  const newIF   = newType === 'recovery' ? 0.55 : 0.65;
+  const prevTSS = tomorrowSess.tss || 80;
+  const prevDur = tomorrowSess.durationMin || 60;
+
+  tomorrowSess.type        = newType;
+  tomorrowSess.ifTarget    = newIF;
+  tomorrowSess.tss         = Math.round(prevTSS * 0.70);
+  tomorrowSess.durationMin = Math.round(prevDur * 0.70);
+  tomorrowSess._adapted    = true;
+  tomorrowSess.name        = newType === 'recovery' ? 'Recuperación activa' : 'Rodaje suave Z2';
+  tomorrowSess.emoji       = (window.WORKOUT_TYPES?.[newType] || {}).emoji || '🚴';
+  tomorrowSess.advice      = `Rebajado a ${newType === 'recovery' ? 'recuperación' : 'Z2'} porque hoy hiciste ${todaySess.type}. Nunca dos sesiones de calidad seguidas.`;
+  if (window.TrainingPlanGenerator) {
+    tomorrowSess.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, tomorrowSess.durationMin, tomorrowSess.tss, newIF, 'main');
+    tomorrowSess.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, tomorrowSess.durationMin, tomorrowSess.tss, newIF, 'alt');
+    if (TrainingPlanGenerator._buildDesc) {
+      tomorrowSess.description     = TrainingPlanGenerator._buildDesc(tomorrowSess.intervals);
+      tomorrowSess.alt_description = TrainingPlanGenerator._buildDesc(tomorrowSess.alt_intervals);
+    }
+  }
+}
+
 function regeneratePlan() {
   // Si hay plan guardado para esta semana, recargarlo y resincronizar con la actividad real.
   // Solo generar desde cero si no existe plan guardado (primera vez o semana nueva).
@@ -3279,6 +3286,7 @@ function regeneratePlan() {
       if (i > _todayI) delete s._adapted; // sesiones futuras: permitir re-adaptación
     });
     syncPlanWithReality();
+    _applyAntiBackToBack(currentPlan, _todayI, AppState.athlete?.ftp || 200);
     renderPlan(currentPlan, AppState.athlete);
     silentSavePlan();
     showToast('✅ Plan actualizado con tu actividad real', 'var(--accent-green)');
