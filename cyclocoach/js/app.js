@@ -588,16 +588,28 @@ const TrainingPlanGenerator = {
     let templates = this._getTemplate(goal, phase, exp, tsb);
 
     // ── Respetar días de entrenamiento configurados por el atleta ──
-    const TYPE_PRIORITY = { recovery: 1, endurance: 2, long: 3, tempo: 4, threshold: 5, vo2max: 6, sprint: 7, race: 8 };
+    // Prioridad de eliminación: recuperación primero, luego endurance, calidad al final.
+    // Los fondos (long) son la base aeróbica más valiosa — se eliminan los últimos.
+    const TYPE_PRIORITY = { recovery: 1, endurance: 2, tempo: 3, threshold: 4, strength: 4, sprint: 5, vo2max: 5, long: 6, race: 7 };
     const trainingDays = templates.filter(t => !t.isRest);
     if (trainingDays.length > days_per_week) {
       const excess = trainingDays.length - days_per_week;
-      const toRemove = new Set(
-        [...trainingDays]
-          .sort((a, b) => (TYPE_PRIORITY[a.type] || 5) - (TYPE_PRIORITY[b.type] || 5))
-          .slice(0, excess)
-          .map(s => s.day)
-      );
+      const WEEKEND = new Set(['Sábado', 'Domingo']);
+
+      // 1. Eliminar primero días entre semana (por prioridad ascendente).
+      //    El bloque Sáb+Dom se protege: reparte el volumen largo entre dos jornadas
+      //    y no concentra 5h en un solo día.
+      const weekdays  = trainingDays.filter(t => !WEEKEND.has(t.day))
+        .sort((a, b) => (TYPE_PRIORITY[a.type] || 4) - (TYPE_PRIORITY[b.type] || 4));
+      const weekends  = trainingDays.filter(t =>  WEEKEND.has(t.day))
+        .sort((a, b) => (TYPE_PRIORITY[a.type] || 4) - (TYPE_PRIORITY[b.type] || 4));
+
+      const toRemove = new Set();
+      let left = excess;
+      for (const d of weekdays)  { if (left <= 0) break; toRemove.add(d.day); left--; }
+      // Solo si aún faltan días por eliminar se toca el fin de semana
+      for (const d of weekends)  { if (left <= 0) break; toRemove.add(d.day); left--; }
+
       templates = templates.map(t =>
         toRemove.has(t.day)
           ? { day: t.day, isRest: true, description: 'Descanso activo — movilidad, estiramientos o caminar.' }
