@@ -999,7 +999,7 @@
 </nav>
 
 <!-- ── Main content ──────────────────────────────────────────────── -->
-<main class="main-content" style="height:100vh;overflow:hidden;">
+<main class="main-content" style="height:100vh;height:100lvh;overflow:hidden;">
 
   <!-- Page header: igual estilo que el resto de páginas -->
   <header class="page-header">
@@ -1592,6 +1592,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   loadRoutes();
+
+  // iOS Safari: forzar ocultación de barra inferior — la página usa 100lvh (lvh > dvh cuando
+  // las barras están visibles), lo que crea 1px de scroll; lo activamos programáticamente.
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !window.navigator.standalone) {
+    setTimeout(() => {
+      window.scrollTo({ top: 1, behavior: 'instant' });
+    }, 400);
+  }
 });
 
 function toggleCycleOverlay() {
