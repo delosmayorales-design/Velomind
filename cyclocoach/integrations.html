@@ -22,9 +22,8 @@
   <style>
     .integrations-layout {
       display: grid;
-      grid-template-columns: repeat(2, minmax(360px, 1fr));
-      gap: 24px;
-      align-items: stretch;
+      grid-template-columns: 1fr;
+      gap: 16px;
       width: 100%;
       max-width: 1440px;
       margin: 0 auto;
@@ -37,8 +36,7 @@
       padding: 32px;
       max-width: none;
       width: 100%;
-      min-height: 520px;
-      height: 100%;
+      min-height: 0;
       margin: 0;
       position: relative;
       overflow: hidden;
@@ -93,9 +91,9 @@
 
     .int-features {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
     .int-feature {
       display: flex;
@@ -277,7 +275,7 @@
         border-radius: var(--radius-md);
         min-height: 0;
       }
-      .int-features { grid-template-columns: 1fr; gap: 8px; }
+      .int-features { grid-template-columns: 1fr 1fr; gap: 8px; }
       .btn-strava-connect,
       .btn-strava-sync,
       .btn-disconnect { width: 100%; justify-content: center; }
