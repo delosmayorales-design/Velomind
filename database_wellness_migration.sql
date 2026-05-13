@@ -36,6 +36,15 @@ ALTER TABLE users
 -- 3. RLS (misma política que el resto de tablas)
 ALTER TABLE wellness_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Users can manage own wellness"
-  ON wellness_log FOR ALL
-  USING (auth.uid()::text = user_id::text);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'wellness_log'
+      AND policyname = 'Users can manage own wellness'
+  ) THEN
+    CREATE POLICY "Users can manage own wellness"
+      ON wellness_log FOR ALL
+      USING (auth.uid()::text = user_id::text);
+  END IF;
+END $$;
