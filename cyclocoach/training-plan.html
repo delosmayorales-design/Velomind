@@ -2414,6 +2414,7 @@ function syncPlanWithReality() {
   const changesSummary = [];
   let accumTSSDeviation = 0;
   let missedIntensity = false;
+  let todayActualType = null; // tipo real de sesión hecha hoy
 
   for (let i = 0; i <= todayIdx; i++) {
     const sess = currentPlan.sessions[i];
@@ -2466,6 +2467,7 @@ function syncPlanWithReality() {
       else if (maxIF < 0.60) actType = 'recovery';
 
       accumTSSDeviation += diffTSS;
+      if (isToday) todayActualType = actType;
       if (!sess.completed) {
         sess.completed = true;
         changed = true;
@@ -2502,6 +2504,40 @@ function syncPlanWithReality() {
           }
         }
       }
+    }
+  }
+
+  // ── Regla anti-back-to-back calidad ──────────────────────────────
+  // Si hoy se hizo una sesión de calidad, mañana no puede ser otra sesión de calidad.
+  const QUALITY_TYPES = ['tempo', 'threshold', 'vo2max', 'sprint', 'strength'];
+  const HIGH_INTENSITY  = ['threshold', 'vo2max', 'sprint'];
+  if (todayActualType && QUALITY_TYPES.includes(todayActualType)) {
+    const tomorrowIdx  = todayIdx + 1;
+    const tomorrowSess = tomorrowIdx < 7 ? currentPlan.sessions[tomorrowIdx] : null;
+    if (tomorrowSess && !tomorrowSess.isRest && QUALITY_TYPES.includes(tomorrowSess.type) && !tomorrowSess._adapted) {
+      const newType = HIGH_INTENSITY.includes(todayActualType) ? 'recovery' : 'endurance';
+      const newIF   = newType === 'recovery' ? 0.55 : 0.65;
+      const prevTSS = tomorrowSess.tss || Math.round((tomorrowSess.tssShare || 0) * (currentPlan.targetTSS || 400));
+      tomorrowSess.type       = newType;
+      tomorrowSess.ifTarget   = newIF;
+      tomorrowSess.tss        = Math.round(prevTSS * 0.70);
+      tomorrowSess.durationMin = Math.round((tomorrowSess.durationMin || 60) * 0.70);
+      tomorrowSess._adapted   = true;
+      if (window.WORKOUT_TYPES) {
+        tomorrowSess.emoji = window.WORKOUT_TYPES[newType].emoji;
+        tomorrowSess.name  = newType === 'recovery' ? 'Recuperación activa' : 'Rodaje suave Z2';
+      }
+      tomorrowSess.advice = `Sesión rebajada a ${newType === 'recovery' ? 'recuperación' : 'Z2'} porque hoy hiciste ${todayActualType}. Dos sesiones de calidad seguidas aumentan el riesgo de sobreentrenamiento.`;
+      if (window.TrainingPlanGenerator) {
+        tomorrowSess.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, tomorrowSess.durationMin, tomorrowSess.tss, newIF, 'main');
+        tomorrowSess.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, tomorrowSess.durationMin, tomorrowSess.tss, newIF, 'alt');
+        if (TrainingPlanGenerator._buildDesc) {
+          tomorrowSess.description     = TrainingPlanGenerator._buildDesc(tomorrowSess.intervals);
+          tomorrowSess.alt_description = TrainingPlanGenerator._buildDesc(tomorrowSess.alt_intervals);
+        }
+      }
+      changed = true;
+      changesSummary.push({ icon: '🔄', day: tomorrowSess.day, desc: `Rebajado a ${newType} para evitar dos sesiones de calidad seguidas.` });
     }
   }
 
