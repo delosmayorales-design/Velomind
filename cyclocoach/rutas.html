@@ -1694,16 +1694,6 @@ document.addEventListener('DOMContentLoaded', () => {
   _wac.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:650;display:none;';
   map.getContainer().appendChild(_wac);
 
-  // Badge de tiempo meteorológico (qué día/hora muestran las flechas de viento o lluvia)
-  const _wtb = document.createElement('div');
-  _wtb.id = 'weather-time-badge';
-  _wtb.style.cssText = 'display:none;position:absolute;bottom:32px;left:10px;' +
-    'background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);' +
-    'color:#fff;font-size:11px;font-weight:700;letter-spacing:.3px;' +
-    'padding:5px 12px;border-radius:20px;z-index:700;pointer-events:none;' +
-    'border:1px solid rgba(255,255,255,0.18);white-space:nowrap;';
-  map.getContainer().appendChild(_wtb);
-
   const WindCtrl = L.Control.extend({
     options: { position: 'bottomleft' },
     onAdd() {
@@ -2714,7 +2704,6 @@ let windSpatialGrid  = [];   // {lat,lon,r,c,deg,spd,u,v,color} — malla geogr�
 let windGrid2D       = [];   // windGrid2D[r][c] → punto (lookup O(1) para interpolación)
 let windGridDims     = null; // {rows,cols,sw,latStep,lonStep}
 let windHourOverride    = null; // {u,v,spd,color} cuando el usuario elige una hora
-let _windOverrideLabel  = null; // etiqueta de hora para el badge (null = "Ahora")
 let windRefetchTimer    = null;
 let windLastZoom        = null;
 let _rainPaths          = [];   // rutas RainViewer para extraer timestamps
@@ -2932,8 +2921,6 @@ async function toggleWindArrows() {
     btn?.classList.remove('active');
     fab?.classList.remove('active', 'loading');
     _showWindLoading(false);
-    _windOverrideLabel = null;
-    _refreshWeatherBadge();
     return;
   }
 
@@ -2956,7 +2943,6 @@ async function toggleWindArrows() {
     canvas.style.display = 'block';
     _assignArrowsToGrid(canvas);
     _animateWindArrows(canvas);
-    _refreshWeatherBadge();
 
     windLastZoom = map.getZoom();
   } catch (e) {
@@ -3055,41 +3041,12 @@ function selectWindHour(el, deg, spd, timeStr) {
   const u = Math.sin((deg + 180) * Math.PI / 180) * spd;
   const v = -Math.cos((deg + 180) * Math.PI / 180) * spd;
   windHourOverride = { deg, spd, u, v, color: _windColor(spd) };
-  _windOverrideLabel = timeStr ? _formatWindTime(timeStr) : null;
-  _refreshWeatherBadge();
 }
 
 function selectWindNow(el) {
   document.querySelectorAll('.wh-chip').forEach(c => c.classList.remove('wh-selected'));
   el.classList.add('wh-selected');
   windHourOverride = null;
-  _windOverrideLabel = null;
-  _refreshWeatherBadge();
-}
-
-// ── Badge de tiempo meteorológico ─────────────────────────────────
-function _updateWeatherTimeBadge(text) {
-  const badge = document.getElementById('weather-time-badge');
-  if (!badge) return;
-  if (!text) { badge.style.display = 'none'; return; }
-  badge.textContent = text;
-  badge.style.display = 'block';
-}
-
-function _formatWindTime(isoStr) {
-  const d = new Date(isoStr);
-  const now = new Date();
-  const tom = new Date(now); tom.setDate(now.getDate() + 1);
-  const hhmm = isoStr.slice(11, 16);
-  if (d.toDateString() === now.toDateString()) return `Hoy ${hhmm}`;
-  if (d.toDateString() === tom.toDateString()) return `Mañana ${hhmm}`;
-  return d.toLocaleDateString('es', { weekday: 'short' }) + ' ' + hhmm;
-}
-
-function _refreshWeatherBadge() {
-  if (_rainActive) return; // la lluvia actualiza el badge en _stepRainFrame
-  if (!windArrowsActive) { _updateWeatherTimeBadge(null); return; }
-  _updateWeatherTimeBadge(_windOverrideLabel ? `🌬️ Viento · ${_windOverrideLabel}` : '🌬️ Viento · Ahora');
 }
 
 // ── Panel de instrucciones ────────────────────────────────────────
@@ -3695,8 +3652,6 @@ function _wdHourClick(el, idx) {
   if (isActive) {
     // Segundo clic: volver a viento en tiempo real
     windHourOverride = null;
-    _windOverrideLabel = null;
-    _refreshWeatherBadge();
     showToast('Viento en tiempo real', 'info');
     return;
   }
@@ -3706,9 +3661,7 @@ function _wdHourClick(el, idx) {
   const u = Math.sin((deg + 180) * Math.PI / 180) * spd;
   const v = -Math.cos((deg + 180) * Math.PI / 180) * spd;
   windHourOverride = { u, v, spd, color: _windColor(spd) };
-  _windOverrideLabel = _formatWindTime(_wdData.hourly.time[idx]);
   if (!windArrowsActive) toggleWindArrows();
-  _refreshWeatherBadge();
   const timeStr = _wdData.hourly.time[idx].slice(11, 16);
   showToast(`Flechas · ${timeStr} · ${Math.round(spd)} km/h · ${_wdir(deg)}`, 'info');
 }
@@ -3747,16 +3700,6 @@ function _buildRainLayers(paths) {
 function _stepRainFrame() {
   const showIdx = _rainFrameIdx;
   _rainLayers.forEach((l, i) => l.setOpacity(i === showIdx ? _RAIN_OPACITY : 0));
-  if (_rainPaths[showIdx]) {
-    const ts = parseInt(_rainPaths[showIdx].split('/').pop());
-    if (ts) {
-      const d = new Date(ts * 1000);
-      const now = new Date();
-      const hhmm = d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-      const dayStr = d.toDateString() === now.toDateString() ? 'Hoy' : d.toLocaleDateString('es', { weekday: 'short' });
-      _updateWeatherTimeBadge(`🌧️ Lluvia · ${dayStr} ${hhmm}`);
-    }
-  }
   _rainFrameIdx = (showIdx + 1) % _rainLayers.length;
 }
 
@@ -3774,7 +3717,6 @@ async function toggleRainLayer() {
     _stopRain();
     _rainPaths = [];
     btn?.classList.remove('active');
-    _refreshWeatherBadge();
     return;
   }
   btn?.classList.add('loading');
@@ -3811,8 +3753,6 @@ async function toggleWeatherTimeline() {
     tl.style.display = 'none';
     btn?.classList.remove('active');
     windHourOverride = null;
-    _windOverrideLabel = null;
-    _refreshWeatherBadge();
     return;
   }
 
@@ -3900,8 +3840,6 @@ function selectTimelineHour(idx) {
   const v = -Math.cos((h.deg + 180) * Math.PI / 180) * h.spd;
 
   windHourOverride = { deg: h.deg, spd: h.spd, u, v, color: _windColor(h.spd) };
-  _windOverrideLabel = timeLabel;
-  _refreshWeatherBadge();
 
   // Centrar la columna seleccionada si hay scroll
   const strip = document.getElementById('wtl-strip');
