@@ -458,6 +458,13 @@ rowsToInsert.push({
       } catch (err) {
         console.error('⚠️ [Strava Sync] Error recalculando PMC en background:', err.message);
       }
+      // Actualizar odómetro de todas las bicis desde Strava /gear/{id}
+      // (fuente autoritativa: incluye km previos a VeloMind y actividades sin gear_id local)
+      try {
+        await syncBikeOdometersFromStrava(uid, token);
+      } catch (err) {
+        console.warn('⚠️ [Strava Sync] Error actualizando odómetros desde Strava:', err.message);
+      }
     });
 
     const savedCount = rowsToInsert.length - fallos;
@@ -957,5 +964,51 @@ router.get('/strava/debug-activities', requireAuth, async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ── Actualiza total_km de todas las bicis con strava_gear_id usando /gear/{id} ─
+// Se llama en background tras cada sync. Fuente autoritativa: incluye km históricos
+// anteriores a VeloMind y actividades que no tienen gear_id local por haber sido
+// sincronizadas antes de importar las bicis.
+async function syncBikeOdometersFromStrava(uid, token) {
+  const { data: bikes } = await supabase
+    .from('bikes')
+    .select('id, strava_gear_id, total_km')
+    .eq('user_id', uid)
+    .not('strava_gear_id', 'is', null);
+
+  for (const bike of bikes || []) {
+    try {
+      const r = await fetch(`https://www.strava.com/api/v3/gear/${bike.strava_gear_id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) {
+        console.warn(`[OdómetroSync] Strava /gear/${bike.strava_gear_id} → HTTP ${r.status}`);
+        continue;
+      }
+      const gear   = await r.json();
+      const newKm  = Math.round((gear.distance || 0) / 1000);
+      const oldKm  = bike.total_km || 0;
+      const deltaKm = Math.max(0, newKm - oldKm);
+
+      await supabase.from('bikes').update({ total_km: newKm }).eq('id', bike.id);
+      console.log(`[OdómetroSync] 🚴 ${gear.name || bike.strava_gear_id}: ${oldKm} → ${newKm} km`);
+
+      if (deltaKm > 0.5) {
+        const { data: comps } = await supabase
+          .from('bike_components')
+          .select('id, km_remaining')
+          .eq('bike_id', bike.id)
+          .eq('is_active', true);
+        for (const c of comps || []) {
+          await supabase.from('bike_components').update({
+            km_remaining: Math.max(0, (c.km_remaining || 0) - deltaKm),
+          }).eq('id', c.id);
+        }
+      }
+    } catch (e) {
+      console.warn(`[OdómetroSync] Error con gear ${bike.strava_gear_id}:`, e.message);
+    }
+  }
+}
 
 module.exports = router;
