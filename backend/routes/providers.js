@@ -914,7 +914,7 @@ router.get('/status', requireAuth, async (req, res) => {
     res.json({
       strava: { connected: !!user?.strava_token, configured: !!STRAVA_ID },
       garmin: { connected: !!user?.garmin_token, configured: !!GARMIN_ID },
-      fitbit: { connected: !!user?.fitbit_token, configured: !!FITBIT_ID }
+      fitbit: { connected: !!user?.fitbit_token, configured: !!GFIT_ID }
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
