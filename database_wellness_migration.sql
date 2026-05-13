@@ -5,8 +5,8 @@
 
 -- 1. Tabla wellness_log
 CREATE TABLE IF NOT EXISTS wellness_log (
-  id               UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id               BIGSERIAL PRIMARY KEY,
+  user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   date             DATE NOT NULL,
   source           TEXT NOT NULL,          -- 'garmin' | 'fitbit'
   sleep_seconds    INTEGER,                -- segundos totales de sueño
@@ -33,18 +33,6 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS fitbit_expires_at BIGINT,
   ADD COLUMN IF NOT EXISTS fitbit_user_id    TEXT;
 
--- 3. RLS (misma política que el resto de tablas)
-ALTER TABLE wellness_log ENABLE ROW LEVEL SECURITY;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE tablename = 'wellness_log'
-      AND policyname = 'Users can manage own wellness'
-  ) THEN
-    CREATE POLICY "Users can manage own wellness"
-      ON wellness_log FOR ALL
-      USING (auth.uid()::text = user_id::text);
-  END IF;
-END $$;
+-- 3. Sin RLS (el proyecto usa JWT propio, no Supabase Auth)
+-- El acceso se controla a nivel de backend con requireAuth
+ALTER TABLE wellness_log DISABLE ROW LEVEL SECURITY;
