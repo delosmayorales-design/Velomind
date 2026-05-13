@@ -2579,10 +2579,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (themeColorMeta) themeColorMeta.content = newTheme === 'light' ? '#ffffff' : '#0a0b0f';
   };
 
-  // Botón flotante de tema — visible en cualquier pantalla, un solo click
+  // Botón flotante de tema — visible en cualquier pantalla, arrastrable
   const _themeBtn = document.createElement('button');
   _themeBtn.id = 'global-theme-fab';
-  _themeBtn.title = 'Cambiar tema';
+  _themeBtn.title = 'Cambiar tema (arrastra para mover)';
   _themeBtn.setAttribute('aria-label', 'Alternar modo claro/oscuro');
 
   const _updateThemeFab = () => {
@@ -2597,26 +2597,84 @@ document.addEventListener('DOMContentLoaded', () => {
     _themeBtn.style.borderColor = isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.12)';
   };
 
+  const _FAB_SIZE = 38, _FAB_MARGIN = 10;
   _themeBtn.style.cssText = `
-    position: fixed;
-    top: 14px;
-    right: 14px;
-    z-index: 9998;
-    width: 38px; height: 38px;
+    position: fixed; z-index: 9998;
+    width: ${_FAB_SIZE}px; height: ${_FAB_SIZE}px;
     border-radius: 50%;
     border: 1px solid rgba(255,255,255,0.12);
-    cursor: pointer;
+    cursor: grab;
     display: flex; align-items: center; justify-content: center;
     font-size: 15px;
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     box-shadow: 0 2px 8px rgba(0,0,0,0.22);
     -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+    user-select: none; -webkit-user-select: none;
   `;
   _updateThemeFab();
 
+  // Posición inicial (esquina superior derecha) o la última guardada
+  const _fabClamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const _fabApplyPos = (left, top) => {
+    const l = _fabClamp(left, _FAB_MARGIN, window.innerWidth  - _FAB_SIZE - _FAB_MARGIN);
+    const t = _fabClamp(top,  _FAB_MARGIN, window.innerHeight - _FAB_SIZE - _FAB_MARGIN);
+    _themeBtn.style.left = l + 'px';
+    _themeBtn.style.top  = t + 'px';
+    _themeBtn.style.right = 'auto';
+  };
+  (() => {
+    try {
+      const s = localStorage.getItem('_vm_fab_pos');
+      if (s) { const p = JSON.parse(s); _fabApplyPos(p.l, p.t); return; }
+    } catch (_) {}
+    _fabApplyPos(window.innerWidth - _FAB_SIZE - 14, 14);
+  })();
+
+  // Lógica de arrastre
+  let _fabDrag = false, _fabMoved = false;
+  let _fabSX, _fabSY, _fabBL, _fabBT;
+
+  const _fabDown = (e) => {
+    _fabDrag = true; _fabMoved = false;
+    const p = e.touches ? e.touches[0] : e;
+    _fabSX = p.clientX; _fabSY = p.clientY;
+    const r = _themeBtn.getBoundingClientRect();
+    _fabBL = r.left; _fabBT = r.top;
+    _themeBtn.style.transition = 'none';
+    _themeBtn.style.cursor = 'grabbing';
+    e.preventDefault();
+  };
+  const _fabMove = (e) => {
+    if (!_fabDrag) return;
+    const p = e.touches ? e.touches[0] : e;
+    const dx = p.clientX - _fabSX, dy = p.clientY - _fabSY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) _fabMoved = true;
+    _fabApplyPos(_fabBL + dx, _fabBT + dy);
+    e.preventDefault();
+  };
+  const _fabUp = () => {
+    if (!_fabDrag) return;
+    _fabDrag = false;
+    _themeBtn.style.transition = '';
+    _themeBtn.style.cursor = 'grab';
+    if (_fabMoved) {
+      const r = _themeBtn.getBoundingClientRect();
+      try { localStorage.setItem('_vm_fab_pos', JSON.stringify({ l: r.left, t: r.top })); } catch (_) {}
+    }
+  };
+
+  _themeBtn.addEventListener('mousedown',  _fabDown, { passive: false });
+  _themeBtn.addEventListener('touchstart', _fabDown, { passive: false });
+  document.addEventListener('mousemove',   _fabMove, { passive: false });
+  document.addEventListener('touchmove',   _fabMove, { passive: false });
+  document.addEventListener('mouseup',     _fabUp);
+  document.addEventListener('touchend',    _fabUp);
+
+  // Click solo si no hubo arrastre
   _themeBtn.addEventListener('click', () => {
+    if (_fabMoved) { _fabMoved = false; return; }
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     _applyTheme(isLight ? 'dark' : 'light');
     _updateThemeFab();
