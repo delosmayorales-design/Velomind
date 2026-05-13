@@ -4254,7 +4254,7 @@ async function openGarminOverlay() {
 function closeGarminOverlay() {
   document.getElementById('garmin-overlay').classList.remove('visible');
   document.querySelector('.bottom-nav')?.classList.remove('mob-hidden');
-  _releaseWakeLock();
+  if (_wakeLock) { _wakeLock.release().catch(()=>{}); _wakeLock = null; }
 }
 
 // Verificar si hay sesión GPS sin guardar al cargar la página
