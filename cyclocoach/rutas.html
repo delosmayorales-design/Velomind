@@ -439,6 +439,24 @@
     .g-botbtn.g-map  { color: #9ED62B; }
     .g-botbtn.g-sens { color: #0082fc; }
 
+    /* ── Tema claro: garmin overlay ───────────────────────────── */
+    html[data-theme="light"] #garmin-overlay          { background: #f0f2f5; }
+    html[data-theme="light"] .g-topbar                { background: #ffffff; border-bottom-color: #dde1e8; }
+    html[data-theme="light"] .g-topbar-time           { color: #111; }
+    html[data-theme="light"] .g-topbar-unit           { color: #aaa; }
+    html[data-theme="light"] .g-grid                  { background: #dde1e8; }
+    html[data-theme="light"] .g-cell                  { background: #ffffff; }
+    html[data-theme="light"] .g-cell-lbl              { color: #999; }
+    html[data-theme="light"] .g-cell-val              { color: #111; }
+    html[data-theme="light"] .g-cell.g-speed .g-cell-val { color: #111; }
+    html[data-theme="light"] .g-cell.g-vmed .g-cell-val  { color: #555; }
+    html[data-theme="light"] .g-cell.g-vmax .g-cell-val  { color: #555; }
+    html[data-theme="light"] .g-cell-unit             { color: #aaa; }
+    html[data-theme="light"] .g-cell-val.g-no-data    { color: #ccc !important; }
+    html[data-theme="light"] .g-botbar                { border-top-color: #dde1e8; }
+    html[data-theme="light"] .g-botbtn                { background: #ffffff; color: #888; border-right-color: #dde1e8; }
+    html[data-theme="light"] .g-botbtn:active         { background: #f0f2f5; }
+
     /* ── Overlay iframe (navegación durante grabación) ─────────── */
     #nav-iframe-overlay {
       position: fixed; inset: 0; z-index: 3000;
