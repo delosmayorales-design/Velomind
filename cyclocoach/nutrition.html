@@ -20,6 +20,9 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <style>
+    /* ── Timing blocks: texto siempre legible en modo claro ─── */
+    html.light-theme .tbl, html.light-theme .tbl * { color: #374151 !important; }
+
     /* ── Nutrient bars ───────────────────────────────────────── */
     .nutrient-bar { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
     .nutrient-bar-label { width:110px; flex-shrink:0; font-size:13px; font-weight:600; color:var(--text-secondary); }
@@ -1007,7 +1010,7 @@ function renderTimingForDay(idx) {
     var tc = document.documentElement.classList.contains('light-theme') ? '#1e293b' : 'var(--text-secondary)';
     return '<div style="background:' + color + '10;border-left:3px solid ' + color + ';border-radius:0 8px 8px 0;padding:11px 14px;margin-bottom:8px">' +
       '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + color + ';margin-bottom:5px">' + icon + ' ' + title + '</div>' +
-      lines.map(function(l){ return '<div style="font-size:13px;color:' + tc + ';line-height:1.6">' + l + '</div>'; }).join('') +
+      lines.map(function(l){ return '<div class="tbl" style="font-size:13px;color:' + tc + ';line-height:1.6">' + l + '</div>'; }).join('') +
       '</div>';
   }
 
@@ -1049,7 +1052,7 @@ function renderTiming(timing) {
     var tc = document.documentElement.classList.contains('light-theme') ? '#1e293b' : 'var(--text-secondary)';
     return '<div style="background:' + color + '12;border-left:3px solid ' + color + ';border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">' +
       '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + color + ';margin-bottom:4px">' + icon + ' ' + title + '</div>' +
-      lines.map(function(l) { return '<div style="font-size:12px;color:' + tc + ';line-height:1.5">' + l + '</div>'; }).join('') +
+      lines.map(function(l) { return '<div class="tbl" style="font-size:12px;color:' + tc + ';line-height:1.5">' + l + '</div>'; }).join('') +
       '</div>';
   }
 
