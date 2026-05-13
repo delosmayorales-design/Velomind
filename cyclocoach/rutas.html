@@ -1752,7 +1752,7 @@ async function routeBRouter(type) {
 // Valhalla OSM — perfiles road/gravel/MTB
 async function routeValhalla(type) {
   const costing = 'bicycle';
-  const opts    = type === 'road'   ? { bicycle: { bicycle_type: 'Road',     use_roads: 1.0, avoid_bad_surfaces: 1.0, use_hills: 0.5, surface_factor: 1.0, use_tracks: 0.0 } }
+  const opts    = type === 'road'   ? { bicycle: { bicycle_type: 'Road',     use_roads: 1.0, avoid_bad_surfaces: 1.0, use_hills: 0.5, surface_factor: 1.0, use_tracks: 0.0, use_living_streets: 0.1, use_ferry: 0.0 } }
                 : type === 'gravel' ? { bicycle: { bicycle_type: 'Cross',    use_roads: 0.1, avoid_bad_surfaces: 0.0, use_hills: 0.6 } }
                 :                     { bicycle: { bicycle_type: 'Mountain', use_roads: 0.0, avoid_bad_surfaces: 0.0, use_hills: 1.0, use_tracks: 1.0 } };
 
@@ -3269,36 +3269,44 @@ async function generateWindRoute() {
     // "into wind" bearing = windDeg mismo (nos dirigimos hacia donde viene el viento)
     const intoBearing = windDeg;
 
-    let routeWaypoints;
-    if (wrShape === 'out-back') {
-      // Ida y vuelta: salida → punto central → salida
-      const mid = destinationPoint(lat, lon, intoBearing, km / 2);
-      routeWaypoints = [
-        { lat, lon },
-        { lat: mid[0], lon: mid[1] },
-        { lat, lon },
-      ];
-    } else {
-      // Circular: triángulo. Sal contra viento, gira 120°, vuelve con viento
-      const leg  = km / 3;
-      const p1   = destinationPoint(lat, lon, intoBearing, leg);
-      const p2   = destinationPoint(p1[0], p1[1], (intoBearing + 120) % 360, leg);
-      routeWaypoints = [
-        { lat, lon },
-        { lat: p1[0], lon: p1[1] },
-        { lat: p2[0], lon: p2[1] },
-        { lat, lon },
-      ];
-    }
-
-    // Calcular ruta con los waypoints generados
+    // Calcular ruta con iteración para ajustar km reales al objetivo.
+    // Las carreteras añaden ~10-20% vs distancia en línea recta, así que se
+    // itera hasta 4 veces escalando el waypoint intermedio hasta quedar ±6%.
     clearRoute();
     drawingActive = false;
     document.getElementById('map').classList.remove('drawing');
-    waypoints = routeWaypoints.map(w => ({ lat: w.lat, lng: w.lon }));
     currentRouteType = type;
 
-    const result = await routeWithFallback(type);
+    let scaleFactor = 0.88; // punto de partida: carretera ≈ 12% más larga que vuelo directo
+    let result = null, bestResult = null, bestError = Infinity;
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      let routeWaypoints;
+      if (wrShape === 'out-back') {
+        const mid = destinationPoint(lat, lon, intoBearing, km / 2 * scaleFactor);
+        routeWaypoints = [{ lat, lon }, { lat: mid[0], lon: mid[1] }, { lat, lon }];
+      } else {
+        const leg = km / 3 * scaleFactor;
+        const p1  = destinationPoint(lat, lon, intoBearing, leg);
+        const p2  = destinationPoint(p1[0], p1[1], (intoBearing + 120) % 360, leg);
+        routeWaypoints = [{ lat, lon }, { lat: p1[0], lon: p1[1] }, { lat: p2[0], lon: p2[1] }, { lat, lon }];
+      }
+      waypoints = routeWaypoints.map(w => ({ lat: w.lat, lng: w.lon }));
+
+      try {
+        result = await routeWithFallback(type);
+      } catch(e) {
+        if (!bestResult) throw e;
+        break;
+      }
+
+      const error = Math.abs(result.distKm - km) / km;
+      if (error < bestError) { bestError = error; bestResult = { ...result }; }
+      if (error < 0.06) break; // ±6% es suficientemente preciso
+      scaleFactor *= (km / result.distKm);
+      scaleFactor = Math.max(0.25, Math.min(scaleFactor, 2.5));
+    }
+    result = bestResult;
     const { latLngs, distKm, durMin, elevGain, elevs } = result;
     routeGeoJSON = { type: 'LineString', coordinates: latLngs.map(([la,ln]) => [ln,la]) };
 
