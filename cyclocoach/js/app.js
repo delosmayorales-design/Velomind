@@ -642,7 +642,7 @@ const TrainingPlanGenerator = {
     const intervalVariant = (weekInCycle % 2 === 1) ? 'main' : 'alt';
 
     // Calcular duración de cada sesión en minutos a partir de la distribución de TSS
-    return templates.map(t => {
+    const sessions = templates.map(t => {
       if (t.isRest) return t;
 
       let sessTSS  = Math.round(t.tssShare * targetTSS);
@@ -737,6 +737,42 @@ const TrainingPlanGenerator = {
         alt_intervals,
       };
     });
+
+    // ── Post-processing: reglas fisiológicas de VeloMind ──
+    const HARD_QUALITY = new Set(['threshold', 'vo2max', 'sprint', 'strength']);
+    const ANY_QUALITY  = new Set(['threshold', 'vo2max', 'sprint', 'strength', 'tempo']);
+
+    const _makeRecovery = (day, reason) => {
+      const rIF = 0.50, rDur = 40;
+      const rTSS = Math.round((rDur / 60) * Math.pow(rIF, 2) * 100);
+      const ivs    = this._buildIntervals('recovery', ftp, rDur, rTSS, rIF, 'main');
+      const altIvs = this._buildIntervals('recovery', ftp, rDur, rTSS, rIF, 'alt');
+      return { day, type: 'recovery', name: 'Recuperación activa Z1', ifTarget: rIF, emoji: '😴',
+        tss: rTSS, durationMin: rDur, targetWatts: Math.round(ftp * rIF),
+        description: this._buildDesc(ivs), alt_description: this._buildDesc(altIvs),
+        terrain: '🛣️ Terreno llano y continuo para mantener los vatios estables.',
+        advice: reason, intervals: ivs, alt_intervals: altIvs };
+    };
+
+    // Regla 1: Nunca dos días de calidad seguidos → el segundo se convierte en recuperación activa
+    for (let i = 1; i < sessions.length; i++) {
+      const prev = sessions[i - 1], curr = sessions[i];
+      if (!prev.isRest && HARD_QUALITY.has(prev.type) && !curr.isRest && ANY_QUALITY.has(curr.type)) {
+        sessions[i] = _makeRecovery(curr.day,
+          `Recuperación obligatoria tras ${prev.name || prev.type}. Dos sesiones de calidad seguidas acumulan fatiga sin dar tiempo a la adaptación. Pedalea muy suave en Z1.`);
+      }
+    }
+
+    // Regla 2: Dos descansos seguidos → el segundo se convierte en recuperación activa
+    for (let i = 1; i < sessions.length; i++) {
+      const prev = sessions[i - 1], curr = sessions[i];
+      if (prev.isRest && curr.isRest) {
+        sessions[i] = _makeRecovery(curr.day,
+          'Dos días de descanso seguidos ralentizan la recuperación. Pedaleo muy suave en Z1 para activar la circulación y acelerar la regeneración muscular.');
+      }
+    }
+
+    return sessions;
   },
 
   /* ── Plantillas semanales según goal/phase ── */
@@ -831,8 +867,8 @@ const TrainingPlanGenerator = {
           { day: 'Martes',   type: 'threshold', name: 'Bloque Umbral (FTP) Clásico', description: 'El trabajo FTP por excelencia. Mentalízate para tolerar el esfuerzo.', tssShare: 0.20, ifTarget: 0.84, emoji: '🟡' },
           { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa', description: 'No estreses el sistema hoy, limítate a rodar suave.', tssShare: 0.07, ifTarget: 0.52, emoji: '😴' },
           { day: 'Jueves',   type: 'vo2max',   name: 'Trabajo VO₂ Max', description: 'Tira de tu FTP hacia arriba mejorando el consumo de oxígeno.', tssShare: 0.18, ifTarget: 0.86, emoji: '🔴' },
-          { day: 'Viernes',  type: 'tempo',    name: 'Sweetspot continuo', description: 'Acumula tiempo en la zona dulce para mayor eficiencia.', tssShare: 0.18, ifTarget: 0.78, emoji: '🟢' },
-          { day: 'Sábado',   type: 'threshold', name: 'Series Umbral (FTP) Extendidas', description: 'Volumen umbral extendido para máxima adaptación fisiológica.', tssShare: 0.22, ifTarget: 0.84, emoji: '🟡' },
+          { day: 'Viernes',  type: 'endurance', name: 'Z2 de asimilación', description: 'Rodada aeróbica para asimilar el VO₂ del jueves. Cadencia alta, sin presión — el cuerpo construye aquí.', tssShare: 0.15, ifTarget: 0.65, emoji: '🔵' },
+          { day: 'Sábado',   type: 'threshold', name: 'Series Umbral (FTP) Extendidas', description: 'Volumen umbral extendido para máxima adaptación fisiológica.', tssShare: 0.25, ifTarget: 0.84, emoji: '🟡' },
           { day: 'Domingo',  type: 'endurance', name: 'Z2 largo con finalización Z3', description: 'Simula el desgaste aeróbico y la fatiga final.', tssShare: 0.22, ifTarget: 0.68, emoji: '🔵' },
         ],
       },
