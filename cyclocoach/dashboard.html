@@ -1017,7 +1017,30 @@ function saveDashPlan() {
 }
 
 function autoMarkToday() {
-  // Desactivado: el usuario marca las sesiones manualmente
+  if (!dashPlan?.sessions?.[todayIdx]) return;
+  const sess = dashPlan.sessions[todayIdx];
+  // No tocar si ya está procesada o el usuario la desmarcó manualmente
+  if (sess.isRest || sess.completed || sess.manuallyUnmarked) return;
+
+  const now = new Date();
+  const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+  // Buscar actividad de hoy con duración suficiente (≥60% de lo planificado)
+  const plannedMin = sess.durationMin || 30;
+  const minRequired = plannedMin * 0.6 * 60; // en segundos
+
+  const match = (AppState.activities||[]).some(a => {
+    if (a.date?.slice(0,10) !== key) return false;
+    const durSec = a.duration || 0;
+    return durSec >= minRequired;
+  });
+
+  if (match) {
+    sess.completed = true;
+    saveDashPlan();
+    renderToday(dashPlan, AppState.athlete);
+    renderWeek(dashPlan);
+  }
 }
 
 /* ── TIEMPO + ROPA ───────────────────────────────────────── */
