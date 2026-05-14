@@ -19,7 +19,7 @@ app.use(cors({
 app.options('*', cors());
 
 // Body parser (necesario para POST con JSON)
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 // ─────────────────────────────────────────
 // ✅ RUTAS

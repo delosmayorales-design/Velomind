@@ -4475,20 +4475,22 @@ async function saveTrackingActivity() {
   try {
     const headers = { 'Content-Type': 'application/json', ...Auth.getHeaders() };
 
-    // Guardar actividad y ruta en paralelo
-    const [actRes, routeRes] = await Promise.all([
-      fetch(`${API_BASE}/activities`, { method: 'POST', headers, body: JSON.stringify(actPayload) }),
-      fetch(`${API_BASE}/routes`,     { method: 'POST', headers, body: JSON.stringify(routePayload) }),
-    ]);
+    // Guardar actividad primero; luego la ruta (secuencial para evitar duplicados si la ruta falla)
+    const actRes = await fetch(`${API_BASE}/activities`, { method: 'POST', headers, body: JSON.stringify(actPayload) });
+    if (!actRes.ok) throw new Error('Actividad: ' + ((await actRes.json()).error || actRes.statusText));
 
-    if (!actRes.ok)   throw new Error('Actividad: ' + ((await actRes.json()).error   || actRes.statusText));
-    if (!routeRes.ok) throw new Error('Ruta: '      + ((await routeRes.json()).error || routeRes.statusText));
-
+    // Actividad guardada — cerrar modal y limpiar estado ANTES de intentar la ruta
     document.getElementById('track-modal').style.display = 'none';
     _clearTrackLayers();
     await _idbClear();
-    await loadRoutes();   // refresca el panel izquierdo con la ruta nueva
-    showToast(`Trayecto guardado · ${distKm.toFixed(2)} km`, 'success');
+
+    const routeRes = await fetch(`${API_BASE}/routes`, { method: 'POST', headers, body: JSON.stringify(routePayload) });
+    if (routeRes.ok) {
+      await loadRoutes();
+      showToast(`Trayecto guardado · ${distKm.toFixed(2)} km`, 'success');
+    } else {
+      showToast('Actividad guardada. La ruta no se pudo guardar (inténtalo desde el mapa)', 'warning');
+    }
   } catch(e) {
     showToast('Error al guardar: ' + e.message, 'error');
   } finally {

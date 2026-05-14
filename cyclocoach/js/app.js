@@ -1299,7 +1299,9 @@ const FileParser = {
           distance,
           avg_power:   avgPower  || null,
           max_power:   eff.max_power ? Math.round(Number(eff.max_power)) : null,
-          np:          avgPower  ? Math.round(avgPower * 1.05) : null,
+          np:          eff.normalized_power
+            ? Math.round(Number(eff.normalized_power))
+            : (avgPower ? Math.round(avgPower * 1.05) : null),
           avg_hr:      avgHR     || null,
           max_hr:      eff.max_heart_rate ? Math.round(Number(eff.max_heart_rate)) : null,
           avg_cadence: avgCad    || null,
