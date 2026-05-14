@@ -1017,19 +1017,7 @@ function saveDashPlan() {
 }
 
 function autoMarkToday() {
-  if (!dashPlan?.sessions?.[todayIdx]) return;
-  const sess = dashPlan.sessions[todayIdx];
-  // No auto-marcar si ya está hecha, es descanso, o el usuario lo desmarcó manualmente
-  if (sess.isRest || sess.completed || sess.manuallyUnmarked) return;
-  // Usar fecha local (no UTC) para evitar desfases horarios
-  const now = new Date();
-  const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  if ((AppState.activities||[]).some(a => a.date?.slice(0,10) === key)) {
-    sess.completed = true;
-    saveDashPlan();
-    renderToday(dashPlan, AppState.athlete);
-    renderWeek(dashPlan);
-  }
+  // Desactivado: el usuario marca las sesiones manualmente
 }
 
 /* ── TIEMPO + ROPA ───────────────────────────────────────── */
