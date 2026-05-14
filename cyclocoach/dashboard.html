@@ -986,6 +986,8 @@ function toggleTodayDone() {
   if (!dashPlan?.sessions?.[todayIdx]) return;
   const sess = dashPlan.sessions[todayIdx];
   sess.completed = !sess.completed;
+  // Si el usuario desmarca manualmente, evitar que autoMarkToday() lo revierta
+  sess.manuallyUnmarked = !sess.completed;
   saveDashPlan();
   renderToday(dashPlan, AppState.athlete);
   renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
@@ -1017,8 +1019,11 @@ function saveDashPlan() {
 function autoMarkToday() {
   if (!dashPlan?.sessions?.[todayIdx]) return;
   const sess = dashPlan.sessions[todayIdx];
-  if (sess.isRest || sess.completed) return;
-  const key = new Date().toISOString().substring(0,10);
+  // No auto-marcar si ya está hecha, es descanso, o el usuario lo desmarcó manualmente
+  if (sess.isRest || sess.completed || sess.manuallyUnmarked) return;
+  // Usar fecha local (no UTC) para evitar desfases horarios
+  const now = new Date();
+  const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   if ((AppState.activities||[]).some(a => a.date?.slice(0,10) === key)) {
     sess.completed = true;
     saveDashPlan();
@@ -1270,7 +1275,7 @@ async function loadPlan() {
   try {
     const data = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() }).then(r=>r.json());
     if (data?.sessions && data.week_start === currentWeekStart) {
-      if (dashPlan?.sessions) data.sessions.forEach((s,i)=>{ if (dashPlan.sessions[i]?.completed) s.completed=true; });
+      if (dashPlan?.sessions) data.sessions.forEach((s,i)=>{ if (dashPlan.sessions[i]?.completed) s.completed=true; if (dashPlan.sessions[i]?.manuallyUnmarked) s.manuallyUnmarked=true; });
       dashPlan = { sessions:data.sessions, phase:data.phase, targetTSS:data.tss_target, advice:data.advice||{} };
       localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ week_start:data.week_start||getMondayString(), sessions:data.sessions, tss_target:data.tss_target, phase:data.phase, advice:data.advice, savedAt:Date.now() }));
       renderToday(dashPlan, AppState.athlete);
