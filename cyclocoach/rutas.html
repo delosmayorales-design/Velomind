@@ -200,21 +200,26 @@
     #map:active   { cursor: grabbing; }
     #map.drawing:active { cursor: crosshair; }
 
-    /* Stats flotantes arriba-derecha del mapa */
+    /* Stats flotantes arriba-centro del mapa */
     .map-stats {
       position: absolute;
-      top: 14px; right: 14px;
+      top: 14px; left: 50%;
+      transform: translateX(-50%);
       z-index: 500;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 16px;
-      display: none; flex-direction: column; gap: 0;
+      border-radius: 16px;
+      padding: 8px 16px;
+      display: none; flex-direction: row; align-items: center; gap: 16px;
       box-shadow: var(--shadow-md);
-      min-width: 200px;
+      width: max-content;
+      max-width: 95vw;
+      overflow-x: auto;
+      scrollbar-width: none;
     }
+    .map-stats::-webkit-scrollbar { display: none; }
     .map-stats.visible { display: flex; }
-    .ms-main { display: flex; gap: 20px; padding-bottom: 8px; margin-bottom: 7px; border-bottom: 1px solid var(--border); }
+    .ms-main { display: flex; gap: 16px; padding: 0 16px 0 0; margin: 0; border-bottom: none; border-right: 1px solid var(--border); }
     .stat-it { text-align: center; }
     .stat-v  { font-size: 20px; font-weight: 800; color: var(--primary); font-family:'Plus Jakarta Sans',sans-serif; }
     .stat-l  { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top:1px; }
@@ -1038,8 +1043,8 @@
       .ri-btn { font-size: 12px; }
 
       /* Stats flotantes */
-      .map-stats { top: 8px; right: 8px; padding: 7px 10px; min-width: 170px; }
-      .ms-main { gap: 14px; padding-bottom: 6px; margin-bottom: 5px; }
+      .map-stats { top: max(14px, env(safe-area-inset-top, 14px)); padding: 6px 12px; gap: 12px; border-radius: 14px; min-width: 0; }
+      .ms-main { gap: 12px; padding-right: 12px; }
       .stat-v { font-size: 16px; }
       .ms-t-val { font-size: 12px; }
       .ms-t-lbl { font-size: 8px; }
