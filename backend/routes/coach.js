@@ -1580,7 +1580,7 @@ Sesión de MAÑANA:
     }
     // ───────────────────────────────────────────────────────────────────
 
-    const systemPrompt = 'Eres un coach de ciclismo experto. Responde SOLO con JSON válido, sin markdown, sin texto extra.';
+    const systemPrompt = 'Eres un coach de ciclismo experto. Esta app es EXCLUSIVAMENTE de ciclismo — todas las descripciones y consejos son sobre bicicleta, nunca sobre running ni otros deportes. Responde SOLO con JSON válido, sin markdown, sin texto extra.';
     const perdidaBlock = sesionPerdidaAyer
       ? `\nSESIÓN PERDIDA AYER (no se realizó): tipo="${sesionPerdidaAyer.type}", nombre="${sesionPerdidaAyer.name || sesionPerdidaAyer.type}", ${sesionPerdidaAyer.durationMin} min, TSS=${sesionPerdidaAyer.tss}, IF=${sesionPerdidaAyer.ifTarget}.`
       : '';
@@ -1728,7 +1728,7 @@ FORMATO DE RESPUESTA (JSON estricto):
 });
 
 // ── System prompt del coach IA ────────────────────────────────
-const CYCLING_COACH_SYSTEM_PROMPT = `Eres un Head Coach de ciclismo y triatlón de élite con 20 años de experiencia a nivel UCI, combinado con expertise en nutrición deportiva y periodización. Analizas datos REALES de entrenamiento de Strava/Garmin y generas planes personalizados con el nivel técnico de TrainingPeaks y WKO5.
+const CYCLING_COACH_SYSTEM_PROMPT = `Eres un Head Coach de ciclismo de élite con 20 años de experiencia a nivel UCI, combinado con expertise en nutrición deportiva y periodización para ciclistas. Analizas datos REALES de entrenamiento de Strava/Garmin y generas planes personalizados con el nivel técnico de TrainingPeaks y WKO5. IMPORTANTE: Esta app es EXCLUSIVAMENTE de ciclismo. Todas las sesiones, descripciones y recomendaciones son sobre bicicleta (carretera, MTB o rodillo). NUNCA menciones running, natación, correr, trotar ni ningún deporte que no sea ciclismo.
 
 ══════════════════════════════════════════════════════
 MÓDULO 1 — DIAGNÓSTICO DE RENDIMIENTO (siempre primero)
@@ -1926,7 +1926,7 @@ router.post('/recalculate-week', async (req, res) => {
         : `🛑 NUNCA modifiques HOY (índice ${todayIdx}) ni días anteriores. Solo días FUTUROS (índice > ${todayIdx}).`)
       : `Estás modificando un día futuro (índice ${activeIdx}). Puedes adaptarlo libremente, pero NO modifiques días pasados ni HOY (índice < ${todayIdx}).`;
 
-    const systemPrompt = 'Actúa como un entrenador experto en ciclismo basado en métricas (TSS, CTL, ATL, TSB, IF, FTP) y planificación tipo TrainingPeaks/WKO. Responde SOLO con JSON válido, sin markdown ni texto extra.';
+    const systemPrompt = 'Actúa como un entrenador experto en ciclismo basado en métricas (TSS, CTL, ATL, TSB, IF, FTP) y planificación tipo TrainingPeaks/WKO. Esta app es EXCLUSIVAMENTE de ciclismo — todos los nombres, descripciones y consejos deben ser sobre bicicleta, nunca sobre running, natación ni otros deportes. Responde SOLO con JSON válido, sin markdown ni texto extra.';
     const userMsg = `INPUT:
 * Semana actual:
 ${JSON.stringify(planResumido, null, 2)}
