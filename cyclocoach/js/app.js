@@ -1450,7 +1450,7 @@ const FileParser = {
     const date = doc.querySelector('Id')?.textContent?.substring(0, 10) ||
                  trackpoints[0].querySelector('Time')?.textContent?.substring(0, 10) || '';
 
-    const powers = [], powerPoints = [], hrs = [], cads = [], times = [];
+    const powers = [], powerPoints = [], hrs = [], cads = [], times = [], alts = [];
     const maxPCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
     for (const tp of trackpoints) {
       const time = new Date(tp.querySelector('Time')?.textContent || 0);
@@ -1460,6 +1460,8 @@ const FileParser = {
       const cadNode = tp.querySelector('Cadence') || tp.getElementsByTagNameNS('*', 'RunCadence')[0]
                    || tp.getElementsByTagNameNS('*', 'Cadence')[0];
       const cad = cadNode ? parseFloat(cadNode.textContent) : null;
+      const altNode = tp.querySelector('AltitudeMeters');
+      const alt = altNode ? parseFloat(altNode.textContent) : null;
       if (!isNaN(time.getTime())) times.push(time);
       if (power != null && power >= 0 && power <= maxPCap) {
         powers.push(power);
@@ -1467,18 +1469,33 @@ const FileParser = {
       }
       if (hr > 0 && hr < 250) hrs.push(hr);
       if (cad != null && cad > 0 && cad < 200) cads.push(cad);
+      if (alt != null && !isNaN(alt) && alt > -500 && alt < 9000) alts.push(alt);
     }
 
     const durationSec = times.length >= 2
       ? Math.round((times[times.length - 1] - times[0]) / 1000) : 0;
 
-    const totalDistEl = doc.querySelector('DistanceMeters');
-    const distance = parseFloat(totalDistEl?.textContent || 0);
+    // Distancia: último DistanceMeters del último trackpoint (más preciso que el primero del doc)
+    const distNodes = doc.querySelectorAll('Trackpoint > DistanceMeters');
+    const lastDistNode = distNodes.length ? distNodes[distNodes.length - 1] : doc.querySelector('DistanceMeters');
+    const distance = parseFloat(lastDistNode?.textContent || 0);
+
+    const elevation = alts.length >= 2
+      ? Math.round(alts.reduce((sum, a, i) => {
+          if (i === 0) return 0;
+          const d = a - alts[i - 1];
+          return sum + (d > 0 ? d : 0);
+        }, 0))
+      : null;
+
     const avgPower = powers.length ? Math.round(powers.reduce((a, b) => a + b, 0) / powers.length) : 0;
     const maxPower = powers.length ? Math.max(...powers) : null;
     const avgHR = hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
     const maxHR = hrs.length ? Math.max(...hrs) : null;
     const avgCad = cads.length ? Math.round(cads.reduce((a, b) => a + b, 0) / cads.length) : null;
+    const avgSpeed = durationSec > 0 && distance > 0
+      ? Math.round((distance / durationSec) * 3.6 * 10) / 10
+      : null;
 
     return {
       id: 'tcx_' + Date.now(),
@@ -1494,6 +1511,8 @@ const FileParser = {
       avg_hr: avgHR || null,
       max_hr: maxHR || null,
       avg_cadence: avgCad,
+      avg_speed: avgSpeed,
+      elevation: elevation,
       tss: 0,
       if_value: 0,
     };
