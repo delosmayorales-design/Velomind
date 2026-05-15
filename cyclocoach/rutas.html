@@ -208,14 +208,22 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 10px 18px;
-      display: none; gap: 20px;
+      padding: 10px 16px;
+      display: none; flex-direction: column; gap: 0;
       box-shadow: var(--shadow-md);
+      min-width: 200px;
     }
     .map-stats.visible { display: flex; }
+    .ms-main { display: flex; gap: 20px; padding-bottom: 8px; margin-bottom: 7px; border-bottom: 1px solid var(--border); }
     .stat-it { text-align: center; }
     .stat-v  { font-size: 20px; font-weight: 800; color: var(--primary); font-family:'Plus Jakarta Sans',sans-serif; }
     .stat-l  { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top:1px; }
+    .ms-times { display: flex; gap: 6px; justify-content: space-around; align-items: flex-start; }
+    .ms-t-opt { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
+    .ms-t-icon { font-size: 12px; line-height: 1; }
+    .ms-t-val  { font-size: 14px; font-weight: 800; color: var(--text); font-family:'Plus Jakarta Sans',sans-serif; }
+    .ms-t-lbl  { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+    .ms-t-hi .ms-t-val { color: var(--primary); }
 
     /* Toolbar de dibujo (abajo-izquierda del mapa) */
     .draw-toolbar {
@@ -1030,8 +1038,11 @@
       .ri-btn { font-size: 12px; }
 
       /* Stats flotantes */
-      .map-stats { top: 8px; right: 8px; padding: 6px 10px; gap: 10px; }
-      .stat-v { font-size: 15px; }
+      .map-stats { top: 8px; right: 8px; padding: 7px 10px; min-width: 170px; }
+      .ms-main { gap: 14px; padding-bottom: 6px; margin-bottom: 5px; }
+      .stat-v { font-size: 16px; }
+      .ms-t-val { font-size: 12px; }
+      .ms-t-lbl { font-size: 8px; }
 
       /* Draw toolbar — centrado sobre el menú inferior */
       .draw-toolbar {
@@ -1250,9 +1261,28 @@
 
       <!-- Stats flotantes -->
       <div class="map-stats" id="map-stats">
-        <div class="stat-it"><div class="stat-v" id="stat-dist">0.0</div><div class="stat-l">km</div></div>
-        <div class="stat-it"><div class="stat-v" id="stat-elev">—</div><div class="stat-l">D+ m</div></div>
-        <div class="stat-it"><div class="stat-v" id="stat-time">—</div><div class="stat-l">Estimado</div></div>
+        <div class="ms-main">
+          <div class="stat-it"><div class="stat-v" id="stat-dist">0.0</div><div class="stat-l">km</div></div>
+          <div class="stat-it"><div class="stat-v" id="stat-elev">—</div><div class="stat-l">D+ m</div></div>
+        </div>
+        <div class="ms-times">
+          <div class="ms-t-opt">
+            <span class="ms-t-icon">🐢</span>
+            <span class="ms-t-val" id="stat-t-slow">—</span>
+            <span class="ms-t-lbl">tranquilo</span>
+          </div>
+          <div class="ms-t-opt ms-t-hi">
+            <span class="ms-t-icon">🚴</span>
+            <span class="ms-t-val" id="stat-t-mid">—</span>
+            <span class="ms-t-lbl">medio</span>
+          </div>
+          <div class="ms-t-opt">
+            <span class="ms-t-icon">⚡</span>
+            <span class="ms-t-val" id="stat-t-fast">—</span>
+            <span class="ms-t-lbl">rápido</span>
+          </div>
+        </div>
+        <span id="stat-time" style="display:none">—</span>
       </div>
 
       <!-- Toolbar dibujo (abajo del mapa) -->
@@ -1827,11 +1857,12 @@ function calcElevGain(elevs, threshold = 3) {
 // Parámetros por nivel de experiencia y tipo de terreno
 // flatSpeed → velocidad media en llano (km/h)
 // vam       → metros ascendidos por hora en los repechos (m/h)
+// Referencia calibrada: avanzado road → 100 km / 300 m D+ = 2:45h exactas
 const RIDER_PROFILES = {
-  //              road               gravel            mtb
-  principiante: { road:{flat:20,vam:600},  gravel:{flat:15,vam:420}, mtb:{flat:11,vam:280} },
-  intermedio:   { road:{flat:28,vam:900},  gravel:{flat:20,vam:640}, mtb:{flat:14,vam:460} },
-  avanzado:     { road:{flat:36,vam:1200}, gravel:{flat:26,vam:900}, mtb:{flat:18,vam:600} },
+  //              road                 gravel              mtb
+  principiante: { road:{flat:20,vam:600},   gravel:{flat:15,vam:420}, mtb:{flat:11,vam:280} },
+  intermedio:   { road:{flat:28,vam:900},   gravel:{flat:20,vam:640}, mtb:{flat:14,vam:460} },
+  avanzado:     { road:{flat:38,vam:1250},  gravel:{flat:27,vam:950}, mtb:{flat:18,vam:620} },
 };
 
 function getRiderExperience() {
@@ -1841,22 +1872,43 @@ function getRiderExperience() {
   } catch { return 'intermedio'; }
 }
 
-// Estima el tiempo de rodadura teniendo en cuenta el desnivel y el nivel del ciclista.
-// Separa la distancia en tramos de subida y tramos llanos para no doble-contar.
-function estimateRideTime(distKm, elevGainM, type) {
-  const exp      = getRiderExperience();
-  const profile  = (RIDER_PROFILES[exp] || RIDER_PROFILES.intermedio)[type]
+// Cálculo base para un nivel específico (pendiente media 6.5 %)
+function _calcTime(distKm, elevGainM, type, level) {
+  const profile  = (RIDER_PROFILES[level] || RIDER_PROFILES.intermedio)[type]
                    || RIDER_PROFILES.intermedio.road;
-  const avgGrad  = 0.065; // pendiente media estimada en los ascensos (~6.5 %)
-
-  // Distancia horizontal cubierta durante los ascensos
+  const avgGrad  = 0.065;
   const climbKm  = Math.min(distKm * 0.85, (elevGainM / 1000) / avgGrad);
   const flatKm   = Math.max(0, distKm - climbKm);
-
-  // Velocidad horizontal en subida: VAM (m/h) ÷ gradiente → km/h
   const climbKmh = (profile.vam / 1000) / avgGrad;
-
   return Math.round((flatKm / profile.flat + climbKm / climbKmh) * 60);
+}
+
+function estimateRideTime(distKm, elevGainM, type) {
+  return _calcTime(distKm, elevGainM, type, getRiderExperience());
+}
+
+// Devuelve los 3 tiempos (lento / medio / rápido) y actualiza el panel de stats
+function setTimeStat(distKm, elevGainM, type, gpsTime = null) {
+  const exp = getRiderExperience();
+  let slow, mid, fast;
+  if (gpsTime) {
+    // Ruta GPS: mostrar duración real en el nivel del usuario, ocultar el resto
+    slow = null; mid = null; fast = null;
+    const slot = { principiante:'slow', intermedio:'mid', avanzado:'fast' }[exp] || 'mid';
+    if (slot === 'slow') slow = gpsTime;
+    else if (slot === 'fast') fast = gpsTime;
+    else mid = gpsTime;
+  } else {
+    slow = formatTime(_calcTime(distKm, elevGainM, type, 'principiante'));
+    mid  = formatTime(_calcTime(distKm, elevGainM, type, 'intermedio'));
+    fast = formatTime(_calcTime(distKm, elevGainM, type, 'avanzado'));
+  }
+  document.getElementById('stat-t-slow').textContent = slow ?? '—';
+  document.getElementById('stat-t-mid').textContent  = mid  ?? '—';
+  document.getElementById('stat-t-fast').textContent = fast ?? '—';
+  // Guardar el tiempo del nivel del usuario en el campo oculto (usado al guardar la ruta)
+  const expTime = { principiante: slow, intermedio: mid, avanzado: fast }[exp] ?? mid;
+  if (expTime && expTime !== '—') document.getElementById('stat-time').textContent = expTime;
 }
 
 // BRouter — perfil MTB real: usa tags OSM mtb:scale, evita carreteras asfaltadas
@@ -1984,7 +2036,7 @@ async function calcRoute(type) {
     routeLayer = L.polyline(latLngs, { color, weight: 4, opacity: 0.9, interactive: false }).addTo(map);
 
     document.getElementById('stat-dist').textContent = distKm.toFixed(1);
-    document.getElementById('stat-time').textContent = formatTime(durMin);
+    setTimeStat(distKm, elevGain ?? 0, type);
     document.getElementById('map-stats').classList.add('visible');
 
     if (elevGain != null) {
@@ -2161,7 +2213,7 @@ function clearRoute() {
   waypointMarkers.length = 0;
   if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
   routeGeoJSON = null;
-  ['stat-dist','stat-elev','stat-time'].forEach((id, i) =>
+  ['stat-dist','stat-elev','stat-time','stat-t-slow','stat-t-mid','stat-t-fast'].forEach((id, i) =>
     document.getElementById(id).textContent = i === 0 ? '0.0' : '—');
   document.getElementById('elev-panel').classList.remove('visible');
 }
@@ -2201,14 +2253,15 @@ function importGPX(input) {
       routeLayer = L.polyline(trkSegs.length > 1 ? trkSegs : latLngs, { color: '#10B981', weight: 4, opacity: 0.9 }).addTo(map);
       map.fitBounds(routeLayer.getBounds(), { padding: [30,30] });
 
-      const distKm = haversineTotal(latLngs);
+      const distKm  = haversineTotal(latLngs);
+      const elevGain = elevs.length ? calcElevGain(elevs) : 0;
       document.getElementById('stat-dist').textContent = distKm.toFixed(1);
-      document.getElementById('stat-time').textContent = formatTime(Math.round(distKm / 0.28));
+      setTimeStat(distKm, elevGain, currentRouteType || 'road');
       document.getElementById('map-stats').classList.add('visible');
       document.getElementById('draw-toolbar').classList.add('visible');
 
       if (elevs.length) {
-        document.getElementById('stat-elev').textContent = calcElevGain(elevs);
+        document.getElementById('stat-elev').textContent = elevGain;
         renderElevChart(elevs);
       }
       document.getElementById('modal-name').value = file.name.replace(/\.(gpx|tcx)$/i,'').replace(/[_-]/g,' ');
@@ -2410,8 +2463,11 @@ function openRouteOnMap(id) {
   document.getElementById('stat-elev').textContent = route.elevation_gain_m ? Math.round(route.elevation_gain_m) : '—';
   // Para trayectos GPS las notas tienen el tiempo real "GPS · fecha · hh:mm:ss"
   const gpsDur = isGps ? route.notes?.split(' · ')[2] : null;
-  document.getElementById('stat-time').textContent = gpsDur ?? (route.estimated_minutes ? formatTime(route.estimated_minutes) : '—');
-  document.querySelector('#map-stats .stat-l:last-of-type').textContent = isGps ? 'Duración' : 'Estimado';
+  if (gpsDur) {
+    setTimeStat(route.distance_km ?? 0, route.elevation_gain_m ?? 0, route.type ?? 'road', gpsDur);
+  } else {
+    setTimeStat(route.distance_km ?? 0, route.elevation_gain_m ?? 0, route.type ?? 'road');
+  }
   document.getElementById('map-stats').classList.add('visible');
   document.querySelectorAll('.route-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
   if (window.innerWidth <= 768) {
@@ -3490,12 +3546,15 @@ async function generateWindRoute() {
     document.getElementById('map').classList.add('drawing');
 
     document.getElementById('stat-dist').textContent = distKm.toFixed(1);
-    document.getElementById('stat-time').textContent = formatTime(durMin);
+    setTimeStat(distKm, elevGain ?? 0, type);
     document.getElementById('map-stats').classList.add('visible');
     document.getElementById('draw-toolbar').classList.add('visible');
     document.getElementById('modal-name').value =
       `Ruta ${wrShape === 'loop' ? 'circular' : 'ida y vuelta'} ${Math.round(distKm)}km · ${degToCompass(windDeg)}`;
     document.getElementById('modal-type').value = type;
+    // Sync type buttons in toolbar
+    document.querySelectorAll('.dt-type').forEach(b => b.classList.remove('active'));
+    document.getElementById('dt-type-' + type)?.classList.add('active');
 
     if (elevGain != null) {
       document.getElementById('stat-elev').textContent = elevGain;
