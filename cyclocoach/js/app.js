@@ -1168,6 +1168,38 @@ const TrainingPlanGenerator = {
    GPX / TCX PARSER
 ══════════════════════════════════════════════════════════════ */
 const FileParser = {
+  // Potencia normalizada real (algoritmo TrainingPeaks): promedio rodante 30s → 4ª potencia → media → raíz 4ª
+  _calcNP(powerPoints) {
+    // powerPoints: [{time: Date, power: number}] ordenados por tiempo
+    if (!powerPoints || powerPoints.length < 2) return null;
+    const startMs = powerPoints[0].time.getTime();
+    const endMs   = powerPoints[powerPoints.length - 1].time.getTime();
+    const durSec  = Math.round((endMs - startMs) / 1000);
+    if (durSec < 30) return null;
+
+    // Interpolar a resolución de 1 segundo (hold-last-value)
+    const sec = new Float64Array(durSec + 1);
+    let pi = 0;
+    for (let s = 0; s <= durSec; s++) {
+      const tMs = startMs + s * 1000;
+      while (pi < powerPoints.length - 1 && powerPoints[pi + 1].time.getTime() <= tMs) pi++;
+      sec[s] = powerPoints[pi].power;
+    }
+
+    // Promedio rodante de 30 segundos
+    const WIN = 30;
+    let sum = 0;
+    for (let i = 0; i < WIN; i++) sum += sec[i];
+    let pow4sum = 0;
+    const count = sec.length - WIN + 1;
+    for (let i = WIN - 1; i < sec.length; i++) {
+      if (i >= WIN) sum += sec[i] - sec[i - WIN];
+      const avg = sum / WIN;
+      pow4sum += avg * avg * avg * avg;
+    }
+    return Math.round(Math.pow(pow4sum / count, 0.25));
+  },
+
   async parse(file) {
     const ext = file.name.split('.').pop().toLowerCase();
     if (ext === 'fit') {
@@ -1391,7 +1423,11 @@ const FileParser = {
       distance: Math.round(distance),
       avg_power: avgPower || null,
       max_power: maxPower || null,
-      np: avgPower ? Math.round(avgPower * 1.05) : null,
+      np: (() => {
+        const gpxPowerPoints = validPowers.filter(p => p.time && !isNaN(p.time.getTime()))
+          .map(p => ({ time: p.time, power: p.power }));
+        return this._calcNP(gpxPowerPoints) || (avgPower ? Math.round(avgPower * 1.05) : null);
+      })(),
       avg_hr: avgHR || null,
       max_hr: maxHR || null,
       avg_cadence: avgCad,
@@ -1414,7 +1450,7 @@ const FileParser = {
     const date = doc.querySelector('Id')?.textContent?.substring(0, 10) ||
                  trackpoints[0].querySelector('Time')?.textContent?.substring(0, 10) || '';
 
-    const powers = [], hrs = [], cads = [], times = [];
+    const powers = [], powerPoints = [], hrs = [], cads = [], times = [];
     const maxPCap = Math.min(2000, (AppState.athlete?.ftp || 250) * 10);
     for (const tp of trackpoints) {
       const time = new Date(tp.querySelector('Time')?.textContent || 0);
@@ -1425,7 +1461,10 @@ const FileParser = {
                    || tp.getElementsByTagNameNS('*', 'Cadence')[0];
       const cad = cadNode ? parseFloat(cadNode.textContent) : null;
       if (!isNaN(time.getTime())) times.push(time);
-      if (power != null && power >= 0 && power <= maxPCap) powers.push(power);
+      if (power != null && power >= 0 && power <= maxPCap) {
+        powers.push(power);
+        if (!isNaN(time.getTime())) powerPoints.push({ time, power });
+      }
       if (hr > 0 && hr < 250) hrs.push(hr);
       if (cad != null && cad > 0 && cad < 200) cads.push(cad);
     }
@@ -1451,7 +1490,7 @@ const FileParser = {
       distance: Math.round(distance),
       avg_power: avgPower || null,
       max_power: maxPower || null,
-      np: avgPower ? Math.round(avgPower * 1.05) : null,
+      np: this._calcNP(powerPoints) || (avgPower ? Math.round(avgPower * 1.05) : null),
       avg_hr: avgHR || null,
       max_hr: maxHR || null,
       avg_cadence: avgCad,
