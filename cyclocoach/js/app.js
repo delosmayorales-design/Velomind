@@ -2923,3 +2923,116 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initZoom);
   else initZoom();
 })();
+
+/* ══════════════════════════════════════════════════════════════
+   PULL TO REFRESH GLOBAL (PWA / Mobile)
+══════════════════════════════════════════════════════════════ */
+(function initPullToRefresh() {
+  if (window.matchMedia('(display-mode: standalone)').matches || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+    let startY = 0;
+    let currentY = 0;
+    let isPulling = false;
+    let ptrEl = null;
+    let ptrIcon = null;
+    let ptrText = null;
+    const threshold = 110;
+
+    // Detectar si el usuario está scrolleando dentro de un contenedor interno
+    function getScrollTop(el) {
+      let current = el;
+      while (current && current !== document.body && current !== document.documentElement) {
+        if (current.scrollHeight > current.clientHeight && current.scrollTop > 0) {
+          return current.scrollTop;
+        }
+        current = current.parentElement;
+      }
+      return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    }
+
+    document.addEventListener('touchstart', (e) => {
+      // Ignorar en el mapa de Leaflet, modales o lienzos de dibujo
+      if (e.target.closest('.leaflet-container') || e.target.closest('.modal-scroll-content') || e.target.closest('canvas')) {
+        return;
+      }
+      if (getScrollTop(e.target) <= 0 && e.touches.length === 1) {
+        startY = e.touches[0].clientY;
+        isPulling = true;
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!isPulling) return;
+      
+      if (getScrollTop(e.target) > 0) {
+        isPulling = false;
+        if (ptrEl) ptrEl.style.transform = 'translateY(-100%)';
+        return;
+      }
+
+      currentY = e.touches[0].clientY;
+      const dist = currentY - startY;
+
+      // Detectar drag hacia abajo en el top
+      if (dist > 15) {
+        document.body.style.overscrollBehaviorY = 'none'; // Prevenir PTR nativo en Chrome/Safari
+
+        if (!ptrEl) {
+          ptrEl = document.createElement('div');
+          ptrEl.style.cssText = 'position:fixed;top:0;left:0;right:0;height:65px;display:flex;align-items:center;justify-content:center;z-index:99999;pointer-events:none;transform:translateY(-100%);transition:transform 0s;';
+          const pill = document.createElement('div');
+          pill.style.cssText = 'background:var(--bg-card,#1a1d26);border:1px solid var(--border,rgba(255,255,255,0.1));border-radius:20px;padding:8px 18px;box-shadow:0 4px 16px rgba(0,0,0,0.4);display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--text-secondary,#cbd5e1);font-family:"Plus Jakarta Sans",sans-serif;';
+          
+          ptrIcon = document.createElement('i');
+          ptrIcon.className = 'fas fa-arrow-down';
+          ptrIcon.style.transition = 'transform 0.3s ease, color 0.3s ease';
+          
+          ptrText = document.createElement('span');
+          ptrText.textContent = 'Desliza para actualizar';
+          
+          pill.appendChild(ptrIcon);
+          pill.appendChild(ptrText);
+          ptrEl.appendChild(pill);
+          document.body.appendChild(ptrEl);
+        }
+
+        const pullDist = Math.min(dist * 0.45, threshold + 30);
+        ptrEl.style.transition = 'none';
+        ptrEl.style.transform = `translateY(${Math.max(-65, pullDist - 65)}px)`;
+
+        if (dist > threshold) {
+          ptrIcon.style.transform = 'rotate(180deg)';
+          ptrIcon.style.color = 'var(--primary,#9ED62B)';
+          ptrText.textContent = 'Suelta para actualizar';
+        } else {
+          ptrIcon.style.transform = 'rotate(0deg)';
+          ptrIcon.style.color = '';
+          ptrText.textContent = 'Desliza para actualizar';
+        }
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchend', () => {
+      if (!isPulling) return;
+      isPulling = false;
+      document.body.style.overscrollBehaviorY = '';
+
+      if (ptrEl) {
+        const dist = currentY - startY;
+        ptrEl.style.transition = 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)';
+        
+        if (dist > threshold) {
+          ptrEl.style.transform = 'translateY(15px)';
+          ptrIcon.className = 'fas fa-circle-notch fa-spin';
+          ptrIcon.style.transform = 'none';
+          ptrText.textContent = 'Actualizando...';
+          setTimeout(() => window.location.reload(), 400);
+        } else {
+          ptrEl.style.transform = 'translateY(-100%)';
+          setTimeout(() => { if(ptrEl) { ptrEl.remove(); ptrEl = null; } }, 300);
+        }
+      }
+      startY = 0;
+      currentY = 0;
+    });
+  }
+})();
