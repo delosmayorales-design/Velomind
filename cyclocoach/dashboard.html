@@ -1,4 +1,4 @@
-﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -976,7 +976,7 @@ function renderToday(plan, athlete) {
       <b>&#191;Por qu&#233; hoy este entreno?</b>
       ${why}
     </div>
-    <button class="btn-done${isDone ? ' done' : ''}" onclick="toggleTodayDone()">
+    <button class="btn-done${isDone ? ' done' : ''}" onclick="event.preventDefault(); event.stopPropagation(); toggleTodayDone();" style="position:relative;z-index:10;-webkit-tap-highlight-color:transparent;">
       <i class="fas ${isDone ? 'fa-circle-check' : 'fa-circle'}"></i>
       ${isDone ? 'Sesi&#243;n completada' : 'Marcar como hecha'}
     </button>`;
