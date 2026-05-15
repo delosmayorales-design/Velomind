@@ -241,6 +241,8 @@
     .dt-btn.save { background: var(--primary); border: none; color: #111; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; }
     .dt-btn.save:hover { background: var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
     .dt-btn.del  { color: #ff4757; }
+    .dt-btn.dt-type { padding: 8px 11px; font-size: 14px; }
+    .dt-btn.dt-type.active { background: rgba(0,212,255,0.15) !important; border-color: #00D4FF !important; color: #00D4FF !important; box-shadow: 0 0 8px rgba(0,212,255,0.25); }
 
     /* Wind card (abajo-derecha del mapa) */
     .wind-card {
@@ -1133,7 +1135,7 @@
       <button class="btn btn-secondary btn-sm" id="btn-sensors" onclick="openSensorsModal()" title="Conectar sensores Bluetooth">
         <i class="fas fa-bluetooth"></i><span class="btn-label"> Sensores</span>
       </button>
-      <button class="btn btn-primary btn-sm" onclick="startDrawing()">
+      <button class="btn btn-primary btn-sm" id="btn-new-route" onclick="startDrawing()">
         <i class="fas fa-pencil-alt"></i><span class="btn-label"> Nueva ruta</span>
       </button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('gpx-input').click()">
@@ -1239,6 +1241,9 @@
 
       <!-- Toolbar dibujo (abajo del mapa) -->
       <div class="draw-toolbar" id="draw-toolbar">
+        <button class="dt-btn dt-type active" id="dt-type-road" onclick="setDrawType('road')" title="Road">🚴</button>
+        <button class="dt-btn dt-type" id="dt-type-gravel" onclick="setDrawType('gravel')" title="Gravel">🪨</button>
+        <button class="dt-btn dt-type" id="dt-type-mtb" onclick="setDrawType('mtb')" title="MTB">🏔</button>
         <button class="dt-btn" onclick="undoWaypoint()">
           <i class="fas fa-undo"></i> Deshacer
         </button>
@@ -1246,7 +1251,7 @@
           <i class="fas fa-trash"></i> Limpiar
         </button>
         <button class="dt-btn save" onclick="openSaveModal()">
-          <i class="fas fa-save"></i> Guardar ruta
+          <i class="fas fa-save"></i> Guardar
         </button>
       </div>
 
@@ -1809,10 +1814,10 @@ function calcElevGain(elevs, threshold = 3) {
 // flatSpeed → velocidad media en llano (km/h)
 // vam       → metros ascendidos por hora en los repechos (m/h)
 const RIDER_PROFILES = {
-  //              road              gravel           mtb
-  principiante: { road:{flat:18,vam:500}, gravel:{flat:13,vam:360}, mtb:{flat:9, vam:250} },
-  intermedio:   { road:{flat:22,vam:700}, gravel:{flat:16,vam:520}, mtb:{flat:12,vam:370} },
-  avanzado:     { road:{flat:25,vam:900}, gravel:{flat:19,vam:680}, mtb:{flat:15,vam:480} },
+  //              road               gravel            mtb
+  principiante: { road:{flat:20,vam:600},  gravel:{flat:15,vam:420}, mtb:{flat:11,vam:280} },
+  intermedio:   { road:{flat:28,vam:900},  gravel:{flat:20,vam:640}, mtb:{flat:14,vam:460} },
+  avanzado:     { road:{flat:36,vam:1200}, gravel:{flat:26,vam:900}, mtb:{flat:18,vam:600} },
 };
 
 function getRiderExperience() {
@@ -2084,6 +2089,19 @@ function startDrawing() {
   currentRouteType = ['road','gravel','mtb'].includes(t) ? t : 'road';
   document.getElementById('modal-name').value = '';
   document.getElementById('modal-type').value = currentRouteType;
+  // Sync toolbar type buttons
+  document.querySelectorAll('.dt-type').forEach(b => b.classList.remove('active'));
+  document.getElementById('dt-type-' + currentRouteType)?.classList.add('active');
+  // Mark panel button active (mobile)
+  document.getElementById('btn-new-route')?.classList.add('active');
+}
+
+function setDrawType(type) {
+  currentRouteType = type;
+  document.querySelectorAll('.dt-type').forEach(b => b.classList.remove('active'));
+  document.getElementById('dt-type-' + type)?.classList.add('active');
+  document.getElementById('modal-type').value = type;
+  if (waypoints.length >= 2) calcRoute(type);
 }
 
 async function onMapClick(e) {
@@ -2094,6 +2112,8 @@ async function onMapClick(e) {
     return;
   }
   if (!drawingActive) return;
+  // Ignorar el tap que cierra el panel lateral en móvil
+  if (Date.now() - (window._panelCloseTs || 0) < 500) return;
   const { lat, lng } = e.latlng;
   waypoints.push({ lat, lng });
   waypointMarkers.push(createWaypointMarker(lat, lng));
@@ -2196,6 +2216,7 @@ async function saveCurrentRoute() {
     document.getElementById('map').classList.remove('drawing');
     document.getElementById('draw-toolbar').classList.remove('visible');
     document.getElementById('map-stats').classList.remove('visible');
+    document.getElementById('btn-new-route')?.classList.remove('active');
     await loadRoutes();
   } catch(e) { alert('Error al guardar: ' + e.message); }
   finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Guardar'; }
@@ -4998,6 +5019,35 @@ function _resetSensorAccumulators() {
   });
 })();
 
+// ── Swipe hacia abajo para cerrar la Previsión 24h ─────────────────
+(function initTimelineSwipe() {
+  const tl = document.getElementById('weather-timeline');
+  if (!tl) return;
+  let startY = 0, dragging = false;
+  const THRESHOLD = 50;
+
+  tl.addEventListener('touchstart', e => {
+    startY  = e.touches[0].clientY;
+    dragging = true;
+    tl.style.transition = 'none';
+  }, { passive: true });
+
+  tl.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0) tl.style.transform = `translateY(${dy}px)`;
+  }, { passive: true });
+
+  tl.addEventListener('touchend', e => {
+    if (!dragging) return;
+    dragging = false;
+    tl.style.transition = 'transform 0.2s ease';
+    tl.style.transform  = '';
+    const dy = e.changedTouches[0].clientY - startY;
+    if (dy > THRESHOLD && typeof toggleWeatherTimeline === 'function') toggleWeatherTimeline();
+  });
+})();
+
 // ── Panel Lateral de Herramientas (solo móvil) ─────────────────────
 (function initMobSidePanel() {
   if (window.innerWidth > 768) return;
@@ -5076,8 +5126,11 @@ function _resetSensorAccumulators() {
     #mob-side-content #btn-wind-arrows { display: flex !important; }
     #mob-side-content #btn-wind-arrows.active,
     #mob-side-content #btn-rain.active,
-    #mob-side-content #btn-weather-zone.active {
-      color: #00D4FF !important; background: rgba(0,212,255,0.08) !important;
+    #mob-side-content #btn-weather-zone.active,
+    #mob-side-content #btn-timeline.active,
+    #mob-side-content #btn-new-route.active,
+    #mob-side-content .mob-sp-btn.active {
+      color: #00D4FF !important; background: rgba(0,212,255,0.10) !important;
     }
     #mob-wind-fab, #mob-routes-fab { display: none !important; }
   `;
@@ -5131,7 +5184,7 @@ function _resetSensorAccumulators() {
       panel.classList.add('sp-open');
       tab.classList.add('sp-open');
       clearTimeout(hideTimer);
-      hideTimer = setTimeout(closePanel, 5000);
+      hideTimer = setTimeout(closePanel, 3000);
     };
 
     tab.addEventListener('click', e => {
@@ -5141,12 +5194,15 @@ function _resetSensorAccumulators() {
 
     content.addEventListener('touchstart', () => {
       clearTimeout(hideTimer);
-      hideTimer = setTimeout(closePanel, 5000);
+      hideTimer = setTimeout(closePanel, 3000);
     }, { passive: true });
 
     // Cerrar al tocar el mapa (fuera del panel y el tab)
     document.getElementById('map')?.addEventListener('touchstart', e => {
-      if (!panel.contains(e.target) && e.target !== tab) closePanel();
+      if (!panel.contains(e.target) && e.target !== tab) {
+        closePanel();
+        window._panelCloseTs = Date.now();
+      }
     }, { passive: true });
   }
 
