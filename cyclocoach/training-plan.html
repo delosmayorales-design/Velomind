@@ -2131,6 +2131,10 @@ async function saveAdaptation(idx) {
 
   // Actualizar métricas clave desde la IA
   sess.durationMin = t.duracion_min > 0 ? t.duracion_min : sess.durationMin;
+  // Enforce type-specific minimums so the AI can't produce absurdly short sessions
+  const _MIN_DUR = { long: 90, endurance: 45, threshold: 40, vo2max: 35, tempo: 40, sweet_spot: 40, sprint: 30, recovery: 20 };
+  const _minForType = _MIN_DUR[sess.type] || 20;
+  if (sess.durationMin < _minForType) sess.durationMin = _minForType;
   sess.tss         = t.tss_estimado || sess.tss;
   sess.ifTarget    = t.if_estimado  || sess.ifTarget;
 

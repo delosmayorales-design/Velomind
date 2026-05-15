@@ -1580,7 +1580,7 @@ Sesión de MAÑANA:
     }
     // ───────────────────────────────────────────────────────────────────
 
-    const systemPrompt = 'Eres un coach de ciclismo experto. Esta app es EXCLUSIVAMENTE de ciclismo — todas las descripciones y consejos son sobre bicicleta, nunca sobre running ni otros deportes. Responde SOLO con JSON válido, sin markdown, sin texto extra.';
+    const systemPrompt = 'Eres un coach de ciclismo experto. Esta app es EXCLUSIVAMENTE de ciclismo — todas las descripciones y consejos son sobre bicicleta en carretera, MTB o rodillo. NUNCA menciones: running, correr, trotar, tierra compacta, hierba, rodillas, caderas, impacto articular, kilómetro de carrera, asfalto para correr, ni ningún concepto ajeno al ciclismo. Usa solo vocabulario ciclista: vatios, cadencia, pedaleo, subidas, descensos, rodillo, carretera. Responde SOLO con JSON válido, sin markdown, sin texto extra.';
     const perdidaBlock = sesionPerdidaAyer
       ? `\nSESIÓN PERDIDA AYER (no se realizó): tipo="${sesionPerdidaAyer.type}", nombre="${sesionPerdidaAyer.name || sesionPerdidaAyer.type}", ${sesionPerdidaAyer.durationMin} min, TSS=${sesionPerdidaAyer.tss}, IF=${sesionPerdidaAyer.ifTarget}.`
       : '';
