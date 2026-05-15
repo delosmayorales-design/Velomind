@@ -1211,6 +1211,7 @@ async function initTrainingPlan() {
     } catch(_) {}
     if (currentPlan) {
       _patchSegmentDistances(currentPlan);
+      _sanitizeCyclingContent(currentPlan);
     }
 
     renderAthleteSidebar();
@@ -1282,6 +1283,7 @@ async function initTrainingPlan() {
         if (savedPlan?.sessions) {
           currentPlan = { sessions: savedPlan.sessions, phase: savedPlan.phase, targetTSS: savedPlan.tss_target, advice: savedPlan.advice || {} };
           _patchSegmentDistances(currentPlan);
+          _sanitizeCyclingContent(currentPlan);
           syncPlanWithReality();
           // Normalizar week_start a YYYY-MM-DD antes de guardar en localStorage
           localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...savedPlan, week_start: remoteWeekStart || currentWeekStart, savedAt: Date.now() }));
@@ -1357,6 +1359,35 @@ function _patchSegmentDistances(plan) {
           `$1${km}$3`
         );
       });
+    });
+  });
+}
+
+// Limpia descripciones con vocabulario de running/trail generadas por IA antigua
+function _sanitizeCyclingContent(plan) {
+  if (!plan?.sessions) return;
+  const RUN_RE = /zancada|tierra compacta|hierba|sendero suave|carrera a pie|kilómetro de carrera|impacto por zancada|rodillas.*carg|carg.*rodillas|superficies blandas|terreno blando reduce/i;
+  const CLEAN_TERRAIN = {
+    endurance: '🛣️ Terreno llano y continuo para mantener los vatios estables.',
+    recovery:  '🛣️ Terreno llano y continuo para mantener los vatios estables.',
+    long:      '🛣️ Terreno llano o ligeramente ondulado para acumular volumen aeróbico.',
+    tempo:     '⛰️ Terreno ondulado o subida larga para sostener el ritmo en Z3.',
+    threshold: '⛰️ Subida constante o llano para mantener el FTP de inicio a fin.',
+    sweet_spot:'⛰️ Terreno ondulado para el sweet spot sostenido.',
+    vo2max:    '⛰️ Subida de 4-6 min para las series de alta intensidad.',
+    sprint:    '⚡ Subida corta o llano recto para los sprints máximos.',
+    strength:  '⛰️ Subida larga con cadencia baja para trabajo de fuerza.',
+  };
+  plan.sessions.forEach(s => {
+    if (!s) return;
+    if (typeof s.terrain === 'string' && RUN_RE.test(s.terrain)) {
+      s.terrain = CLEAN_TERRAIN[s.type] || '🛣️ Terreno adecuado para ciclismo.';
+    }
+    ['description', 'advice', 'alt_description'].forEach(field => {
+      if (typeof s[field] !== 'string' || !RUN_RE.test(s[field])) return;
+      // Eliminar sólo las frases que contengan vocabulario de running
+      const cleaned = s[field].split(/(?<=\.)\s+/).filter(sent => !RUN_RE.test(sent)).join(' ').trim();
+      s[field] = cleaned || s[field].replace(/[^.]*(?:zancada|tierra compacta|hierba|sendero suave|carrera a pie|kilómetro de carrera)[^.]*/gi, '').trim();
     });
   });
 }
