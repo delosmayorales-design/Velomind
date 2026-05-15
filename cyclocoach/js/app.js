@@ -797,7 +797,7 @@ const TrainingPlanGenerator = {
       return [
         { day: 'Lunes',    isRest: true,  description: 'Descanso total o movilidad 15 min' },
         { day: 'Martes',   type: 'recovery', name: 'Rodaje suave', description: 'Pedaleo muy ligero en Z1 para mover las piernas.', tssShare: 0.08, ifTarget: 0.50, emoji: '😴' },
-        { day: 'Miércoles',isRest: true,  description: 'Descanso. Masaje, foam roller, natación suave' },
+        { day: 'Miércoles',isRest: true,  description: 'Descanso. Masaje, foam roller, movilidad de cadera 15 min.' },
         { day: 'Jueves',   type: 'endurance', name: 'Z2 suave', description: 'Resistencia aeróbica ligera y relajada.', tssShare: 0.12, ifTarget: 0.60, emoji: '🔵' },
         { day: 'Viernes',  isRest: true,  description: 'Descanso activo: caminar, yoga' },
         { day: 'Sábado',   type: 'endurance', name: 'Rodada moderada Z2', description: 'Base aeróbica, mantén la cadencia alta entre 85-95 rpm.', tssShare: 0.18, ifTarget: 0.62, emoji: '🔵' },

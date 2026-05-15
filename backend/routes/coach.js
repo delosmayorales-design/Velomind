@@ -1033,7 +1033,7 @@ function buildDeloadWeek(ftp, goal) {
   return [
     { day: 'Lunes',     type: 'Descanso',    duration: 0,  tss: 0,  description: 'Descanso total' },
     { day: 'Martes',    type: 'Z1 Suave',    duration: 40, tss: 22, description: `Z1 muy suave 40min. Max ${Math.round(ftp*0.60)}W. Spin ligero.` },
-    { day: 'Miércoles', type: 'Descanso',    duration: 0,  tss: 0,  description: 'Recuperación activa: caminar, nadar, yoga' },
+    { day: 'Miércoles', type: 'Descanso',    duration: 0,  tss: 0,  description: 'Recuperación activa: movilidad de cadera, yoga, foam roller.' },
     { day: 'Jueves',    type: 'Activación',  duration: 50, tss: 35, description: `50min Z1/Z2 con 2×5min a ${Math.round(ftp*0.85)}W para no perder adaptaciones.` },
     { day: 'Viernes',   type: 'Descanso',    duration: 0,  tss: 0,  description: 'Descanso' },
     { day: 'Sábado',    type: 'Z2 Corto',    duration: 60, tss: 45, description: `60min Z2 agradable. Sin presión de potencia.` },
@@ -1639,7 +1639,7 @@ Devuelve SOLO este JSON (sin texto adicional):
   "tss_estimado": number,
   "if_estimado": number,
   "intensidad": "ej: Z2 ${Math.round(ftp*0.65)}-${Math.round(ftp*0.75)}W o Umbral ${Math.round(ftp*0.95)}W",
-  "descripcion": "2-3 frases con vatios reales (FTP=${ftp}W). El desglose de minutos DEBE sumar exactamente el valor de duracion_min.",
+  "descripcion": "2-3 frases sobre ciclismo (vatios, cadencia, pedaleo en carretera o rodillo). El desglose de minutos DEBE sumar exactamente el valor de duracion_min. PROHIBIDO mencionar: tierra, hierba, running, correr, rodillas, impacto, carrera a pie.",
   "razon": "1 frase explicando el cambio según el estado del atleta",
   "nutricion": "1 frase sobre qué comer/beber ${diaRef.toLowerCase()}"
 }`;
@@ -1832,7 +1832,7 @@ Devuelve ÚNICAMENTE JSON válido con esta estructura exacta:
       "duracion_min": number,
       "tss_objetivo": number,
       "potencia_objetivo": "string (ej: '220-240W / 88-93% FTP')",
-      "descripcion": "string detallada con intervalos específicos si aplica",
+      "descripcion": "string detallada con intervalos específicos en bicicleta (vatios, cadencia, carretera o rodillo). NUNCA menciones running, correr, tierra, hierba, rodillas ni ningún deporte que no sea ciclismo.",
       "key": boolean,
       "emoji": "string"
     }
@@ -2016,7 +2016,7 @@ OUTPUT (JSON EXACTO)
         "durationMin": number,
         "tss": number,
         "ifTarget": number,
-        "advice": "string breve"
+        "advice": "string breve sobre ciclismo (vatios, cadencia, carretera, rodillo). NUNCA menciones running, correr, tierra, rodillas ni nada ajeno al ciclismo."
       }
     }
   ]
