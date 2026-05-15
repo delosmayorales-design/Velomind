@@ -1573,7 +1573,6 @@
         <option value="road">🚴 Road</option>
         <option value="gravel">🪨 Gravel</option>
         <option value="mtb">🏔️ MTB</option>
-        <option value="running">🏃 Running</option>
       </select>
       <div class="modal-row">
         <button class="modal-btn modal-btn-cancel" onclick="discardTracking()">Descartar</button>
@@ -4462,7 +4461,6 @@ async function saveTrackingActivity() {
     notes: `Trayecto grabado en VeloMind · ${_trkPoints.length} puntos GPS`,
   };
 
-  // Tipo de ruta compatible con el panel (cycling/running → road por defecto)
   const routeType = ['road','gravel','mtb'].includes(type) ? type : 'road';
   const routePayload = {
     name, type: routeType,

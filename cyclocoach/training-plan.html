@@ -1386,7 +1386,10 @@ function _sanitizeCyclingContent(plan) {
       const minD = MIN_DUR[s.type] || 20;
       if (s.durationMin < minD) {
         s.durationMin = minD;
-        if (s.ifTarget) s.tss = Math.round((minD / 60) * Math.pow(s.ifTarget, 2) * 100);
+        // IF de referencia por tipo cuando no está guardado en el plan
+        const DEFAULT_IF = { long: 0.60, endurance: 0.65, recovery: 0.52, tempo: 0.82, threshold: 0.95, sweet_spot: 0.90, vo2max: 1.05, sprint: 0.90, strength: 0.80 };
+        const ifRef = s.ifTarget || DEFAULT_IF[s.type] || 0.65;
+        s.tss = Math.round((minD / 60) * Math.pow(ifRef, 2) * 100);
       }
     }
     // Limpiar terrain con lenguaje de running

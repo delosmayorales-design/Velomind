@@ -914,31 +914,34 @@ function buildTrainingRecommendation({ tsb, ctl, ftp, weight, goal, phase, form,
   // Semana objetivo según estado de forma + fase
   let weekTarget, sessions, focus, alerts = [];
 
+  // CTL mínimo para atletas nuevos sin historial: 25 TSS/día base
+  const ctlBase = Math.max(ctl, 25);
+
   if (form.risk === 'muy alto' || tsb < -30) {
-    weekTarget = Math.round(ctl * 0.5);
+    weekTarget = Math.round(ctlBase * 0.5);
     focus = 'Recuperación total';
     sessions = buildRecoveryWeek(ftp);
     alerts.push('⚠️ Estás en sobreentrenamiento. Prioriza el descanso y el sueño.');
   } else if (form.risk === 'alto' || tsb < -20) {
-    weekTarget = Math.round(ctl * 0.65);
+    weekTarget = Math.round(ctlBase * 0.65);
     focus = 'Semana de descarga';
     sessions = buildDeloadWeek(ftp, goal);
     alerts.push('⚠️ Alta fatiga acumulada. Reduce el volumen esta semana.');
   } else if (phase === 'recovery') {
-    weekTarget = Math.round(ctl * 0.70);
+    weekTarget = Math.round(ctlBase * 0.70);
     focus = 'Recuperación activa';
     sessions = buildDeloadWeek(ftp, goal);
   } else if (phase === 'peak') {
-    weekTarget = Math.round(ctl * 0.85);
+    weekTarget = Math.round(ctlBase * 0.85);
     focus = 'Puesta a punto';
     sessions = buildPeakWeek(ftp, goal);
   } else if (phase === 'build') {
-    weekTarget = Math.round(ctl * 1.08);
+    weekTarget = Math.round(ctlBase * 1.08);
     focus = 'Bloque de carga — ' + goalLabel(goal);
     sessions = buildBuildWeek(ftp, goal, weight);
     if (tssGrowth > 15) alerts.push('📈 Estás aumentando la carga muy rápido. Limita el incremento a +5-8% semanal.');
   } else {
-    weekTarget = Math.round(ctl * 1.05);
+    weekTarget = Math.round(ctlBase * 1.05);
     focus = 'Bloque base — ' + goalLabel(goal);
     sessions = buildBaseWeek(ftp, goal, weight);
   }
