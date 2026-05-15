@@ -220,28 +220,39 @@
     /* Toolbar de dibujo (abajo-izquierda del mapa) */
     .draw-toolbar {
       position: absolute;
-      bottom: 20px; left: 14px;
+      bottom: 22px;
+      left: 50%; transform: translateX(-50%);
       z-index: 500;
-      display: none; gap: 7px;
+      display: none; flex-direction: column; gap: 6px;
+      background: rgba(9,11,17,0.90);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      padding: 9px 10px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.55);
+      white-space: nowrap;
     }
     .draw-toolbar.visible { display: flex; }
+    .dt-types   { display: flex; gap: 5px; }
+    .dt-actions { display: flex; gap: 5px; }
+    .dt-sep { width: 1px; background: rgba(255,255,255,0.10); margin: 0 2px; }
     .dt-btn {
-      padding: 10px 16px;
-      background: var(--bg-input, rgba(255,255,255,0.05));
-      border: 1px solid var(--border, rgba(255,255,255,0.1));
-      border-radius: var(--radius-md, 8px);
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 9px;
       color: var(--text-secondary, #cbd5e1);
-      font-size: 13px; font-weight: 600;
+      font-size: 12px; font-weight: 600;
       cursor: pointer; font-family: inherit;
-      display: flex; align-items: center; gap: 6px;
-      box-shadow: var(--shadow-md);
-      transition: all 0.2s ease;
+      display: flex; align-items: center; gap: 5px;
+      transition: all 0.18s ease;
     }
-    .dt-btn:hover { background: var(--bg-card-hover, rgba(255,255,255,0.08)); border-color: var(--primary); color: var(--text-primary, #fff); transform: translateY(-1px); }
-    .dt-btn.save { background: var(--primary); border: none; color: #111; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; }
-    .dt-btn.save:hover { background: var(--primary-dark, #84B422); box-shadow: 0 4px 16px rgba(158,214,43,0.3); transform: translateY(-1px); }
+    .dt-btn:hover { background: rgba(255,255,255,0.10); border-color: var(--primary); color: #fff; }
+    .dt-btn:active { transform: scale(0.95); }
+    .dt-btn.save { background: var(--primary); border: none; color: #111; font-weight: 700; }
+    .dt-btn.save:hover { background: var(--primary-dark, #84B422); box-shadow: 0 3px 12px rgba(158,214,43,0.4); }
     .dt-btn.del  { color: #ff4757; }
-    .dt-btn.dt-type { padding: 8px 11px; font-size: 14px; }
+    .dt-btn.dt-type { padding: 7px 12px; font-size: 13px; flex: 1; justify-content: center; }
     .dt-btn.dt-type.active { background: rgba(0,212,255,0.15) !important; border-color: #00D4FF !important; color: #00D4FF !important; box-shadow: 0 0 8px rgba(0,212,255,0.25); }
 
     /* Wind card (abajo-derecha del mapa) */
@@ -1022,9 +1033,14 @@
       .map-stats { top: 8px; right: 8px; padding: 6px 10px; gap: 10px; }
       .stat-v { font-size: 15px; }
 
-      /* Draw toolbar — por encima del menú inferior */
-      .draw-toolbar { left: 8px; bottom: calc(104px + env(safe-area-inset-bottom, 0px)); flex-wrap: wrap; }
-      .dt-btn { padding: 6px 10px; font-size: 11px; }
+      /* Draw toolbar — centrado sobre el menú inferior */
+      .draw-toolbar {
+        left: 50% !important; transform: translateX(-50%) !important;
+        bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+        width: calc(100% - 20px); max-width: 360px;
+      }
+      .dt-btn { padding: 8px 10px; font-size: 12px; }
+      .dt-btn.dt-type { font-size: 12px; }
 
       /* FABs circulares — reemplazados por panel lateral */
       #mob-wind-fab { display: none !important; }
@@ -1241,18 +1257,16 @@
 
       <!-- Toolbar dibujo (abajo del mapa) -->
       <div class="draw-toolbar" id="draw-toolbar">
-        <button class="dt-btn dt-type active" id="dt-type-road" onclick="setDrawType('road')" title="Road">🚴</button>
-        <button class="dt-btn dt-type" id="dt-type-gravel" onclick="setDrawType('gravel')" title="Gravel">🪨</button>
-        <button class="dt-btn dt-type" id="dt-type-mtb" onclick="setDrawType('mtb')" title="MTB">🏔</button>
-        <button class="dt-btn" onclick="undoWaypoint()">
-          <i class="fas fa-undo"></i> Deshacer
-        </button>
-        <button class="dt-btn del" onclick="clearRoute()">
-          <i class="fas fa-trash"></i> Limpiar
-        </button>
-        <button class="dt-btn save" onclick="openSaveModal()">
-          <i class="fas fa-save"></i> Guardar
-        </button>
+        <div class="dt-types">
+          <button class="dt-btn dt-type active" id="dt-type-road"   onclick="setDrawType('road')"   title="Road">🚴 Road</button>
+          <button class="dt-btn dt-type"         id="dt-type-gravel" onclick="setDrawType('gravel')" title="Gravel">🪨 Gravel</button>
+          <button class="dt-btn dt-type"         id="dt-type-mtb"    onclick="setDrawType('mtb')"    title="MTB">🏔 MTB</button>
+        </div>
+        <div class="dt-actions">
+          <button class="dt-btn" onclick="undoWaypoint()"><i class="fas fa-undo"></i> Deshacer</button>
+          <button class="dt-btn del" onclick="clearRoute()"><i class="fas fa-trash"></i> Limpiar</button>
+          <button class="dt-btn save" onclick="openSaveModal()"><i class="fas fa-save"></i> Guardar ruta</button>
+        </div>
       </div>
 
       <!-- Wind card -->
@@ -2078,7 +2092,19 @@ function createWaypointMarker(lat, lng) {
   return marker;
 }
 
+function _cancelDrawing() {
+  drawingActive = false;
+  clearRoute();
+  document.getElementById('map').classList.remove('drawing');
+  document.getElementById('draw-toolbar').classList.remove('visible');
+  document.getElementById('map-stats').classList.remove('visible');
+  document.getElementById('btn-new-route')?.classList.remove('active');
+}
+
 function startDrawing() {
+  // Toggle: si ya está activo, cancelar el modo de dibujo
+  if (drawingActive) { _cancelDrawing(); return; }
+
   clearRoute();
   drawingActive = true;
   document.getElementById('map').classList.add('drawing');
@@ -5200,8 +5226,10 @@ function _resetSensorAccumulators() {
     // Cerrar al tocar el mapa (fuera del panel y el tab)
     document.getElementById('map')?.addEventListener('touchstart', e => {
       if (!panel.contains(e.target) && e.target !== tab) {
+        const wasOpen = panel.classList.contains('sp-open');
         closePanel();
-        window._panelCloseTs = Date.now();
+        // Solo marcar el timestamp si el panel estaba abierto (evitar bloquear waypoints)
+        if (wasOpen) window._panelCloseTs = Date.now();
       }
     }, { passive: true });
   }
