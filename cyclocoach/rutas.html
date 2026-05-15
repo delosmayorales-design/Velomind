@@ -3326,12 +3326,12 @@ function degToCompass(deg) {
 function formatTime(min) {
   if (!min || isNaN(min)) return '—';
   const h = Math.floor(min/60), m = min%60;
-  return h ? `${h}h${m ? ' '+m+'min' : ''}` : `${m}min`;
+  return h ? `${h}h${m ? ' '+m+'m' : ''}` : `${m}m`;
 }
 function parseTimeMin(str) {
   if (!str || str==='—') return null;
   const h = (str.match(/(\d+)h/)  ||[])[1];
-  const m = (str.match(/(\d+)min/)||[])[1];
+  const m = (str.match(/(\d+)m/)||[])[1];
   return (+h*60||0)+(+m||0)||null;
 }
 function haversineTotal(ll) {
