@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <script>
@@ -1867,6 +1867,7 @@ function markSessionDone(idx) {
   if (!currentPlan?.sessions?.[idx]) return;
   const sess = currentPlan.sessions[idx];
   sess.completed = !sess.completed;
+  sess.manuallyUnmarked = !sess.completed;
   silentSavePlan();
   renderPlan(currentPlan, AppState.athlete);
 }
@@ -2461,6 +2462,12 @@ function syncPlanWithReality() {
 
   for (let i = 0; i <= todayIdx; i++) {
     const sess = currentPlan.sessions[i];
+
+    const isToday = i === todayIdx;
+    if (isToday) {
+      delete sess._evaluated; // Permitir reevaluar hoy si hay nuevos datos
+    }
+
     if (sess._evaluated) continue;
 
     const sessDate = new Date(mondayDate);
@@ -2468,8 +2475,16 @@ function syncPlanWithReality() {
     const dateKey = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
     const dayActs = AppState.activities.filter(a => a.date?.slice(0, 10) === dateKey);
 
-    const isToday = i === todayIdx;
-    if (isToday && dayActs.length === 0) continue; // Hoy aún no termina
+    let actDurForCheck = 0;
+    if (dayActs.length > 0) {
+      actDurForCheck = Math.round(dayActs.reduce((s, a) => s + (Number(a.duration) || 0), 0) / 60);
+    }
+    const minRequired = (sess.durationMin || 30) * 0.6;
+
+    // Si es hoy y aún no hay actividad suficiente, no lo damos por cerrado (salvo que ya se marcara a mano)
+    if (isToday && actDurForCheck < minRequired && !sess.completed && !sess._missed && !sess._fromRestOverride) {
+      continue;
+    }
 
     const planTSS = sess.isRest ? 0 : (sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400)));
     let actTSS = 0, actDur = 0, maxIF = 0, actTypeStr = '';
@@ -2511,7 +2526,7 @@ function syncPlanWithReality() {
       else if (maxIF === 0)   actType = sess.isRest ? 'endurance' : (sess.type || 'endurance'); // sin potencia: usar tipo planificado
 
       accumTSSDeviation += diffTSS;
-      if (!sess.completed) {
+      if (!sess.completed && !sess.manuallyUnmarked) {
         sess.completed = true;
         changed = true;
       }
