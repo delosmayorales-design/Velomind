@@ -1363,7 +1363,7 @@ function _patchSegmentDistances(plan) {
   });
 }
 
-// Limpia descripciones con vocabulario de running/trail generadas por IA antigua
+// Limpia descripciones con vocabulario de running/trail y repara duraciones mínimas
 function _sanitizeCyclingContent(plan) {
   if (!plan?.sessions) return;
   const RUN_RE = /zancada|tierra compacta|hierba|sendero suave|carrera a pie|kilómetro de carrera|impacto por zancada|rodillas.*carg|carg.*rodillas|superficies blandas|terreno blando reduce/i;
@@ -1378,14 +1378,24 @@ function _sanitizeCyclingContent(plan) {
     sprint:    '⚡ Subida corta o llano recto para los sprints máximos.',
     strength:  '⛰️ Subida larga con cadencia baja para trabajo de fuerza.',
   };
+  const MIN_DUR = { long: 90, endurance: 45, threshold: 40, vo2max: 35, tempo: 40, sweet_spot: 40, sprint: 30, recovery: 20 };
   plan.sessions.forEach(s => {
     if (!s) return;
+    // Reparar duración mínima y recalcular TSS para planes guardados con valores incorrectos
+    if (!s.isRest && typeof s.durationMin === 'number' && s.durationMin > 0) {
+      const minD = MIN_DUR[s.type] || 20;
+      if (s.durationMin < minD) {
+        s.durationMin = minD;
+        if (s.ifTarget) s.tss = Math.round((minD / 60) * Math.pow(s.ifTarget, 2) * 100);
+      }
+    }
+    // Limpiar terrain con lenguaje de running
     if (typeof s.terrain === 'string' && RUN_RE.test(s.terrain)) {
       s.terrain = CLEAN_TERRAIN[s.type] || '🛣️ Terreno adecuado para ciclismo.';
     }
+    // Eliminar sólo las frases con running de description/advice/alt_description
     ['description', 'advice', 'alt_description'].forEach(field => {
       if (typeof s[field] !== 'string' || !RUN_RE.test(s[field])) return;
-      // Eliminar sólo las frases que contengan vocabulario de running
       const cleaned = s[field].split(/(?<=\.)\s+/).filter(sent => !RUN_RE.test(sent)).join(' ').trim();
       s[field] = cleaned || s[field].replace(/[^.]*(?:zancada|tierra compacta|hierba|sendero suave|carrera a pie|kilómetro de carrera)[^.]*/gi, '').trim();
     });
