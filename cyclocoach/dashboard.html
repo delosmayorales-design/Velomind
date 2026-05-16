@@ -1515,7 +1515,7 @@ function renderWeek(plan) {
   monday.setHours(0,0,0,0);
   const sunday = new Date(monday); sunday.setDate(monday.getDate()+6); sunday.setHours(23,59,59,999);
 
-  const CYCLING_TYPES = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide'];
+  const CYCLING_TYPES = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide','cycling','Cycling'];
   const activeDays = new Set();
   const weekActs = [];
   (AppState.activities||[]).forEach(a => {
@@ -1636,7 +1636,7 @@ function renderWeek(plan) {
 function renderLastAct() {
   const el = document.getElementById('last-act-content');
   if (!AppState.activities?.length) return;
-  const CYCLING = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide'];
+  const CYCLING = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide','cycling','Cycling'];
   const sorted = [...AppState.activities]
     .filter(a => CYCLING.includes(a.sport_type || a.type || ''))
     .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
@@ -1871,7 +1871,7 @@ function renderWeeklySummary() {
   lastSun.setDate(lastMon.getDate() + 6);
   lastSun.setHours(23, 59, 59, 999);
 
-  const CYCLING_TYPES = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide'];
+  const CYCLING_TYPES = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide','cycling','Cycling'];
   const weekActs = acts.filter(a => {
     const d = new Date((a.date || '').slice(0, 10) + 'T00:00:00');
     return !isNaN(d) && d >= lastMon && d <= lastSun && CYCLING_TYPES.includes(a.sport_type || a.type || '');
