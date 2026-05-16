@@ -89,7 +89,9 @@ router.post('/', async (req, res) => {
 });
 
 // Actualizar campos calculados (np, tss, if_value) de una actividad existente
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', updateNP);
+router.post('/:id/update-np', updateNP);
+async function updateNP(req, res) {
   try {
     const uid = req.user.id;
     const { id } = req.params;
@@ -121,7 +123,7 @@ router.patch('/:id', async (req, res) => {
 
     res.json({ np: npNum, if_value: ifValue, tss });
   } catch (e) { res.status(500).json({ error: e.message }); }
-});
+}
 
 // Batch save
 router.post('/batch', async (req, res) => {

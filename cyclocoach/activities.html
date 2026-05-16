@@ -1036,8 +1036,8 @@ async function fetchAndRenderStreams(sid, ftp, act) {
       badge.textContent = `· ${Math.round(totalSec / 60)} min · Actualizando NP…`;
       let patchOk = false;
       try {
-        const patchRes = await fetch(`${window.API_URL}/activities/${act.id}`, {
-          method: 'PATCH',
+        const patchRes = await fetch(`${window.API_URL}/activities/${act.id}/update-np`, {
+          method: 'POST',
           headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
           body: JSON.stringify({ np: npCalculated })
         });
