@@ -384,6 +384,109 @@
     }
     .ftp-banner-msg { font-size: 13px; color: var(--text-muted); line-height: 1.45; }
 
+    /* scrollbar oculto en webkit (Chrome/Safari/iOS) */
+    .hourly-scroll::-webkit-scrollbar { display: none; }
+
+    /* ─────────────────────────────────────────────────────────
+       FTP BREAKTHROUGH OVERLAY
+    ───────────────────────────────────────────────────────── */
+    #ftp-breakthrough {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0,0,0,.88);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    #ftp-breakthrough.show { display: flex; }
+    .ftp-bt-card {
+      background: var(--bg-card);
+      border-radius: 24px;
+      padding: 36px 28px 28px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      border: 2px solid rgba(16,185,129,.45);
+      box-shadow: 0 0 80px rgba(16,185,129,.2);
+      animation: btPop .4s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes btPop {
+      from { transform: scale(.65); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    .ftp-bt-emoji {
+      font-size: 60px;
+      display: block;
+      margin-bottom: 14px;
+      animation: btBounce 1.2s ease infinite;
+    }
+    @keyframes btBounce {
+      0%,100% { transform: translateY(0);   }
+      50%      { transform: translateY(-8px);}
+    }
+    .ftp-bt-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: #10B981;
+      margin-bottom: 8px;
+    }
+    .ftp-bt-sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      margin-bottom: 24px;
+    }
+    .ftp-bt-nums {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .ftp-bt-num { text-align: center; }
+    .ftp-bt-num-val {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .ftp-bt-num-lbl {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .ftp-bt-arrow { font-size: 22px; color: #10B981; }
+    .ftp-bt-badge {
+      display: inline-block;
+      background: rgba(16,185,129,.12);
+      color: #10B981;
+      font-size: 17px;
+      font-weight: 800;
+      border-radius: 100px;
+      padding: 6px 18px;
+      margin-bottom: 24px;
+    }
+    .ftp-bt-dismiss {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: #10B981;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .ftp-bt-dismiss:active { opacity: .82; }
+
     /* ─────────────────────────────────────────────────────────
        SEMANA
     ───────────────────────────────────────────────────────── */
@@ -1151,7 +1254,7 @@ function buildHourlyRow(hourly) {
   return `
     <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px">Próximas horas</div>
-      <div style="display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+      <div class="hourly-scroll" style="display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
         ${items}
       </div>
     </div>`;
@@ -1480,6 +1583,7 @@ function renderMacrocycle() {
     if (m) renderFTP(m);
     renderMacrocycle();
     renderWeeklySummary();
+    detectFTPBreakthrough();
   });
 
   BackendSync.loadProfile().then(profile => {
@@ -1618,6 +1722,104 @@ function renderWeeklySummary() {
 
   card.style.display = '';
 }
+
+/* ── FTP BREAKTHROUGH DETECTION ────────────────────────────── */
+async function detectFTPBreakthrough() {
+  try {
+    const athlete = AppState.athlete;
+    if (!athlete?.ftp) return;
+    const currentFTP = athlete.ftp;
+    const MIN_GAIN_PCT = 2.5;
+
+    const cutoff = Date.now() - 30 * 86400000;
+    const recent = (AppState.activities || [])
+      .filter(a => { const d = a.date ? new Date(a.date).getTime() : 0; return d >= cutoff; })
+      .sort((a, b) => String(b.date||'').localeCompare(String(a.date||'')));
+
+    let bestEstFTP = 0, bestAct = null;
+
+    for (const act of recent) {
+      let est = 0;
+      const be = act.best_efforts;
+      if (be) {
+        const p20 = Number(be['1200'] || be[1200] || 0);
+        if (p20 > 0) est = Math.max(est, Math.round(p20 * 0.95));
+      }
+      const durSec = Number(act.duration || 0);
+      const np = Number(act.np || act.avg_power || 0);
+      if (durSec >= 1080 && durSec <= 2400 && np > 0 && (np / currentFTP) >= 0.95) {
+        est = Math.max(est, Math.round(np * 0.95));
+      }
+      if (est > bestEstFTP) { bestEstFTP = est; bestAct = act; }
+    }
+
+    if (!bestAct || bestEstFTP <= currentFTP * (1 + MIN_GAIN_PCT / 100)) return;
+
+    const key = `ftp_bt_${bestAct.id || bestAct.date}_${bestEstFTP}`;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, '1');
+
+    const pct = ((bestEstFTP - currentFTP) / currentFTP * 100).toFixed(1);
+    document.getElementById('ftp-bt-old').textContent = currentFTP + ' W';
+    document.getElementById('ftp-bt-new').textContent = bestEstFTP + ' W';
+    document.getElementById('ftp-bt-badge').textContent = `+${pct}%`;
+    const actName = bestAct.name ? `"${bestAct.name}"` : 'una actividad reciente';
+    document.getElementById('ftp-bt-sub').textContent =
+      `En ${actName} has conseguido un esfuerzo de ${bestEstFTP} W de FTP estimado. ¡Tus zonas se actualizan automáticamente!`;
+    document.getElementById('ftp-breakthrough').classList.add('show');
+
+    await saveFTPBreakthrough(bestEstFTP);
+  } catch(e) {
+    console.warn('[FTPDetect]', e);
+  }
+}
+
+async function saveFTPBreakthrough(newFTP) {
+  try {
+    await fetch(window.API_URL + '/auth/profile', {
+      method: 'PUT',
+      headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ftp: newFTP })
+    });
+    if (AppState.athlete) {
+      AppState.athlete.ftp = newFTP;
+      if (typeof AppState.saveAthlete === 'function') AppState.saveAthlete(AppState.athlete);
+      else {
+        try { localStorage.setItem('velomind_athlete', JSON.stringify(AppState.athlete)); } catch {}
+      }
+    }
+    const ft = document.getElementById('athlete-ftp');
+    if (ft) ft.textContent = `FTP: ${newFTP} W`;
+  } catch(e) {
+    console.warn('[FTPDetect] save error', e);
+  }
+}
+
+function closeFTPBreakthrough() {
+  document.getElementById('ftp-breakthrough').classList.remove('show');
+}
 </script>
+
+<!-- FTP BREAKTHROUGH OVERLAY -->
+<div id="ftp-breakthrough">
+  <div class="ftp-bt-card">
+    <span class="ftp-bt-emoji">🚀</span>
+    <div class="ftp-bt-title">¡Nuevo FTP detectado!</div>
+    <div class="ftp-bt-sub" id="ftp-bt-sub">Has superado tu umbral en una salida reciente.</div>
+    <div class="ftp-bt-nums">
+      <div class="ftp-bt-num">
+        <div class="ftp-bt-num-val" id="ftp-bt-old" style="color:var(--text-muted)">-- W</div>
+        <div class="ftp-bt-num-lbl">FTP anterior</div>
+      </div>
+      <div class="ftp-bt-arrow">→</div>
+      <div class="ftp-bt-num">
+        <div class="ftp-bt-num-val" id="ftp-bt-new" style="color:#10B981">-- W</div>
+        <div class="ftp-bt-num-lbl">Nuevo FTP</div>
+      </div>
+    </div>
+    <div class="ftp-bt-badge" id="ftp-bt-badge">+0%</div>
+    <button class="ftp-bt-dismiss" onclick="closeFTPBreakthrough()">¡Perfecto! Actualizar mis zonas →</button>
+  </div>
+</div>
 </body>
 </html>
