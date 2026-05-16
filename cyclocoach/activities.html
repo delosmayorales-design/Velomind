@@ -958,7 +958,7 @@ function showActivityDetail(actId) {
 
   // Render charts after DOM is ready
   requestAnimationFrame(() => renderDetailCharts(act, ftp));
-  if (sid) fetchAndRenderStreams(sid, ftp);
+  if (sid) fetchAndRenderStreams(sid, ftp, act);
 }
 
 /* ── STREAMS ────────────────────────────────────────────────── */
@@ -1004,7 +1004,7 @@ function dsampleAll(arrays, n) {
   return arrays.map(a => a ? indices.map(i => a[i]) : []);
 }
 
-async function fetchAndRenderStreams(sid, ftp) {
+async function fetchAndRenderStreams(sid, ftp, act) {
   const skeleton = document.getElementById('streams-skeleton');
   const body     = document.getElementById('streams-body');
   const badge    = document.getElementById('streams-badge');
@@ -1028,7 +1028,29 @@ async function fetchAndRenderStreams(sid, ftp) {
     badge.textContent = `· ${Math.round(totalSec / 60)} min de datos`;
     badge.style.color = '#10B981';
 
-    renderStreamCharts(s, ftp);
+    const npCalculated = renderStreamCharts(s, ftp);
+
+    // Auto-actualizar NP en DB si difiere del guardado (estilo Garmin)
+    if (npCalculated && act?.id && Math.abs(npCalculated - (act.np || 0)) > 1) {
+      try {
+        const r = await fetch(`${window.API_URL}/activities/${act.id}`, {
+          method: 'PATCH',
+          headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ np: npCalculated })
+        });
+        if (r.ok) {
+          const updated = await r.json();
+          // Actualizar localmente en memoria
+          act.np = updated.np;
+          act.if_value = updated.if_value;
+          act.tss = updated.tss;
+          const local = allActivities.find(a => String(a.id) === String(act.id));
+          if (local) { local.np = updated.np; local.if_value = updated.if_value; local.tss = updated.tss; }
+          // Actualizar el badge de NP en el panel
+          badge.textContent = `· ${Math.round(totalSec / 60)} min · NP corregido ${updated.np}W`;
+        }
+      } catch {}
+    }
 
   } catch (e) {
     skeleton.style.display = 'none';
@@ -1040,6 +1062,7 @@ async function fetchAndRenderStreams(sid, ftp) {
 }
 
 function renderStreamCharts(s, ftp) {
+  let calculatedNP = null;
   const MAX_PTS = 900;
   const tickC = '#64748b', gridC = 'rgba(255,255,255,0.04)';
 
@@ -1088,6 +1111,7 @@ function renderStreamCharts(s, ftp) {
     const npW = maNZ.length
       ? Math.round(Math.sqrt(Math.sqrt(maNZ.reduce((a,b)=>a+Math.pow(b,4),0)/maNZ.length)))
       : 0;
+    calculatedNP = npW;
     document.getElementById('stats-watts').innerHTML =
       `<span style="color:var(--text-muted)">Media</span> ${avgW}W &nbsp;
        <span style="color:#9ED62B">NP</span> ${npW}W &nbsp;
@@ -1229,6 +1253,7 @@ function renderStreamCharts(s, ftp) {
       });
     });
   });
+  return calculatedNP;
 }
 
 function toggleChart(id, show, cb) {

@@ -88,6 +88,41 @@ router.post('/', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Actualizar campos calculados (np, tss, if_value) de una actividad existente
+router.patch('/:id', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const { id } = req.params;
+    const { np } = req.body;
+    if (!np || isNaN(np)) return res.status(400).json({ error: 'np requerido' });
+
+    const { data: user } = await supabase.from('users').select('ftp').eq('id', uid).single();
+    const ftp = Math.max(1, user?.ftp || 200);
+
+    const { data: act } = await supabase.from('activities')
+      .select('duration, avg_power')
+      .eq('id', id).eq('user_id', uid).single();
+    if (!act) return res.status(404).json({ error: 'No encontrada' });
+
+    const npNum    = Math.round(Number(np));
+    const ifValue  = Math.round((npNum / ftp) * 100) / 100;
+    const tss      = act.duration
+      ? Math.round((act.duration * npNum * ifValue) / (ftp * 3600) * 100)
+      : 0;
+
+    const { error } = await supabase.from('activities')
+      .update({ np: npNum, if_value: ifValue, tss })
+      .eq('id', id).eq('user_id', uid);
+    if (error) throw error;
+
+    setImmediate(async () => {
+      try { await recalculatePMC(uid); } catch {}
+    });
+
+    res.json({ np: npNum, if_value: ifValue, tss });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Batch save
 router.post('/batch', async (req, res) => {
   try {
