@@ -1509,9 +1509,12 @@ function renderPlan(plan, athlete) {
   const ftp = athlete.ftp || 200;
 
   // Normalizar emoji de cada sesión — sobrescribe lo que venga del plan guardado
-  (plan.sessions || []).forEach(s => {
+  const _renderTodayIdx = (new Date().getDay() + 6) % 7;
+  (plan.sessions || []).forEach((s, i) => {
     if (s.isRest) { s.emoji = '😴'; return; }
     s.emoji = (window.WORKOUT_TYPES && window.WORKOUT_TYPES[s.type]?.emoji) || '🚴';
+    // Limpiar completed en días futuros (puede quedarse como dato corrupto de la IA)
+    if (i > _renderTodayIdx) delete s.completed;
   });
 
   // Reconstruir intervalos con FTP actual para que vatios mostrados sean siempre consistentes
@@ -1596,7 +1599,8 @@ function renderPlan(plan, athlete) {
     const isFutureOrToday = i >= todayIdx;
 
     // ── Zona de modificación (Aplica a HOY y FUTURO siempre, ignorando si está completado) ──
-    const overrideZone = isFutureOrToday && !sess.completed ? `
+    // Para días FUTUROS (mañana en adelante) siempre mostrar, aunque completed=true (bug de datos heredados)
+    const overrideZone = isFutureOrToday && (i > todayIdx || !sess.completed) ? `
       <div class="adapt-zone" style="background:rgba(158,214,43,.02);border-top:1px solid rgba(158,214,43,.08)" onclick="event.stopPropagation()">
         ${sess._overriddenToRest ? `
         <div class="adapt-trigger" style="color:#38BDF8;cursor:pointer" onclick="event.stopPropagation();undoOverrideRest(${i})">
