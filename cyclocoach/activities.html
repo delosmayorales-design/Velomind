@@ -300,6 +300,7 @@ let trainingPlan   = null;
 
 // ── Selección de intervalo en streams ──
 let _selA = null, _selB = null;
+let _dragEndpoint = null; // 'left' | 'right' — extremo que se está arrastrando
 let _sOrig = null, _sOrigN = 900, _sFTP = 200;
 
 const _streamSelPlugin = {
@@ -317,11 +318,25 @@ const _streamSelPlugin = {
     if (_selB !== null) {
       const x2 = scales.x.getPixelForValue(_selB);
       const lx = Math.min(x1, x2), rx = Math.max(x1, x2);
+      // Área sombreada
       ctx.fillStyle = 'rgba(158,214,43,0.12)';
       ctx.fillRect(lx, chartArea.top, rx - lx, chartArea.bottom - chartArea.top);
+      // Líneas de borde
       ctx.strokeStyle = '#9ED62B'; ctx.lineWidth = 1.5; ctx.setLineDash([]);
       ctx.beginPath(); ctx.moveTo(lx, chartArea.top); ctx.lineTo(lx, chartArea.bottom); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(rx, chartArea.top); ctx.lineTo(rx, chartArea.bottom); ctx.stroke();
+      // Handles arrastrables (círculos en los extremos)
+      const HR = 8, hy = chartArea.top + HR + 3;
+      [lx, rx].forEach(hx => {
+        ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI * 2);
+        ctx.fillStyle = '#9ED62B'; ctx.fill();
+        ctx.strokeStyle = 'rgba(10,14,26,0.9)'; ctx.lineWidth = 1.5; ctx.stroke();
+        // Líneas internas para indicar arrastre
+        ctx.strokeStyle = 'rgba(10,14,26,0.7)'; ctx.lineWidth = 1.2;
+        [-2.5, 0, 2.5].forEach(dx => {
+          ctx.beginPath(); ctx.moveTo(hx + dx, hy - 3.5); ctx.lineTo(hx + dx, hy + 3.5); ctx.stroke();
+        });
+      });
     } else {
       ctx.strokeStyle = 'rgba(158,214,43,0.7)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
       ctx.beginPath(); ctx.moveTo(x1, chartArea.top); ctx.lineTo(x1, chartArea.bottom); ctx.stroke();
@@ -332,7 +347,7 @@ const _streamSelPlugin = {
 Chart.register(_streamSelPlugin);
 
 function clearStreamSelection() {
-  _selA = null; _selB = null;
+  _selA = null; _selB = null; _dragEndpoint = null;
   const panel = document.getElementById('interval-stats-panel');
   if (panel) panel.style.display = 'none';
   ['streamWatts','streamHR','streamSpeed','streamElev'].forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
@@ -1397,7 +1412,7 @@ function renderStreamCharts(s, ftp) {
       streamKeys.forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
     });
 
-    // Touch: arrastrar con el dedo para seleccionar un tramo
+    // Touch: selección de tramo + arrastre de extremos
     function _touchIdx(touch) {
       const rect = chart.canvas.getBoundingClientRect();
       const items = chart.getElementsAtEventForMode(
@@ -1406,28 +1421,62 @@ function renderStreamCharts(s, ftp) {
       );
       return items.length ? items[0].index : null;
     }
+    // Devuelve 'left'|'right' si el toque está cerca de un extremo (en px CSS)
+    function _nearEndpoint(touch) {
+      if (_selA === null || _selB === null) return null;
+      const rect = chart.canvas.getBoundingClientRect();
+      const dpr  = chart.canvas.width / rect.width;
+      const tx   = (touch.clientX - rect.left) * dpr;
+      const xA   = chart.scales.x.getPixelForValue(_selA);
+      const xB   = chart.scales.x.getPixelForValue(_selB);
+      const THRESH = 32 * dpr; // 32 px CSS zona de toque
+      const dA = Math.abs(tx - xA), dB = Math.abs(tx - xB);
+      if (dA < THRESH && dA <= dB) return 'left';
+      if (dB < THRESH && dB <  dA) return 'right';
+      return null;
+    }
     let _touchDragging = false;
     chart.canvas.addEventListener('touchstart', evt => {
-      const idx = _touchIdx(evt.touches[0]);
+      const touch = evt.touches[0];
+      // Si ya hay tramo, comprobar si toca un extremo
+      if (_selA !== null && _selB !== null) {
+        const ep = _nearEndpoint(touch);
+        if (ep !== null) {
+          _dragEndpoint = ep;
+          evt.preventDefault();
+          return;
+        }
+      }
+      // Nueva selección
+      const idx = _touchIdx(touch);
       if (idx === null) return;
       _touchDragging = true;
+      _dragEndpoint  = null;
       _selA = idx; _selB = null;
       const panel = document.getElementById('interval-stats-panel');
       if (panel) panel.style.display = 'none';
       streamKeys.forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
-    }, { passive: true });
+    }, { passive: false });
     chart.canvas.addEventListener('touchmove', evt => {
-      if (!_touchDragging) return;
       evt.preventDefault();
       const idx = _touchIdx(evt.touches[0]);
       if (idx === null) return;
-      _selB = idx;
-      if (_selB < _selA) { const t = _selA; _selA = _selB; _selB = t; }
+      if (_dragEndpoint === 'left') {
+        // Mover extremo izquierdo, no puede sobrepasar el derecho
+        _selA = Math.min(idx, _selB - 1);
+      } else if (_dragEndpoint === 'right') {
+        // Mover extremo derecho, no puede sobrepasar el izquierdo
+        _selB = Math.max(idx, _selA + 1);
+      } else if (_touchDragging) {
+        // Selección nueva arrastrando
+        _selB = idx;
+        if (_selB < _selA) { const t = _selA; _selA = _selB; _selB = t; }
+      } else return;
       streamKeys.forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
     }, { passive: false });
     chart.canvas.addEventListener('touchend', () => {
-      if (!_touchDragging) return;
       _touchDragging = false;
+      _dragEndpoint  = null;
       if (_selA !== null && _selB !== null && _selA !== _selB) _showIntervalStats();
     });
   });
