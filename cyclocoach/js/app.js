@@ -296,7 +296,8 @@ const TrainingPlanGenerator = {
 
     // TSB/CTL actuales — usar pmcData del AppState (fuente backend) si está disponible
     // Si no, calcular localmente como fallback offline
-    const cyclingActs = (activities || []).filter(a => !a.type || a.type === 'cycling');
+    const _CYCLING = ['cycling','Cycling','Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide'];
+    const cyclingActs = (activities || []).filter(a => !a.type || _CYCLING.includes(a.type));
     const pmcArr = (AppState.pmcData && AppState.pmcData.length >= 7)
       ? AppState.pmcData
       : PMC.compute(cyclingActs, 120);
