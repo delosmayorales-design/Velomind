@@ -1076,10 +1076,17 @@ function renderStreamCharts(s, ftp) {
     const [tDs, rawDs, maDs] = dsampleAll([s.time, s.watts, ma30], MAX_PTS);
 
     const maxW = Math.max(...s.watts), avgW = Math.round(s.watts.reduce((a,b)=>a+b,0)/s.watts.length);
-    // NP estilo Garmin: media móvil 30s, excluyendo ceros (paradas/semáforos)
-    const ma30nonzero = ma30.filter(v => v > 0);
-    const npW = ma30nonzero.length
-      ? Math.round(Math.sqrt(Math.sqrt(ma30nonzero.reduce((a,b)=>a+Math.pow(b,4),0)/ma30nonzero.length)))
+    // NP estilo Garmin: primero quitar ceros, luego media móvil 30s, luego 4ª potencia
+    const wattsNZ = s.watts.filter(v => v > 0);
+    const maNZ = [];
+    let nzSum = 0;
+    for (let i = 0; i < wattsNZ.length; i++) {
+      nzSum += wattsNZ[i];
+      if (i >= 30) nzSum -= wattsNZ[i - 30];
+      maNZ.push(nzSum / Math.min(i + 1, 30));
+    }
+    const npW = maNZ.length
+      ? Math.round(Math.sqrt(Math.sqrt(maNZ.reduce((a,b)=>a+Math.pow(b,4),0)/maNZ.length)))
       : 0;
     document.getElementById('stats-watts').innerHTML =
       `<span style="color:var(--text-muted)">Media</span> ${avgW}W &nbsp;
