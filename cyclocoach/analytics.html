@@ -252,7 +252,7 @@
 
         <div id="ws-tss-bar-wrap" style="padding:0 16px 14px;display:none">
           <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-            <span style="font-size:10px;color:var(--text-muted);font-weight:600">Progreso TSS vs objetivo semanal</span>
+            <span id="ws-tss-label" style="font-size:10px;color:var(--text-muted);font-weight:600">TSS esta semana vs objetivo</span>
             <span id="ws-tss-pct" style="font-size:10px;color:var(--text-muted)"></span>
           </div>
           <div style="height:5px;background:var(--bg);border-radius:4px;overflow:hidden">
@@ -740,18 +740,27 @@ function renderWeekStrip(allActs) {
     deltaEl.className    = 'wc-delta ' + (tssDelta >= 0 ? 'up' : 'dn');
   }
 
-  // ── Barra de progreso TSS (objetivo = media últimas 4 semanas) ──
+  // ── Barra de progreso TSS ──
+  // Objetivo: plan semanal si existe, sino media de las últimas 4 semanas
+  var planTarget = 0;
+  try {
+    var saved = localStorage.getItem('cyclocoach_training_plan');
+    if (saved) { var p = JSON.parse(saved); planTarget = p.tss_target || 0; }
+  } catch(_) {}
   var last4w = []; var d4 = new Date(monday); d4.setDate(d4.getDate()-28);
   allActs.forEach(function(a){ var d = new Date(a.date + 'T00:00:00'); if(d >= d4 && d < monday) last4w.push(parseFloat(a.tss)||0); });
-  if (last4w.length) {
-    var wkTarget = Math.round(last4w.reduce(function(s,v){ return s+v; },0) / 4);
+  var avg4wTarget = last4w.length ? Math.round(last4w.reduce(function(s,v){ return s+v; },0) / 4) : 0;
+  var wkTarget = planTarget || avg4wTarget;
+  if (wkTarget) {
     var pct = Math.min(120, Math.round(tss / wkTarget * 100));
     var barEl  = document.getElementById('ws-tss-bar');
     var pctEl  = document.getElementById('ws-tss-pct');
     var wrapEl = document.getElementById('ws-tss-bar-wrap');
+    var labelEl = document.getElementById('ws-tss-label');
     if (barEl)  barEl.style.width      = Math.min(pct,100) + '%';
     if (barEl)  barEl.style.background = pct < 60 ? '#f59e0b' : pct <= 100 ? '#9ed62b' : '#ef4444';
-    if (pctEl)  pctEl.textContent      = Math.round(tss) + ' / ' + wkTarget + ' TSS (' + pct + '%)';
+    if (pctEl)  pctEl.textContent      = Math.round(tss) + ' / ' + wkTarget + ' TSS · ' + pct + '%';
+    if (labelEl) labelEl.textContent   = planTarget ? 'TSS esta semana vs objetivo del plan' : 'TSS esta semana vs media últimas 4 semanas';
     if (wrapEl) wrapEl.style.display   = '';
   }
 }
