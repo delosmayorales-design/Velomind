@@ -46,6 +46,24 @@
       .chart-wrap { padding:10px 12px; }
       .chart-toggle { font-size:9px;padding:3px 8px; }
     }
+
+    /* ── STREAMS ─────────────────────────────────────────── */
+    .stream-card { background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px; }
+    .stream-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:10px; }
+    .stream-label { font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted); }
+    .stream-stats { font-size:10px;color:var(--text-secondary);font-weight:600;text-align:right; }
+    .stream-canvas-wrap { position:relative; }
+
+    /* skeleton shimmer */
+    @keyframes skelShimmer {
+      0%   { background-position:200% 0; }
+      100% { background-position:-200% 0; }
+    }
+    .skel { border-radius:8px;background:linear-gradient(90deg,var(--bg-input) 25%,var(--border) 50%,var(--bg-input) 75%);background-size:200% 100%;animation:skelShimmer 1.4s ease infinite; }
+
+    /* section eyebrow */
+    .section-eyebrow { font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px; }
+    .section-eyebrow-badge { font-size:8px;font-weight:600;text-transform:none;letter-spacing:0; }
     .activities-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .activities-table { min-width: 980px; }
     .activities-table th,
@@ -839,14 +857,85 @@ function showActivityDetail(actId) {
       </div>
     </div>
 
-    <!-- GRÁFICOS apilados -->
-    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px"><i class="fas fa-chart-bar"></i> Análisis Visual</div>
+    ${sid ? `
+    <!-- ── TELEMETRÍA STRAVA ── -->
+    <div id="streams-section" style="margin-bottom:16px">
+      <div class="section-eyebrow">
+        <i class="fas fa-chart-line" style="color:#FC4C02"></i> Telemetría
+        <span id="streams-badge" class="section-eyebrow-badge" style="color:var(--text-muted)">· cargando datos...</span>
+      </div>
+
+      <!-- Skeleton -->
+      <div id="streams-skeleton">
+        <div class="skel" style="height:140px;margin-bottom:8px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="skel" style="height:80px"></div>
+          <div class="skel" style="height:80px"></div>
+        </div>
+      </div>
+
+      <!-- Charts (hidden until loaded) -->
+      <div id="streams-body" style="display:none">
+
+        <!-- Power -->
+        <div id="cwrap-stream-watts" class="stream-card">
+          <div class="stream-header">
+            <span class="stream-label"><i class="fas fa-bolt" style="color:#9ED62B;margin-right:4px"></i>Potencia · W</span>
+            <span class="stream-stats" id="stats-watts"></span>
+          </div>
+          <div class="stream-canvas-wrap" style="height:140px">
+            <canvas id="chart-stream-watts"></canvas>
+          </div>
+        </div>
+
+        <!-- HR -->
+        <div id="cwrap-stream-hr" class="stream-card" style="display:none">
+          <div class="stream-header">
+            <span class="stream-label"><i class="fas fa-heartbeat" style="color:#ef4444;margin-right:4px"></i>Frecuencia Cardíaca · bpm</span>
+            <span class="stream-stats" id="stats-hr"></span>
+          </div>
+          <div class="stream-canvas-wrap" style="height:90px">
+            <canvas id="chart-stream-hr"></canvas>
+          </div>
+        </div>
+
+        <!-- Speed + Elevation row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div id="cwrap-stream-speed" class="stream-card" style="display:none">
+            <div class="stream-header">
+              <span class="stream-label"><i class="fas fa-tachometer-alt" style="color:#38bdf8;margin-right:4px"></i>Velocidad</span>
+              <span class="stream-stats" id="stats-speed"></span>
+            </div>
+            <div class="stream-canvas-wrap" style="height:80px">
+              <canvas id="chart-stream-speed"></canvas>
+            </div>
+          </div>
+          <div id="cwrap-stream-elev" class="stream-card" style="display:none">
+            <div class="stream-header">
+              <span class="stream-label"><i class="fas fa-mountain" style="color:#94a3b8;margin-right:4px"></i>Altitud</span>
+              <span class="stream-stats" id="stats-elev"></span>
+            </div>
+            <div class="stream-canvas-wrap" style="height:80px">
+              <canvas id="chart-stream-elev"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Error -->
+      <div id="streams-error" style="display:none;font-size:11px;color:var(--text-muted);padding:10px;text-align:center"></div>
+    </div>
+    ` : ''}
+
+    <!-- ── ANÁLISIS ESTÁTICO ── -->
+    <div class="section-eyebrow" style="margin-top:4px">
+      <i class="fas fa-chart-bar"></i> Análisis de la salida
+    </div>
 
     <div class="chart-toggle-bar">
       <label class="chart-toggle active"><input type="checkbox" checked onchange="toggleChart('cwrap-zones',this.checked,this)"> Zonas</label>
       <label class="chart-toggle active"><input type="checkbox" checked onchange="toggleChart('cwrap-curve',this.checked,this)"> Curva potencia</label>
-      <label class="chart-toggle active"><input type="checkbox" checked onchange="toggleChart('cwrap-tss',this.checked,this)"> TSS histórico</label>
-      <label class="chart-toggle active"><input type="checkbox" checked onchange="toggleChart('cwrap-pmc',this.checked,this)"> PMC</label>
     </div>
 
     <div id="cwrap-zones" class="chart-wrap" style="margin-bottom:8px">
@@ -857,22 +946,12 @@ function showActivityDetail(actId) {
       <canvas id="chart-zones" height="90"></canvas>
     </div>
 
-    <div id="cwrap-curve" class="chart-wrap" style="margin-bottom:8px">
+    <div id="cwrap-curve" class="chart-wrap" style="margin-bottom:14px">
       <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">
         Curva de Potencia
         <span style="font-weight:400;text-transform:none">— mejores esfuerzos por duración</span>
       </div>
       <canvas id="chart-power-curve" height="90"></canvas>
-    </div>
-
-    <div id="cwrap-tss" class="chart-wrap" style="margin-bottom:8px">
-      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">TSS — Últimas 10 sesiones</div>
-      <canvas id="chart-tss-hist" height="80"></canvas>
-    </div>
-
-    <div id="cwrap-pmc" class="chart-wrap" style="margin-bottom:14px">
-      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">PMC — Fitness / Fatiga / Forma (30 días)</div>
-      <canvas id="chart-pmc-mini" height="80"></canvas>
     </div>
 
     <!-- ACCIONES -->
@@ -897,6 +976,266 @@ function showActivityDetail(actId) {
 
   // Render charts after DOM is ready
   requestAnimationFrame(() => renderDetailCharts(act, ftp));
+  if (sid) fetchAndRenderStreams(sid, ftp);
+}
+
+/* ── STREAMS ────────────────────────────────────────────────── */
+
+function fmtTime(s) {
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}`;
+  return `${m}:${String(ss).padStart(2,'0')}`;
+}
+
+function zoneColor(w, ftp) {
+  if (!w || !ftp) return '#475569';
+  const p = w / ftp;
+  if (p >= 1.06) return '#ef4444';
+  if (p >= 0.91) return '#f59e0b';
+  if (p >= 0.76) return '#9ED62B';
+  if (p >= 0.56) return '#38bdf8';
+  return '#475569';
+}
+
+function rollingAvg(values, times, windowSec) {
+  const out = new Array(values.length);
+  let start = 0, sum = 0;
+  for (let i = 0; i < values.length; i++) {
+    sum += (values[i] || 0);
+    while (times[i] - times[start] > windowSec) { sum -= (values[start] || 0); start++; }
+    out[i] = Math.round(sum / (i - start + 1));
+  }
+  return out;
+}
+
+function dsample(arr, n) {
+  if (!arr || arr.length <= n) return [...arr];
+  const step = arr.length / n;
+  return Array.from({ length: n }, (_, i) => arr[Math.round(i * step)]);
+}
+
+function dsampleAll(arrays, n) {
+  const len = arrays[0]?.length || 0;
+  if (len <= n) return arrays.map(a => a ? [...a] : []);
+  const step = len / n;
+  const indices = Array.from({ length: n }, (_, i) => Math.round(i * step));
+  return arrays.map(a => a ? indices.map(i => a[i]) : []);
+}
+
+async function fetchAndRenderStreams(sid, ftp) {
+  const skeleton = document.getElementById('streams-skeleton');
+  const body     = document.getElementById('streams-body');
+  const badge    = document.getElementById('streams-badge');
+  const errEl    = document.getElementById('streams-error');
+  if (!skeleton) return;
+
+  try {
+    const r = await fetch(`${window.API_URL}/providers/strava/streams/${sid}`, {
+      headers: Auth.getHeaders()
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.error || `Error ${r.status}`);
+    }
+    const s = await r.json();
+    if (!s.time?.length) throw new Error('Sin datos de telemetría en esta actividad');
+
+    skeleton.style.display = 'none';
+    body.style.display = '';
+    const totalSec = s.time[s.time.length - 1];
+    badge.textContent = `· ${Math.round(totalSec / 60)} min de datos`;
+    badge.style.color = '#10B981';
+
+    renderStreamCharts(s, ftp);
+
+  } catch (e) {
+    skeleton.style.display = 'none';
+    errEl.style.display = '';
+    errEl.textContent = `Sin telemetría disponible — ${e.message}`;
+    badge.textContent = '· Sin datos';
+    badge.style.color = 'var(--text-muted)';
+  }
+}
+
+function renderStreamCharts(s, ftp) {
+  const MAX_PTS = 900;
+  const tickC = '#64748b', gridC = 'rgba(255,255,255,0.04)';
+
+  const commonOpts = (yLabel, yCallback) => ({
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 400 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          title: items => fmtTime(s.time[items[0]?.dataIndex] ?? 0),
+          label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}${yLabel}`
+        },
+        backgroundColor: 'rgba(15,23,42,0.92)',
+        titleColor: '#94a3b8', bodyColor: '#e2e8f0',
+        padding: 10, cornerRadius: 8, displayColors: true
+      }
+    },
+    scales: {
+      x: { ticks: { color: tickC, font: { size: 7 }, maxTicksLimit: 8, callback: (_, i, arr) => {
+        const idx = Math.round(i * (s.time.length - 1) / (arr.length - 1));
+        return fmtTime(s.time[idx] ?? 0);
+      }}, grid: { display: false } },
+      y: { ticks: { color: tickC, font: { size: 8 }, callback: yCallback }, grid: { color: gridC } }
+    },
+    plugins2: {} // placeholder for sync plugin below
+  });
+
+  // ── 1. POTENCIA ─────────────────────────────────────────────────
+  const wattsCanvas = document.getElementById('chart-stream-watts');
+  if (wattsCanvas && s.watts?.length) {
+    const ma30 = rollingAvg(s.watts, s.time, 30);
+    const [tDs, rawDs, maDs] = dsampleAll([s.time, s.watts, ma30], MAX_PTS);
+
+    const maxW = Math.max(...s.watts), avgW = Math.round(s.watts.reduce((a,b)=>a+b,0)/s.watts.length);
+    const npW = Math.round(Math.sqrt(Math.sqrt(s.watts.reduce((a,b)=>a+Math.pow(b,4),0)/s.watts.length)));
+    document.getElementById('stats-watts').innerHTML =
+      `<span style="color:var(--text-muted)">Media</span> ${avgW}W &nbsp;
+       <span style="color:#9ED62B">NP</span> ${npW}W &nbsp;
+       <span style="color:#ef4444">Máx</span> ${maxW}W`;
+
+    chartInsts.streamWatts = new Chart(wattsCanvas, {
+      type: 'line',
+      data: {
+        labels: tDs,
+        datasets: [
+          {
+            label: 'Raw', data: rawDs,
+            borderColor: 'rgba(148,163,184,0.25)', borderWidth: 1,
+            pointRadius: 0, tension: 0, fill: false, order: 2
+          },
+          {
+            label: 'Media 30s', data: maDs,
+            borderWidth: 2.5, pointRadius: 0, tension: 0.15,
+            fill: { target: 'origin', above: 'rgba(158,214,43,0.06)' },
+            order: 1,
+            segment: { borderColor: ctx => zoneColor(ctx.p1.parsed.y, ftp) }
+          },
+          {
+            label: 'FTP', data: tDs.map(() => ftp),
+            borderColor: 'rgba(245,158,11,0.55)', borderWidth: 1.5,
+            borderDash: [5,4], pointRadius: 0, tension: 0, fill: false, order: 3
+          }
+        ]
+      },
+      options: commonOpts(' W', v => v + 'W')
+    });
+  }
+
+  // ── 2. FRECUENCIA CARDÍACA ───────────────────────────────────────
+  const hrCanvas = document.getElementById('chart-stream-hr');
+  if (hrCanvas && s.heartrate?.length) {
+    document.getElementById('cwrap-stream-hr').style.display = '';
+    const [, hrDs] = dsampleAll([s.time, s.heartrate], MAX_PTS);
+    const maxHR = Math.max(...s.heartrate), avgHR = Math.round(s.heartrate.reduce((a,b)=>a+b,0)/s.heartrate.length);
+    document.getElementById('stats-hr').innerHTML =
+      `<span style="color:var(--text-muted)">Media</span> ${avgHR} &nbsp;<span style="color:#ef4444">Máx</span> ${maxHR} bpm`;
+
+    chartInsts.streamHR = new Chart(hrCanvas, {
+      type: 'line',
+      data: {
+        labels: hrDs.map((_, i) => i),
+        datasets: [{
+          label: 'FC', data: hrDs,
+          borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)',
+          borderWidth: 2, pointRadius: 0, tension: 0.2, fill: true
+        }]
+      },
+      options: commonOpts(' bpm', v => v)
+    });
+  }
+
+  // ── 3. VELOCIDAD ─────────────────────────────────────────────────
+  const speedCanvas = document.getElementById('chart-stream-speed');
+  if (speedCanvas && s.velocity_smooth?.length) {
+    document.getElementById('cwrap-stream-speed').style.display = '';
+    const kmh = s.velocity_smooth.map(v => Math.round(v * 3.6 * 10) / 10);
+    const [, spdDs] = dsampleAll([s.time, kmh], MAX_PTS);
+    const maxSpd = Math.max(...kmh), avgSpd = Math.round(kmh.reduce((a,b)=>a+b,0)/kmh.length * 10) / 10;
+    document.getElementById('stats-speed').innerHTML =
+      `<span style="color:var(--text-muted)">Med</span> ${avgSpd} &nbsp;<span style="color:#38bdf8">Máx</span> ${maxSpd} km/h`;
+
+    chartInsts.streamSpeed = new Chart(speedCanvas, {
+      type: 'line',
+      data: {
+        labels: spdDs.map((_, i) => i),
+        datasets: [{
+          label: 'Velocidad', data: spdDs,
+          borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.07)',
+          borderWidth: 2, pointRadius: 0, tension: 0.2, fill: true
+        }]
+      },
+      options: commonOpts(' km/h', v => v)
+    });
+  }
+
+  // ── 4. ALTITUD ───────────────────────────────────────────────────
+  const elevCanvas = document.getElementById('chart-stream-elev');
+  if (elevCanvas && s.altitude?.length) {
+    document.getElementById('cwrap-stream-elev').style.display = '';
+    const [, elevDs] = dsampleAll([s.time, s.altitude], MAX_PTS);
+    const minElev = Math.round(Math.min(...s.altitude)), maxElev = Math.round(Math.max(...s.altitude));
+    document.getElementById('stats-elev').innerHTML =
+      `<span style="color:var(--text-muted)">${minElev}m</span> → <span style="color:#94a3b8">${maxElev}m</span>`;
+
+    chartInsts.streamElev = new Chart(elevCanvas, {
+      type: 'line',
+      data: {
+        labels: elevDs.map((_, i) => i),
+        datasets: [{
+          label: 'Altitud', data: elevDs,
+          borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.12)',
+          borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: true
+        }]
+      },
+      options: {
+        ...commonOpts(' m', v => v + 'm'),
+        scales: {
+          x: { display: false },
+          y: { ticks: { color: tickC, font: { size: 8 }, callback: v => v + 'm' }, grid: { color: gridC } }
+        }
+      }
+    });
+  }
+
+  // ── Crosshair sync entre charts de streams ────────────────────────
+  const streamKeys = ['streamWatts','streamHR','streamSpeed','streamElev'];
+  streamKeys.forEach(key => {
+    const chart = chartInsts[key];
+    if (!chart) return;
+    chart.canvas.addEventListener('mousemove', evt => {
+      const rect = chart.canvas.getBoundingClientRect();
+      const items = chart.getElementsAtEventForMode(
+        { offsetX: evt.clientX - rect.left, offsetY: evt.clientY - rect.top },
+        'index', { intersect: false }, false
+      );
+      if (!items.length) return;
+      const idx = items[0].index;
+      streamKeys.forEach(k => {
+        const sibling = chartInsts[k];
+        if (!sibling || sibling === chart) return;
+        sibling.tooltip.setActiveElements(
+          sibling.data.datasets.map((_, di) => ({ datasetIndex: di, index: idx })),
+          { x: 0, y: 0 }
+        );
+        sibling.update('none');
+      });
+    });
+    chart.canvas.addEventListener('mouseleave', () => {
+      streamKeys.forEach(k => {
+        const sibling = chartInsts[k];
+        if (!sibling || sibling === chart) return;
+        sibling.tooltip.setActiveElements([], {});
+        sibling.update('none');
+      });
+    });
+  });
 }
 
 function toggleChart(id, show, cb) {
@@ -1037,58 +1376,6 @@ function renderDetailCharts(act, ftp) {
     }
   }
 
-  // ── 3. Historial TSS (últimas 10 actividades) ─────────────────────
-  const tssCanvas = document.getElementById('chart-tss-hist');
-  if (tssCanvas) {
-    const recent = [...allActivities].filter(a => a.tss > 0)
-      .sort((a,b) => String(a.date).localeCompare(String(b.date))).slice(-10);
-    const labels = recent.map(a => new Date(a.date+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'}));
-    const bgColors = recent.map(a => {
-      const c = a.tss > 100 ? '#ef4444' : a.tss > 60 ? '#f59e0b' : '#10b981';
-      return a.id === act.id ? c : c+'88';
-    });
-    chartInsts.tss = new Chart(tssCanvas, {
-      type: 'bar',
-      data: { labels, datasets: [{ data: recent.map(a=>a.tss||0), backgroundColor: bgColors, borderRadius:4, borderSkipped:false }] },
-      options: {
-        responsive:true, maintainAspectRatio:true,
-        plugins: { legend:{display:false}, tooltip:{callbacks:{label: ctx=>` TSS: ${ctx.parsed.y}`}} },
-        scales: {
-          x: { ticks:{color:tickColor,font:{size:8}}, grid:{display:false} },
-          y: { ticks:{color:tickColor,font:{size:8}}, grid:{color:gridColor} }
-        }
-      }
-    });
-  }
-
-  // ── 4. PMC mini sparkline (30 días) ──────────────────────────────
-  const pmcCanvas = document.getElementById('chart-pmc-mini');
-  if (pmcCanvas && AppState.pmcData?.length) {
-    const allDates = AppState.pmcData.map(d=>d.date).sort();
-    const idx = allDates.findIndex(d => d >= act.date);
-    const center = idx >= 0 ? idx : allDates.length - 1;
-    const slice = AppState.pmcData.slice(Math.max(0,center-20), Math.min(AppState.pmcData.length,center+10));
-    const labels = slice.map(d => new Date(d.date+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'}));
-    chartInsts.pmc = new Chart(pmcCanvas, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          { label:'CTL', data:slice.map(d=>d.ctl), borderColor:'#38BDF8', backgroundColor:'rgba(56,189,248,0.1)', tension:0.4, pointRadius:0, borderWidth:2, fill:true },
-          { label:'ATL', data:slice.map(d=>d.atl), borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.1)', tension:0.4, pointRadius:0, borderWidth:2, fill:true },
-          { label:'TSB', data:slice.map(d=>d.tsb), borderColor:'#9ED62B', backgroundColor:'transparent', tension:0.4, pointRadius:0, borderWidth:1.5, fill:false, borderDash:[4,3] }
-        ]
-      },
-      options: {
-        responsive:true, maintainAspectRatio:true,
-        plugins: { legend:{labels:{color:'#94a3b8',font:{size:9},boxWidth:10,padding:8}}, annotation:{} },
-        scales: {
-          x: { ticks:{color:tickColor,font:{size:8},maxTicksLimit:8}, grid:{display:false} },
-          y: { ticks:{color:tickColor,font:{size:8}}, grid:{color:gridColor} }
-        }
-      }
-    });
-  }
 }
 
 function closePanel() {

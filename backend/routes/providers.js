@@ -484,6 +484,80 @@ rowsToInsert.push({
   }
 });
 
+// ─── STREAMS ────────────────────────────────────────────
+
+router.get('/strava/streams/:activityId', requireAuth, async (req, res) => {
+  const uid = req.user.id;
+  const { activityId } = req.params;
+
+  if (!activityId || !/^\d+$/.test(activityId)) {
+    return res.status(400).json({ error: 'activityId inválido' });
+  }
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('strava_token, strava_refresh, strava_expires_at')
+    .eq('id', uid)
+    .single();
+
+  if (!user?.strava_token) {
+    return res.status(400).json({ error: 'Strava no conectado' });
+  }
+
+  let token = user.strava_token;
+  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
+  if (user.strava_refresh && isExpired) {
+    try {
+      const re = await fetch('https://www.strava.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: STRAVA_ID, client_secret: STRAVA_SECRET,
+          grant_type: 'refresh_token', refresh_token: user.strava_refresh
+        }),
+      });
+      const d = await re.json();
+      if (re.ok && d.access_token) {
+        token = d.access_token;
+        await supabase.from('users').update({
+          strava_token: d.access_token, strava_refresh: d.refresh_token,
+          strava_expires_at: d.expires_at
+        }).eq('id', uid);
+      }
+    } catch (e) {
+      console.warn('[Streams] Error refrescando token Strava:', e.message);
+    }
+  }
+
+  try {
+    const keys = 'time,watts,heartrate,velocity_smooth,altitude,cadence,grade_smooth';
+    const r = await fetch(
+      `https://www.strava.com/api/v3/activities/${activityId}/streams?keys=${keys}&key_by_type=true`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (r.status === 404) return res.status(404).json({ error: 'Actividad no encontrada en Strava' });
+    if (r.status === 429) return res.status(429).json({ error: 'Límite de Strava alcanzado. Inténtalo en unos minutos.' });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      return res.status(r.status).json({ error: err.message || 'Error al obtener streams de Strava' });
+    }
+
+    const raw = await r.json();
+
+    // Extraer solo el array data de cada stream
+    const streams = {};
+    for (const [key, stream] of Object.entries(raw)) {
+      if (stream?.data) streams[key] = stream.data;
+    }
+
+    res.json(streams);
+  } catch (e) {
+    console.error('[Streams] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── STATUS ─────────────────────────────────────────────
 
 // ─── GARMIN CONNECT (OAuth2 PKCE + Activity API) ─────────────
