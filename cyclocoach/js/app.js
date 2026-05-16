@@ -296,9 +296,10 @@ const TrainingPlanGenerator = {
 
     // TSB/CTL actuales — usar pmcData del AppState (fuente backend) si está disponible
     // Si no, calcular localmente como fallback offline
+    const cyclingActs = (activities || []).filter(a => !a.type || a.type === 'cycling');
     const pmcArr = (AppState.pmcData && AppState.pmcData.length >= 7)
       ? AppState.pmcData
-      : PMC.compute(activities, 120);
+      : PMC.compute(cyclingActs, 120);
     const current = pmcArr.length ? pmcArr[pmcArr.length - 1] : { ctl: 30, atl: 30, tsb: 0 };
     const { ctl, atl, tsb } = current;
 
@@ -306,10 +307,10 @@ const TrainingPlanGenerator = {
     const effectivePhase = this._detectPhase(athlete.event_date, pmcArr, tsb);
 
     // ── Adherencia real: compara TSS completado vs esperado en últimas 4 semanas ──
-    const adherence = this._calculateAdherence(activities, hours);
+    const adherence = this._calculateAdherence(cyclingActs, hours);
 
     // ── Ciclo 3:1 — detectar semana del microciclo desde historial TSS ──
-    const cycleInfo = this._detectCycleWeek(activities);
+    const cycleInfo = this._detectCycleWeek(cyclingActs);
 
     // ── TSS objetivo semanal ──
     const baseIF = { principiante: 0.60, intermedio: 0.68, avanzado: 0.74 }[exp] || 0.68;
@@ -375,7 +376,7 @@ const TrainingPlanGenerator = {
     }
 
     const advice = this._getAdvice(tsb, ctl, effectivePhase);
-    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week, athlete.segments, cycleInfo.weekInCycle);
+    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle);
 
     // Tasa de progresión: ΔCTLsemana ≈ (carga_diaria - CTL) × (1 - e^(-7/42)) ≈ × 0.154
     const rampRate = Math.round((targetTSS / 7 - ctl) * 0.154 * 10) / 10;
