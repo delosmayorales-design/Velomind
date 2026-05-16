@@ -303,6 +303,7 @@ const TrainingPlanGenerator = {
       : PMC.compute(cyclingActs, 120);
     const current = pmcArr.length ? pmcArr[pmcArr.length - 1] : { ctl: 30, atl: 30, tsb: 0 };
     const { ctl, atl, tsb } = current;
+    console.log('[Plan] inputs:', { hours, exp, ftp, ctl: Math.round(ctl), atl: Math.round(atl), tsb: Math.round(tsb), cyclingActsCount: cyclingActs.length, totalActsCount: (activities||[]).length, weekly_hours: athlete.weekly_hours });
 
     // ── Fase unificada (combina fecha de evento + ramp rate CTL) ──
     const effectivePhase = this._detectPhase(athlete.event_date, pmcArr, tsb);
