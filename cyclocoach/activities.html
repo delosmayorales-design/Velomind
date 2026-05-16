@@ -35,6 +35,10 @@
     .detail-metric-mini .value { font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;line-height:1; }
     .detail-section-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:18px 0 10px; }
     .chart-wrap { background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px 16px; }
+    .chart-toggle-bar { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px; }
+    .chart-toggle { display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--text-muted);background:var(--bg-input);border:1px solid var(--border);border-radius:20px;padding:4px 10px;cursor:pointer;user-select:none;transition:border-color .15s,color .15s; }
+    .chart-toggle:has(input:checked) { color:var(--primary);border-color:var(--primary); }
+    .chart-toggle input { display:none; }
     .activities-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .activities-table { min-width: 980px; }
     .activities-table th,
@@ -265,7 +269,7 @@
 <script src="js/backend-sync.js?v=103"></script>
 <script>
 var allActivities = [];
-let zoneChartInst = null;
+let chartInsts = {};
 let trainingPlan   = null;
 
 async function initActivities() {
@@ -831,17 +835,35 @@ function showActivityDetail(actId) {
     <!-- GRÁFICOS apilados -->
     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px"><i class="fas fa-chart-bar"></i> Análisis Visual</div>
 
-    <div class="chart-wrap" style="margin-bottom:8px">
-      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">Zonas de Potencia <span style="font-weight:400;text-transform:none">(estimado · basado en NP)</span></div>
+    <div class="chart-toggle-bar">
+      <label class="chart-toggle"><input type="checkbox" checked onchange="toggleChart('cwrap-zones',this.checked)"> Zonas</label>
+      <label class="chart-toggle"><input type="checkbox" checked onchange="toggleChart('cwrap-curve',this.checked)"> Curva potencia</label>
+      <label class="chart-toggle"><input type="checkbox" checked onchange="toggleChart('cwrap-tss',this.checked)"> TSS histórico</label>
+      <label class="chart-toggle"><input type="checkbox" checked onchange="toggleChart('cwrap-pmc',this.checked)"> PMC</label>
+    </div>
+
+    <div id="cwrap-zones" class="chart-wrap" style="margin-bottom:8px">
+      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">
+        Zonas de Potencia
+        <span id="zones-source-label" style="font-weight:400;text-transform:none"></span>
+      </div>
       <canvas id="chart-zones" height="90"></canvas>
     </div>
 
-    <div class="chart-wrap" style="margin-bottom:8px">
+    <div id="cwrap-curve" class="chart-wrap" style="margin-bottom:8px">
+      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">
+        Curva de Potencia
+        <span style="font-weight:400;text-transform:none">— mejores esfuerzos por duración</span>
+      </div>
+      <canvas id="chart-power-curve" height="90"></canvas>
+    </div>
+
+    <div id="cwrap-tss" class="chart-wrap" style="margin-bottom:8px">
       <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">TSS — Últimas 10 sesiones</div>
       <canvas id="chart-tss-hist" height="80"></canvas>
     </div>
 
-    <div class="chart-wrap" style="margin-bottom:14px">
+    <div id="cwrap-pmc" class="chart-wrap" style="margin-bottom:14px">
       <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">PMC — Fitness / Fatiga / Forma (30 días)</div>
       <canvas id="chart-pmc-mini" height="80"></canvas>
     </div>
@@ -870,116 +892,166 @@ function showActivityDetail(actId) {
   requestAnimationFrame(() => renderDetailCharts(act, ftp));
 }
 
+function toggleChart(id, show) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = show ? '' : 'none';
+}
+
 function renderDetailCharts(act, ftp) {
-  // ── 1. Zonas de potencia (distribución estimada) ──────────────────
+  Object.values(chartInsts).forEach(c => { try { c.destroy(); } catch {} });
+  chartInsts = {};
+
+  const ZONES = ZONES_COGGAN;
+  const tickColor = '#64748b';
+  const gridColor = 'rgba(255,255,255,0.04)';
+
+  // ── 1. Zonas de potencia ──────────────────────────────────────────
   const zonesCanvas = document.getElementById('chart-zones');
-  if (zonesCanvas && act.avg_power) {
-    const avgRatio = act.avg_power / ftp;
-    const npRatio  = act.np ? act.np / ftp : avgRatio;
-    const vi       = npRatio / avgRatio; // variability index: >1.05 = intervals
-    const zones    = ZONES_COGGAN;
+  const srcLabel = document.getElementById('zones-source-label');
+  if (zonesCanvas) {
+    let pct = null;
 
-    // For interval sessions (high VI) use a bimodal distribution:
-    //   - recovery component centered at avg_power (base pace)
-    //   - work component centered at NP (training stimulus)
-    // workWeight increases with variability so intervals show correct zone dominance
-    const workWeight     = Math.min(Math.max((vi - 1) * 6, 0), 0.90);
-    const recoveryWeight = 1 - workWeight;
-    const sigmaWork      = 0.12;
-    const sigmaRecovery  = 0.14;
+    // Usar zone_times reales si están disponibles
+    const zt = act.zone_times ? (typeof act.zone_times === 'string' ? JSON.parse(act.zone_times) : act.zone_times) : null;
+    const totalSec = zt ? [1,2,3,4,5,6,7].reduce((s, i) => s + (zt[`z${i}`] || 0), 0) : 0;
+    if (zt && totalSec > 0) {
+      pct = [1,2,3,4,5,6,7].map(i => Math.round((zt[`z${i}`] || 0) / totalSec * 100));
+      if (srcLabel) srcLabel.textContent = '— datos reales de streams';
+    } else if (act.avg_power) {
+      // Estimación gaussiana fallback
+      const avgRatio = act.avg_power / ftp;
+      const npRatio  = act.np ? act.np / ftp : avgRatio;
+      const vi       = npRatio / avgRatio;
+      const ww = Math.min(Math.max((vi - 1) * 6, 0), 0.90), rw = 1 - ww;
+      const raw = ZONES.map(z => {
+        const mid = (z.min + Math.min(z.max, 2.0)) / 2;
+        return Math.max(0, rw * Math.exp(-Math.pow(mid-avgRatio,2)/(2*.14*.14)) + ww * Math.exp(-Math.pow(mid-npRatio,2)/(2*.12*.12)));
+      });
+      const sum = raw.reduce((a,b)=>a+b,0);
+      pct = raw.map(v => Math.round(v / sum * 100));
+      if (srcLabel) srcLabel.textContent = '— estimado · basado en NP';
+    }
 
-    const raw = zones.map(z => {
-      const mid = (z.min + Math.min(z.max, 2.0)) / 2;
-      const gRecovery = Math.exp(-Math.pow(mid - avgRatio, 2) / (2 * sigmaRecovery * sigmaRecovery));
-      const gWork     = Math.exp(-Math.pow(mid - npRatio,  2) / (2 * sigmaWork     * sigmaWork));
-      return Math.max(0, recoveryWeight * gRecovery + workWeight * gWork);
-    });
-    const sum = raw.reduce((a,b) => a+b, 0);
-    const pct = raw.map(v => Math.round(v / sum * 100));
-    new Chart(zonesCanvas, {
-      type: 'bar',
-      data: {
-        labels: zones.map(z => z.name.split(' — ')[0]),
-        datasets: [{ data: pct, backgroundColor: zones.map(z => z.color + 'cc'), borderColor: zones.map(z => z.color), borderWidth: 1, borderRadius: 3, borderSkipped: false }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true, maintainAspectRatio: true,
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x}%` } }
+    if (pct) {
+      chartInsts.zones = new Chart(zonesCanvas, {
+        type: 'bar',
+        data: {
+          labels: ZONES.map(z => z.name.split(' — ')[0]),
+          datasets: [{ data: pct, backgroundColor: ZONES.map(z => z.color+'cc'), borderColor: ZONES.map(z => z.color), borderWidth: 1, borderRadius: 3, borderSkipped: false }]
         },
-        scales: {
-          x: { ticks: { color: '#64748b', font: { size: 8 }, callback: v => v+'%' }, grid: { color: 'rgba(255,255,255,0.04)' }, max: 100 },
-          y: { ticks: { color: '#94a3b8', font: { size: 8 } }, grid: { display: false } }
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x}%` } } },
+          scales: {
+            x: { ticks: { color: tickColor, font:{size:8}, callback: v=>v+'%' }, grid:{color:gridColor}, max:100 },
+            y: { ticks: { color:'#94a3b8', font:{size:8} }, grid:{display:false} }
+          }
         }
-      }
-    });
+      });
+    }
   }
 
-  // ── 2. Historial TSS (últimas 10 actividades) ─────────────────────
+  // ── 2. Curva de potencia (best_efforts) ──────────────────────────
+  const curveCanvas = document.getElementById('chart-power-curve');
+  if (curveCanvas) {
+    const be = act.best_efforts ? (typeof act.best_efforts === 'string' ? JSON.parse(act.best_efforts) : act.best_efforts) : null;
+    const DURS = [5, 10, 30, 60, 120, 300, 600, 1200, 3600];
+    const LABELS = ["5\"", "10\"", "30\"", "1'", "2'", "5'", "10'", "20'", "60'"];
+    let points = [];
+    if (be && Object.keys(be).length > 0) {
+      DURS.forEach((d, i) => {
+        const w = Number(be[d] || be[String(d)] || 0);
+        if (w > 0) points.push({ x: i, w, label: LABELS[i] });
+      });
+    }
+    if (points.length >= 2) {
+      chartInsts.curve = new Chart(curveCanvas, {
+        type: 'line',
+        data: {
+          labels: points.map(p => p.label),
+          datasets: [
+            {
+              label: 'Mejor potencia',
+              data: points.map(p => p.w),
+              borderColor: '#9ED62B', backgroundColor: 'rgba(158,214,43,0.08)',
+              tension: 0.35, pointRadius: 4, pointBackgroundColor: '#9ED62B',
+              borderWidth: 2, fill: true
+            },
+            {
+              label: 'FTP',
+              data: points.map(() => ftp),
+              borderColor: '#f59e0b', backgroundColor: 'transparent',
+              borderDash: [5,4], borderWidth: 1.5, pointRadius: 0, tension: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: {
+            legend: { labels: { color:'#94a3b8', font:{size:9}, boxWidth:10, padding:8 } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} W` } }
+          },
+          scales: {
+            x: { ticks: { color: tickColor, font:{size:8} }, grid:{display:false} },
+            y: { ticks: { color: tickColor, font:{size:8}, callback: v=>v+'W' }, grid:{color:gridColor} }
+          }
+        }
+      });
+    } else {
+      document.getElementById('cwrap-curve').style.display = 'none';
+      const cb = document.querySelector('[onchange*="cwrap-curve"]');
+      if (cb) { cb.checked = false; cb.closest('label').style.opacity = '.45'; }
+    }
+  }
+
+  // ── 3. Historial TSS (últimas 10 actividades) ─────────────────────
   const tssCanvas = document.getElementById('chart-tss-hist');
   if (tssCanvas) {
-    const recent = [...allActivities]
-      .filter(a => a.tss > 0)
-      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
-      .slice(-10);
-    const labels = recent.map(a => {
-      const d = new Date(a.date + 'T12:00:00');
-      return d.toLocaleDateString('es-ES', { day:'2-digit', month:'short' });
-    });
-    const tssValues = recent.map(a => a.tss || 0);
+    const recent = [...allActivities].filter(a => a.tss > 0)
+      .sort((a,b) => String(a.date).localeCompare(String(b.date))).slice(-10);
+    const labels = recent.map(a => new Date(a.date+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'}));
     const bgColors = recent.map(a => {
       const c = a.tss > 100 ? '#ef4444' : a.tss > 60 ? '#f59e0b' : '#10b981';
-      return a.id === act.id ? c : c + '88';
+      return a.id === act.id ? c : c+'88';
     });
-    new Chart(tssCanvas, {
+    chartInsts.tss = new Chart(tssCanvas, {
       type: 'bar',
-      data: { labels, datasets: [{ data: tssValues, backgroundColor: bgColors, borderRadius: 4, borderSkipped: false }] },
+      data: { labels, datasets: [{ data: recent.map(a=>a.tss||0), backgroundColor: bgColors, borderRadius:4, borderSkipped:false }] },
       options: {
-        responsive: true, maintainAspectRatio: true,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` TSS: ${ctx.parsed.y}` } } },
+        responsive:true, maintainAspectRatio:true,
+        plugins: { legend:{display:false}, tooltip:{callbacks:{label: ctx=>` TSS: ${ctx.parsed.y}`}} },
         scales: {
-          x: { ticks: { color: '#64748b', font: { size: 8 } }, grid: { display: false } },
-          y: { ticks: { color: '#64748b', font: { size: 8 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+          x: { ticks:{color:tickColor,font:{size:8}}, grid:{display:false} },
+          y: { ticks:{color:tickColor,font:{size:8}}, grid:{color:gridColor} }
         }
       }
     });
   }
 
-  // ── 3. PMC mini sparkline (30 días alrededor de la actividad) ─────
+  // ── 4. PMC mini sparkline (30 días) ──────────────────────────────
   const pmcCanvas = document.getElementById('chart-pmc-mini');
   if (pmcCanvas && AppState.pmcData?.length) {
-    const actDate = act.date;
-    const allDates = AppState.pmcData.map(d => d.date).sort();
-    const idx = allDates.findIndex(d => d >= actDate);
+    const allDates = AppState.pmcData.map(d=>d.date).sort();
+    const idx = allDates.findIndex(d => d >= act.date);
     const center = idx >= 0 ? idx : allDates.length - 1;
-    const start = Math.max(0, center - 20);
-    const end   = Math.min(AppState.pmcData.length, center + 10);
-    const slice = AppState.pmcData.slice(start, end);
-    const labels = slice.map(d => {
-      const dt = new Date(d.date + 'T12:00:00');
-      return dt.toLocaleDateString('es-ES', { day:'2-digit', month:'short' });
-    });
-    new Chart(pmcCanvas, {
+    const slice = AppState.pmcData.slice(Math.max(0,center-20), Math.min(AppState.pmcData.length,center+10));
+    const labels = slice.map(d => new Date(d.date+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'}));
+    chartInsts.pmc = new Chart(pmcCanvas, {
       type: 'line',
       data: {
         labels,
         datasets: [
-          { label: 'CTL', data: slice.map(d => d.ctl), borderColor: '#38BDF8', backgroundColor: 'rgba(56,189,248,0.1)', tension: 0.4, pointRadius: 0, borderWidth: 2, fill: true },
-          { label: 'ATL', data: slice.map(d => d.atl), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.4, pointRadius: 0, borderWidth: 2, fill: true },
-          { label: 'TSB', data: slice.map(d => d.tsb), borderColor: '#9ED62B', backgroundColor: 'transparent', tension: 0.4, pointRadius: 0, borderWidth: 1.5, fill: false, borderDash: [4,3] }
+          { label:'CTL', data:slice.map(d=>d.ctl), borderColor:'#38BDF8', backgroundColor:'rgba(56,189,248,0.1)', tension:0.4, pointRadius:0, borderWidth:2, fill:true },
+          { label:'ATL', data:slice.map(d=>d.atl), borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.1)', tension:0.4, pointRadius:0, borderWidth:2, fill:true },
+          { label:'TSB', data:slice.map(d=>d.tsb), borderColor:'#9ED62B', backgroundColor:'transparent', tension:0.4, pointRadius:0, borderWidth:1.5, fill:false, borderDash:[4,3] }
         ]
       },
       options: {
-        responsive: true, maintainAspectRatio: true,
-        plugins: {
-          legend: { labels: { color: '#94a3b8', font: { size: 9 }, boxWidth: 10, padding: 8 } },
-          annotation: {}
-        },
+        responsive:true, maintainAspectRatio:true,
+        plugins: { legend:{labels:{color:'#94a3b8',font:{size:9},boxWidth:10,padding:8}}, annotation:{} },
         scales: {
-          x: { ticks: { color: '#64748b', font: { size: 8 }, maxTicksLimit: 8 }, grid: { display: false } },
-          y: { ticks: { color: '#64748b', font: { size: 8 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+          x: { ticks:{color:tickColor,font:{size:8},maxTicksLimit:8}, grid:{display:false} },
+          y: { ticks:{color:tickColor,font:{size:8}}, grid:{color:gridColor} }
         }
       }
     });
@@ -987,6 +1059,8 @@ function renderDetailCharts(act, ftp) {
 }
 
 function closePanel() {
+  Object.values(chartInsts).forEach(c => { try { c.destroy(); } catch {} });
+  chartInsts = {};
   document.getElementById('detail-panel').classList.remove('open');
   document.getElementById('panel-overlay').classList.remove('show');
   document.body.style.overflow = '';
