@@ -52,7 +52,8 @@
     .stream-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:10px; }
     .stream-label { font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted); }
     .stream-stats { font-size:10px;color:var(--text-secondary);font-weight:600;text-align:right; }
-    .stream-canvas-wrap { position:relative; }
+    .stream-canvas-wrap { position:relative;height:110px; }
+    @media (max-width:480px) { .stream-canvas-wrap { height:90px; } }
 
     /* skeleton shimmer */
     @keyframes skelShimmer {
@@ -867,57 +868,51 @@ function showActivityDetail(actId) {
 
       <!-- Skeleton -->
       <div id="streams-skeleton">
-        <div class="skel" style="height:140px;margin-bottom:8px"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <div class="skel" style="height:80px"></div>
-          <div class="skel" style="height:80px"></div>
-        </div>
+        <div class="skel" style="height:134px;margin-bottom:8px;border-radius:12px"></div>
+        <div class="skel" style="height:134px;margin-bottom:8px;border-radius:12px"></div>
+        <div class="skel" style="height:134px;margin-bottom:8px;border-radius:12px"></div>
       </div>
 
       <!-- Charts (hidden until loaded) -->
       <div id="streams-body" style="display:none">
 
-        <!-- Power -->
         <div id="cwrap-stream-watts" class="stream-card">
           <div class="stream-header">
             <span class="stream-label"><i class="fas fa-bolt" style="color:#9ED62B;margin-right:4px"></i>Potencia · W</span>
             <span class="stream-stats" id="stats-watts"></span>
           </div>
-          <div class="stream-canvas-wrap" style="height:140px">
+          <div class="stream-canvas-wrap">
             <canvas id="chart-stream-watts"></canvas>
           </div>
         </div>
 
-        <!-- HR -->
         <div id="cwrap-stream-hr" class="stream-card" style="display:none">
           <div class="stream-header">
             <span class="stream-label"><i class="fas fa-heartbeat" style="color:#ef4444;margin-right:4px"></i>Frecuencia Cardíaca · bpm</span>
             <span class="stream-stats" id="stats-hr"></span>
           </div>
-          <div class="stream-canvas-wrap" style="height:90px">
+          <div class="stream-canvas-wrap">
             <canvas id="chart-stream-hr"></canvas>
           </div>
         </div>
 
-        <!-- Speed + Elevation row -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div id="cwrap-stream-speed" class="stream-card" style="display:none">
-            <div class="stream-header">
-              <span class="stream-label"><i class="fas fa-tachometer-alt" style="color:#38bdf8;margin-right:4px"></i>Velocidad</span>
-              <span class="stream-stats" id="stats-speed"></span>
-            </div>
-            <div class="stream-canvas-wrap" style="height:80px">
-              <canvas id="chart-stream-speed"></canvas>
-            </div>
+        <div id="cwrap-stream-speed" class="stream-card" style="display:none">
+          <div class="stream-header">
+            <span class="stream-label"><i class="fas fa-tachometer-alt" style="color:#38bdf8;margin-right:4px"></i>Velocidad · km/h</span>
+            <span class="stream-stats" id="stats-speed"></span>
           </div>
-          <div id="cwrap-stream-elev" class="stream-card" style="display:none">
-            <div class="stream-header">
-              <span class="stream-label"><i class="fas fa-mountain" style="color:#94a3b8;margin-right:4px"></i>Altitud</span>
-              <span class="stream-stats" id="stats-elev"></span>
-            </div>
-            <div class="stream-canvas-wrap" style="height:80px">
-              <canvas id="chart-stream-elev"></canvas>
-            </div>
+          <div class="stream-canvas-wrap">
+            <canvas id="chart-stream-speed"></canvas>
+          </div>
+        </div>
+
+        <div id="cwrap-stream-elev" class="stream-card" style="display:none">
+          <div class="stream-header">
+            <span class="stream-label"><i class="fas fa-mountain" style="color:#94a3b8;margin-right:4px"></i>Altitud · m</span>
+            <span class="stream-stats" id="stats-elev"></span>
+          </div>
+          <div class="stream-canvas-wrap">
+            <canvas id="chart-stream-elev"></canvas>
           </div>
         </div>
 
@@ -930,28 +925,15 @@ function showActivityDetail(actId) {
 
     <!-- ── ANÁLISIS ESTÁTICO ── -->
     <div class="section-eyebrow" style="margin-top:4px">
-      <i class="fas fa-chart-bar"></i> Análisis de la salida
+      <i class="fas fa-chart-bar"></i> Distribución de zonas
     </div>
 
-    <div class="chart-toggle-bar">
-      <label class="chart-toggle active"><input type="checkbox" checked onchange="toggleChart('cwrap-zones',this.checked,this)"> Zonas</label>
-      <label class="chart-toggle active"><input type="checkbox" checked onchange="toggleChart('cwrap-curve',this.checked,this)"> Curva potencia</label>
-    </div>
-
-    <div id="cwrap-zones" class="chart-wrap" style="margin-bottom:8px">
+    <div id="cwrap-zones" class="chart-wrap" style="margin-bottom:14px">
       <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">
         Zonas de Potencia
         <span id="zones-source-label" style="font-weight:400;text-transform:none"></span>
       </div>
       <canvas id="chart-zones" height="90"></canvas>
-    </div>
-
-    <div id="cwrap-curve" class="chart-wrap" style="margin-bottom:14px">
-      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px">
-        Curva de Potencia
-        <span style="font-weight:400;text-transform:none">— mejores esfuerzos por duración</span>
-      </div>
-      <canvas id="chart-power-curve" height="90"></canvas>
     </div>
 
     <!-- ACCIONES -->
@@ -1295,84 +1277,6 @@ function renderDetailCharts(act, ftp) {
           }
         }
       });
-    }
-  }
-
-  // ── 2. Curva de potencia ──────────────────────────────────────────
-  const curveCanvas = document.getElementById('chart-power-curve');
-  if (curveCanvas) {
-    const DURS   = [5, 10, 30, 60, 120, 300, 600, 1200, 1800, 3600];
-    const LABELS = ["5\"","10\"","30\"","1'","2'","5'","10'","20'","30'","60'"];
-    const durSec = Number(act.duration || 0);
-    const base   = Number(act.np || act.avg_power || 0);
-    const maxW   = Number(act.max_power || 0);
-    const ftpCap = Math.min(1500, ftp * 5);
-
-    // Obtener best_efforts reales si existen
-    let be = act.best_efforts
-      ? (typeof act.best_efforts === 'string' ? JSON.parse(act.best_efforts) : act.best_efforts)
-      : null;
-    if (be && Object.keys(be).length === 0) be = null;
-
-    // Estimación fallback (igual que el backend) si no hay best_efforts
-    function estimateEfforts(durSec, base, maxW) {
-      const eff = {};
-      if (base <= 0 || durSec <= 0) return eff;
-      let safeMax = maxW > 0 && maxW <= ftpCap ? maxW : Math.round(base * 2.8);
-      DURS.forEach(d => {
-        if (d > durSec) return;
-        if (d === 5)       eff[d] = Math.round(safeMax);
-        else if (d === 10) eff[d] = Math.round(safeMax * 0.85 + base * 0.15);
-        else if (d === 30) eff[d] = Math.round(safeMax * 0.45 + base * 0.55);
-        else               eff[d] = Math.round(base * Math.pow(durSec / d, 0.09));
-      });
-      return eff;
-    }
-
-    const efforts = be || estimateEfforts(durSec, base, maxW);
-    const points  = DURS.reduce((acc, d, i) => {
-      const w = Number(efforts[d] || efforts[String(d)] || 0);
-      if (w > 0) acc.push({ label: LABELS[i], w });
-      return acc;
-    }, []);
-
-    if (points.length >= 2) {
-      chartInsts.curve = new Chart(curveCanvas, {
-        type: 'line',
-        data: {
-          labels: points.map(p => p.label),
-          datasets: [
-            {
-              label: be ? 'Mejor potencia (real)' : 'Potencia estimada',
-              data: points.map(p => p.w),
-              borderColor: '#9ED62B', backgroundColor: 'rgba(158,214,43,0.08)',
-              tension: 0.35, pointRadius: 4, pointBackgroundColor: '#9ED62B',
-              borderWidth: 2, fill: true
-            },
-            {
-              label: 'FTP',
-              data: points.map(() => ftp),
-              borderColor: '#f59e0b', backgroundColor: 'transparent',
-              borderDash: [5,4], borderWidth: 1.5, pointRadius: 0, tension: 0
-            }
-          ]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: true,
-          plugins: {
-            legend: { labels: { color:'#94a3b8', font:{size:9}, boxWidth:10, padding:8 } },
-            tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} W` } }
-          },
-          scales: {
-            x: { ticks: { color: tickColor, font:{size:8} }, grid:{display:false} },
-            y: { ticks: { color: tickColor, font:{size:8}, callback: v=>v+'W' }, grid:{color:gridColor} }
-          }
-        }
-      });
-    } else {
-      document.getElementById('cwrap-curve').style.display = 'none';
-      const cb = document.querySelector('[onchange*="cwrap-curve"]');
-      if (cb) { cb.checked = false; cb.closest('label').classList.remove('active'); cb.closest('label').style.opacity = '.45'; }
     }
   }
 
