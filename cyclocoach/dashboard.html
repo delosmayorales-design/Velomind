@@ -1374,8 +1374,10 @@ function buildHourlyRow(hourly) {
   return `
     <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px">Próximas horas</div>
-      <div class="hourly-scroll scroll-x-mobile" style="display:flex;flex-wrap:nowrap;flex-direction:row;gap:4px;overflow-x:auto;overflow-y:visible;width:100%;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
-        ${items}
+      <div class="hourly-scroll" style="overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px">
+        <div style="display:flex;flex-wrap:nowrap;gap:4px;width:max-content">
+          ${items}
+        </div>
       </div>
     </div>`;
 }
@@ -1634,7 +1636,10 @@ function renderWeek(plan) {
 function renderLastAct() {
   const el = document.getElementById('last-act-content');
   if (!AppState.activities?.length) return;
-  const sorted = [...AppState.activities].sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
+  const CYCLING = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide'];
+  const sorted = [...AppState.activities]
+    .filter(a => CYCLING.includes(a.sport_type || a.type || ''))
+    .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
   const act = sorted[0];
   if (!act) return;
   const daysAgo = Utils.daysAgo(act.date?.substring(0,10));
@@ -1866,9 +1871,10 @@ function renderWeeklySummary() {
   lastSun.setDate(lastMon.getDate() + 6);
   lastSun.setHours(23, 59, 59, 999);
 
+  const CYCLING_TYPES = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide'];
   const weekActs = acts.filter(a => {
     const d = new Date((a.date || '').slice(0, 10) + 'T00:00:00');
-    return !isNaN(d) && d >= lastMon && d <= lastSun;
+    return !isNaN(d) && d >= lastMon && d <= lastSun && CYCLING_TYPES.includes(a.sport_type || a.type || '');
   });
   if (!weekActs.length) { card.style.display = 'none'; return; }
 
