@@ -3342,62 +3342,24 @@ function _sanitizePlanSessions(plan) {
 }
 
 function regeneratePlan() {
-  // Si hay plan guardado para esta semana, recargarlo y resincronizar con la actividad real.
-  // Solo generar desde cero si no existe plan guardado (primera vez o semana nueva).
-  let savedPlan = null;
-  const _monday = getMondayString();
-  const _matchWeek = s => s?.sessions && (!s.week_start || s.week_start.slice(0, 10) === _monday);
-  // 1. Prioridad: snapshot explícito del botón "Guardar plan"
-  try {
-    const snap = JSON.parse(localStorage.getItem('cyclocoach_plan_snapshot'));
-    if (_matchWeek(snap)) savedPlan = snap;
-  } catch(_) {}
-  // 2. Fallback: plan de trabajo (puede tener modificaciones automáticas)
-  if (!savedPlan) {
-    try {
-      const s = JSON.parse(localStorage.getItem('cyclocoach_training_plan'));
-      if (_matchWeek(s)) savedPlan = s;
-    } catch(_) {}
-  }
+  // Siempre generar plan desde cero con los datos actuales de forma/fatiga.
+  // Preservar solo los estados "completado" de las sesiones actuales.
+  const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
 
-  if (savedPlan) {
-    // Recargar el plan guardado (deep copy para no mutar localStorage)
-    currentPlan = {
-      sessions:   JSON.parse(JSON.stringify(savedPlan.sessions)),
-      phase:      savedPlan.phase      || null,
-      targetTSS:  savedPlan.tss_target || null,
-      advice:     savedPlan.advice     || {},
-      adaptation: savedPlan.adaptation || null,
-    };
-    // Sanear sesiones con TSS/duración inconsistentes o que superan los límites actuales
-    _sanitizePlanSessions(currentPlan);
-    _patchSegmentDistances(currentPlan);
-    // Resetear flags para que syncPlanWithReality re-evalúe todo
-    const _todayI = (new Date().getDay() + 6) % 7;
+  // Limpiar snapshots cacheados para que el nuevo plan se guarde correctamente
+  localStorage.removeItem('cyclocoach_plan_snapshot');
+  localStorage.removeItem('cyclocoach_training_plan');
+
+  generatePlan();
+  if (currentPlan?.sessions && prevCompleted.length) {
+    let anyChange = false;
     currentPlan.sessions.forEach((s, i) => {
-      delete s._evaluated;
-      delete s._missed;
-      if (i > _todayI) delete s._adapted; // sesiones futuras: permitir re-adaptación
+      if (!s.completed && prevCompleted[i]) { s.completed = true; anyChange = true; }
     });
-    syncPlanWithReality();
-    _applyAntiBackToBack(currentPlan, _todayI, AppState.athlete?.ftp || 200);
-    renderPlan(currentPlan, AppState.athlete);
-    silentSavePlan();
-    showToast('✅ Plan actualizado con tu actividad real', 'var(--accent-green)');
-  } else {
-    // Sin plan guardado: generar desde cero preservando estados completados manuales
-    const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
-    generatePlan();
-    if (currentPlan?.sessions && prevCompleted.length) {
-      let anyChange = false;
-      currentPlan.sessions.forEach((s, i) => {
-        if (!s.completed && prevCompleted[i]) { s.completed = true; anyChange = true; }
-      });
-      if (anyChange) renderPlan(currentPlan, AppState.athlete);
-    }
-    silentSavePlan();
-    showToast('✅ Plan de entrenamiento generado', 'var(--accent-green)');
+    if (anyChange) renderPlan(currentPlan, AppState.athlete);
   }
+  silentSavePlan();
+  showToast('✅ Plan de entrenamiento generado', 'var(--accent-green)');
 }
 
 async function applyAdjustments() {
