@@ -1031,33 +1031,45 @@ async function fetchAndRenderStreams(sid, ftp, act) {
     const npCalculated = renderStreamCharts(s, ftp);
 
     // Auto-actualizar NP en DB si difiere del guardado (estilo Garmin)
-    if (npCalculated && act?.id && Math.abs(npCalculated - (act.np || 0)) > 1) {
+    const storedNP = act.np || 0;
+    if (npCalculated && act?.id && Math.abs(npCalculated - storedNP) > 1) {
+      badge.textContent = `· ${Math.round(totalSec / 60)} min · Actualizando NP…`;
+      let patchOk = false;
       try {
-        const r = await fetch(`${window.API_URL}/activities/${act.id}`, {
+        const patchRes = await fetch(`${window.API_URL}/activities/${act.id}`, {
           method: 'PATCH',
           headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
           body: JSON.stringify({ np: npCalculated })
         });
-        if (r.ok) {
-          const updated = await r.json();
-          // Actualizar localmente en memoria
-          act.np = updated.np;
-          act.if_value = updated.if_value;
-          act.tss = updated.tss;
+        if (patchRes.ok) {
+          const updated = await patchRes.json();
+          // Actualizar en memoria
+          act.np = updated.np; act.if_value = updated.if_value; act.tss = updated.tss;
           const local = allActivities.find(a => String(a.id) === String(act.id));
           if (local) { local.np = updated.np; local.if_value = updated.if_value; local.tss = updated.tss; }
-          // Actualizar la fila en la tabla sin re-renderizar toda la lista
-          const row = document.querySelector(`tr[data-act-id="${CSS.escape(String(act.id))}"]`);
-          if (row) {
-            const npCell = row.querySelector('.col-np');
-            const ifCell = row.querySelector('.col-if');
-            if (npCell) npCell.innerHTML = `<span style="color:var(--primary-light);font-weight:600">${updated.np}W</span>`;
-            if (ifCell) ifCell.textContent = updated.if_value ? updated.if_value.toFixed(2) : '--';
-          }
-          // Actualizar el badge de NP en el panel
-          badge.textContent = `· ${Math.round(totalSec / 60)} min · NP corregido ${updated.np}W`;
+          // Actualizar la celda NP de la fila en la tabla
+          const actIdStr = String(act.id);
+          document.querySelectorAll('tr[data-act-id]').forEach(row => {
+            if (row.dataset.actId === actIdStr) {
+              const npCell = row.querySelector('.col-np');
+              const ifCell = row.querySelector('.col-if');
+              if (npCell) npCell.innerHTML = `<span style="color:var(--primary-light);font-weight:600">${updated.np}W</span>`;
+              if (ifCell) ifCell.textContent = updated.if_value ? updated.if_value.toFixed(2) : '--';
+            }
+          });
+          badge.textContent = `· ${Math.round(totalSec / 60)} min · NP Garmin: ${updated.np}W ✓`;
+          showToast(`NP actualizado: ${storedNP}W → ${updated.np}W`, 'success');
+          patchOk = true;
+        } else {
+          const errBody = await patchRes.json().catch(() => ({}));
+          showToast(`Error al guardar NP: ${errBody.error || patchRes.status}`, 'error');
         }
-      } catch {}
+      } catch (patchErr) {
+        showToast(`Error al guardar NP: ${patchErr.message}`, 'error');
+      }
+      if (!patchOk) badge.textContent = `· ${Math.round(totalSec / 60)} min de datos`;
+    } else {
+      badge.textContent = `· ${Math.round(totalSec / 60)} min de datos`;
     }
 
   } catch (e) {
