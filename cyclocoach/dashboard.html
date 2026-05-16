@@ -273,6 +273,79 @@
       color: #10b981;
     }
 
+    /* ── Sesión de hoy · diseño animado ── */
+    @keyframes floatEmoji {
+      0%,100% { transform: translateY(0) scale(1); }
+      50%      { transform: translateY(-7px) scale(1.08); }
+    }
+    @keyframes pulseGlow {
+      0%,100% { box-shadow: 0 0 0 0 var(--today-color,#9ED62B33); }
+      50%      { box-shadow: 0 0 20px 6px var(--today-color,#9ED62B22); }
+    }
+    .today-hero {
+      border-radius: 16px;
+      padding: 20px 18px 16px;
+      margin-bottom: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+    .today-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--today-grad, linear-gradient(135deg,#9ED62B18,#9ED62B06));
+      border-radius: inherit;
+    }
+    .today-emoji-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .today-emoji {
+      font-size: 46px;
+      line-height: 1;
+      display: inline-block;
+      animation: floatEmoji 3s ease-in-out infinite;
+      transition: opacity .25s, transform .25s;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,.3));
+    }
+    .today-emoji-badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 3px 9px;
+      border-radius: 99px;
+      border: 1px solid;
+    }
+    .today-title-big {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 4px;
+      position: relative;
+    }
+    .today-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      position: relative;
+    }
+    .today-done-stamp {
+      position: absolute;
+      top: 14px; right: 14px;
+      background: rgba(16,185,129,.12);
+      border: 1px solid rgba(16,185,129,.35);
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #10b981;
+    }
+
     /* ─────────────────────────────────────────────────────────
        TIEMPO METEOROLÓGICO
     ───────────────────────────────────────────────────────── */
@@ -808,7 +881,7 @@
 
       <!-- Sesión de hoy -->
       <div class="card" id="today-card">
-        <div class="card-eyebrow"><i class="fas fa-bolt" style="color:var(--primary)"></i> Qué tienes que hacer hoy</div>
+        <div class="card-eyebrow"><i class="fas fa-sun" style="color:#f59e0b"></i> Tu sesión de hoy</div>
         <div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando plan...</div>
       </div>
 
@@ -1015,18 +1088,30 @@ const WHY = {
   recovery:  'Sesión suave para limpiar lactato y preparar el cuerpo para la próxima carga dura.',
   long:      'Fondo largo para construir resistencia aeróbica y fortalecer el sistema mitocondrial.',
 };
+const EMOJIS = {
+  z2:        ['🚴','💚','🌿','⛰️','☀️','🏔️'],
+  endurance: ['🚴','🌄','🏔️','💚','⛅','🗺️'],
+  long:      ['🚴','🗺️','🏔️','🌅','💪','⛰️'],
+  tempo:     ['⚡','🔥','💪','🎯','🏃','🌡️'],
+  threshold: ['🎯','🔥','💪','⚡','🏆','📈'],
+  vo2max:    ['🚀','💥','⚡','🏆','🔥','🫁'],
+  sprint:    ['💥','⚡','🚀','🏎️','🔥','💨'],
+  recovery:  ['😌','💆','🌊','✨','🛁','🍃'],
+  rest:      ['😴','🛌','🌙','💤','⭐','🧘'],
+  default:   ['🚴','💪','⚡','🎯','🏆','🔥'],
+};
+
+let _emojiTimer = null;
 
 function renderToday(plan, athlete) {
+  if (_emojiTimer) { clearInterval(_emojiTimer); _emojiTimer = null; }
   const wrap = document.getElementById('today-card');
-  const eyebrow = `<div class="card-eyebrow"><i class="fas fa-bolt" style="color:var(--primary)"></i> Qué tienes que hacer hoy</div>`;
 
   if (!plan?.sessions) {
-    wrap.innerHTML = eyebrow + `
+    wrap.innerHTML = `
       <div style="text-align:center;padding:24px 0">
-        <p style="color:var(--text-muted);margin-bottom:16px">
-          <i class="fas fa-calendar-plus" style="font-size:36px;display:block;margin-bottom:12px;opacity:.35"></i>
-          No tienes un plan activo todavía
-        </p>
+        <div style="font-size:48px;margin-bottom:12px">📅</div>
+        <p style="color:var(--text-muted);margin-bottom:16px;font-size:14px">No tienes un plan activo todavía</p>
         <a href="training-plan.html" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
           <i class="fas fa-magic"></i> Crear mi plan con IA
         </a>
@@ -1035,54 +1120,89 @@ function renderToday(plan, athlete) {
   }
 
   const sess = plan.sessions[todayIdx];
-  if (!sess) { wrap.innerHTML = eyebrow + `<div class="empty-state">Sin sesión para hoy</div>`; return; }
+  if (!sess) { wrap.innerHTML = `<div class="empty-state">Sin sesión para hoy</div>`; return; }
+
+  const DAY_FULL = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const dayName  = DAY_FULL[new Date().getDay()];
 
   if (sess.isRest) {
-    wrap.innerHTML = eyebrow + `
-      <div class="session-icon-box" style="background:rgba(107,114,128,.15);color:#9ca3af">
-        <i class="fas fa-bed"></i>
+    wrap.innerHTML = `
+      <div class="today-hero" style="--today-grad:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #1e293b">
+        <div class="today-emoji-wrap">
+          <span class="today-emoji" id="today-anim-emoji">😴</span>
+          <span class="today-emoji-badge" style="color:#64748b;border-color:#334155;background:#1e293b">
+            ${dayName} · Descanso
+          </span>
+        </div>
+        <div class="today-title-big" style="color:#94a3b8">Día de recuperación</div>
+        <div class="today-subtitle">Tu cuerpo se adapta y se hace más fuerte durante el descanso. No lo saltes.</div>
       </div>
-      <div class="session-title">Día de descanso</div>
-      <div class="why-block">
-        <b>Por qué importa</b>
-        El descanso es cuando el cuerpo se adapta y se hace más fuerte. No lo saltes — es parte del plan.
-      </div>
-      <div style="font-size:13px;color:var(--text-muted)">💧 Hidratación · 🛌 8h de sueño · 🥗 Come bien hoy</div>`;
+      <div class="why-block" style="margin-bottom:14px">
+        <b>Hoy toca</b>
+        💧 Hidratación · 🛌 8h de sueño · 🥗 Come bien · 🧘 Movilidad suave
+      </div>`;
+    const restEmojis = EMOJIS.rest;
+    let ri = 0;
+    _emojiTimer = setInterval(() => {
+      const el = document.getElementById('today-anim-emoji'); if (!el) return;
+      ri = (ri + 1) % restEmojis.length;
+      el.style.opacity = '0'; el.style.transform = 'scale(0.7)';
+      setTimeout(() => { el.textContent = restEmojis[ri]; el.style.opacity = '1'; el.style.transform = ''; }, 260);
+    }, 2200);
     return;
   }
 
-  const wt    = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || { label: sess.type, color:'#9ED62B' };
-  const color = wt.color || '#9ED62B';
-  const tss   = Math.round((sess.tssShare||0)*(plan.targetTSS||0)) || sess.tss || 0;
-  const dur   = sess.durationMin ? `${sess.durationMin} min` : '';
+  const wt     = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || { label: sess.type, color:'#9ED62B' };
+  const color  = wt.color || '#9ED62B';
+  const tss    = Math.round((sess.tssShare||0)*(plan.targetTSS||0)) || sess.tss || 0;
+  const dur    = sess.durationMin ? `${sess.durationMin} min` : '';
   const isDone = !!sess.completed;
 
   const sessType = (sess.type||'').toLowerCase();
   const whyKey   = Object.keys(WHY).find(k => sessType.includes(k));
   const why      = plan.advice?.today || (whyKey ? WHY[whyKey] : 'Esta sesión encaja en tu bloque actual para progresar de forma continua.');
+  const emojiKey = Object.keys(EMOJIS).find(k => sessType.includes(k)) || 'default';
+  const emojis   = EMOJIS[emojiKey];
 
-  const fa = sessFA(sess.type);
-  wrap.innerHTML = eyebrow + `
-    <div class="session-icon-box" style="background:${fa.color}18;color:${fa.color}">
-      <i class="fas ${fa.icon}"></i>
+  const hex2 = color.length === 7 ? color : '#9ED62B';
+  wrap.innerHTML = `
+    <div class="today-hero" style="--today-grad:linear-gradient(135deg,${hex2}1A,${hex2}06);border:1px solid ${hex2}33;${isDone?'opacity:.75':''}">
+      ${isDone ? '<div class="today-done-stamp">✓ Completada</div>' : ''}
+      <div class="today-emoji-wrap">
+        <span class="today-emoji" id="today-anim-emoji" style="animation-duration:${isDone?'6s':'3s'}">${emojis[0]}</span>
+        <div>
+          <span class="today-emoji-badge" style="color:${color};border-color:${hex2}55;background:${hex2}12">
+            ${dayName}
+          </span>
+        </div>
+      </div>
+      <div class="today-title-big">${sess.name || wt.label}</div>
+      <div class="today-subtitle">${sess.description || ''}</div>
     </div>
-    <div class="session-title" style="${isDone ? 'opacity:.5' : ''}">
-      ${sess.name || wt.label}
-      ${isDone ? '<span style="font-size:13px;font-weight:600;color:#10b981;margin-left:6px">&#10003; Hecha</span>' : ''}
-    </div>
-    <div class="session-pills">
-      ${dur ? '<span class="session-pill"><i class="fas fa-clock" style="color:' + color + '"></i> ' + dur + '</span>' : ''}
-      ${tss ? '<span class="session-pill"><i class="fas fa-bolt" style="color:' + color + '"></i> ' + tss + ' TSS</span>' : ''}
-      ${wt.label ? '<span class="session-pill" style="color:' + color + '">' + wt.label + '</span>' : ''}
+    <div class="session-pills" style="margin-bottom:14px">
+      ${dur ? `<span class="session-pill"><i class="fas fa-clock" style="color:${color}"></i> ${dur}</span>` : ''}
+      ${tss ? `<span class="session-pill"><i class="fas fa-bolt" style="color:${color}"></i> ${tss} TSS</span>` : ''}
+      ${wt.label ? `<span class="session-pill" style="color:${color};border:1px solid ${hex2}44">${wt.label}</span>` : ''}
     </div>
     <div class="why-block" style="border-left-color:${color}">
-      <b>&#191;Por qu&#233; hoy este entreno?</b>
+      <b>¿Por qué hoy este entreno?</b>
       ${why}
     </div>
-    <button class="btn-done${isDone ? ' done' : ''}" onclick="event.preventDefault(); event.stopPropagation(); toggleTodayDone();" style="position:relative;z-index:10;-webkit-tap-highlight-color:transparent;">
-      <i class="fas ${isDone ? 'fa-circle-check' : 'fa-circle'}"></i>
-      ${isDone ? 'Sesi&#243;n completada' : 'Marcar como hecha'}
+    <button class="btn-done${isDone?' done':''}" onclick="event.preventDefault();event.stopPropagation();toggleTodayDone();" style="position:relative;z-index:10;-webkit-tap-highlight-color:transparent">
+      <i class="fas ${isDone?'fa-circle-check':'fa-circle'}"></i>
+      ${isDone ? 'Sesión completada' : 'Marcar como hecha'}
     </button>`;
+
+  let ei = 0;
+  _emojiTimer = setInterval(() => {
+    const el = document.getElementById('today-anim-emoji'); if (!el) return;
+    ei = (ei + 1) % emojis.length;
+    el.style.opacity = '0'; el.style.transform = 'scale(0.75) rotate(-10deg)';
+    setTimeout(() => {
+      el.textContent = emojis[ei];
+      el.style.opacity = '1'; el.style.transform = '';
+    }, 260);
+  }, 2400);
 }
 
 function toggleTodayDone() {
@@ -1435,31 +1555,6 @@ function renderWeek(plan) {
   const tssPct    = tgtTSS ? Math.min(120, Math.round(weekTSS / tgtTSS * 100)) : 0;
   const tssBarColor = tssPct < 60 ? '#f59e0b' : tssPct <= 100 ? '#9ED62B' : '#ef4444';
 
-  // ── Sesión de hoy ──
-  const todaySessW = plan.sessions[todayIdx];
-  let todayHtml = '';
-  if (todaySessW && !todaySessW.isRest) {
-    const wt = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[todaySessW.type]) || {};
-    const color = wt.color || '#9ED62B';
-    const sessTSS = Math.round((todaySessW.tssShare||0)*(plan.targetTSS||0)) || todaySessW.tss || 0;
-    const sessDur = todaySessW.durationMin ? `${todaySessW.durationMin} min` : '';
-    todayHtml = `
-      <div style="margin-top:10px;background:var(--bg-input);border-radius:10px;padding:10px 12px;border-left:3px solid ${color}">
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">Sesión de hoy</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <div style="font-size:13px;font-weight:700;color:${color}">${wt.label || todaySessW.type || 'Entrenamiento'}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${[sessDur, sessTSS ? sessTSS+' TSS' : ''].filter(Boolean).join(' · ')}</div>
-        </div>
-        ${todaySessW.description ? `<div style="font-size:11px;color:var(--text-secondary);margin-top:3px;line-height:1.4">${todaySessW.description}</div>` : ''}
-      </div>`;
-  } else if (todaySessW?.isRest) {
-    todayHtml = `
-      <div style="margin-top:10px;background:var(--bg-input);border-radius:10px;padding:10px 12px;border-left:3px solid #475569">
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px">Hoy</div>
-        <div style="font-size:13px;font-weight:600;color:var(--text-muted)">Descanso activo</div>
-      </div>`;
-  }
-
   // ── Render ──
   el.innerHTML = `
     <div class="week-header">
@@ -1487,8 +1582,7 @@ function renderWeek(plan) {
         <span style="font-size:10px;color:${tssBarColor};font-weight:600">${tssPct}% completado</span>
         ${tgtHours ? `<span style="font-size:10px;color:var(--text-muted)">${weekHours}h / ${tgtHours}h objetivo</span>` : ''}
       </div>
-    </div>` : ''}
-    ${todayHtml}`;
+    </div>` : ''}`;
 }
 
 /* ── ÚLTIMA ACTIVIDAD ────────────────────────────────────── */
