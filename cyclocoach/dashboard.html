@@ -1729,7 +1729,7 @@ function renderMacrocycle() {
         <div class="ctx-lbl">${plan.cycleInfo?.isRecoveryWeek ? 'Semana recuperación' : 'Semana de carga'}</div>
       </div>
       <div class="ctx-item">
-        <div class="ctx-val" style="color:#F59E0B">${plan.targetTSS || '--'}</div>
+        <div class="ctx-val" style="color:#F59E0B">${dashPlan?.targetTSS || plan.targetTSS || '--'}</div>
         <div class="ctx-lbl">TSS objetivo semanal</div>
       </div>
       <div class="ctx-item">
