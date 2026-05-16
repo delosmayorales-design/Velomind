@@ -1076,7 +1076,8 @@ function renderStreamCharts(s, ftp) {
     const [tDs, rawDs, maDs] = dsampleAll([s.time, s.watts, ma30], MAX_PTS);
 
     const maxW = Math.max(...s.watts), avgW = Math.round(s.watts.reduce((a,b)=>a+b,0)/s.watts.length);
-    const npW = Math.round(Math.sqrt(Math.sqrt(s.watts.reduce((a,b)=>a+Math.pow(b,4),0)/s.watts.length)));
+    // NP correcto: 4ª potencia sobre la media móvil de 30s (no sobre raw)
+    const npW = Math.round(Math.sqrt(Math.sqrt(ma30.reduce((a,b)=>a+Math.pow(b,4),0)/ma30.length)));
     document.getElementById('stats-watts').innerHTML =
       `<span style="color:var(--text-muted)">Media</span> ${avgW}W &nbsp;
        <span style="color:#9ED62B">NP</span> ${npW}W &nbsp;
