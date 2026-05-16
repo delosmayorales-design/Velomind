@@ -1506,82 +1506,125 @@ function renderWeek(plan) {
   const el = document.getElementById('week-content');
   if (!plan?.sessions) return;
 
+  const DS = ['lun','mar','mié','jue','vie','sáb','dom'];
+
   const monday = new Date();
   monday.setDate(monday.getDate() - (monday.getDay()||7) + 1);
   monday.setHours(0,0,0,0);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate()+6); sunday.setHours(23,59,59,999);
+
   const activeDays = new Set();
+  const weekActs = [];
   (AppState.activities||[]).forEach(a => {
-    const dateStr = a.date?.slice(0,10);
-    if (!dateStr) return;
-    const idx = Math.round((new Date(dateStr+'T00:00:00') - monday) / 86400000);
-    if (idx >= 0 && idx <= 6) activeDays.add(idx);
-  });
-
-  const nonRest = plan.sessions.filter(s => !s.isRest);
-  let done = 0;
-  plan.sessions.forEach((s,i) => { if (!s.isRest && activeDays.has(i)) done++; });
-  const total = activeDays.size;
-  const pct   = nonRest.length ? Math.round((done / nonRest.length) * 100) : 0;
-  const pctColor = pct >= 80 ? '#10b981' : pct >= 50 ? '#9ED62B' : 'var(--text-muted)';
-
-  const cols = plan.sessions.map((s, i) => {
-    const has   = activeDays.has(i);
-    const isToday = i === todayIdx;
-    let cls = '';
-    if (!has && s.isRest) cls = 'rest';
-    else if (has)         cls = 'done';
-    else if (isToday)     cls = 'today';
-    const fill = has ? 100 : isToday ? 50 : 0;
-    return `
-      <div class="week-day-col">
-        <div class="week-day-bar-outer ${cls}">
-          ${has ? `<div class="week-day-bar-inner" style="height:${fill}%"></div>` : ''}
-        </div>
-        <span class="week-day-name ${isToday?'today':''}">${DAY_NAMES[i]}</span>
-      </div>`;
-  }).join('');
-
-  // ── Métricas de la semana en curso ──
-  const monday2 = new Date(monday);
-  const sunday2 = new Date(monday); sunday2.setDate(monday.getDate() + 6); sunday2.setHours(23,59,59,999);
-  const weekActs2 = (AppState.activities||[]).filter(a => {
     const d = new Date((a.date||'').slice(0,10)+'T00:00:00');
-    return !isNaN(d) && d >= monday2 && d <= sunday2;
+    if (isNaN(d) || d < monday || d > sunday) return;
+    const idx = Math.round((d - monday) / 86400000);
+    if (idx >= 0 && idx <= 6) { activeDays.add(idx); weekActs.push(a); }
   });
-  const weekTSS   = Math.round(weekActs2.reduce((s,a) => s + (Number(a.tss)||0), 0));
-  const weekHours = Math.round(weekActs2.reduce((s,a) => s + (Number(a.duration)||0), 0) / 360) / 10;
+
+  // Días planificados, hechos, perdidos y extras
+  const plannedIdxs = plan.sessions.map((s,i)=>({s,i})).filter(x=>!x.s.isRest).map(x=>x.i);
+  const doneIdxs    = plannedIdxs.filter(i => activeDays.has(i));
+  const missedIdxs  = plannedIdxs.filter(i => !activeDays.has(i));
+  const extraIdxs   = [...activeDays].filter(i => !plannedIdxs.includes(i)).sort((a,b)=>a-b);
+
+  const weekTSS   = Math.round(weekActs.reduce((s,a) => s+(Number(a.tss)||0), 0));
+  const weekHours = Math.round(weekActs.reduce((s,a) => s+(Number(a.duration)||0), 0)/360)/10;
   const tgtTSS    = plan.targetTSS || 0;
   const tgtHours  = AppState.athlete?.weekly_hours || 0;
-  const tssPct    = tgtTSS ? Math.min(120, Math.round(weekTSS / tgtTSS * 100)) : 0;
-  const tssBarColor = tssPct < 60 ? '#f59e0b' : tssPct <= 100 ? '#9ED62B' : '#ef4444';
+  const tssPct    = tgtTSS ? Math.min(120, Math.round(weekTSS/tgtTSS*100)) : 0;
+  const tssDevPct = tgtTSS ? Math.round((weekTSS-tgtTSS)/tgtTSS*100) : 0;
+  const tssBarColor = tssPct < 60 ? '#f59e0b' : tssPct <= 105 ? '#9ED62B' : '#ef4444';
 
-  // ── Render ──
+  // ── Narrativa ──────────────────────────────────────────
+  function sessLabel(i) {
+    const s = plan.sessions[i];
+    const wt = (typeof WORKOUT_TYPES!=='undefined' && WORKOUT_TYPES[s?.type]) || {};
+    return wt.label || s?.name || s?.type || DS[i];
+  }
+  function impactMsg() {
+    // Sin actividad aún esta semana
+    if (weekActs.length === 0) {
+      const remaining = plannedIdxs.filter(i => i >= todayIdx);
+      return remaining.length
+        ? `Todavía quedan ${remaining.length} sesión${remaining.length>1?'es':''} por hacer esta semana.`
+        : 'Esta semana no has entrenado aún.';
+    }
+    // Carga muy por encima
+    if (tssDevPct > 20) return `🔴 Carga un <strong>${tssDevPct}%</strong> por encima del objetivo — descansa bien los próximos días para absorber la adaptación.`;
+    // Carga ligeramente alta
+    if (tssDevPct > 8) return `🟡 Carga ligeramente elevada (<strong>+${tssDevPct}%</strong>) — sin problema si el siguiente entreno es suave.`;
+    // Carga muy baja
+    if (tssDevPct < -30 && weekActs.length > 0) return `🔵 Semana ligera (<strong>${tssDevPct}%</strong> bajo objetivo) — las adaptaciones serán menores. ¿Fue semana de recuperación?`;
+    // Sesiones de alta intensidad perdidas
+    const hiMissed = missedIdxs.filter(i => { const t=(plan.sessions[i]?.type||'').toLowerCase(); return t.includes('vo2')||t.includes('threshold')||t.includes('sprint')||t.includes('interval'); });
+    if (hiMissed.length) return `⚠️ Has perdido sesiones de alta intensidad (${hiMissed.map(i=>sessLabel(i)).join(', ')}) — impacto directo en adaptaciones neuromusculares esta semana.`;
+    // Solo sesiones de base perdidas
+    if (missedIdxs.length && !hiMissed.length) return `ℹ️ Las sesiones sin realizar eran de base aeróbica — impacto moderado en la carga total.`;
+    // Todo bien
+    if (doneIdxs.length === plannedIdxs.length && extraIdxs.length === 0) return `✅ Semana perfecta: todos los días del plan completados.`;
+    // Extra sessions but plan ok
+    if (extraIdxs.length && doneIdxs.length === plannedIdxs.length) return `✅ Plan cumplido al 100%. El extra del ${extraIdxs.map(i=>DS[i]).join('/')} suma carga — ten en cuenta la recuperación.`;
+    return `Semana en progreso.`;
+  }
+
+  // Línea 1: lo que pedía el plan
+  let line1 = '';
+  if (plannedIdxs.length) {
+    const sessDescs = plannedIdxs.map(i => `<span style="color:var(--text-secondary)">${sessLabel(i)}</span> <span style="color:var(--text-muted);font-size:10px">(${DS[i]})</span>`).join(' · ');
+    line1 = `<div style="margin-bottom:6px;line-height:1.7">
+      <span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);font-weight:700">Plan</span>
+      &nbsp;${sessDescs}
+      ${tgtTSS ? `<span style="color:var(--text-muted);font-size:11px"> · ${tgtTSS} TSS${tgtHours?' · '+tgtHours+'h':''}</span>` : ''}
+    </div>`;
+  }
+
+  // Línea 2: lo que se ha hecho
+  let line2 = '';
+  if (weekActs.length > 0) {
+    const actDays = [...activeDays].sort((a,b)=>a-b).map(i => {
+      const inPlan = plannedIdxs.includes(i);
+      return `<span style="color:${inPlan?'#10b981':'#f59e0b'};font-weight:600">${DS[i]}</span>`;
+    }).join(', ');
+    line2 = `<div style="margin-bottom:6px;line-height:1.7">
+      <span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);font-weight:700">Real &nbsp;</span>
+      ${actDays}
+      <span style="color:var(--text-muted);font-size:11px"> · ${weekTSS} TSS · ${weekHours}h</span>
+      ${missedIdxs.length ? `<span style="margin-left:6px;font-size:10px;color:#f59e0b">Sin hacer: ${missedIdxs.map(i=>DS[i]).join(', ')}</span>` : ''}
+      ${extraIdxs.length ? `<span style="margin-left:6px;font-size:10px;color:#94a3b8">Extra: ${extraIdxs.map(i=>DS[i]).join(', ')}</span>` : ''}
+    </div>`;
+  } else {
+    line2 = `<div style="margin-bottom:6px;font-size:12px;color:var(--text-muted)">Sin actividades registradas esta semana todavía.</div>`;
+  }
+
+  // Línea 3: impacto
+  const line3 = `<div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${impactMsg()}</div>`;
+
+  // Barras de días
+  const cols = plan.sessions.map((s, i) => {
+    const has = activeDays.has(i), isToday = i === todayIdx;
+    let cls = has ? 'done' : (s.isRest && !isToday) ? 'rest' : isToday ? 'today' : '';
+    return `<div class="week-day-col">
+      <div class="week-day-bar-outer ${cls}">${has?`<div class="week-day-bar-inner" style="height:100%"></div>`:''}</div>
+      <span class="week-day-name ${isToday?'today':''}">${DAY_NAMES[i]}</span>
+    </div>`;
+  }).join('');
+
   el.innerHTML = `
-    <div class="week-header">
-      <div>
-        <div class="week-pct" style="color:${pctColor}">${pct}%</div>
-        <div class="week-pct-sub">días del plan cumplidos</div>
-      </div>
-      <div style="text-align:right">
-        <div class="week-sessions-done" style="color:${pctColor}">${done} <span style="font-size:15px;font-weight:400;color:var(--text-muted)">/ ${nonRest.length}</span></div>
-        <div class="week-sessions-sub">sesiones del plan</div>
-        ${total > done ? `<div style="font-size:10px;color:var(--text-muted);margin-top:1px">+${total - done} fuera del plan</div>` : ''}
-      </div>
+    <div style="margin-bottom:10px;padding:10px 12px;background:var(--bg-input);border-radius:10px;border:1px solid var(--border)">
+      ${line1}${line2}${line3}
     </div>
     <div class="week-days-row">${cols}</div>
     ${tgtTSS ? `
-    <div style="margin-top:12px">
+    <div style="margin-top:10px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
-        <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Objetivo semanal</span>
+        <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Carga semanal</span>
         <span style="font-size:11px;color:var(--text-secondary)">${weekTSS} <span style="color:var(--text-muted)">/ ${tgtTSS} TSS</span></span>
       </div>
       <div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden">
         <div style="height:100%;width:${Math.min(tssPct,100)}%;background:${tssBarColor};border-radius:4px;transition:width .7s ease"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-top:5px">
-        <span style="font-size:10px;color:${tssBarColor};font-weight:600">${tssPct}% completado</span>
-        ${tgtHours ? `<span style="font-size:10px;color:var(--text-muted)">${weekHours}h / ${tgtHours}h objetivo</span>` : ''}
-      </div>
+      ${tgtHours ? `<div style="text-align:right;margin-top:4px"><span style="font-size:10px;color:var(--text-muted)">${weekHours}h / ${tgtHours}h objetivo</span></div>` : ''}
     </div>` : ''}`;
 }
 
