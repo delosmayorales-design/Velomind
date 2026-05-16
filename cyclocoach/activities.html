@@ -298,6 +298,98 @@ var allActivities = [];
 let chartInsts = {};
 let trainingPlan   = null;
 
+// ── Selección de intervalo en streams ──
+let _selA = null, _selB = null;
+let _sOrig = null, _sOrigN = 900, _sFTP = 200;
+
+const _streamSelPlugin = {
+  id: 'streamSel',
+  afterDraw(chart) {
+    if (!chart.canvas?.id?.startsWith('chart-stream-w') &&
+        !chart.canvas?.id?.startsWith('chart-stream-h') &&
+        !chart.canvas?.id?.startsWith('chart-stream-s') &&
+        !chart.canvas?.id?.startsWith('chart-stream-e')) return;
+    if (_selA === null) return;
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea || !scales.x) return;
+    ctx.save();
+    const x1 = scales.x.getPixelForValue(_selA);
+    if (_selB !== null) {
+      const x2 = scales.x.getPixelForValue(_selB);
+      const lx = Math.min(x1, x2), rx = Math.max(x1, x2);
+      ctx.fillStyle = 'rgba(158,214,43,0.12)';
+      ctx.fillRect(lx, chartArea.top, rx - lx, chartArea.bottom - chartArea.top);
+      ctx.strokeStyle = '#9ED62B'; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(lx, chartArea.top); ctx.lineTo(lx, chartArea.bottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(rx, chartArea.top); ctx.lineTo(rx, chartArea.bottom); ctx.stroke();
+    } else {
+      ctx.strokeStyle = 'rgba(158,214,43,0.7)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(x1, chartArea.top); ctx.lineTo(x1, chartArea.bottom); ctx.stroke();
+    }
+    ctx.restore();
+  }
+};
+Chart.register(_streamSelPlugin);
+
+function clearStreamSelection() {
+  _selA = null; _selB = null;
+  const panel = document.getElementById('interval-stats-panel');
+  if (panel) panel.style.display = 'none';
+  ['streamWatts','streamHR','streamSpeed','streamElev'].forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
+}
+
+function _showIntervalStats() {
+  if (_selA === null || _selB === null || !_sOrig) return;
+  const s = _sOrig;
+  const origLen = s.time.length;
+  const step = origLen > _sOrigN ? origLen / _sOrigN : 1;
+  const i1 = Math.max(0, Math.min(Math.round(_selA * step), origLen - 1));
+  const i2 = Math.max(0, Math.min(Math.round(_selB * step), origLen - 1));
+  const sl = arr => arr ? arr.slice(i1, i2 + 1) : [];
+  const tSl = sl(s.time), wSl = sl(s.watts), hrSl = sl(s.heartrate);
+  const spdSl = sl(s.velocity_smooth), altSl = sl(s.altitude);
+
+  const dur  = tSl.length >= 2 ? tSl[tSl.length-1] - tSl[0] : 0;
+  const avgW = wSl.length ? Math.round(wSl.reduce((a,b)=>a+b,0)/wSl.length) : null;
+  const maxW = wSl.length ? Math.max(...wSl) : null;
+  let npW = null;
+  if (wSl.length >= 30) {
+    const wNZ = wSl.filter(v=>v>0); const ma=[]; let sum=0;
+    for (let i=0;i<wNZ.length;i++){sum+=wNZ[i];if(i>=30)sum-=wNZ[i-30];ma.push(sum/Math.min(i+1,30));}
+    if (ma.length) npW = Math.round(Math.sqrt(Math.sqrt(ma.reduce((a,b)=>a+Math.pow(b,4),0)/ma.length)));
+  }
+  const IF   = (npW && _sFTP) ? Math.round(npW/_sFTP*100)/100 : null;
+  const avgHR= hrSl.length ? Math.round(hrSl.reduce((a,b)=>a+b,0)/hrSl.length) : null;
+  const avgSpd=spdSl.length ? Math.round(spdSl.reduce((a,b)=>a+b,0)/spdSl.length*3.6*10)/10 : null;
+  let elevGain=0;
+  for(let i=1;i<altSl.length;i++){const d=altSl[i]-altSl[i-1];if(d>0)elevGain+=d;}
+
+  const m=(label,val,color='var(--text)')=>val!=null
+    ?`<div style="text-align:center;min-width:58px;padding:6px 4px;background:var(--bg-card);border-radius:8px">
+        <div style="font-size:14px;font-weight:700;color:${color}">${val}</div>
+        <div style="font-size:8px;color:var(--text-muted);margin-top:1px;text-transform:uppercase;letter-spacing:.05em">${label}</div>
+      </div>`:'';;
+  const panel = document.getElementById('interval-stats-panel');
+  if (!panel) return;
+  panel.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ED62B">
+        <i class="fas fa-ruler-horizontal" style="margin-right:4px"></i>Intervalo · ${fmtTime(dur)}
+      </span>
+      <button onclick="clearStreamSelection()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);cursor:pointer;font-size:11px;padding:2px 8px;line-height:1.6">× Limpiar</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
+      ${m('Pot. Media',avgW?avgW+'W':null,'var(--primary)')}
+      ${m('NP',npW?npW+'W':null,'#9ED62B')}
+      ${m('Pot. Máx',maxW?maxW+'W':null,'#ef4444')}
+      ${m('IF',IF,'#F59E0B')}
+      ${m('FC Media',avgHR?avgHR+' bpm':null,'#ef4444')}
+      ${m('Velocidad',avgSpd?avgSpd+' km/h':null,'#38bdf8')}
+      ${elevGain>0?m('Desnivel','+'+Math.round(elevGain)+'m','#94a3b8'):''}
+    </div>`;
+  panel.style.display='';
+}
+
 async function initActivities() {
   await AppState.init();
   renderAthleteSidebar();
@@ -916,6 +1008,12 @@ function showActivityDetail(actId) {
           </div>
         </div>
 
+        <!-- Panel de intervalo seleccionado -->
+        <div id="interval-stats-panel" style="display:none;background:var(--bg-input);border:1px solid rgba(158,214,43,0.3);border-radius:12px;padding:12px 14px;margin-top:4px"></div>
+
+        <div style="text-align:center;margin-top:6px;font-size:10px;color:var(--text-muted);opacity:.6">
+          <i class="fas fa-hand-pointer" style="margin-right:3px"></i>Toca dos puntos para ver los datos del intervalo
+        </div>
       </div>
 
       <!-- Error -->
@@ -1028,6 +1126,9 @@ async function fetchAndRenderStreams(sid, ftp, act) {
     badge.textContent = `· ${Math.round(totalSec / 60)} min de datos`;
     badge.style.color = '#10B981';
 
+    // Guardar datos originales para el selector de intervalos
+    _sOrig = s; _sFTP = ftp; _selA = null; _selB = null;
+
     const npCalculated = renderStreamCharts(s, ftp);
 
     // Auto-actualizar NP en DB si difiere del guardado (estilo Garmin)
@@ -1084,6 +1185,7 @@ async function fetchAndRenderStreams(sid, ftp, act) {
 function renderStreamCharts(s, ftp) {
   let calculatedNP = null;
   const MAX_PTS = 900;
+  _sOrigN = Math.min(MAX_PTS, s.time.length);
   const tickC = '#64748b', gridC = 'rgba(255,255,255,0.04)';
 
   const commonOpts = (yLabel, yCallback) => ({
@@ -1272,6 +1374,28 @@ function renderStreamCharts(s, ftp) {
         sibling.update('none');
       });
     });
+
+    // ── Selección de intervalo (click) ──
+    chart.canvas.style.cursor = 'crosshair';
+    chart.canvas.addEventListener('click', evt => {
+      const rect = chart.canvas.getBoundingClientRect();
+      const items = chart.getElementsAtEventForMode(
+        { offsetX: evt.clientX - rect.left, offsetY: evt.clientY - rect.top },
+        'index', { intersect: false }, false
+      );
+      if (!items.length) return;
+      const idx = items[0].index;
+      if (_selA === null || (_selA !== null && _selB !== null)) {
+        _selA = idx; _selB = null;
+        const panel = document.getElementById('interval-stats-panel');
+        if (panel) panel.style.display = 'none';
+      } else {
+        _selB = idx;
+        if (_selB < _selA) { const t = _selA; _selA = _selB; _selB = t; }
+        _showIntervalStats();
+      }
+      streamKeys.forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
+    });
   });
   return calculatedNP;
 }
@@ -1341,6 +1465,7 @@ function renderDetailCharts(act, ftp) {
 function closePanel() {
   Object.values(chartInsts).forEach(c => { try { c.destroy(); } catch {} });
   chartInsts = {};
+  _selA = null; _selB = null; _sOrig = null;
   document.getElementById('detail-panel').classList.remove('open');
   document.getElementById('panel-overlay').classList.remove('show');
   document.body.style.overflow = '';
