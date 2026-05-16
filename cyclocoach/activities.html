@@ -959,19 +959,44 @@ function renderDetailCharts(act, ftp) {
     }
   }
 
-  // ── 2. Curva de potencia (best_efforts) ──────────────────────────
+  // ── 2. Curva de potencia ──────────────────────────────────────────
   const curveCanvas = document.getElementById('chart-power-curve');
   if (curveCanvas) {
-    const be = act.best_efforts ? (typeof act.best_efforts === 'string' ? JSON.parse(act.best_efforts) : act.best_efforts) : null;
-    const DURS = [5, 10, 30, 60, 120, 300, 600, 1200, 3600];
-    const LABELS = ["5\"", "10\"", "30\"", "1'", "2'", "5'", "10'", "20'", "60'"];
-    let points = [];
-    if (be && Object.keys(be).length > 0) {
-      DURS.forEach((d, i) => {
-        const w = Number(be[d] || be[String(d)] || 0);
-        if (w > 0) points.push({ x: i, w, label: LABELS[i] });
+    const DURS   = [5, 10, 30, 60, 120, 300, 600, 1200, 1800, 3600];
+    const LABELS = ["5\"","10\"","30\"","1'","2'","5'","10'","20'","30'","60'"];
+    const durSec = Number(act.duration || 0);
+    const base   = Number(act.np || act.avg_power || 0);
+    const maxW   = Number(act.max_power || 0);
+    const ftpCap = Math.min(1500, ftp * 5);
+
+    // Obtener best_efforts reales si existen
+    let be = act.best_efforts
+      ? (typeof act.best_efforts === 'string' ? JSON.parse(act.best_efforts) : act.best_efforts)
+      : null;
+    if (be && Object.keys(be).length === 0) be = null;
+
+    // Estimación fallback (igual que el backend) si no hay best_efforts
+    function estimateEfforts(durSec, base, maxW) {
+      const eff = {};
+      if (base <= 0 || durSec <= 0) return eff;
+      let safeMax = maxW > 0 && maxW <= ftpCap ? maxW : Math.round(base * 2.8);
+      DURS.forEach(d => {
+        if (d > durSec) return;
+        if (d === 5)       eff[d] = Math.round(safeMax);
+        else if (d === 10) eff[d] = Math.round(safeMax * 0.85 + base * 0.15);
+        else if (d === 30) eff[d] = Math.round(safeMax * 0.45 + base * 0.55);
+        else               eff[d] = Math.round(base * Math.pow(durSec / d, 0.09));
       });
+      return eff;
     }
+
+    const efforts = be || estimateEfforts(durSec, base, maxW);
+    const points  = DURS.reduce((acc, d, i) => {
+      const w = Number(efforts[d] || efforts[String(d)] || 0);
+      if (w > 0) acc.push({ label: LABELS[i], w });
+      return acc;
+    }, []);
+
     if (points.length >= 2) {
       chartInsts.curve = new Chart(curveCanvas, {
         type: 'line',
@@ -979,7 +1004,7 @@ function renderDetailCharts(act, ftp) {
           labels: points.map(p => p.label),
           datasets: [
             {
-              label: 'Mejor potencia',
+              label: be ? 'Mejor potencia (real)' : 'Potencia estimada',
               data: points.map(p => p.w),
               borderColor: '#9ED62B', backgroundColor: 'rgba(158,214,43,0.08)',
               tension: 0.35, pointRadius: 4, pointBackgroundColor: '#9ED62B',
@@ -1008,7 +1033,7 @@ function renderDetailCharts(act, ftp) {
     } else {
       document.getElementById('cwrap-curve').style.display = 'none';
       const cb = document.querySelector('[onchange*="cwrap-curve"]');
-      if (cb) { cb.checked = false; cb.closest('label').style.opacity = '.45'; }
+      if (cb) { cb.checked = false; cb.closest('label').classList.remove('active'); cb.closest('label').style.opacity = '.45'; }
     }
   }
 
