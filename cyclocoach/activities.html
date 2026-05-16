@@ -35,10 +35,17 @@
     .detail-metric-mini .value { font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;line-height:1; }
     .detail-section-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:18px 0 10px; }
     .chart-wrap { background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px 16px; }
+    .metric-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:6px; }
+    @media (max-width:480px) { .metric-grid { grid-template-columns:repeat(2,1fr); } }
     .chart-toggle-bar { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px; }
     .chart-toggle { display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--text-muted);background:var(--bg-input);border:1px solid var(--border);border-radius:20px;padding:4px 10px;cursor:pointer;user-select:none;transition:border-color .15s,color .15s; }
-    .chart-toggle:has(input:checked) { color:var(--primary);border-color:var(--primary); }
+    .chart-toggle:has(input:checked),
+    .chart-toggle.active { color:var(--primary);border-color:var(--primary); }
     .chart-toggle input { display:none; }
+    @media (max-width:480px) {
+      .chart-wrap { padding:10px 12px; }
+      .chart-toggle { font-size:9px;padding:3px 8px; }
+    }
     .activities-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .activities-table { min-width: 980px; }
     .activities-table th,
@@ -768,7 +775,7 @@ function showActivityDetail(actId) {
     <!-- GRUPO 1: ACTIVIDAD -->
     <div style="border-left:3px solid #38BDF8;padding-left:10px;margin-bottom:12px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#38BDF8;margin-bottom:6px">Actividad</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+      <div class="metric-grid">
         <div class="detail-metric-mini"><div class="label">Duración</div><div class="value" style="color:var(--text-primary);font-size:14px">${Utils.formatDuration(act.duration)}</div></div>
         <div class="detail-metric-mini"><div class="label">Distancia</div><div class="value" style="color:var(--text-primary);font-size:14px">${Utils.formatDistance(act.distance)}</div></div>
         <div class="detail-metric-mini"><div class="label">Desnivel</div><div class="value" style="color:#38BDF8;font-size:14px">${act.elevation ? '↑'+act.elevation+'m' : '--'}</div></div>
@@ -779,7 +786,7 @@ function showActivityDetail(actId) {
     <!-- GRUPO 2: POTENCIA -->
     <div style="border-left:3px solid #9ED62B;padding-left:10px;margin-bottom:12px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#9ED62B;margin-bottom:6px">Potencia</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+      <div class="metric-grid">
         <div class="detail-metric-mini" title="Promedio real incluyendo ceros (average_watts de Strava)">
           <div class="label">Media</div>
           <div class="value" style="color:#9ED62B;font-size:14px">${act.avg_power ? act.avg_power+'W' : '--'}</div>
@@ -798,7 +805,7 @@ function showActivityDetail(actId) {
     <!-- GRUPO 3: FISIOLOGÍA -->
     <div style="border-left:3px solid #ef4444;padding-left:10px;margin-bottom:12px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#ef4444;margin-bottom:6px">Fisiología</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+      <div class="metric-grid">
         <div class="detail-metric-mini"><div class="label">FC Media</div><div class="value" style="color:#ef4444;font-size:14px">${act.avg_hr ? act.avg_hr+' <span style="font-size:9px">bpm</span>' : '--'}</div></div>
         <div class="detail-metric-mini"><div class="label">FC Máx</div><div class="value" style="color:#ef4444;font-size:14px">${act.max_hr ? act.max_hr+' <span style="font-size:9px">bpm</span>' : '--'}</div></div>
         <div class="detail-metric-mini"><div class="label">Cadencia</div><div class="value" style="color:var(--text-primary);font-size:14px">${act.avg_cadence ? act.avg_cadence+' <span style="font-size:9px">rpm</span>' : '--'}</div></div>
@@ -809,7 +816,7 @@ function showActivityDetail(actId) {
     <!-- GRUPO 4: CARGA -->
     <div style="border-left:3px solid ${tssColor};padding-left:10px;margin-bottom:12px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:${tssColor};margin-bottom:6px">Carga de Entrenamiento</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+      <div class="metric-grid">
         <div class="detail-metric-mini" style="border-color:${tssColor}44"><div class="label">TSS</div><div class="value" style="color:${tssColor};font-size:18px;font-weight:800">${act.tss || '--'}</div></div>
         <div class="detail-metric-mini"><div class="label">Trabajo</div><div class="value" style="color:var(--text-primary);font-size:14px">${workKJ ? workKJ+' <span style="font-size:9px">kJ</span>' : '--'}</div></div>
         <div class="detail-metric-mini"><div class="label">TRIMP</div><div class="value" style="color:#a78bfa;font-size:14px">${trimp || '--'}</div></div>
@@ -820,7 +827,7 @@ function showActivityDetail(actId) {
     <!-- GRUPO 5: FORMA (PMC) -->
     <div style="border-left:3px solid #64748b;padding-left:10px;margin-bottom:14px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#64748b;margin-bottom:6px">Forma · ${Utils.formatDate(act.date)}</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+      <div class="metric-grid">
         <div class="detail-metric-mini" style="border-color:#38BDF844"><div class="label">CTL — Fitness</div><div class="value" style="color:#38BDF8;font-size:14px">${ctl}</div></div>
         <div class="detail-metric-mini" style="border-color:#ef444444"><div class="label">ATL — Fatiga</div><div class="value" style="color:#ef4444;font-size:14px">${atl}</div></div>
         <div class="detail-metric-mini" style="border-color:${tsbColor}44"><div class="label">TSB — Forma</div><div class="value" style="color:${tsbColor};font-size:14px">${tsb}</div></div>
@@ -836,10 +843,10 @@ function showActivityDetail(actId) {
     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px"><i class="fas fa-chart-bar"></i> Análisis Visual</div>
 
     <div class="chart-toggle-bar">
-      <label class="chart-toggle"><input type="checkbox" checked onchange="toggleChart('cwrap-zones',this.checked)"> Zonas</label>
-      <label class="chart-toggle"><input type="checkbox" checked onchange="toggleChart('cwrap-curve',this.checked)"> Curva potencia</label>
-      <label class="chart-toggle"><input type="checkbox" checked onchange="toggleChart('cwrap-tss',this.checked)"> TSS histórico</label>
-      <label class="chart-toggle"><input type="checkbox" checked onchange="toggleChart('cwrap-pmc',this.checked)"> PMC</label>
+      <label class="chart-toggle active"><input type="checkbox" checked onchange="toggleChart('cwrap-zones',this.checked,this)"> Zonas</label>
+      <label class="chart-toggle active"><input type="checkbox" checked onchange="toggleChart('cwrap-curve',this.checked,this)"> Curva potencia</label>
+      <label class="chart-toggle active"><input type="checkbox" checked onchange="toggleChart('cwrap-tss',this.checked,this)"> TSS histórico</label>
+      <label class="chart-toggle active"><input type="checkbox" checked onchange="toggleChart('cwrap-pmc',this.checked,this)"> PMC</label>
     </div>
 
     <div id="cwrap-zones" class="chart-wrap" style="margin-bottom:8px">
@@ -892,9 +899,10 @@ function showActivityDetail(actId) {
   requestAnimationFrame(() => renderDetailCharts(act, ftp));
 }
 
-function toggleChart(id, show) {
+function toggleChart(id, show, cb) {
   const el = document.getElementById(id);
   if (el) el.style.display = show ? '' : 'none';
+  if (cb) cb.closest('label')?.classList.toggle('active', show);
 }
 
 function renderDetailCharts(act, ftp) {
