@@ -1046,6 +1046,14 @@ async function fetchAndRenderStreams(sid, ftp, act) {
           act.tss = updated.tss;
           const local = allActivities.find(a => String(a.id) === String(act.id));
           if (local) { local.np = updated.np; local.if_value = updated.if_value; local.tss = updated.tss; }
+          // Actualizar la fila en la tabla sin re-renderizar toda la lista
+          const row = document.querySelector(`tr[data-act-id="${CSS.escape(String(act.id))}"]`);
+          if (row) {
+            const npCell = row.querySelector('.col-np');
+            const ifCell = row.querySelector('.col-if');
+            if (npCell) npCell.innerHTML = `<span style="color:var(--primary-light);font-weight:600">${updated.np}W</span>`;
+            if (ifCell) ifCell.textContent = updated.if_value ? updated.if_value.toFixed(2) : '--';
+          }
           // Actualizar el badge de NP en el panel
           badge.textContent = `· ${Math.round(totalSec / 60)} min · NP corregido ${updated.np}W`;
         }
