@@ -2438,4 +2438,217 @@ El atleta quiere hacer:
   }
 });
 
+// ── GET /api/coach/smart-insights ─────────────────────────────────────────
+// Traduce métricas a lenguaje natural + alertas mantenimiento + detección FTP
+// Query params: tomorrow_code, tomorrow_precip, tomorrow_wind, tomorrow_temp
+router.get('/smart-insights', async (req, res) => {
+  try {
+    const uid = req.user.id;
+
+    // ── Datos base ─────────────────────────────────────────────
+    const { data: user } = await supabase.from('users').select('*').eq('id', uid).single();
+    if (!user) return res.status(404).json({ insights: [] });
+    const ftp    = user.ftp    || 200;
+    const weight = user.weight || 70;
+
+    // PMC (últimos 10 días para comparar tendencia)
+    const { data: pmcRows } = await supabase.from('pmc')
+      .select('date, ctl, atl, tsb')
+      .eq('user_id', uid)
+      .order('date', { ascending: false })
+      .limit(10);
+    const latestPMC  = pmcRows?.[0] || { ctl: 0, atl: 0, tsb: 0 };
+    const weekAgoPMC = pmcRows?.[7] || null;
+
+    // Actividades (30 días) para zonas + detección de esfuerzos máximos
+    const since30 = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    const { data: activities } = await supabase.from('activities')
+      .select('date, duration, distance, tss, np, avg_power, max_power, if_value, elevation, zone_times, type, name, best_efforts')
+      .eq('user_id', uid)
+      .gte('date', since30)
+      .order('date', { ascending: false })
+      .limit(40);
+
+    // Plan semanal actual
+    const { data: planData } = await supabase.from('training_plans')
+      .select('sessions, phase, tss_target')
+      .eq('user_id', uid)
+      .order('week_start', { ascending: false })
+      .limit(1)
+      .single();
+
+    // Alertas de garaje (reutiliza la lógica de /api/garage/alerts)
+    const { data: bikes } = await supabase.from('bikes')
+      .select('id, name, type, total_km, total_hours')
+      .eq('user_id', uid).eq('is_active', true);
+    const KM_LIFE  = { chain: 3000, cassette: 9000, chainring: 15000, brakes_pad: 3000, tire_front: 5000, tire_rear: 4000 };
+    const HR_LIFE  = { fork: 200, shock: 100, fork_service: 200, shock_service: 100 };
+    const COMP_LABELS = { chain:'Cadena', cassette:'Cassette', chainring:'Platos', brakes_pad:'Pastillas de freno',
+                          tire_front:'Cubierta delantera', tire_rear:'Cubierta trasera', fork:'Horquilla', shock:'Amortiguador' };
+
+    const insights = [];
+
+    // ── ALERTAS DE MANTENIMIENTO ───────────────────────────────
+    for (const bike of (bikes || [])) {
+      const { data: comps } = await supabase.from('bike_components')
+        .select('*').eq('bike_id', bike.id).eq('is_active', true);
+      for (const c of (comps || [])) {
+        const ct = c.component_type;
+        const isHours = ['fork','shock','fork_service','shock_service'].includes(ct);
+        if (isHours) {
+          const hoursUsed  = Math.max(0, (bike.total_hours || 0) - (c.hours_installed || 0));
+          const limit      = HR_LIFE[ct] || 200;
+          const pct        = limit ? Math.round(hoursUsed / limit * 100) : 0;
+          if (pct >= 85) {
+            insights.push({ type: 'maintenance', priority: pct >= 100 ? 5 : 4,
+              icon: '🔧', color: pct >= 100 ? '#ef4444' : '#f59e0b',
+              title: pct >= 100 ? `¡${COMP_LABELS[ct] || ct} al límite! — ${bike.name}` : `${COMP_LABELS[ct] || ct} próxima a revisión — ${bike.name}`,
+              message: `Llevas ${Math.round(hoursUsed)}h de uso ${pct >= 100 ? `(límite: ${limit}h). Revisión urgente de retenes y aceite para evitar daños internos.` : `(límite recomendado: ${limit}h). Programa el servicio pronto.`}`,
+              action: null });
+          }
+        } else {
+          const kmUsed = Math.max(0, (bike.total_km || 0) - (c.km_installed || 0));
+          const limit  = KM_LIFE[ct] || 3000;
+          const pct    = limit ? Math.round(kmUsed / limit * 100) : 0;
+          if (pct >= 85) {
+            const label = COMP_LABELS[ct] || ct;
+            const msg   = pct >= 100
+              ? `Tu ${bike.name || 'bici'} lleva ${Math.round(kmUsed).toLocaleString()} km con esta ${label.toLowerCase()}. Cámbiala ya — seguir usando puede dañar el cassette o los discos.`
+              : `${Math.round(kmUsed).toLocaleString()} km de ${limit.toLocaleString()} km recomendados. Quedan ~${Math.round(limit - kmUsed).toLocaleString()} km. Planifica el cambio.`;
+            insights.push({ type: 'maintenance', priority: pct >= 100 ? 5 : 3,
+              icon: pct >= 100 ? '⛔' : '⚠️', color: pct >= 100 ? '#ef4444' : '#f59e0b',
+              title: pct >= 100 ? `¡${label} al límite! — ${bike.name}` : `${label} cerca del límite — ${bike.name}`,
+              message: msg, action: { label: 'Ver garaje', url: 'garaje.html' } });
+          }
+        }
+      }
+    }
+
+    // ── DETECCIÓN AUTOMÁTICA DE FTP ────────────────────────────
+    // Busca actividades recientes con IF ≥ 0.95 y duración entre 18-40 min
+    let detectedFTP = 0;
+    for (const a of (activities || [])) {
+      const dur = Number(a.duration || 0);
+      const np  = Number(a.np || 0);
+      const ifv = Number(a.if_value || 0);
+      if (dur >= 1080 && dur <= 2400 && np > 0 && ifv >= 0.95) {
+        const est = Math.round(np * 0.95);
+        if (est > detectedFTP) detectedFTP = est;
+      }
+      // También mirar best_efforts[1200] (20 min)
+      const be = a.best_efforts;
+      if (be) {
+        const p20 = Number(be['1200'] || be[1200] || 0);
+        if (p20 > 0) {
+          const est = Math.round(p20 * 0.95);
+          if (est > detectedFTP) detectedFTP = est;
+        }
+      }
+    }
+    if (detectedFTP > ftp * 1.025) {
+      insights.push({ type: 'ftp', priority: 4,
+        icon: '🎯', color: '#9ED62B',
+        title: `¡Nuevo FTP estimado detectado! ${ftp}W → ${detectedFTP}W`,
+        message: `Hemos detectado un esfuerzo reciente donde tu potencia normalizada sugiere un FTP de ~${detectedFTP}W (+${detectedFTP - ftp}W vs actual). Actualiza tus zonas para que el plan trabaje con los números correctos.`,
+        action: { label: 'Actualizar FTP', url: 'profile.html' } });
+    }
+
+    // ── CONFLICTO CLIMA + PLAN ─────────────────────────────────
+    const tomorrowCode  = parseInt(req.query.tomorrow_code  || '0');
+    const tomorrowPrec  = parseFloat(req.query.tomorrow_precip || '0');
+    const tomorrowWind  = parseFloat(req.query.tomorrow_wind   || '0');
+    const tomorrowTemp  = parseFloat(req.query.tomorrow_temp   || '15');
+    const HEAVY_RAIN    = [65, 82, 95, 96, 99];
+    const ANY_RAIN      = [51,53,55,61,63,65,80,81,82,95,96,99];
+    const isHeavy       = HEAVY_RAIN.includes(tomorrowCode) || tomorrowPrec >= 3;
+    const isRain        = ANY_RAIN.includes(tomorrowCode)   || tomorrowPrec >= 0.5;
+    const isStorm       = tomorrowCode >= 95;
+    const now           = new Date();
+    const tomorrowDow   = ((now.getDay() + 6) % 7 + 1) % 7;
+    const tomorrowSess  = planData?.sessions?.[tomorrowDow];
+    const isTomOutdoor  = tomorrowSess && !tomorrowSess.isRest &&
+                          ['long','endurance','tempo','threshold','vo2max','sprint'].includes(tomorrowSess?.type);
+
+    if (isTomOutdoor && (isHeavy || (isRain && tomorrowWind > 35) || isStorm)) {
+      const sName = tomorrowSess.name || tomorrowSess.type;
+      const altMin = Math.round((tomorrowSess.durationMin || 60) * 0.85);
+      const wxDesc = isStorm ? 'tormenta' : isHeavy ? 'lluvia torrencial' : 'lluvia + viento fuerte';
+      const rollerAdvice = tomorrowSess.type === 'long'
+        ? `Sustituye el fondo largo por ${altMin} min en rodillo: 15 min calentamiento Z1, 60-80 min bloques Z2 sostenidos, 10 min vuelta a la calma.`
+        : tomorrowSess.type === 'threshold' || tomorrowSess.type === 'tempo'
+          ? `Replica la sesión en rodillo: los intervalos de umbral funcionan igual de bien (mejor, sin tráfico ni semáforos).`
+          : `Prepara el rodillo con ${altMin} min siguiendo la misma estructura del plan.`;
+      insights.push({ type: 'weather', priority: 3,
+        icon: '🌧️', color: '#60a5fa',
+        title: `Mañana ${wxDesc} — cambia a rodillo`,
+        message: `Tienes planificado "${sName}" mañana. ${rollerAdvice}`,
+        action: { label: 'Ver plan', url: 'training-plan.html' } });
+    }
+
+    // ── TRADUCTOR IA DE MÉTRICAS ───────────────────────────────
+    const hasMeaningfulData = (latestPMC.ctl > 5 || latestPMC.atl > 5) && (activities?.length || 0) > 0;
+    if (hasMeaningfulData) {
+      const zoneMins = [0,0,0,0,0,0,0,0];
+      for (const a of (activities || [])) {
+        if (a.zone_times) {
+          const zt = typeof a.zone_times === 'string' ? JSON.parse(a.zone_times) : a.zone_times;
+          for (let z = 1; z <= 7; z++) zoneMins[z] += (zt[`z${z}`] || 0) / 60;
+        }
+      }
+      const totalZM = zoneMins.slice(1).reduce((s,v) => s+v, 0);
+      const zonePct = zoneMins.map(v => totalZM > 0 ? Math.round(v / totalZM * 100) : 0);
+      const ctlTrend = weekAgoPMC ? (latestPMC.ctl - weekAgoPMC.ctl).toFixed(1) : null;
+      const todayDow = (now.getDay() + 6) % 7;
+      const todaySess = planData?.sessions?.[todayDow];
+      const tomorrowSessAI = planData?.sessions?.[tomorrowDow];
+
+      const systemPrompt = `Eres el coach personal de ciclismo de VeloMind. Genera exactamente 2 insights en lenguaje natural, directo y específico, basados en los datos reales del atleta.
+
+Reglas:
+- Habla en segunda persona ("estás", "tu", "tienes")
+- Sé muy concreto: menciona números, vatios, minutos, zonas específicas
+- Cada mensaje debe incluir QUÉ hacer EXACTAMENTE hoy o mañana
+- NO uses frases genéricas como "escucha a tu cuerpo" sin dar números concretos
+- El icon debe ser un único emoji relevante
+- type: "warning" si hay riesgo, "success" si todo va bien, "info" si es neutro
+- Esta app es EXCLUSIVAMENTE de ciclismo
+
+Responde SOLO con JSON: {"insights":[{"title":"...","message":"...","icon":"emoji","type":"info|warning|success"}]}`;
+
+      const tsbSign = latestPMC.tsb >= 0 ? '+' : '';
+      const userMsg = `Datos HOY:
+CTL: ${latestPMC.ctl.toFixed(1)}${ctlTrend ? ` (${Number(ctlTrend) >= 0 ? '+' : ''}${ctlTrend} en 7 días)` : ''}
+ATL: ${latestPMC.atl.toFixed(1)} | TSB: ${tsbSign}${latestPMC.tsb.toFixed(1)}
+FTP: ${ftp}W | W/kg: ${(ftp/weight).toFixed(2)}
+Zonas 30 días: Z1=${zonePct[1]}% Z2=${zonePct[2]}% Z3=${zonePct[3]}% Z4=${zonePct[4]}% Z5=${zonePct[5]}%
+Sesión de HOY: ${todaySess ? (todaySess.isRest ? 'Descanso' : `${todaySess.name||todaySess.type} — ${todaySess.durationMin||'?'} min, TSS objetivo ${todaySess.tss||'?'}`) : 'Sin plan'}
+Sesión de MAÑANA: ${tomorrowSessAI ? (tomorrowSessAI.isRest ? 'Descanso' : `${tomorrowSessAI.name||tomorrowSessAI.type} — ${tomorrowSessAI.durationMin||'?'} min`) : 'Sin plan'}
+Objetivo del atleta: ${user.goal || 'resistencia'}`;
+
+      try {
+        const aiResult = await callAI(systemPrompt, userMsg, { max_tokens: 500, temperature: 0.35 });
+        if (Array.isArray(aiResult?.insights)) {
+          for (const ins of aiResult.insights) {
+            if (!ins.title || !ins.message) continue;
+            insights.push({ type: ins.type || 'info', priority: 1,
+              icon: ins.icon || '🧠',
+              color: ins.type === 'warning' ? '#f59e0b' : ins.type === 'success' ? '#10b981' : '#38BDF8',
+              title: ins.title, message: ins.message, action: null });
+          }
+        }
+      } catch (e) {
+        console.error('[smart-insights] AI error:', e.message);
+      }
+    }
+
+    // Ordenar por prioridad descendente, máx 5 insights
+    insights.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    return res.json({ insights: insights.slice(0, 5) });
+
+  } catch (e) {
+    console.error('[smart-insights]', e.message);
+    return res.status(500).json({ insights: [], error: e.message });
+  }
+});
+
 module.exports = router;
