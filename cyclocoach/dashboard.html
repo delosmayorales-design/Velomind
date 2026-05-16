@@ -1117,6 +1117,46 @@ function getRouteRec(code, wind, precip, temp, sess) {
 
 let wxTomorrow = null;
 
+function buildHourlyRow(hourly) {
+  if (!hourly?.time?.length) return '';
+  const now      = new Date();
+  const nowHour  = now.getHours();
+  // Encuentra el índice de la hora actual en el array
+  const startIdx = hourly.time.findIndex(t => {
+    const h = new Date(t);
+    return h.getDate() === now.getDate() && h.getHours() >= nowHour;
+  });
+  if (startIdx === -1) return '';
+  const slots = hourly.time.slice(startIdx, startIdx + 12);
+
+  const items = slots.map((t, i) => {
+    const idx   = startIdx + i;
+    const hour  = new Date(t).getHours();
+    const label = hour === 0 ? '00h' : `${String(hour).padStart(2,'0')}h`;
+    const temp  = Math.round(hourly.temperature_2m?.[idx] ?? 0);
+    const prob  = Math.round(hourly.precipitation_probability?.[idx] ?? 0);
+    const wcode = hourly.weather_code?.[idx] ?? 0;
+    const RAIN_CODES = [51,53,55,61,63,65,80,81,82,95,96,99];
+    const isRain = RAIN_CODES.includes(wcode) || prob >= 40;
+    const probColor = prob >= 70 ? '#60a5fa' : prob >= 40 ? '#93c5fd' : 'var(--text-muted)';
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;min-width:36px">
+        <span style="font-size:9px;color:var(--text-muted);font-weight:600">${label}</span>
+        <span style="font-size:10px">${isRain ? '🌧️' : '☀️'}</span>
+        <span style="font-size:10px;font-weight:700;color:var(--text-primary)">${temp}°</span>
+        <span style="font-size:9px;font-weight:600;color:${probColor}">${prob}%</span>
+      </div>`;
+  }).join('');
+
+  return `
+    <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px">Próximas horas</div>
+      <div style="display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+        ${items}
+      </div>
+    </div>`;
+}
+
 function buildRainAlert(todayCode, todayPrec, daily) {
   const RAIN  = [51,53,55,61,63,65,80,81,82,95,96,99];
   const HEAVY = [65,82,95,96,99];
@@ -1160,8 +1200,8 @@ async function fetchWeather() {
   (window.getGeoPosition ? window.getGeoPosition() : new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej))).then(async pos => {
     try {
       const { latitude: lat, longitude: lon } = pos.coords;
-      // Petición combinada: current + daily para obtener mañana
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&daily=weather_code,precipitation_sum,wind_speed_10m_max,temperature_2m_max&wind_speed_unit=kmh&timezone=auto&forecast_days=2`;
+      // Petición combinada: current + daily + hourly
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&daily=weather_code,precipitation_sum,wind_speed_10m_max,temperature_2m_max&hourly=temperature_2m,precipitation_probability,weather_code&wind_speed_unit=kmh&timezone=auto&forecast_days=2`;
       const data = await fetch(url).then(r => r.json());
       const c    = data.current;
       // Guardar pronóstico de mañana para smart-insights
@@ -1208,7 +1248,8 @@ async function fetchWeather() {
             ${clothes.map(i => `<div class="clothes-item">${i}</div>`).join('')}
           </div>
         </div>
-        ${buildRainAlert(code, prec, data.daily)}`;
+        ${buildRainAlert(code, prec, data.daily)}
+        ${buildHourlyRow(data.hourly)}`;
     } catch {
       el.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> No se pudo obtener el tiempo</div>`;
     }
