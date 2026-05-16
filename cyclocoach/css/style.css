@@ -1212,6 +1212,23 @@ html.light-theme .modal-close-x:hover {
 .filter-bar__search .form-input { padding-left: 36px; }
 .filter-bar__select { width: 160px; }
 
+/* ─── Scroll Horizontal (Ideal para clima por horas) ─── */
+.scroll-x-mobile {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  gap: 12px;
+  padding-bottom: 8px; /* Espacio para que no corte sombras */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+.scroll-x-mobile::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
+}
+.scroll-x-mobile > div {
+  flex: 0 0 auto !important; /* Evita que las tarjetas de hora se aplasten */
+}
+
 /* ─── "Connected" state button ───────────────────────────────── */
 .btn-connected {
   background: rgba(158,214,43,0.10);

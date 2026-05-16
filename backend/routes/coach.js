@@ -1251,13 +1251,16 @@ router.post('/ai-analysis', async (req, res) => {
     const estadoUsuario  = req.body?.estado_usuario || {};
 
     const since90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const { data: activities, error: actsError } = await supabase.from('activities')
+    const { data: rawActivities, error: actsError } = await supabase.from('activities')
       .select('date, duration, distance, tss, np, avg_power, max_power, avg_hr, max_hr, elevation, type, name, if_value, source, avg_cadence, calories')
       .eq('user_id', req.user.id)
       .gte('date', since90)
       .order('date', { ascending: false })
-      .limit(60);
+      .limit(100);
     if (actsError) throw actsError;
+
+    const validTypes = ['Ride', 'VirtualRide', 'cycling', 'EBikeRide', 'GravelRide', 'MountainBikeRide'];
+    const activities = rawActivities.filter(a => !a.type || validTypes.includes(a.type)).slice(0, 60);
 
     const { data: pmcData, error: pmcError } = await supabase.from('pmc')
       .select('date, ctl, atl, tsb')
