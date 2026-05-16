@@ -2034,16 +2034,19 @@ Si el plan ya es óptimo → devolver "modifications": []`;
     const newSessions = [...plan.sessions];
     for (const mod of result.modifications) {
       const idx = Number(mod.dayIndex);
-      const allowed = idx >= todayIdx; // Permitir afectar a partir de HOY, pero NUNCA en el pasado
+      // Si el objetivo es un día futuro, la IA NO puede tocar HOY ni el pasado
+      const allowed = activeIdx === todayIdx ? idx >= todayIdx : idx > todayIdx;
       if (allowed && idx < 7 && mod.changes) {
-        newSessions[idx] = { ...newSessions[idx], ...mod.changes };
+        // Nunca propagar flags de UI como 'completed' desde la IA
+        const { completed: _c, ...safeChanges } = mod.changes;
+        newSessions[idx] = { ...newSessions[idx], ...safeChanges };
       }
     }
 
     // ── Fallback determinista Límite de Días ──────────────
     // Salvaguarda determinista: descanso roto + exceso reciente + calidad manana.
     const normFeedback = String(feedback || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const wantsRideToday = /\b(salir|salgo|rodar|rodaje|bici|entrenar|entreno|hacer algo|suave)\b/.test(normFeedback);
+    const wantsRideToday = /\b(salir|salgo|rodar|rodaje|bici|entrenar|entreno|hacer algo|suave|grupeta|grupo|ruta|fondo|marcha|peloton)\b/.test(normFeedback);
     const feedbackMentionsExcess = /\b(exced|exceso|me pase|pasado|demasiad|mas tss|mucho tss|fatiga|cargad)\b/.test(normFeedback);
     const originalTargetWasRest = !!plan.sessions[activeIdx]?.isRest;
     const recentExcessTSS = Math.max(
@@ -2095,7 +2098,9 @@ Si el plan ya es óptimo → devolver "modifications": []`;
       for (const p of PRIORITIES) {
         if (excess <= 0) break;
         // Busca quitar entrenamientos futuros, priorizando los más suaves, EVITANDO descansos consecutivos
+        // Nunca eliminar el día que el usuario acaba de activar (activeIdx)
         for (let i = 6; i > todayIdx; i--) {
+          if (i === activeIdx) continue; // proteger el día que el usuario quiere entrenar
           if (!newSessions[i].isRest && newSessions[i].type === p) {
             const prevRest = i > 0 ? newSessions[i-1].isRest : false;
             const nextRest = i < 6 ? newSessions[i+1].isRest : false;
@@ -2113,12 +2118,13 @@ Si el plan ya es óptimo → devolver "modifications": []`;
           }
         }
       }
-      
+
       // Si aún hay exceso, ignoramos la regla de consecutivos para cumplir el límite
       if (excess > 0) {
         for (const p of PRIORITIES) {
           if (excess <= 0) break;
           for (let i = 6; i > todayIdx; i--) {
+            if (i === activeIdx) continue; // proteger el día que el usuario quiere entrenar
             if (!newSessions[i].isRest && newSessions[i].type === p) {
               newSessions[i] = {
                 ...newSessions[i],
