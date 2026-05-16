@@ -1375,7 +1375,7 @@ function renderStreamCharts(s, ftp) {
       });
     });
 
-    // ── Selección de intervalo (click) ──
+    // ── Selección de intervalo (click / touch drag) ──
     chart.canvas.style.cursor = 'crosshair';
     chart.canvas.addEventListener('click', evt => {
       const rect = chart.canvas.getBoundingClientRect();
@@ -1395,6 +1395,40 @@ function renderStreamCharts(s, ftp) {
         _showIntervalStats();
       }
       streamKeys.forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
+    });
+
+    // Touch: arrastrar con el dedo para seleccionar un tramo
+    function _touchIdx(touch) {
+      const rect = chart.canvas.getBoundingClientRect();
+      const items = chart.getElementsAtEventForMode(
+        { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top },
+        'index', { intersect: false }, false
+      );
+      return items.length ? items[0].index : null;
+    }
+    let _touchDragging = false;
+    chart.canvas.addEventListener('touchstart', evt => {
+      const idx = _touchIdx(evt.touches[0]);
+      if (idx === null) return;
+      _touchDragging = true;
+      _selA = idx; _selB = null;
+      const panel = document.getElementById('interval-stats-panel');
+      if (panel) panel.style.display = 'none';
+      streamKeys.forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
+    }, { passive: true });
+    chart.canvas.addEventListener('touchmove', evt => {
+      if (!_touchDragging) return;
+      evt.preventDefault();
+      const idx = _touchIdx(evt.touches[0]);
+      if (idx === null) return;
+      _selB = idx;
+      if (_selB < _selA) { const t = _selA; _selA = _selB; _selB = t; }
+      streamKeys.forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
+    }, { passive: false });
+    chart.canvas.addEventListener('touchend', () => {
+      if (!_touchDragging) return;
+      _touchDragging = false;
+      if (_selA !== null && _selB !== null && _selA !== _selB) _showIntervalStats();
     });
   });
   return calculatedNP;

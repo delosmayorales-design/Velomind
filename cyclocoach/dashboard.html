@@ -1374,7 +1374,7 @@ function buildHourlyRow(hourly) {
   return `
     <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px">Próximas horas</div>
-      <div class="hourly-scroll scroll-x-mobile" style="display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+      <div class="hourly-scroll scroll-x-mobile" style="display:flex;flex-wrap:nowrap;flex-direction:row;gap:4px;overflow-x:auto;overflow-y:visible;width:100%;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
         ${items}
       </div>
     </div>`;
@@ -1513,11 +1513,13 @@ function renderWeek(plan) {
   monday.setHours(0,0,0,0);
   const sunday = new Date(monday); sunday.setDate(monday.getDate()+6); sunday.setHours(23,59,59,999);
 
+  const CYCLING_TYPES = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide'];
   const activeDays = new Set();
   const weekActs = [];
   (AppState.activities||[]).forEach(a => {
     const d = new Date((a.date||'').slice(0,10)+'T00:00:00');
     if (isNaN(d) || d < monday || d > sunday) return;
+    if (!CYCLING_TYPES.includes(a.sport_type || a.type || '')) return;
     const idx = Math.round((d - monday) / 86400000);
     if (idx >= 0 && idx <= 6) { activeDays.add(idx); weekActs.push(a); }
   });
