@@ -1465,11 +1465,12 @@ function renderWeek(plan) {
     <div class="week-header">
       <div>
         <div class="week-pct" style="color:${pctColor}">${pct}%</div>
-        <div class="week-pct-sub">cumplimiento semanal</div>
+        <div class="week-pct-sub">días del plan cumplidos</div>
       </div>
-      <div>
-        <div class="week-sessions-done" style="color:${pctColor}">${total} <span style="font-size:15px;font-weight:400;color:var(--text-muted)">/ ${nonRest.length}</span></div>
-        <div class="week-sessions-sub">sesiones completadas</div>
+      <div style="text-align:right">
+        <div class="week-sessions-done" style="color:${pctColor}">${done} <span style="font-size:15px;font-weight:400;color:var(--text-muted)">/ ${nonRest.length}</span></div>
+        <div class="week-sessions-sub">sesiones del plan</div>
+        ${total > done ? `<div style="font-size:10px;color:var(--text-muted);margin-top:1px">+${total - done} fuera del plan</div>` : ''}
       </div>
     </div>
     <div class="week-days-row">${cols}</div>
