@@ -363,43 +363,6 @@
     /* ─────────────────────────────────────────────────────────
        FTP BANNER
     ───────────────────────────────────────────────────────── */
-    /* ── SMART INSIGHTS ── */
-    .si-card { padding-bottom: 4px; }
-    .si-item {
-      display: flex; gap: 14px; align-items: flex-start;
-      padding: 14px 0; border-bottom: 1px solid var(--border);
-    }
-    .si-item:last-child { border-bottom: none; padding-bottom: 0; }
-    .si-icon {
-      width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-    }
-    .si-body { flex: 1; min-width: 0; }
-    .si-title {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 13px; font-weight: 700; color: var(--text-primary);
-      margin-bottom: 4px; line-height: 1.3;
-    }
-    .si-msg {
-      font-size: 12px; color: var(--text-secondary); line-height: 1.6;
-    }
-    .si-action {
-      display: inline-flex; align-items: center; gap: 5px;
-      margin-top: 8px; font-size: 11px; font-weight: 700;
-      text-decoration: none; border-radius: 6px; padding: 5px 10px;
-      background: rgba(158,214,43,.1); color: var(--primary);
-      border: 1px solid rgba(158,214,43,.2); transition: background .15s;
-    }
-    .si-action:hover { background: rgba(158,214,43,.2); }
-    .si-skeleton { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
-    .si-skel-row { display: flex; gap: 12px; align-items: center; }
-    .si-skel-icon { width: 38px; height: 38px; border-radius: 12px; background: var(--bg-input); flex-shrink:0; animation: shimmer 1.4s infinite; }
-    .si-skel-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-    .si-skel-line { height: 10px; border-radius: 6px; background: var(--bg-input); animation: shimmer 1.4s infinite; }
-    .si-skel-line.short { width: 55%; }
-    @keyframes shimmer { 0%,100%{opacity:.5} 50%{opacity:1} }
-
     .ftp-banner {
       border-radius: 16px;
       padding: 18px 22px;
@@ -681,13 +644,6 @@
       .last-act-metrics { gap: 6px; }
       .last-act-metric  { padding: 8px 8px; }
       .last-act-metric .val { font-size: 14px; }
-
-      /* Smart Insights — móvil */
-      .si-item  { gap: 10px; padding: 12px 0; }
-      .si-icon  { width: 34px; height: 34px; border-radius: 10px; font-size: 16px; }
-      .si-title { font-size: 12px; }
-      .si-msg   { font-size: 11px; line-height: 1.55; }
-      .si-action { font-size: 10px; padding: 4px 9px; }
     }
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
@@ -764,14 +720,6 @@
         </div>
       </div>
 
-    </div>
-
-    <!-- ── SMART INSIGHTS ── -->
-    <div class="card si-card" id="smart-insights-card" style="margin-bottom:16px;display:none">
-      <div class="card-eyebrow"><i class="fas fa-brain" style="color:#a78bfa"></i> VeloMind Intelligence</div>
-      <div id="si-content">
-        <div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Analizando tus datos...</div>
-      </div>
     </div>
 
     <!-- ── FTP READINESS ── -->
@@ -1167,8 +1115,41 @@ function getRouteRec(code, wind, precip, temp, sess) {
   return { icon:'🚴', type:'Carretera', color:'#9ED62B', msg:'Condiciones perfectas para carretera. ¡Aprovéchalo!' };
 }
 
-// Pronóstico de mañana (se rellena en fetchWeather, lo usa loadSmartInsights)
 let wxTomorrow = null;
+
+function buildRainAlert(todayCode, todayPrec, daily) {
+  const RAIN  = [51,53,55,61,63,65,80,81,82,95,96,99];
+  const HEAVY = [65,82,95,96,99];
+  const OUTDOOR = ['long','endurance','tempo','threshold','vo2max','sprint','race'];
+  const isRainy = (code, precip) => HEAVY.includes(code) || precip >= 3 || (RAIN.includes(code) && precip >= 1);
+
+  const warnings = [];
+
+  // HOY
+  const todaySess = dashPlan?.sessions?.[todayIdx];
+  if (todaySess && !todaySess.isRest && OUTDOOR.includes(todaySess.type) && isRainy(todayCode, todayPrec))
+    warnings.push({ when: 'Hoy', sess: todaySess });
+
+  // MAÑANA
+  if (daily?.weather_code?.[1] !== undefined) {
+    const tmDow  = ((new Date().getDay() + 6) % 7 + 1) % 7;
+    const tmSess = dashPlan?.sessions?.[tmDow];
+    if (tmSess && !tmSess.isRest && OUTDOOR.includes(tmSess.type) &&
+        isRainy(daily.weather_code[1], daily.precipitation_sum?.[1] || 0))
+      warnings.push({ when: 'Mañana', sess: tmSess });
+  }
+
+  if (!warnings.length) return '';
+  return warnings.map(({ when, sess }) => `
+    <div style="margin-top:10px;padding:12px 14px;border-radius:10px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.25);display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:20px;flex-shrink:0">🌧️</span>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#60a5fa;margin-bottom:3px">${when} llueve — considera el rodillo</div>
+        <div style="font-size:11px;color:var(--text-secondary);line-height:1.5">Tienes "${sess.name || sess.type}" planificado. Si las condiciones no mejoran, haz la sesión en rodillo para no perder el entrenamiento.</div>
+        <a href="training-plan.html" style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:10px;font-weight:700;color:#60a5fa;text-decoration:none">Ver plan <i class="fas fa-arrow-right" style="font-size:8px"></i></a>
+      </div>
+    </div>`).join('');
+}
 
 async function fetchWeather() {
   const el = document.getElementById('wx-content');
@@ -1226,7 +1207,8 @@ async function fetchWeather() {
           <div class="clothes-items">
             ${clothes.map(i => `<div class="clothes-item">${i}</div>`).join('')}
           </div>
-        </div>`;
+        </div>
+        ${buildRainAlert(code, prec, data.daily)}`;
     } catch {
       el.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> No se pudo obtener el tiempo</div>`;
     }
@@ -1447,8 +1429,6 @@ function renderMacrocycle() {
   await loadPlan();
   renderMacrocycle();
   loadWellness();
-  // Smart insights: esperar un tick para que wxTomorrow se rellene si el clima ya resolvió
-  setTimeout(loadSmartInsights, 1200);
 
   BackendSync.loadActivities().then(() => {
     const m = AppState.pmcData?.length ? AppState.getCurrentMetrics() : null;
@@ -1475,77 +1455,6 @@ function renderMacrocycle() {
 
   requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
 })();
-
-// ── SMART INSIGHTS ───────────────────────────────────────────
-async function loadSmartInsights() {
-  const card    = document.getElementById('smart-insights-card');
-  const content = document.getElementById('si-content');
-  if (!card || !content) return;
-
-  // Cache de 20 min en localStorage
-  const CACHE_KEY = 'velomind_smart_insights';
-  const CACHE_TTL = 20 * 60 * 1000;
-  try {
-    const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
-    if (cached && Date.now() - cached.ts < CACHE_TTL && cached.insights?.length) {
-      renderInsights(cached.insights);
-      return;
-    }
-  } catch {}
-
-  // Skeleton mientras carga
-  card.style.display = '';
-  content.innerHTML = `
-    <div class="si-skeleton">
-      ${[1,2,3].map(() => `<div class="si-skel-row">
-        <div class="si-skel-icon"></div>
-        <div class="si-skel-lines">
-          <div class="si-skel-line short"></div>
-          <div class="si-skel-line"></div>
-        </div>
-      </div>`).join('')}
-    </div>`;
-
-  try {
-    const params = new URLSearchParams();
-    if (wxTomorrow) {
-      params.set('tomorrow_code',   wxTomorrow.code);
-      params.set('tomorrow_precip', wxTomorrow.precip);
-      params.set('tomorrow_wind',   wxTomorrow.wind);
-      params.set('tomorrow_temp',   wxTomorrow.temp);
-    }
-    const r = await fetch(`${window.API_URL}/coach/smart-insights?${params}`, { headers: Auth.getHeaders() });
-    if (!r.ok) throw new Error('Error del servidor');
-    const { insights } = await r.json();
-    if (!insights?.length) { card.style.display = 'none'; return; }
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), insights }));
-    renderInsights(insights);
-  } catch (e) {
-    card.style.display = 'none';
-    console.warn('[smart-insights]', e.message);
-  }
-
-  function renderInsights(insights) {
-    if (!insights?.length) { card.style.display = 'none'; return; }
-    card.style.display = '';
-    const TYPE_COLOR = { maintenance: '#f59e0b', ftp: '#9ED62B', weather: '#60a5fa', warning: '#f59e0b', success: '#10b981', info: '#a78bfa' };
-    content.innerHTML = insights.map(ins => {
-      const col = ins.color || TYPE_COLOR[ins.type] || '#a78bfa';
-      const actionHtml = ins.action
-        ? `<a class="si-action" href="${ins.action.url}">${ins.action.label} <i class="fas fa-arrow-right" style="font-size:9px"></i></a>`
-        : '';
-      return `
-        <div class="si-item">
-          <div class="si-icon" style="background:${col}18;color:${col}">${ins.icon || '🧠'}</div>
-          <div class="si-body">
-            <div class="si-title" style="color:${col}">${ins.title}</div>
-            <div class="si-msg">${ins.message}</div>
-            ${actionHtml}
-          </div>
-        </div>`;
-    }).join('');
-  }
-}
 
 // ── WELLNESS / RECUPERACIÓN ───────────────────────────────────
 async function loadWellness() {
