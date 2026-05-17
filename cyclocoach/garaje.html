@@ -2011,8 +2011,8 @@ function calcPressure() {
   var rearLoad  = total * 0.57;
   var kMap = { road: 1.0, gravel: 0.82, mtb: 0.65 };
   var k = kMap[terrain] || 1.0;
-  var frontPsi = Math.round((frontLoad * 2.2046) / (frontMm / 25.4 * 4.5) * k);
-  var rearPsi  = Math.round((rearLoad  * 2.2046) / (rearMm  / 25.4 * 4.5) * k);
+  var frontPsi = Math.round((frontLoad * 2.2046) / (frontMm / 25.4) * 0.9 * k);
+  var rearPsi  = Math.round((rearLoad  * 2.2046) / (rearMm  / 25.4) * 0.9 * k);
   var frontBar = (frontPsi * 0.0689476).toFixed(1);
   var rearBar  = (rearPsi  * 0.0689476).toFixed(1);
   document.getElementById('p-front-psi').textContent = frontPsi;
@@ -2060,7 +2060,7 @@ async function askMechanic() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando...';
   result.style.display = 'none';
   try {
-    var token = localStorage.getItem('cyclocoach_token') || '';
+    var token = localStorage.getItem('velomind_token') || sessionStorage.getItem('velomind_token') || '';
     var res = await fetch(window.API_URL + '/coach/mechanic-ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },

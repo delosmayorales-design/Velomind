@@ -4209,6 +4209,7 @@ function _onTrkPos(pos) {
   const speedKmh = speed != null ? speed * 3.6 : null;
 
   // Señal GPS recuperada tras pérdida
+  const wasLost = _trkGpsLost;
   if (_trkGpsLost) {
     _trkGpsLost = false;
     clearTimeout(_trkGpsRetry);
@@ -4219,23 +4220,32 @@ function _onTrkPos(pos) {
 
   const isFirst = _trkPoints.length === 0;
 
-  // Descartar lecturas con precisión GPS pobre (salvo primer punto)
-  if (!isFirst && accuracy > 25) return;
+  // Umbral de precisión: 50 m en condiciones normales; al recuperar señal aceptamos hasta 80 m
+  const accuracyThreshold = wasLost ? 80 : 50;
+  if (!isFirst && accuracy > accuracyThreshold) return;
 
   if (!isFirst) {
     const prev = _trkPoints[_trkPoints.length - 1];
     const d  = _haversine(prev.lat, prev.lng, lat, lng);
     const dt = Math.max(0.5, (ts - prev.ts) / 1000);
 
-    // Descartar saltos GPS imposibles (máx. ~100 km/h = 28 m/s)
-    const maxDist = Math.max(30, dt * 28);
+    // Descartar saltos GPS imposibles (máx. ~120 km/h = 33 m/s para ciclismo de montaña)
+    const maxDist = Math.max(50, dt * 33);
     if (d > maxDist) return;
 
-    const hasTrackGap = dt > 30 && d > 50;
+    // Nuevo segmento si: recuperamos señal, o hubo una brecha temporal larga.
+    // Al recuperar señal NO sumamos la distancia del salto (el usuario no se teletransportó).
+    const hasTrackGap = wasLost || (dt > 30 && d > 50);
     if (hasTrackGap) {
       _trkSegmentId++;
       _trkPolyline = L.polyline([], { color: '#ff3b3b', weight: 4, opacity: 0.85 }).addTo(map);
       _trkPolylines.push(_trkPolyline);
+      // Reposicionar marcador sin sumar distancia del hueco
+      _trkPoints.push({ lat, lng, alt, ts, speed: speedKmh, paused: true, segmentId: _trkSegmentId, accuracy });
+      _trkPolyline.addLatLng([lat, lng]);
+      _trkMarker.setLatLng([lat, lng]);
+      map.panTo([lat, lng]);
+      return;
     }
 
     // Velocidad calculada desde distancia/tiempo
@@ -4257,23 +4267,21 @@ function _onTrkPos(pos) {
     } else {
       _trkPauseCount = 0;
       if (_trkPaused) {
-        // Reanudar métricas. El dibujo del track continúa hasta pulsar Detener.
         _trkPaused = false;
         document.getElementById('tracking-hud')?.classList.remove('paused');
         document.querySelector('.g-rec-dot')?.classList.remove('g-paused');
         const lbl = document.getElementById('g-pause-lbl');
         if (lbl) lbl.style.display = 'none';
       }
-      // Acumular métricas de movimiento (el hasTrackGap solo afecta al dibujo)
+      // Acumular métricas de movimiento
       _trkMovingTime += dt;
       _trkDist += d;
-      // Velocidad máxima: solo en movimiento (evita picos de ruido GPS parado)
       const displaySpd = speedKmh ?? calcSpd;
       if (displaySpd > _trkMaxSpeed) _trkMaxSpeed = displaySpd;
-      // Desnivel: umbral 1 m para filtrar ruido de altitud GPS
+      // Desnivel: umbral 1.5 m para filtrar ruido de altitud GPS
       if (alt != null && _trkLastAlt != null) {
         const diff = alt - _trkLastAlt;
-        if (diff > 1.0) _trkElevGain += diff;
+        if (diff > 1.5) _trkElevGain += diff;
       }
     }
   }
