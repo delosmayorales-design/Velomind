@@ -395,6 +395,84 @@
     /* Ocultar tab en vistas de detalle y modales */
     #garage-side-tab.sp-hidden,
     #garage-side-panel.sp-hidden { display: none !important; }
+    /* Tools View */
+    .tools-tab-bar {
+      display: flex; gap: 6px; margin-bottom: 24px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 6px; flex-wrap: wrap;
+    }
+    .tools-tab-btn {
+      flex: 1; min-width: 110px; padding: 10px 14px; border: none;
+      border-radius: var(--radius-sm); background: transparent;
+      color: var(--text-muted); cursor: pointer;
+      font-size: 13px; font-weight: 600; transition: var(--transition);
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .tools-tab-btn.active { background: var(--primary); color: #0a0b0f; }
+    .tool-panel { display: none; }
+    .tool-panel.active { display: block; }
+    .calc-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); padding: 28px; max-width: 640px;
+    }
+    .calc-title { font-size: 17px; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text); margin-bottom: 5px; }
+    .calc-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 22px; }
+    .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+    .calc-field { display: flex; flex-direction: column; gap: 6px; }
+    .calc-field label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+    .calc-field input, .calc-field select {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 12px;
+      color: var(--text); font-size: 14px; width: 100%; box-sizing: border-box;
+    }
+    .calc-result {
+      background: var(--primary-glow); border: 1px solid rgba(158,214,43,0.25);
+      border-radius: var(--radius-lg); padding: 22px; display: none; margin-top: 6px;
+    }
+    .calc-result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 16px; }
+    .calc-result-item { text-align: center; }
+    .calc-result-val { font-size: 30px; font-weight: 800; color: var(--primary); font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1; }
+    .calc-result-unit { font-size: 12px; color: var(--primary-light); font-weight: 600; }
+    .calc-result-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-top: 6px; letter-spacing: 0.4px; }
+    .calc-result-note { font-size: 12px; color: var(--text-muted); margin-top: 14px; text-align: center; }
+    .calc-result-divider { width: 1px; background: rgba(158,214,43,0.2); }
+    .mechanic-chat { max-width: 700px; }
+    .mechanic-input {
+      width: 100%; box-sizing: border-box; padding: 14px 16px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-size: 14px; resize: vertical; min-height: 90px;
+      font-family: inherit; margin-bottom: 14px;
+    }
+    .mechanic-input:focus { outline: none; border-color: var(--primary); }
+    .mechanic-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .mechanic-chip {
+      padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      background: var(--bg-input); border: 1px solid var(--border);
+      color: var(--text-muted); cursor: pointer; transition: var(--transition);
+    }
+    .mechanic-chip:hover { border-color: var(--primary); color: var(--primary); }
+    .mechanic-result {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); padding: 24px; display: none; margin-top: 4px;
+    }
+    .mechanic-diag-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 8px; }
+    .mechanic-diag-body { font-size: 15px; color: var(--text); line-height: 1.65; margin-bottom: 18px; }
+    .mechanic-steps { list-style: none; margin: 0; padding: 0; }
+    .mechanic-steps li { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-secondary); line-height: 1.55; }
+    .mechanic-steps li:last-child { border-bottom: none; }
+    .mechanic-step-num { width: 24px; height: 24px; background: var(--primary); color: #0a0b0f; border-radius: 50%; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .mechanic-tools-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+    .tool-tag { padding: 4px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-secondary); }
+    .mechanic-tip { background: var(--primary-glow); border: 1px solid rgba(158,214,43,0.2); border-radius: var(--radius-sm); padding: 14px; font-size: 13px; color: var(--text-secondary); margin-top: 16px; line-height: 1.55; }
+    .diff-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; vertical-align: middle; margin-left: 6px; }
+    .diff-baja    { background: rgba(16,185,129,0.15); color: #10B981; border: 1px solid rgba(16,185,129,0.3); }
+    .diff-media   { background: rgba(251,191,36,0.15);  color: #FBBF24; border: 1px solid rgba(251,191,36,0.3); }
+    .diff-alta    { background: rgba(248,113,113,0.15); color: #F87171; border: 1px solid rgba(248,113,113,0.3); }
+    .diff-teorica { background: rgba(139,92,246,0.15);  color: #A78BFA; border: 1px solid rgba(139,92,246,0.3); }
+    @media (max-width: 500px) { .calc-grid { grid-template-columns: 1fr; } .calc-card { padding: 18px; } }
+
   </style>
 </head>
 <body>
@@ -434,6 +512,7 @@
     <div class="nav-section-title">Cuenta</div>
     <a href="integrations.html" class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
     <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+    <a href="soporte.html" class="nav-item"><i class="fas fa-life-ring"></i> Soporte</a>
   </div>
   <div class="sidebar-footer">
     <div class="athlete-card">
@@ -466,6 +545,9 @@
       <button class="btn btn-ghost btn-sm" onclick="G.exportPDF()" title="Informe de mantenimiento">
         <i class="fas fa-file-pdf"></i><span class="btn-label"> Informe PDF</span>
       </button>
+      <button class="btn btn-secondary btn-sm" onclick="G.showTools()" title="Calculadoras y Mec\u00e1nico IA">
+        <i class="fas fa-tools"></i><span class="btn-label"> Herramientas</span>
+      </button>
     </div>
   </header>
 
@@ -491,6 +573,152 @@
       </button>
       <div id="bike-detail"></div>
     </div>
+
+    <!-- VIEW: HERRAMIENTAS -->
+    <div id="view-tools" class="g-view">
+      <button class="back-btn" onclick="G.showOverview()">
+        <i class="fas fa-arrow-left"></i> Volver al Garaje
+      </button>
+
+      <div class="tools-tab-bar">
+        <button class="tools-tab-btn active" onclick="switchToolTab(this,'tool-pressure')">
+          <i class="fas fa-tachometer-alt"></i> Presión
+        </button>
+        <button class="tools-tab-btn" onclick="switchToolTab(this,'tool-gears')">
+          <i class="fas fa-cogs"></i> Desarrollos
+        </button>
+        <button class="tools-tab-btn" onclick="switchToolTab(this,'tool-mechanic')">
+          <i class="fas fa-robot"></i> Mecánico IA
+        </button>
+      </div>
+
+      <!-- Panel: Presion -->
+      <div id="tool-pressure" class="tool-panel active">
+        <div class="calc-card">
+          <div class="calc-title">Calculadora de presión de neumáticos</div>
+          <div class="calc-desc">Presión recomendada según tu peso, bici y terreno (método Silca/Continental)</div>
+          <div class="calc-grid">
+            <div class="calc-field">
+              <label>Peso del ciclista (kg)</label>
+              <input type="number" id="p-rider" value="75" min="40" max="150" step="0.5" oninput="calcPressure()">
+            </div>
+            <div class="calc-field">
+              <label>Peso de la bici (kg)</label>
+              <input type="number" id="p-bike" value="8" min="4" max="20" step="0.5" oninput="calcPressure()">
+            </div>
+            <div class="calc-field">
+              <label>Ancho cubierta delantera (mm)</label>
+              <input type="number" id="p-front" value="25" min="18" max="60" step="1" oninput="calcPressure()">
+            </div>
+            <div class="calc-field">
+              <label>Ancho cubierta trasera (mm)</label>
+              <input type="number" id="p-rear" value="25" min="18" max="60" step="1" oninput="calcPressure()">
+            </div>
+          </div>
+          <div class="calc-field" style="margin-bottom:20px">
+            <label>Tipo de terreno</label>
+            <select id="p-terrain" onchange="calcPressure()">
+              <option value="road">Asfalto (carretera)</option>
+              <option value="gravel">Gravel / camino</option>
+              <option value="mtb">MTB / tierra</option>
+            </select>
+          </div>
+          <div id="p-result" class="calc-result">
+            <div class="calc-result-grid">
+              <div class="calc-result-item">
+                <div class="calc-result-val" id="p-front-psi">--</div>
+                <div class="calc-result-unit">PSI</div>
+                <div class="calc-result-label">Delantera</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-top:4px"><span id="p-front-bar">--</span> bar</div>
+              </div>
+              <div class="calc-result-divider"></div>
+              <div class="calc-result-item">
+                <div class="calc-result-val" id="p-rear-psi">--</div>
+                <div class="calc-result-unit">PSI</div>
+                <div class="calc-result-label">Trasera</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-top:4px"><span id="p-rear-bar">--</span> bar</div>
+              </div>
+            </div>
+            <div class="calc-result-note" id="p-note"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel: Desarrollos -->
+      <div id="tool-gears" class="tool-panel">
+        <div class="calc-card">
+          <div class="calc-title">Calculadora de desarrollos</div>
+          <div class="calc-desc">Calcula velocidad, rollout y ratio con tu desarrollo actual</div>
+          <div class="calc-grid">
+            <div class="calc-field">
+              <label>Diámetro de llanta (ETRTO)</label>
+              <select id="g-rim" onchange="calcGears()">
+                <option value="622">622 mm &mdash; 700c / 28&quot;</option>
+                <option value="584">584 mm &mdash; 650b / 27.5&quot;</option>
+                <option value="559">559 mm &mdash; 26&quot;</option>
+                <option value="507">507 mm &mdash; 24&quot;</option>
+              </select>
+            </div>
+            <div class="calc-field">
+              <label>Ancho de cubierta (mm)</label>
+              <input type="number" id="g-tire" value="25" min="18" max="60" step="1" oninput="calcGears()">
+            </div>
+            <div class="calc-field">
+              <label>Plato (dientes)</label>
+              <input type="number" id="g-chainring" value="50" min="28" max="65" step="1" oninput="calcGears()">
+            </div>
+            <div class="calc-field">
+              <label>Piñón (dientes)</label>
+              <input type="number" id="g-sprocket" value="17" min="8" max="52" step="1" oninput="calcGears()">
+            </div>
+          </div>
+          <div class="calc-field" style="max-width:220px;margin-bottom:20px">
+            <label>Cadencia (RPM)</label>
+            <input type="number" id="g-cadence" value="90" min="40" max="130" step="1" oninput="calcGears()">
+          </div>
+          <div id="g-result" class="calc-result">
+            <div class="calc-result-grid">
+              <div class="calc-result-item">
+                <div class="calc-result-val" id="g-speed">--</div>
+                <div class="calc-result-unit">km/h</div>
+                <div class="calc-result-label">Velocidad</div>
+              </div>
+              <div class="calc-result-item">
+                <div class="calc-result-val" id="g-rollout">--</div>
+                <div class="calc-result-unit">m</div>
+                <div class="calc-result-label">Rollout</div>
+              </div>
+              <div class="calc-result-item">
+                <div class="calc-result-val" id="g-ratio">--</div>
+                <div class="calc-result-unit">:1</div>
+                <div class="calc-result-label">Ratio</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel: Mecanico IA -->
+      <div id="tool-mechanic" class="tool-panel">
+        <div class="mechanic-chat">
+          <div class="calc-title" style="margin-bottom:5px"><i class="fas fa-robot" style="color:var(--primary)"></i> Mecánico IA</div>
+          <div class="calc-desc">Describe cualquier ruido, avería o duda mecánica. La IA diagnostica como un mecánico World Tour.</div>
+          <div class="mechanic-shortcuts">
+            <span class="mechanic-chip" onclick="setMechanicPrompt('Tengo un ruido al pedalear que aparece solo al estar sentado y aplicar potencia. Qué puede ser?')">Ruido al pedalear</span>
+            <span class="mechanic-chip" onclick="setMechanicPrompt('Mi cambio delantero no sube correctamente al plato grande. Cómo lo regulo?')">Cambio delantero</span>
+            <span class="mechanic-chip" onclick="setMechanicPrompt('Los frenos de disco raspan y chirrían. Cómo soluciono el ruido?')">Frenos de disco</span>
+            <span class="mechanic-chip" onclick="setMechanicPrompt('Cuáles son las diferencias entre lubricante de cera y aceite para cadena?')">Lubricante cadena</span>
+            <span class="mechanic-chip" onclick="setMechanicPrompt('Cada cuántos km debo cambiar la cadena y cuál es la forma correcta de medirla?')">Desgaste cadena</span>
+          </div>
+          <textarea id="mechanic-input" class="mechanic-input" placeholder="Ej: Tengo un crujido al pedalear que aparece cuando subo puertos en pie..."></textarea>
+          <button id="mechanic-btn" class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="askMechanic()">
+            <i class="fas fa-robot"></i> Consultar al Mecánico IA
+          </button>
+          <div id="mechanic-result" class="mechanic-result"></div>
+        </div>
+      </div>
+
+    </div><!-- end view-tools -->
 
   </div>
 </main>
@@ -1006,6 +1234,7 @@ const G = (() => {
     curBike = null;
     document.getElementById('view-overview').classList.add('active');
     document.getElementById('view-bike').classList.remove('active');
+    document.getElementById('view-tools').classList.remove('active');
     document.getElementById('garage-side-tab')?.classList.remove('sp-hidden');
     document.getElementById('garage-side-panel')?.classList.remove('sp-hidden');
     renderOverview();
@@ -1015,10 +1244,23 @@ const G = (() => {
     curBike = id;
     document.getElementById('view-overview').classList.remove('active');
     document.getElementById('view-bike').classList.add('active');
+    document.getElementById('view-tools').classList.remove('active');
     closeGarageSide();
     document.getElementById('garage-side-tab')?.classList.add('sp-hidden');
     document.getElementById('garage-side-panel')?.classList.add('sp-hidden');
     renderBike(id);
+  }
+
+  function showTools() {
+    curBike = null;
+    document.getElementById('view-overview').classList.remove('active');
+    document.getElementById('view-bike').classList.remove('active');
+    document.getElementById('view-tools').classList.add('active');
+    closeGarageSide();
+    document.getElementById('garage-side-tab')?.classList.add('sp-hidden');
+    document.getElementById('garage-side-panel')?.classList.add('sp-hidden');
+    calcPressure();
+    calcGears();
   }
 
   function render() { curBike ? renderBike(curBike) : renderOverview(); }
@@ -1743,8 +1985,106 @@ const G = (() => {
     }
   }
 
-  return { init, showOverview, showBike, openCheckin, confirmCheckin, openEditComp, saveCompEdit, searchPrice, searchInModal, openEditBike, saveBikeConfig, openAddKm, confirmAddKm, openHistory, openModal, closeModal, syncActivities, exportPDF, importFromStrava, openAddBike, saveNewBike, deleteBike };
+  return { init, showOverview, showBike, showTools, openCheckin, confirmCheckin, openEditComp, saveCompEdit, searchPrice, searchInModal, openEditBike, saveBikeConfig, openAddKm, confirmAddKm, openHistory, openModal, closeModal, syncActivities, exportPDF, importFromStrava, openAddBike, saveNewBike, deleteBike };
 })();
+
+
+// Tools: tab switcher
+function switchToolTab(btn, panelId) {
+  document.querySelectorAll('.tools-tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('.tool-panel').forEach(function(p) { p.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+
+// Tools: pressure calculator
+function calcPressure() {
+  var riderEl = document.getElementById('p-rider');
+  if (!riderEl) return;
+  var riderKg = parseFloat(riderEl.value) || 75;
+  var bikeKg  = parseFloat(document.getElementById('p-bike').value) || 8;
+  var frontMm = parseFloat(document.getElementById('p-front').value) || 25;
+  var rearMm  = parseFloat(document.getElementById('p-rear').value) || 25;
+  var terrain = document.getElementById('p-terrain').value || 'road';
+  var total     = riderKg + bikeKg;
+  var frontLoad = total * 0.43;
+  var rearLoad  = total * 0.57;
+  var kMap = { road: 1.0, gravel: 0.82, mtb: 0.65 };
+  var k = kMap[terrain] || 1.0;
+  var frontPsi = Math.round((frontLoad * 2.2046) / (frontMm / 25.4 * 4.5) * k);
+  var rearPsi  = Math.round((rearLoad  * 2.2046) / (rearMm  / 25.4 * 4.5) * k);
+  var frontBar = (frontPsi * 0.0689476).toFixed(1);
+  var rearBar  = (rearPsi  * 0.0689476).toFixed(1);
+  document.getElementById('p-front-psi').textContent = frontPsi;
+  document.getElementById('p-front-bar').textContent = frontBar;
+  document.getElementById('p-rear-psi').textContent  = rearPsi;
+  document.getElementById('p-rear-bar').textContent  = rearBar;
+  var tips = { road: 'En asfalto busca el equilibrio entre adherencia y resistencia al rodamiento.', gravel: 'En gravel reduce algo la presión para mejorar el agarre y la comodidad.', mtb: 'En MTB presiones bajas aumentan el agarre; vigila el riesgo de pellizco bajo 25 PSI.' };
+  document.getElementById('p-note').textContent = tips[terrain] || '';
+  document.getElementById('p-result').style.display = 'block';
+}
+
+// Tools: gear/speed calculator
+function calcGears() {
+  var rimEl = document.getElementById('g-rim');
+  if (!rimEl) return;
+  var rimDia    = parseFloat(rimEl.value) || 622;
+  var tireW     = parseFloat(document.getElementById('g-tire').value) || 25;
+  var chainring = parseFloat(document.getElementById('g-chainring').value) || 50;
+  var sprocket  = parseFloat(document.getElementById('g-sprocket').value) || 17;
+  var cadence   = parseFloat(document.getElementById('g-cadence').value) || 90;
+  if (!chainring || !sprocket) return;
+  var circumMm = Math.PI * (rimDia + 2 * tireW);
+  var ratio    = chainring / sprocket;
+  var speedKmh = (cadence * ratio * circumMm * 60) / 1000000;
+  var rolloutM = (ratio * circumMm) / 1000;
+  document.getElementById('g-speed').textContent   = speedKmh.toFixed(1);
+  document.getElementById('g-rollout').textContent = rolloutM.toFixed(2);
+  document.getElementById('g-ratio').textContent   = ratio.toFixed(2);
+  document.getElementById('g-result').style.display = 'block';
+}
+
+// Tools: AI mechanic
+function setMechanicPrompt(text) {
+  var inp = document.getElementById('mechanic-input');
+  if (inp) { inp.value = text; inp.focus(); }
+}
+
+async function askMechanic() {
+  var inp = document.getElementById('mechanic-input');
+  var prompt = inp ? inp.value.trim() : '';
+  if (!prompt) return;
+  var btn    = document.getElementById('mechanic-btn');
+  var result = document.getElementById('mechanic-result');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando...';
+  result.style.display = 'none';
+  try {
+    var token = localStorage.getItem('cyclocoach_token') || '';
+    var res = await fetch(window.API_URL + '/coach/mechanic-ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ prompt: prompt, component: 'garaje' })
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error del servidor');
+    var diff = (data.difficulty || 'media').replace(/\s/g, '');
+    var diffCls = 'diff-' + diff;
+    var toolsHtml = (data.tools_needed || []).filter(function(t) { return t && t !== 'N/A'; }).map(function(t) { return '<span class="tool-tag">' + t + '</span>'; }).join('');
+    var stepsHtml = (data.solution_steps || []).map(function(s, i) { return '<li><span class="mechanic-step-num">' + (i+1) + '</span><span>' + s + '</span></li>'; }).join('');
+    result.innerHTML =
+      '<div style="margin-bottom:18px"><div class="mechanic-diag-title">Diagnóstico <span class="' + diffCls + ' diff-badge">' + diff + '</span></div><div class="mechanic-diag-body">' + (data.diagnosis || '') + '</div></div>' +
+      (toolsHtml ? '<div style="margin-bottom:18px"><div class="mechanic-diag-title">Herramientas / Materiales</div><div class="mechanic-tools-list">' + toolsHtml + '</div></div>' : '') +
+      '<div><div class="mechanic-diag-title">Pasos</div><ul class="mechanic-steps">' + stepsHtml + '</ul></div>' +
+      (data.pro_tip ? '<div class="mechanic-tip"><strong>Pro tip:</strong> ' + data.pro_tip + '</div>' : '');
+    result.style.display = 'block';
+  } catch(e) {
+    result.innerHTML = '<div style="color:var(--danger);padding:12px">' + e.message + '</div>';
+    result.style.display = 'block';
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-robot"></i> Consultar al Mecánico IA';
+}
 
 function toggleGarageSide() {
   const tab   = document.getElementById('garage-side-tab');

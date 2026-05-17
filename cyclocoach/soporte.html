@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('velomind_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'light') document.documentElement.classList.add('light-theme');
+      document.documentElement.style.opacity = '0';
+    })();
+  </script>
+  <style>
+    html { color-scheme: dark; background-color: #0a0b0f; transition: opacity .18s ease; }
+    html[data-theme="light"] { color-scheme: light; background-color: #f3f4f6; }
+  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Soporte — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛟</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js?v=106"></script>
+  <style>
+    .support-hero {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); padding: 40px 32px;
+      text-align: center; margin-bottom: 28px;
+    }
+    .support-hero-icon { font-size: 48px; margin-bottom: 14px; }
+    .support-hero h2 { font-size: 24px; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text); margin-bottom: 8px; }
+    .support-hero p { font-size: 15px; color: var(--text-muted); max-width: 480px; margin: 0 auto; line-height: 1.6; }
+
+    .support-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .support-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); padding: 24px;
+      display: flex; flex-direction: column; gap: 10px;
+      transition: var(--transition); text-decoration: none; color: inherit;
+    }
+    .support-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .support-card-icon { font-size: 28px; }
+    .support-card-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    .support-card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+    .support-card-cta { font-size: 12px; font-weight: 600; color: var(--primary); margin-top: auto; display: flex; align-items: center; gap: 5px; }
+
+    .faq-section { margin-bottom: 28px; }
+    .faq-title { font-size: 18px; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text); margin-bottom: 16px; }
+    .faq-item {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); margin-bottom: 8px; overflow: hidden;
+    }
+    .faq-question {
+      width: 100%; text-align: left; padding: 16px 20px;
+      background: none; border: none; cursor: pointer;
+      font-size: 14px; font-weight: 600; color: var(--text);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      font-family: inherit; transition: var(--transition);
+    }
+    .faq-question:hover { background: var(--bg-card-hover); }
+    .faq-question i.chevron { font-size: 12px; color: var(--text-muted); transition: transform 0.2s; flex-shrink: 0; }
+    .faq-item.open .faq-question i.chevron { transform: rotate(180deg); }
+    .faq-answer {
+      padding: 0 20px; max-height: 0; overflow: hidden;
+      font-size: 14px; color: var(--text-secondary); line-height: 1.65;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+    }
+    .faq-item.open .faq-answer { max-height: 400px; padding: 0 20px 18px; }
+    .faq-answer a { color: var(--primary); }
+
+    .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+    .contact-item {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 18px 20px;
+      text-decoration: none; color: inherit; transition: var(--transition);
+    }
+    .contact-item:hover { border-color: var(--primary); background: var(--bg-card-hover); }
+    .contact-item-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .contact-item-text strong { display: block; font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .contact-item-text span { font-size: 12px; color: var(--text-muted); }
+
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      background: rgba(16,185,129,0.12); color: #10B981; border: 1px solid rgba(16,185,129,0.25);
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #10B981; animation: pulse-green 2s infinite; }
+    @keyframes pulse-green { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo2.png" alt="VeloMind" style="width:100%; max-width:165px; height:auto; display:block; margin:0 auto">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="dashboard.html" class="nav-item"><i class="fas fa-home"></i> Inicio</a>
+    <a href="activities.html" class="nav-item"><i class="fas fa-history"></i> Actividades</a>
+    <a href="analytics.html" class="nav-item"><i class="fas fa-chart-bar"></i> Métricas</a>
+
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item"><i class="fas fa-calendar-check"></i> Mi Plan</a>
+    <a href="nutrition.html" class="nav-item"><i class="fas fa-apple-alt"></i> Nutrición</a>
+    <a href="body-weight.html" class="nav-item"><i class="fas fa-weight"></i> Peso y W/Kg</a>
+
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="rutas.html" class="nav-item"><i class="fas fa-map-marked-alt"></i> Rutas</a>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
+
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+    <a href="soporte.html" class="nav-item active"><i class="fas fa-life-ring"></i> Soporte</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-name">Cargando...</div>
+        <div class="ftp" id="athlete-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1>Soporte</h1>
+      <p class="subtitle">Ayuda, preguntas frecuentes y contacto</p>
+    </div>
+    <div>
+      <span class="status-pill"><span class="status-dot"></span> Servicio activo</span>
+    </div>
+  </header>
+
+  <div class="page-body">
+
+    <!-- HERO -->
+    <div class="support-hero">
+      <div class="support-hero-icon">🛟</div>
+      <h2>¿En qué podemos ayudarte?</h2>
+      <p>Consulta las preguntas frecuentes o contáctanos directamente. Respondemos en menos de 24 horas.</p>
+    </div>
+
+    <!-- ACCESOS RÁPIDOS -->
+    <div class="support-grid">
+      <a href="integrations.html" class="support-card">
+        <div class="support-card-icon">🔗</div>
+        <div class="support-card-title">Conectar Strava</div>
+        <div class="support-card-desc">Sincroniza tus actividades automáticamente desde Strava para mantener tus métricas al día.</div>
+        <div class="support-card-cta"><i class="fas fa-arrow-right"></i> Ir a Integraciones</div>
+      </a>
+      <a href="index.html" class="support-card">
+        <div class="support-card-icon">⚙️</div>
+        <div class="support-card-title">Configurar mi perfil</div>
+        <div class="support-card-desc">Actualiza tu FTP, zonas de potencia, peso y demás datos de rendimiento.</div>
+        <div class="support-card-cta"><i class="fas fa-arrow-right"></i> Ir a Mi Perfil</div>
+      </a>
+      <a href="garaje.html" class="support-card" onclick="setTimeout(()=>G&&G.showTools(),300)">
+        <div class="support-card-icon">🔧</div>
+        <div class="support-card-title">Mecánico IA</div>
+        <div class="support-card-desc">¿Algún ruido o avería en tu bici? El Mecánico IA diagnostica y te guía paso a paso.</div>
+        <div class="support-card-cta"><i class="fas fa-arrow-right"></i> Ir a Herramientas</div>
+      </a>
+      <a href="training-plan.html" class="support-card">
+        <div class="support-card-icon">📅</div>
+        <div class="support-card-title">Generar plan de entrenamiento</div>
+        <div class="support-card-desc">Crea un plan personalizado basado en tu objetivo, disponibilidad y nivel actual.</div>
+        <div class="support-card-cta"><i class="fas fa-arrow-right"></i> Ir a Mi Plan</div>
+      </a>
+    </div>
+
+    <!-- FAQ -->
+    <div class="faq-section">
+      <div class="faq-title">Preguntas frecuentes</div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          <span>¿Cómo se calcula el FTP y qué significa?</span>
+          <i class="fas fa-chevron-down chevron"></i>
+        </button>
+        <div class="faq-answer">
+          El <strong>FTP (Functional Threshold Power)</strong> es la potencia máxima que puedes sostener durante una hora. En VeloMind puedes introducirlo manualmente, estimarlo por peso corporal (W/kg), o calcularlo con el <strong>protocolo de Ramp Test</strong> (potencia máxima sostenida × 0.75). Todos los demás valores —TSS, zonas de potencia, IF— se derivan del FTP.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          <span>¿Qué son CTL, ATL y TSB en el gráfico PMC?</span>
+          <i class="fas fa-chevron-down chevron"></i>
+        </button>
+        <div class="faq-answer">
+          <strong>CTL (Chronic Training Load)</strong> — Tu forma física a largo plazo. Cuanto más alto, mejor forma base tienes (tau = 42 días).<br><br>
+          <strong>ATL (Acute Training Load)</strong> — Tu fatiga acumulada reciente (tau = 7 días). Sube rápido con entrenos intensos.<br><br>
+          <strong>TSB (Training Stress Balance)</strong> = CTL − ATL. Valores negativos indican fatiga; positivos, frescura. El punto óptimo para competir suele estar entre +5 y +20.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          <span>¿Cómo sincronizo mis actividades de Strava?</span>
+          <i class="fas fa-chevron-down chevron"></i>
+        </button>
+        <div class="faq-answer">
+          Ve a <a href="integrations.html">Integraciones</a> y pulsa <strong>"Conectar con Strava"</strong>. Tras autorizar, activa la sincronización automática. Las nuevas actividades se importarán en segundo plano. También puedes forzar una sincronización manual desde el mismo panel.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          <span>¿Por qué no veo mis actividades después de sincronizar?</span>
+          <i class="fas fa-chevron-down chevron"></i>
+        </button>
+        <div class="faq-answer">
+          Comprueba que la actividad en Strava sea de tipo <strong>Ride, VirtualRide o EBikeRide</strong>. VeloMind filtra solo actividades de ciclismo. Si la actividad es correcta, espera unos minutos y refresca la página. Si el problema persiste, desconecta y reconecta Strava desde <a href="integrations.html">Integraciones</a>.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          <span>¿Cómo funciona el plan de entrenamiento generado por IA?</span>
+          <i class="fas fa-chevron-down chevron"></i>
+        </button>
+        <div class="faq-answer">
+          Al generar un plan, la IA tiene en cuenta tu <strong>FTP, disponibilidad semanal, objetivo (fondo, potencia, pérdida de peso…) y historial de carga</strong>. El plan se distribuye en 7 sesiones semanales con intensidades específicas por zonas. Puedes adaptar sesiones individuales si un día no puedes entrenar como estaba previsto.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          <span>¿Cómo activo las notificaciones push?</span>
+          <i class="fas fa-chevron-down chevron"></i>
+        </button>
+        <div class="faq-answer">
+          Ve a <a href="dashboard.html">Inicio</a> y pulsa el botón de notificaciones en el panel de ajustes. El navegador pedirá permiso. Una vez activadas recibirás: recordatorios de agua, recordatorio del entreno del día siguiente, y alertas de fatiga según tu TSB.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          <span>¿Puedo usar VeloMind en móvil?</span>
+          <i class="fas fa-chevron-down chevron"></i>
+        </button>
+        <div class="faq-answer">
+          Sí. VeloMind es una <strong>Progressive Web App (PWA)</strong>. En iOS, abre la web en Safari y pulsa "Añadir a pantalla de inicio". En Android, el navegador te ofrecerá instalarlo automáticamente. Una vez instalado funciona como una app nativa con acceso sin conexión a tus datos cacheados.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          <span>¿Cómo elimino mi cuenta y mis datos?</span>
+          <i class="fas fa-chevron-down chevron"></i>
+        </button>
+        <div class="faq-answer">
+          Ve a <a href="index.html">Mi Perfil</a>, desplázate hasta abajo y pulsa <strong>"Eliminar cuenta"</strong>. Esto borrará permanentemente todos tus datos: actividades, plan, métricas, peso y configuración. Esta acción no se puede deshacer.
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTACTO -->
+    <div class="faq-title">Contacto</div>
+    <div class="contact-grid">
+      <a href="mailto:hola@velomind.org" class="contact-item">
+        <div class="contact-item-icon" style="background:rgba(158,214,43,0.1);color:var(--primary)">
+          <i class="fas fa-envelope"></i>
+        </div>
+        <div class="contact-item-text">
+          <strong>Email</strong>
+          <span>hola@velomind.org</span>
+        </div>
+      </a>
+      <a href="https://github.com/delosmayorales-design/Velomind/issues" target="_blank" rel="noopener" class="contact-item">
+        <div class="contact-item-icon" style="background:rgba(255,255,255,0.06);color:var(--text-secondary)">
+          <i class="fab fa-github"></i>
+        </div>
+        <div class="contact-item-text">
+          <strong>GitHub Issues</strong>
+          <span>Reportar un bug o sugerencia</span>
+        </div>
+      </a>
+      <div class="contact-item" style="cursor:default">
+        <div class="contact-item-icon" style="background:rgba(96,165,250,0.1);color:#60A5FA">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="contact-item-text">
+          <strong>Tiempo de respuesta</strong>
+          <span>Menos de 24 horas (L–V)</span>
+        </div>
+      </div>
+      <div class="contact-item" style="cursor:default">
+        <div class="contact-item-icon" style="background:rgba(251,191,36,0.1);color:#FBBF24">
+          <i class="fas fa-language"></i>
+        </div>
+        <div class="contact-item-text">
+          <strong>Idiomas</strong>
+          <span>Español e inglés</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+function toggleFaq(btn) {
+  var item = btn.closest('.faq-item');
+  var isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(function(el) { el.classList.remove('open'); });
+  if (!isOpen) item.classList.add('open');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof AppState !== 'undefined') {
+    var name = AppState.user?.name || AppState.user?.email || '';
+    if (name) {
+      var nameEl = document.getElementById('athlete-name');
+      if (nameEl) nameEl.textContent = name;
+    }
+  }
+});
+
+requestAnimationFrame(function() { document.documentElement.style.removeProperty('opacity'); });
+</script>
+</body>
+</html>
