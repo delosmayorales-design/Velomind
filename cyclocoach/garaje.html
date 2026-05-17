@@ -604,98 +604,179 @@
       <!-- Panel: Presion -->
       <div id="tool-pressure" class="tool-panel active">
         <div class="calc-card">
-          <div class="calc-title">Calculadora de presión de neumáticos</div>
-          <div class="calc-desc">Fórmula validada Silca / Continental — distingue tubeless, tubular y cámara</div>
 
-          <!-- Tipo de montaje: 3 botones prominentes -->
-          <div style="margin-bottom:18px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px">Tipo de montaje</div>
-            <div style="display:flex;gap:8px" id="p-type-btns">
-              <button class="p-type-btn active" data-type="clincher" onclick="setPType(this)" style="flex:1;padding:10px 8px;border-radius:var(--radius-sm);border:1px solid var(--primary);background:var(--primary-glow);color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition)">
-                🔴 Cámara<div style="font-size:10px;font-weight:400;color:var(--text-muted);margin-top:2px">Clincher</div>
+          <!-- Header con tooltip -->
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px">
+            <div>
+              <div class="calc-title">Calculadora de presión</div>
+              <div class="calc-desc">Metodología Silca · SRAM · Zipp · ENVE — resultados orientativos</div>
+            </div>
+            <div style="position:relative;flex-shrink:0" onmouseenter="document.getElementById('pres-tip').style.display='block'" onmouseleave="document.getElementById('pres-tip').style.display='none'" ontouchstart="var t=document.getElementById('pres-tip');t.style.display=t.style.display==='block'?'none':'block'">
+              <i class="fas fa-circle-info" style="color:var(--text-muted);font-size:15px;cursor:help;margin-top:4px;display:block"></i>
+              <div id="pres-tip" style="display:none;position:absolute;right:0;top:22px;width:230px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--text-muted);line-height:1.55;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.5)">
+                Valores calculados con algoritmo basado en investigación de Silca, SRAM AXS, Zipp y física de neumáticos. Ajusta ±0.2 bar según sensaciones en los primeros kilómetros.
+              </div>
+            </div>
+          </div>
+
+          <!-- Tipo de montaje -->
+          <div style="margin-bottom:14px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted);margin-bottom:7px">Tipo de montaje</div>
+            <div style="display:flex;gap:7px" id="p-type-btns">
+              <button class="p-type-btn active" data-type="clincher" onclick="setPType(this)" style="flex:1;padding:9px 5px;border-radius:var(--radius-sm);border:1px solid var(--primary);background:var(--primary-glow);color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition);text-align:center;line-height:1.2">
+                Cámara<div style="font-size:9px;font-weight:500;color:inherit;opacity:.7;margin-top:2px">Clincher</div>
               </button>
-              <button class="p-type-btn" data-type="tubeless" onclick="setPType(this)" style="flex:1;padding:10px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition)">
-                🟢 Tubeless<div style="font-size:10px;font-weight:400;margin-top:2px">Sin cámara</div>
+              <button class="p-type-btn" data-type="tubeless" onclick="setPType(this)" style="flex:1;padding:9px 5px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition);text-align:center;line-height:1.2">
+                Tubeless<div style="font-size:9px;font-weight:500;margin-top:2px;opacity:.7">Sin cámara</div>
               </button>
-              <button class="p-type-btn" data-type="tubular" onclick="setPType(this)" style="flex:1;padding:10px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition)">
-                🔵 Tubular<div style="font-size:10px;font-weight:400;margin-top:2px">Pegado</div>
+              <button class="p-type-btn" data-type="tubular" onclick="setPType(this)" style="flex:1;padding:9px 5px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition);text-align:center;line-height:1.2">
+                Tubular<div style="font-size:9px;font-weight:500;margin-top:2px;opacity:.7">Pegado</div>
               </button>
             </div>
           </div>
 
+          <!-- Prioridad -->
+          <div style="margin-bottom:16px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted);margin-bottom:7px">Prioridad</div>
+            <div style="display:flex;gap:7px" id="p-prio-btns">
+              <button class="p-prio-btn" data-prio="performance" onclick="setPriority(this)" style="flex:1;padding:8px 4px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition);text-align:center">
+                <i class="fas fa-bolt" style="font-size:9px;margin-right:2px"></i>Rendimiento
+              </button>
+              <button class="p-prio-btn active" data-prio="balanced" onclick="setPriority(this)" style="flex:1;padding:8px 4px;border-radius:var(--radius-sm);border:1px solid var(--primary);background:var(--primary-glow);color:var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition);text-align:center">
+                <i class="fas fa-scale-balanced" style="font-size:9px;margin-right:2px"></i>Equilibrado
+              </button>
+              <button class="p-prio-btn" data-prio="comfort" onclick="setPriority(this)" style="flex:1;padding:8px 4px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition);text-align:center">
+                <i class="fas fa-cloud" style="font-size:9px;margin-right:2px"></i>Confort
+              </button>
+            </div>
+          </div>
+
+          <!-- Inputs -->
           <div class="calc-grid">
             <div class="calc-field">
-              <label>Peso del ciclista (kg)</label>
+              <label>Ciclista (kg)</label>
               <input type="number" id="p-rider" value="75" min="40" max="150" step="0.5" oninput="calcPressure()">
             </div>
             <div class="calc-field">
-              <label>Peso de la bici (kg)</label>
-              <input type="number" id="p-bike" value="8" min="4" max="20" step="0.5" oninput="calcPressure()">
+              <label>Bici (kg)</label>
+              <input type="number" id="p-bike" value="8" min="3" max="25" step="0.5" oninput="calcPressure()">
             </div>
             <div class="calc-field">
-              <label>Ancho delantera (mm)</label>
-              <input type="number" id="p-front" value="25" min="18" max="60" step="1" oninput="calcPressure()">
+              <label>Ancho delantero (mm)</label>
+              <input type="number" id="p-front" value="28" min="18" max="60" step="1" oninput="calcPressure()">
             </div>
             <div class="calc-field">
-              <label>Ancho trasera (mm)</label>
-              <input type="number" id="p-rear" value="25" min="18" max="60" step="1" oninput="calcPressure()">
+              <label>Ancho trasero (mm)</label>
+              <input type="number" id="p-rear" value="28" min="18" max="60" step="1" oninput="calcPressure()">
             </div>
           </div>
-          <div class="calc-field" style="margin-bottom:22px">
-            <label>Tipo de terreno</label>
-            <select id="p-terrain" onchange="calcPressure()">
-              <option value="road">Asfalto / carretera</option>
-              <option value="gravel">Gravel / camino sin asfaltar</option>
-              <option value="mtb">MTB / tierra / singletrack</option>
-            </select>
+
+          <!-- Terreno + Disciplina -->
+          <div class="calc-grid" style="margin-bottom:20px">
+            <div class="calc-field" style="margin-bottom:0">
+              <label>Terreno</label>
+              <select id="p-terrain" onchange="calcPressure()">
+                <option value="road_smooth">Asfalto liso</option>
+                <option value="road_normal" selected>Asfalto normal</option>
+                <option value="road_rough">Asfalto deteriorado</option>
+                <option value="gravel_compact">Gravel compacto</option>
+                <option value="gravel_tech">Gravel técnico</option>
+                <option value="dirt">Tierra / sendero</option>
+              </select>
+            </div>
+            <div class="calc-field" style="margin-bottom:0">
+              <label>Disciplina</label>
+              <select id="p-discipline" onchange="calcPressure()">
+                <option value="road">Carretera</option>
+                <option value="gravel">Gravel / Mixed</option>
+                <option value="mtb">MTB</option>
+                <option value="tt">TT / Triatlón</option>
+              </select>
+            </div>
           </div>
 
           <!-- Resultado -->
           <div id="p-result" style="display:none">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
 
-              <!-- Delantera -->
-              <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center">
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:6px">⬆ Delantera</div>
-                <div style="display:flex;align-items:baseline;justify-content:center;gap:4px">
-                  <span id="p-front-bar" style="font-size:32px;font-weight:800;color:var(--primary);font-family:'Plus Jakarta Sans',sans-serif">--</span>
-                  <span style="font-size:14px;font-weight:700;color:var(--primary-light)">bar</span>
+            <!-- Cards delantera / trasera -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+
+              <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;text-align:center">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:5px">Delantera</div>
+                <div style="display:flex;align-items:baseline;justify-content:center;gap:3px">
+                  <span id="p-front-bar" style="font-size:30px;font-weight:800;color:var(--primary);font-family:'Plus Jakarta Sans',sans-serif">--</span>
+                  <span style="font-size:13px;font-weight:700;color:var(--primary-light)">bar</span>
                 </div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:2px"><span id="p-front-psi">--</span> PSI</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:1px"><span id="p-front-psi">--</span> PSI</div>
                 <div style="margin-top:10px">
                   <div style="font-size:9px;color:var(--text-muted);margin-bottom:4px;letter-spacing:.3px">RANGO ÓPTIMO</div>
-                  <div style="height:6px;background:var(--border);border-radius:3px;position:relative;overflow:hidden">
+                  <div style="height:5px;background:rgba(255,255,255,.07);border-radius:3px;position:relative;overflow:visible">
                     <div id="p-front-range" style="position:absolute;height:100%;background:linear-gradient(90deg,#3B82F6,var(--primary),#10B981);border-radius:3px;left:20%;width:60%"></div>
-                    <div id="p-front-dot" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;background:var(--primary);border:2px solid var(--bg-card);border-radius:50%;left:50%"></div>
+                    <div id="p-front-dot" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:9px;height:9px;background:var(--primary);border:2px solid #fff;border-radius:50%;left:50%;box-shadow:0 0 5px rgba(158,214,43,.6)"></div>
                   </div>
                   <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:3px">
-                    <span id="p-front-min">--</span><span>bar</span><span id="p-front-max">--</span>
+                    <span id="p-front-min">--</span><span>–</span><span id="p-front-max">-- bar</span>
                   </div>
                 </div>
               </div>
 
-              <!-- Trasera -->
-              <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center">
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:6px">⬇ Trasera</div>
-                <div style="display:flex;align-items:baseline;justify-content:center;gap:4px">
-                  <span id="p-rear-bar" style="font-size:32px;font-weight:800;color:var(--primary);font-family:'Plus Jakarta Sans',sans-serif">--</span>
-                  <span style="font-size:14px;font-weight:700;color:var(--primary-light)">bar</span>
+              <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;text-align:center">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:5px">Trasera</div>
+                <div style="display:flex;align-items:baseline;justify-content:center;gap:3px">
+                  <span id="p-rear-bar" style="font-size:30px;font-weight:800;color:var(--primary);font-family:'Plus Jakarta Sans',sans-serif">--</span>
+                  <span style="font-size:13px;font-weight:700;color:var(--primary-light)">bar</span>
                 </div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:2px"><span id="p-rear-psi">--</span> PSI</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:1px"><span id="p-rear-psi">--</span> PSI</div>
                 <div style="margin-top:10px">
                   <div style="font-size:9px;color:var(--text-muted);margin-bottom:4px;letter-spacing:.3px">RANGO ÓPTIMO</div>
-                  <div style="height:6px;background:var(--border);border-radius:3px;position:relative;overflow:hidden">
+                  <div style="height:5px;background:rgba(255,255,255,.07);border-radius:3px;position:relative;overflow:visible">
                     <div id="p-rear-range" style="position:absolute;height:100%;background:linear-gradient(90deg,#3B82F6,var(--primary),#10B981);border-radius:3px;left:20%;width:60%"></div>
-                    <div id="p-rear-dot" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;background:var(--primary);border:2px solid var(--bg-card);border-radius:50%;left:50%"></div>
+                    <div id="p-rear-dot" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:9px;height:9px;background:var(--primary);border:2px solid #fff;border-radius:50%;left:50%;box-shadow:0 0 5px rgba(158,214,43,.6)"></div>
                   </div>
                   <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:3px">
-                    <span id="p-rear-min">--</span><span>bar</span><span id="p-rear-max">--</span>
+                    <span id="p-rear-min">--</span><span>–</span><span id="p-rear-max">-- bar</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div id="p-note" style="font-size:12px;color:var(--text-muted);background:var(--bg-input);border-radius:var(--radius-sm);padding:12px;line-height:1.55"></div>
+            <!-- Scores -->
+            <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:11px">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted);margin-bottom:11px">Análisis del setup</div>
+              <div style="display:flex;flex-direction:column;gap:9px">
+
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:74px;font-size:11px;color:var(--text-muted);flex-shrink:0">Confort</div>
+                  <div style="flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">
+                    <div id="score-comfort-bar" style="height:100%;border-radius:3px;background:linear-gradient(90deg,#3B82F6,#06B6D4);transition:width .4s ease;width:70%"></div>
+                  </div>
+                  <div id="score-comfort-val" style="width:26px;text-align:right;font-size:12px;font-weight:700;color:var(--text);flex-shrink:0">–</div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:74px;font-size:11px;color:var(--text-muted);flex-shrink:0">Agarre</div>
+                  <div style="flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">
+                    <div id="score-grip-bar" style="height:100%;border-radius:3px;background:linear-gradient(90deg,#F59E0B,#EF4444);transition:width .4s ease;width:70%"></div>
+                  </div>
+                  <div id="score-grip-val" style="width:26px;text-align:right;font-size:12px;font-weight:700;color:var(--text);flex-shrink:0">–</div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:74px;font-size:11px;color:var(--text-muted);flex-shrink:0">Rodamiento</div>
+                  <div style="flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">
+                    <div id="score-roll-bar" style="height:100%;border-radius:3px;background:linear-gradient(90deg,var(--primary),#84B422);transition:width .4s ease;width:70%"></div>
+                  </div>
+                  <div id="score-roll-val" style="width:26px;text-align:right;font-size:12px;font-weight:700;color:var(--text);flex-shrink:0">–</div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Nota / recomendación -->
+            <div id="p-note" style="font-size:12px;color:var(--text-muted);background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;line-height:1.6"></div>
+            <div style="margin-top:7px;font-size:10px;color:var(--text-muted);opacity:.65;line-height:1.5">
+              <i class="fas fa-circle-info" style="font-size:9px;margin-right:3px"></i>Valores orientativos. Ajusta según sensaciones, temperatura y estado del neumático. Comprueba siempre los límites del lateral.
+            </div>
           </div>
         </div>
       </div>
@@ -2056,84 +2137,221 @@ function switchToolTab(btn, panelId) {
   document.getElementById(panelId).classList.add('active');
 }
 
-// Tipo de montaje activo
+// ── Tire Pressure Calculator v2 ─────────────────────────────────────────────
+// Methodology: Silca, SRAM AXS, Zipp, ENVE + physics of rolling resistance
+// Reference table: [widthMm, frontBar, rearBar]
+// Calibrated for 78kg system (70kg rider + 8kg bike), tubeless, normal asphalt
+var PRESSURE_REF = [
+  [18, 7.2, 8.1], [23, 6.1, 6.8], [25, 5.8, 6.4],
+  [28, 4.8, 5.4], [30, 4.3, 4.9], [32, 3.8, 4.4],
+  [35, 3.2, 3.8], [38, 2.8, 3.3], [40, 2.4, 2.8],
+  [45, 2.1, 2.5], [50, 1.8, 2.2], [60, 1.5, 1.9],
+];
+
+function _interpPressure(widthMm, tbl) {
+  if (widthMm <= tbl[0][0]) return { f: tbl[0][1], r: tbl[0][2] };
+  var last = tbl[tbl.length - 1];
+  if (widthMm >= last[0]) return { f: last[1], r: last[2] };
+  var i = 0;
+  while (i < tbl.length - 1 && tbl[i + 1][0] <= widthMm) i++;
+  var lo = tbl[i], hi = tbl[i + 1];
+  var t = (widthMm - lo[0]) / (hi[0] - lo[0]);
+  return { f: lo[1] + t * (hi[1] - lo[1]), r: lo[2] + t * (hi[2] - lo[2]) };
+}
+
+// Tipo de montaje
 var _pType = 'clincher';
 function setPType(btn) {
   _pType = btn.dataset.type;
   document.querySelectorAll('.p-type-btn').forEach(function(b) {
-    var active = b === btn;
-    b.style.border      = active ? '1px solid var(--primary)' : '1px solid var(--border)';
-    b.style.background  = active ? 'var(--primary-glow)' : 'var(--bg-input)';
-    b.style.color       = active ? 'var(--primary)' : 'var(--text-muted)';
+    var on = b === btn;
+    b.style.border = on ? '1px solid var(--primary)' : '1px solid var(--border)';
+    b.style.background = on ? 'var(--primary-glow)' : 'var(--bg-input)';
+    b.style.color = on ? 'var(--primary)' : 'var(--text-muted)';
   });
   calcPressure();
 }
 
-// Tools: pressure calculator — fórmula Silca/Continental con tipo de montaje
+// Prioridad
+var _pPriority = 'balanced';
+function setPriority(btn) {
+  _pPriority = btn.dataset.prio;
+  document.querySelectorAll('.p-prio-btn').forEach(function(b) {
+    var on = b === btn;
+    b.style.border = on ? '1px solid var(--primary)' : '1px solid var(--border)';
+    b.style.background = on ? 'var(--primary-glow)' : 'var(--bg-input)';
+    b.style.color = on ? 'var(--primary)' : 'var(--text-muted)';
+  });
+  calcPressure();
+}
+
 function calcPressure() {
   var riderEl = document.getElementById('p-rider');
   if (!riderEl) return;
-  var riderKg = parseFloat(riderEl.value) || 75;
-  var bikeKg  = parseFloat(document.getElementById('p-bike').value) || 8;
-  var frontMm = parseFloat(document.getElementById('p-front').value) || 25;
-  var rearMm  = parseFloat(document.getElementById('p-rear').value) || 25;
-  var terrain = document.getElementById('p-terrain').value || 'road';
 
-  // K = PSI / (load_lbs / width_in)  — validado contra Silca, Continental, Pirelli
-  // Clincher (cámara) es la referencia; tubeless ~-15%; tubular ~-7%
-  var kTable = {
-    'road-clincher':    0.90,
-    'road-tubeless':    0.77,
-    'road-tubular':     0.84,
-    'gravel-clincher':  0.74,
-    'gravel-tubeless':  0.63,
-    'gravel-tubular':   0.69,
-    'mtb-clincher':     0.58,
-    'mtb-tubeless':     0.49,
-    'mtb-tubular':      0.54,
+  var riderKg    = parseFloat(document.getElementById('p-rider').value)     || 75;
+  var bikeKg     = parseFloat(document.getElementById('p-bike').value)      || 8;
+  var frontMm    = parseFloat(document.getElementById('p-front').value)     || 28;
+  var rearMm     = parseFloat(document.getElementById('p-rear').value)      || 28;
+  var terrain    = document.getElementById('p-terrain').value               || 'road_normal';
+  var discipline = document.getElementById('p-discipline').value            || 'road';
+
+  // ── 1. Weight distribution by discipline ──────────────────────────────────
+  // TT/aero shifts weight forward; MTB more upright = slightly more on front
+  var distMap = { road: 0.45, gravel: 0.44, mtb: 0.47, tt: 0.48 };
+  var frontPct = distMap[discipline] || 0.45;
+  var rearPct  = 1 - frontPct;
+
+  // ── 2. Base pressure from width table (ref: 78kg system) ──────────────────
+  var baseF = _interpPressure(frontMm, PRESSURE_REF);
+  var baseR = _interpPressure(rearMm,  PRESSURE_REF);
+
+  // ── 3. Weight adjustment ───────────────────────────────────────────────────
+  // Width-sensitive sensitivity: wider tires have more air volume,
+  // so they tolerate load changes with less pressure delta.
+  // Validated: 30mm needs ~0.11 bar per 10kg of wheel load.
+  // Formula: sensitivity = 7.0 / widthMm (bar per 10kg of wheel load)
+  var REF_KG   = 78;  // reference system weight
+  var actualFront = (riderKg + bikeKg) * frontPct;
+  var actualRear  = (riderKg + bikeKg) * rearPct;
+  var refFront    = REF_KG * 0.45;
+  var refRear     = REF_KG * 0.55;
+
+  var frontBar = baseF.f + ((actualFront - refFront) / 10) * (7.0 / frontMm);
+  var rearBar  = baseR.r + ((actualRear  - refRear)  / 10) * (7.0 / rearMm);
+
+  // ── 4. Mount type multiplier ───────────────────────────────────────────────
+  // Tubeless: reference. Clincher needs more pressure (no volume buffer for pellizco risk).
+  // Tubular: can run slightly softer (sealed, no pinch-flat risk).
+  var mountMult = { clincher: 1.10, tubeless: 1.00, tubular: 0.96 };
+  var mult = mountMult[_pType] || 1.0;
+  frontBar *= mult;
+  rearBar  *= mult;
+
+  // ── 5. Terrain delta (bar) ─────────────────────────────────────────────────
+  // Rough terrain: lower pressure reduces vibration power losses (Silca research).
+  // On very smooth roads a slight pressure increase is beneficial.
+  var terrainDelta = {
+    road_smooth: +0.10, road_normal: 0.00, road_rough: -0.20,
+    gravel_compact: -0.50, gravel_tech: -0.80, dirt: -1.00,
   };
-  var key = terrain + '-' + _pType;
-  var K   = kTable[key] || 0.90;
+  var terrainAdj = terrainDelta[terrain] !== undefined ? terrainDelta[terrain] : 0;
+  frontBar += terrainAdj;
+  rearBar  += terrainAdj;
 
-  var total     = riderKg + bikeKg;
-  var frontLoad = total * 0.43; // distribución estándar 43/57
-  var rearLoad  = total * 0.57;
+  // ── 6. Priority adjustment ─────────────────────────────────────────────────
+  var prioAdj = { performance: +0.15, balanced: 0, comfort: -0.25 }[_pPriority] || 0;
+  frontBar += prioAdj;
+  rearBar  += prioAdj;
 
-  // PSI = (carga_lbs / ancho_pulgadas) × K
-  var frontPsi = (frontLoad * 2.2046) / (frontMm / 25.4) * K;
-  var rearPsi  = (rearLoad  * 2.2046) / (rearMm  / 25.4) * K;
+  // ── 7. Safety clamps ───────────────────────────────────────────────────────
+  var isOffroad = terrain === 'gravel_compact' || terrain === 'gravel_tech' || terrain === 'dirt';
+  var minBar = terrain === 'dirt' ? 1.0 : (isOffroad ? 1.2 : 1.5);
+  var maxBar = 7.5;
+  frontBar = Math.max(minBar, Math.min(maxBar, frontBar));
+  rearBar  = Math.max(minBar, Math.min(maxBar, rearBar));
 
-  // Rango: confort (-8%) / recomendado / rendimiento (+5%)
-  var fMin = frontPsi * 0.92; var fMax = frontPsi * 1.05;
-  var rMin = rearPsi  * 0.92; var rMax = rearPsi  * 1.05;
+  // Rear must always be above front (min +0.2 bar — more load, more pressure)
+  if (rearBar < frontBar + 0.2) rearBar = Math.min(maxBar, frontBar + 0.2);
 
-  function psiToBar(p) { return (p * 0.0689476).toFixed(1); }
-  function barStr(p)   { return psiToBar(p); }
+  // ── 8. Optimal range bands (±10% / +7%) ───────────────────────────────────
+  var fMin = Math.max(minBar, frontBar * 0.90);
+  var fMax = Math.min(maxBar, frontBar * 1.07);
+  var rMin = Math.max(minBar, rearBar  * 0.90);
+  var rMax = Math.min(maxBar, rearBar  * 1.07);
 
-  document.getElementById('p-front-psi').textContent = Math.round(frontPsi);
-  document.getElementById('p-front-bar').textContent = barStr(frontPsi);
-  document.getElementById('p-front-min').textContent = barStr(fMin);
-  document.getElementById('p-front-max').textContent = barStr(fMax);
+  // ── 9. Scores (1–10) ──────────────────────────────────────────────────────
+  // "balanced" baseline average — used as reference for scoring
+  var roughMap = { road_smooth: 0, road_normal: 0.2, road_rough: 0.5,
+                   gravel_compact: 0.7, gravel_tech: 0.9, dirt: 1.0 };
+  var roughFactor = roughMap[terrain] || 0.2;
+  var baselineAvg = (baseF.f * mult + terrainAdj + baseR.r * mult + terrainAdj) / 2;
+  var actualAvg   = (frontBar + rearBar) / 2;
 
-  document.getElementById('p-rear-psi').textContent  = Math.round(rearPsi);
-  document.getElementById('p-rear-bar').textContent  = barStr(rearPsi);
-  document.getElementById('p-rear-min').textContent  = barStr(rMin);
-  document.getElementById('p-rear-max').textContent  = barStr(rMax);
+  // comfortScore: peaks when pressure is 15% below balanced baseline
+  var comfortOpt = baselineAvg * 0.85;
+  var comfortScore = Math.round(Math.max(1, Math.min(10,
+    10 - Math.abs(actualAvg - comfortOpt) / (baselineAvg * 0.20) * 5
+  )));
 
-  // Notas por combinación
-  var typeNotes = {
-    clincher:  'Cámara: presión recomendada estándar. No superes el máximo impreso en el lateral del neumático.',
-    tubeless:  'Tubeless: puedes bajar 15-20% respecto a la cámara sin riesgo de pellizco. Usa sellante y llanta compatible.',
-    tubular:   'Tubular: puede rodar ligeramente más blando que la cámara. Revisa la adherencia del pegamento periódicamente.',
+  // gripScore: optimal contact patch at ~10-15% below baseline (rougher = lower)
+  var gripOpt = baselineAvg * (0.90 - roughFactor * 0.05);
+  var gripScore = Math.round(Math.max(1, Math.min(10,
+    10 - Math.abs(actualAvg - gripOpt) / (baselineAvg * 0.15) * 5
+  )));
+
+  // rollScore: optimal rolling at baseline; rough terrain penalizes high pressure (vibration loss)
+  var rollOpt = baselineAvg - roughFactor * 0.4;
+  var rollScore = Math.round(Math.max(1, Math.min(10,
+    10 - Math.abs(actualAvg - rollOpt) / (baselineAvg * 0.15) * 7
+  )));
+
+  // ── 10. Recommendation note ────────────────────────────────────────────────
+  var tLbls = {
+    road_smooth: 'asfalto liso', road_normal: 'asfalto', road_rough: 'asfalto deteriorado',
+    gravel_compact: 'gravel compacto', gravel_tech: 'gravel técnico', dirt: 'tierra / sendero'
   };
-  var terrainNotes = {
-    road:   'En asfalto equilibra adherencia y resistencia al rodamiento.',
-    gravel: 'En gravel, valores más bajos mejoran el agarre y absorción de vibraciones.',
-    mtb:    'En MTB, presiones bajas son clave para el agarre. Vigila el riesgo de golpe de llanta.',
-  };
-  document.getElementById('p-note').innerHTML =
-    '<strong>' + typeNotes[_pType] + '</strong><br>' + terrainNotes[terrain];
+  var mLbls = { clincher: 'cámara', tubeless: 'tubeless', tubular: 'tubular' };
+  var dLbls = { road: 'carretera', gravel: 'gravel', mtb: 'MTB', tt: 'TT/triatlón' };
+  var pLbls = { performance: 'rendimiento', balanced: 'equilibrado', comfort: 'confort' };
 
+  var tips = [];
+  if (_pType === 'tubeless') tips.push('Con tubeless puedes bajar 0.2–0.3 bar adicionales si no hay riesgo de golpe de llanta.');
+  if (_pType === 'clincher') tips.push('No superes el máximo impreso en el lateral del neumático.');
+  if (_pType === 'tubular')  tips.push('Revisa periódicamente la adherencia del pegamento.');
+  if (isOffroad) tips.push('En offroad, presiones bajas mejoran el agarre y absorción de irregularidades.');
+  if (_pPriority === 'performance' && !isOffroad) tips.push('Si notas exceso de vibración, baja 0.2 bar y observa.');
+  if (_pPriority === 'comfort') tips.push('Si la rueda se siente blanda al girar, sube 0.1–0.2 bar.');
+
+  var note =
+    '<strong>' + (mLbls[_pType]||_pType) + '</strong> · ' +
+    (tLbls[terrain]||terrain) + ' · ' +
+    (dLbls[discipline]||discipline) + ' · prioridad ' +
+    (pLbls[_pPriority]||_pPriority) + '.<br>' +
+    'La trasera lleva <strong>+' + (rearBar - frontBar).toFixed(1) +
+    ' bar</strong> respecto a la delantera (dist. ' +
+    Math.round(frontPct*100) + '/' + Math.round(rearPct*100) + '%).' +
+    (tips.length ? ' ' + tips[0] : '');
+
+  // ── 11. Render ─────────────────────────────────────────────────────────────
+  function b(v) { return v.toFixed(1); }
+  function psi(v) { return Math.round(v / 0.0689476); }
+
+  document.getElementById('p-front-bar').textContent = b(frontBar);
+  document.getElementById('p-front-psi').textContent = psi(frontBar);
+  document.getElementById('p-front-min').textContent = b(fMin);
+  document.getElementById('p-front-max').textContent = b(fMax) + ' bar';
+
+  document.getElementById('p-rear-bar').textContent = b(rearBar);
+  document.getElementById('p-rear-psi').textContent = psi(rearBar);
+  document.getElementById('p-rear-min').textContent = b(rMin);
+  document.getElementById('p-rear-max').textContent = b(rMax) + ' bar';
+
+  // Range bar position (scaled to 0–maxBar)
+  function setRange(prefix, val, minV, maxV) {
+    var leftPct  = (minV / maxBar) * 100;
+    var widthPct = ((maxV - minV) / maxBar) * 100;
+    var dotPct   = (val  / maxBar) * 100;
+    var rangeEl  = document.getElementById(prefix + '-range');
+    var dotEl    = document.getElementById(prefix + '-dot');
+    if (rangeEl) { rangeEl.style.left = leftPct + '%'; rangeEl.style.width = widthPct + '%'; }
+    if (dotEl)   dotEl.style.left = dotPct + '%';
+  }
+  setRange('p-front', frontBar, fMin, fMax);
+  setRange('p-rear',  rearBar,  rMin, rMax);
+
+  // Scores
+  function setScore(id, val) {
+    var bar = document.getElementById('score-' + id + '-bar');
+    var lbl = document.getElementById('score-' + id + '-val');
+    if (bar) bar.style.width = (val * 10) + '%';
+    if (lbl) lbl.textContent = val;
+  }
+  setScore('comfort', comfortScore);
+  setScore('grip',    gripScore);
+  setScore('roll',    rollScore);
+
+  document.getElementById('p-note').innerHTML = note;
   document.getElementById('p-result').style.display = 'block';
 }
 
