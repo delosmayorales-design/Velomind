@@ -183,8 +183,10 @@
 <!-- MAIN -->
 <main class="main-content">
   <header class="page-header">
-    <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-    <h1 class="page-title">Notificaciones</h1>
+    <div class="page-title">
+      <h1>Notificaciones</h1>
+      <p class="subtitle">Controla qué avisos recibes y cuándo</p>
+    </div>
     <div id="perm-chip-wrap"></div>
   </header>
 
@@ -496,6 +498,8 @@ function showToast(msg, color) {
   }
   applyPrefsToUI(prefs);
 })();
+
+requestAnimationFrame(function() { document.documentElement.style.removeProperty('opacity'); });
 </script>
 </body>
 </html>
