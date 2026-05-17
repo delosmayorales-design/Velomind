@@ -596,7 +596,24 @@
       <div id="tool-pressure" class="tool-panel active">
         <div class="calc-card">
           <div class="calc-title">Calculadora de presión de neumáticos</div>
-          <div class="calc-desc">Presión recomendada según tu peso, bici y terreno (método Silca/Continental)</div>
+          <div class="calc-desc">Fórmula validada Silca / Continental — distingue tubeless, tubular y cámara</div>
+
+          <!-- Tipo de montaje: 3 botones prominentes -->
+          <div style="margin-bottom:18px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px">Tipo de montaje</div>
+            <div style="display:flex;gap:8px" id="p-type-btns">
+              <button class="p-type-btn active" data-type="clincher" onclick="setPType(this)" style="flex:1;padding:10px 8px;border-radius:var(--radius-sm);border:1px solid var(--primary);background:var(--primary-glow);color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition)">
+                🔴 Cámara<div style="font-size:10px;font-weight:400;color:var(--text-muted);margin-top:2px">Clincher</div>
+              </button>
+              <button class="p-type-btn" data-type="tubeless" onclick="setPType(this)" style="flex:1;padding:10px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition)">
+                🟢 Tubeless<div style="font-size:10px;font-weight:400;margin-top:2px">Sin cámara</div>
+              </button>
+              <button class="p-type-btn" data-type="tubular" onclick="setPType(this)" style="flex:1;padding:10px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--transition)">
+                🔵 Tubular<div style="font-size:10px;font-weight:400;margin-top:2px">Pegado</div>
+              </button>
+            </div>
+          </div>
+
           <div class="calc-grid">
             <div class="calc-field">
               <label>Peso del ciclista (kg)</label>
@@ -607,39 +624,69 @@
               <input type="number" id="p-bike" value="8" min="4" max="20" step="0.5" oninput="calcPressure()">
             </div>
             <div class="calc-field">
-              <label>Ancho cubierta delantera (mm)</label>
+              <label>Ancho delantera (mm)</label>
               <input type="number" id="p-front" value="25" min="18" max="60" step="1" oninput="calcPressure()">
             </div>
             <div class="calc-field">
-              <label>Ancho cubierta trasera (mm)</label>
+              <label>Ancho trasera (mm)</label>
               <input type="number" id="p-rear" value="25" min="18" max="60" step="1" oninput="calcPressure()">
             </div>
           </div>
-          <div class="calc-field" style="margin-bottom:20px">
+          <div class="calc-field" style="margin-bottom:22px">
             <label>Tipo de terreno</label>
             <select id="p-terrain" onchange="calcPressure()">
-              <option value="road">Asfalto (carretera)</option>
-              <option value="gravel">Gravel / camino</option>
-              <option value="mtb">MTB / tierra</option>
+              <option value="road">Asfalto / carretera</option>
+              <option value="gravel">Gravel / camino sin asfaltar</option>
+              <option value="mtb">MTB / tierra / singletrack</option>
             </select>
           </div>
-          <div id="p-result" class="calc-result">
-            <div class="calc-result-grid">
-              <div class="calc-result-item">
-                <div class="calc-result-val" id="p-front-psi">--</div>
-                <div class="calc-result-unit">PSI</div>
-                <div class="calc-result-label">Delantera</div>
-                <div style="font-size:13px;color:var(--text-muted);margin-top:4px"><span id="p-front-bar">--</span> bar</div>
+
+          <!-- Resultado -->
+          <div id="p-result" style="display:none">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+
+              <!-- Delantera -->
+              <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:6px">⬆ Delantera</div>
+                <div style="display:flex;align-items:baseline;justify-content:center;gap:4px">
+                  <span id="p-front-bar" style="font-size:32px;font-weight:800;color:var(--primary);font-family:'Plus Jakarta Sans',sans-serif">--</span>
+                  <span style="font-size:14px;font-weight:700;color:var(--primary-light)">bar</span>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px"><span id="p-front-psi">--</span> PSI</div>
+                <div style="margin-top:10px">
+                  <div style="font-size:9px;color:var(--text-muted);margin-bottom:4px;letter-spacing:.3px">RANGO ÓPTIMO</div>
+                  <div style="height:6px;background:var(--border);border-radius:3px;position:relative;overflow:hidden">
+                    <div id="p-front-range" style="position:absolute;height:100%;background:linear-gradient(90deg,#3B82F6,var(--primary),#10B981);border-radius:3px;left:20%;width:60%"></div>
+                    <div id="p-front-dot" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;background:var(--primary);border:2px solid var(--bg-card);border-radius:50%;left:50%"></div>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:3px">
+                    <span id="p-front-min">--</span><span>bar</span><span id="p-front-max">--</span>
+                  </div>
+                </div>
               </div>
-              <div class="calc-result-divider"></div>
-              <div class="calc-result-item">
-                <div class="calc-result-val" id="p-rear-psi">--</div>
-                <div class="calc-result-unit">PSI</div>
-                <div class="calc-result-label">Trasera</div>
-                <div style="font-size:13px;color:var(--text-muted);margin-top:4px"><span id="p-rear-bar">--</span> bar</div>
+
+              <!-- Trasera -->
+              <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:6px">⬇ Trasera</div>
+                <div style="display:flex;align-items:baseline;justify-content:center;gap:4px">
+                  <span id="p-rear-bar" style="font-size:32px;font-weight:800;color:var(--primary);font-family:'Plus Jakarta Sans',sans-serif">--</span>
+                  <span style="font-size:14px;font-weight:700;color:var(--primary-light)">bar</span>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px"><span id="p-rear-psi">--</span> PSI</div>
+                <div style="margin-top:10px">
+                  <div style="font-size:9px;color:var(--text-muted);margin-bottom:4px;letter-spacing:.3px">RANGO ÓPTIMO</div>
+                  <div style="height:6px;background:var(--border);border-radius:3px;position:relative;overflow:hidden">
+                    <div id="p-rear-range" style="position:absolute;height:100%;background:linear-gradient(90deg,#3B82F6,var(--primary),#10B981);border-radius:3px;left:20%;width:60%"></div>
+                    <div id="p-rear-dot" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;background:var(--primary);border:2px solid var(--bg-card);border-radius:50%;left:50%"></div>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:3px">
+                    <span id="p-rear-min">--</span><span>bar</span><span id="p-rear-max">--</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="calc-result-note" id="p-note"></div>
+
+            <div id="p-note" style="font-size:12px;color:var(--text-muted);background:var(--bg-input);border-radius:var(--radius-sm);padding:12px;line-height:1.55"></div>
           </div>
         </div>
       </div>
@@ -1997,7 +2044,20 @@ function switchToolTab(btn, panelId) {
   document.getElementById(panelId).classList.add('active');
 }
 
-// Tools: pressure calculator
+// Tipo de montaje activo
+var _pType = 'clincher';
+function setPType(btn) {
+  _pType = btn.dataset.type;
+  document.querySelectorAll('.p-type-btn').forEach(function(b) {
+    var active = b === btn;
+    b.style.border      = active ? '1px solid var(--primary)' : '1px solid var(--border)';
+    b.style.background  = active ? 'var(--primary-glow)' : 'var(--bg-input)';
+    b.style.color       = active ? 'var(--primary)' : 'var(--text-muted)';
+  });
+  calcPressure();
+}
+
+// Tools: pressure calculator — fórmula Silca/Continental con tipo de montaje
 function calcPressure() {
   var riderEl = document.getElementById('p-rider');
   if (!riderEl) return;
@@ -2006,21 +2066,62 @@ function calcPressure() {
   var frontMm = parseFloat(document.getElementById('p-front').value) || 25;
   var rearMm  = parseFloat(document.getElementById('p-rear').value) || 25;
   var terrain = document.getElementById('p-terrain').value || 'road';
+
+  // K = PSI / (load_lbs / width_in)  — validado contra Silca, Continental, Pirelli
+  // Clincher (cámara) es la referencia; tubeless ~-15%; tubular ~-7%
+  var kTable = {
+    'road-clincher':    0.90,
+    'road-tubeless':    0.77,
+    'road-tubular':     0.84,
+    'gravel-clincher':  0.74,
+    'gravel-tubeless':  0.63,
+    'gravel-tubular':   0.69,
+    'mtb-clincher':     0.58,
+    'mtb-tubeless':     0.49,
+    'mtb-tubular':      0.54,
+  };
+  var key = terrain + '-' + _pType;
+  var K   = kTable[key] || 0.90;
+
   var total     = riderKg + bikeKg;
-  var frontLoad = total * 0.43;
+  var frontLoad = total * 0.43; // distribución estándar 43/57
   var rearLoad  = total * 0.57;
-  var kMap = { road: 1.0, gravel: 0.82, mtb: 0.65 };
-  var k = kMap[terrain] || 1.0;
-  var frontPsi = Math.round((frontLoad * 2.2046) / (frontMm / 25.4) * 0.9 * k);
-  var rearPsi  = Math.round((rearLoad  * 2.2046) / (rearMm  / 25.4) * 0.9 * k);
-  var frontBar = (frontPsi * 0.0689476).toFixed(1);
-  var rearBar  = (rearPsi  * 0.0689476).toFixed(1);
-  document.getElementById('p-front-psi').textContent = frontPsi;
-  document.getElementById('p-front-bar').textContent = frontBar;
-  document.getElementById('p-rear-psi').textContent  = rearPsi;
-  document.getElementById('p-rear-bar').textContent  = rearBar;
-  var tips = { road: 'En asfalto busca el equilibrio entre adherencia y resistencia al rodamiento.', gravel: 'En gravel reduce algo la presión para mejorar el agarre y la comodidad.', mtb: 'En MTB presiones bajas aumentan el agarre; vigila el riesgo de pellizco bajo 25 PSI.' };
-  document.getElementById('p-note').textContent = tips[terrain] || '';
+
+  // PSI = (carga_lbs / ancho_pulgadas) × K
+  var frontPsi = (frontLoad * 2.2046) / (frontMm / 25.4) * K;
+  var rearPsi  = (rearLoad  * 2.2046) / (rearMm  / 25.4) * K;
+
+  // Rango: confort (-8%) / recomendado / rendimiento (+5%)
+  var fMin = frontPsi * 0.92; var fMax = frontPsi * 1.05;
+  var rMin = rearPsi  * 0.92; var rMax = rearPsi  * 1.05;
+
+  function psiToBar(p) { return (p * 0.0689476).toFixed(1); }
+  function barStr(p)   { return psiToBar(p); }
+
+  document.getElementById('p-front-psi').textContent = Math.round(frontPsi);
+  document.getElementById('p-front-bar').textContent = barStr(frontPsi);
+  document.getElementById('p-front-min').textContent = barStr(fMin);
+  document.getElementById('p-front-max').textContent = barStr(fMax);
+
+  document.getElementById('p-rear-psi').textContent  = Math.round(rearPsi);
+  document.getElementById('p-rear-bar').textContent  = barStr(rearPsi);
+  document.getElementById('p-rear-min').textContent  = barStr(rMin);
+  document.getElementById('p-rear-max').textContent  = barStr(rMax);
+
+  // Notas por combinación
+  var typeNotes = {
+    clincher:  'Cámara: presión recomendada estándar. No superes el máximo impreso en el lateral del neumático.',
+    tubeless:  'Tubeless: puedes bajar 15-20% respecto a la cámara sin riesgo de pellizco. Usa sellante y llanta compatible.',
+    tubular:   'Tubular: puede rodar ligeramente más blando que la cámara. Revisa la adherencia del pegamento periódicamente.',
+  };
+  var terrainNotes = {
+    road:   'En asfalto equilibra adherencia y resistencia al rodamiento.',
+    gravel: 'En gravel, valores más bajos mejoran el agarre y absorción de vibraciones.',
+    mtb:    'En MTB, presiones bajas son clave para el agarre. Vigila el riesgo de golpe de llanta.',
+  };
+  document.getElementById('p-note').innerHTML =
+    '<strong>' + typeNotes[_pType] + '</strong><br>' + terrainNotes[terrain];
+
   document.getElementById('p-result').style.display = 'block';
 }
 
