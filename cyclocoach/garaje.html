@@ -471,7 +471,15 @@
     .diff-media   { background: rgba(251,191,36,0.15);  color: #FBBF24; border: 1px solid rgba(251,191,36,0.3); }
     .diff-alta    { background: rgba(248,113,113,0.15); color: #F87171; border: 1px solid rgba(248,113,113,0.3); }
     .diff-teorica { background: rgba(139,92,246,0.15);  color: #A78BFA; border: 1px solid rgba(139,92,246,0.3); }
-    @media (max-width: 500px) { .calc-grid { grid-template-columns: 1fr; } .calc-card { padding: 18px; } }
+    @media (max-width: 600px) {
+      .calc-grid { grid-template-columns: 1fr; }
+      .calc-card { padding: 16px; }
+      .tools-tab-btn { font-size: 12px; padding: 8px 6px; min-width: 80px; }
+      #p-type-btns { gap: 5px; }
+      #p-type-btns .p-type-btn { font-size: 12px; padding: 8px 4px; }
+      /* Resultado presión: 2 col en móvil es suficiente si hay espacio, si no 1 col */
+      .mechanic-chat { max-width: 100%; }
+    }
 
   </style>
 </head>
@@ -787,6 +795,9 @@
     </button>
     <button class="gsp-btn" onclick="G.exportPDF();closeGarageSide()">
       <i class="fas fa-file-pdf" style="color:var(--text-muted)"></i><span>PDF</span>
+    </button>
+    <button class="gsp-btn" onclick="G.showTools();closeGarageSide()">
+      <i class="fas fa-tools" style="color:var(--primary)"></i><span>Herramientas</span>
     </button>
   </div>
 </div>
