@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('velomind_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'light') document.documentElement.classList.add('light-theme');
+      document.documentElement.style.opacity = '0';
+    })();
+  </script>
+  <style>
+    html { color-scheme: dark; background-color: #0a0b0f; transition: opacity .18s ease; }
+    html[data-theme="light"] { color-scheme: light; background-color: #f3f4f6; }
+  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Notificaciones — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔔</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js?v=106"></script>
+  <style>
+    /* ── Permission chip ─────────────────────────────────────── */
+    .perm-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 13px; border-radius: 20px;
+      font-size: 11px; font-weight: 700;
+    }
+    .perm-chip.granted { background: rgba(16,185,129,.12); color: #10B981; border: 1px solid rgba(16,185,129,.25); }
+    .perm-chip.denied  { background: rgba(239,68,68,.10);  color: #ef4444; border: 1px solid rgba(239,68,68,.25); }
+    .perm-chip.default { background: rgba(156,163,175,.10); color: var(--text-muted); border: 1px solid var(--border); }
+    .perm-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: perm-pulse 2s infinite; }
+    @keyframes perm-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    /* ── Permission denied banner ────────────────────────────── */
+    .perm-banner {
+      background: rgba(239,68,68,.07); border: 1px solid rgba(239,68,68,.22);
+      border-radius: var(--radius-lg); padding: 14px 18px; margin-bottom: 18px; display: none;
+    }
+    .perm-banner.show { display: block; }
+    .perm-banner-title { font-size: 13px; font-weight: 700; color: #ef4444; margin-bottom: 5px; display: flex; align-items: center; gap: 7px; }
+    .perm-banner p { font-size: 12px; color: var(--text-muted); line-height: 1.65; margin: 0; }
+
+    /* ── Master card ─────────────────────────────────────────── */
+    .notif-master {
+      background: linear-gradient(135deg, rgba(158,214,43,.08) 0%, rgba(158,214,43,.03) 100%);
+      border: 1px solid rgba(158,214,43,.22);
+      border-radius: var(--radius-xl); padding: 18px 20px;
+      display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
+    }
+    .notif-master-icon {
+      width: 50px; height: 50px; border-radius: 14px;
+      background: rgba(158,214,43,.12); border: 1.5px solid rgba(158,214,43,.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; color: var(--primary); flex-shrink: 0;
+    }
+    .notif-master-content { flex: 1; min-width: 0; }
+    .notif-master-title { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 3px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .notif-master-sub { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+    /* ── Section title ───────────────────────────────────────── */
+    .notif-section-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--text-muted); margin: 0 0 10px;
+    }
+
+    /* ── Type rows ───────────────────────────────────────────── */
+    .notif-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 24px; }
+    .notif-row {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 13px 16px;
+      transition: var(--transition);
+    }
+    .notif-row:hover { border-color: var(--border-hover, rgba(255,255,255,.12)); }
+    .notif-row.muted { opacity: .4; pointer-events: none; }
+    .notif-row-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .notif-row-content { flex: 1; min-width: 0; }
+    .notif-row-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .notif-row-sub { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+    .notif-time-badge {
+      display: inline-block; margin-top: 5px;
+      font-size: 10px; font-weight: 600; color: var(--text-muted);
+      background: rgba(255,255,255,.06); border: 1px solid var(--border);
+      border-radius: 5px; padding: 1px 7px; letter-spacing: .2px;
+    }
+
+    /* ── Toggle switch ───────────────────────────────────────── */
+    .ts { position: relative; width: 44px; height: 26px; flex-shrink: 0; cursor: pointer; display: block; }
+    .ts input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .ts-bar {
+      position: absolute; inset: 0; border-radius: 13px;
+      background: rgba(255,255,255,.12); transition: background .2s;
+    }
+    .ts-knob {
+      position: absolute; width: 20px; height: 20px; border-radius: 50%;
+      background: #fff; left: 3px; top: 3px;
+      transition: transform .2s;
+      box-shadow: 0 1px 4px rgba(0,0,0,.35);
+    }
+    .ts input:checked ~ .ts-bar { background: var(--primary); }
+    .ts input:checked ~ .ts-knob { transform: translateX(18px); }
+
+    /* ── Bottom actions ──────────────────────────────────────── */
+    .notif-actions { display: flex; flex-direction: column; gap: 8px; }
+    .action-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 13px 18px; border-radius: var(--radius-lg);
+      border: 1px solid var(--border); background: var(--bg-card);
+      color: var(--text); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: var(--transition); width: 100%; text-align: left;
+      font-family: inherit;
+    }
+    .action-btn:hover { border-color: var(--primary); background: var(--bg-card-hover, rgba(255,255,255,.04)); }
+    .action-btn i { font-size: 14px; color: var(--primary); width: 18px; text-align: center; }
+    .action-btn.danger { border-color: rgba(239,68,68,.3); color: #ef4444; }
+    .action-btn.danger i { color: #ef4444; }
+    .action-btn.danger:hover { background: rgba(239,68,68,.06); border-color: rgba(239,68,68,.5); }
+
+    /* ── PWA install info ────────────────────────────────────── */
+    .pwa-info {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px 18px; margin-top: 20px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .pwa-info i { color: var(--primary); font-size: 15px; margin-top: 1px; flex-shrink: 0; }
+    .pwa-info p { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin: 0; }
+    .pwa-info strong { color: var(--text); }
+
+    @media (max-width: 600px) {
+      .notif-master { padding: 14px 16px; gap: 12px; }
+      .notif-master-icon { width: 44px; height: 44px; font-size: 20px; }
+      .notif-master-title { font-size: 15px; }
+      .notif-row { padding: 12px 14px; gap: 12px; }
+      .notif-row-icon { width: 34px; height: 34px; font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo2.png" alt="VeloMind" style="width:100%; max-width:165px; height:auto; display:block; margin:0 auto">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="dashboard.html" class="nav-item"><i class="fas fa-home"></i> Inicio</a>
+    <a href="activities.html" class="nav-item"><i class="fas fa-history"></i> Actividades</a>
+    <a href="analytics.html" class="nav-item"><i class="fas fa-chart-bar"></i> Métricas</a>
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item"><i class="fas fa-calendar-check"></i> Mi Plan</a>
+    <a href="nutrition.html" class="nav-item"><i class="fas fa-apple-alt"></i> Nutrición</a>
+    <a href="body-weight.html" class="nav-item"><i class="fas fa-weight"></i> Peso y W/Kg</a>
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="rutas.html" class="nav-item"><i class="fas fa-map-marked-alt"></i> Rutas</a>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Mi Garaje</a>
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+    <a href="notificaciones.html" class="nav-item active"><i class="fas fa-bell"></i> Notificaciones</a>
+    <a href="soporte.html" class="nav-item"><i class="fas fa-life-ring"></i> Soporte</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-name">Cargando...</div>
+        <div class="ftp" id="athlete-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main-content">
+  <header class="page-header">
+    <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <h1 class="page-title">Notificaciones</h1>
+    <div id="perm-chip-wrap"></div>
+  </header>
+
+  <div class="page-body">
+
+    <!-- Permission denied banner -->
+    <div class="perm-banner" id="perm-banner">
+      <div class="perm-banner-title"><i class="fas fa-exclamation-triangle"></i> Permiso bloqueado</div>
+      <p>Has bloqueado las notificaciones en el navegador. Para activarlas, haz clic en el icono de candado o información en la barra de dirección y cambia el permiso de notificaciones a "Permitir". Después recarga la página.</p>
+    </div>
+
+    <!-- Master toggle card -->
+    <div class="notif-master">
+      <div class="notif-master-icon">
+        <i class="fas fa-bell"></i>
+      </div>
+      <div class="notif-master-content">
+        <div class="notif-master-title">Notificaciones push</div>
+        <div class="notif-master-sub">Recibe avisos aunque la app esté cerrada o en segundo plano</div>
+      </div>
+      <label class="ts" id="master-label" title="Activar/desactivar todas las notificaciones">
+        <input type="checkbox" id="master-toggle" onchange="onMasterToggle(this.checked)">
+        <span class="ts-bar"></span>
+        <span class="ts-knob"></span>
+      </label>
+    </div>
+
+    <!-- Types section -->
+    <div class="notif-section-title">Tipos de aviso</div>
+    <div class="notif-list" id="notif-types">
+
+      <div class="notif-row" id="row-training">
+        <div class="notif-row-icon" style="background:rgba(96,165,250,.12);color:#60A5FA">
+          <i class="fas fa-dumbbell"></i>
+        </div>
+        <div class="notif-row-content">
+          <div class="notif-row-title">Recordatorio de entreno</div>
+          <div class="notif-row-sub">La noche anterior cuando tienes sesión al día siguiente</div>
+          <span class="notif-time-badge"><i class="fas fa-clock" style="font-size:9px;margin-right:3px"></i>21:00</span>
+        </div>
+        <label class="ts" title="Recordatorio de entreno">
+          <input type="checkbox" id="toggle-training" onchange="onTypeToggle('training', this.checked)">
+          <span class="ts-bar"></span>
+          <span class="ts-knob"></span>
+        </label>
+      </div>
+
+      <div class="notif-row" id="row-fatigue">
+        <div class="notif-row-icon" style="background:rgba(239,68,68,.10);color:#ef4444">
+          <i class="fas fa-heart-pulse"></i>
+        </div>
+        <div class="notif-row-content">
+          <div class="notif-row-title">Alerta de fatiga</div>
+          <div class="notif-row-sub">Cuando tu TSB indica nivel alto de sobrecarga de entrenamiento</div>
+          <span class="notif-time-badge"><i class="fas fa-clock" style="font-size:9px;margin-right:3px"></i>09:00</span>
+        </div>
+        <label class="ts" title="Alerta de fatiga TSB">
+          <input type="checkbox" id="toggle-fatigue" onchange="onTypeToggle('fatigue', this.checked)">
+          <span class="ts-bar"></span>
+          <span class="ts-knob"></span>
+        </label>
+      </div>
+
+      <div class="notif-row" id="row-streak">
+        <div class="notif-row-icon" style="background:rgba(245,158,11,.10);color:#f59e0b">
+          <i class="fas fa-fire"></i>
+        </div>
+        <div class="notif-row-content">
+          <div class="notif-row-title">Racha interrumpida</div>
+          <div class="notif-row-sub">Si llevas varios días sin entrenar y tienes sesiones planificadas</div>
+          <span class="notif-time-badge"><i class="fas fa-clock" style="font-size:9px;margin-right:3px"></i>20:00</span>
+        </div>
+        <label class="ts" title="Racha interrumpida">
+          <input type="checkbox" id="toggle-streak" onchange="onTypeToggle('streak', this.checked)">
+          <span class="ts-bar"></span>
+          <span class="ts-knob"></span>
+        </label>
+      </div>
+
+      <div class="notif-row" id="row-water">
+        <div class="notif-row-icon" style="background:rgba(6,182,212,.10);color:#06B6D4">
+          <i class="fas fa-droplet"></i>
+        </div>
+        <div class="notif-row-content">
+          <div class="notif-row-title">Hidratación</div>
+          <div class="notif-row-sub">Vasos de agua según tu plan nutricional diario</div>
+          <span class="notif-time-badge"><i class="fas fa-clock" style="font-size:9px;margin-right:3px"></i>07:00 – 22:00</span>
+        </div>
+        <label class="ts" title="Recordatorios de hidratación">
+          <input type="checkbox" id="toggle-water" onchange="onTypeToggle('water', this.checked)">
+          <span class="ts-bar"></span>
+          <span class="ts-knob"></span>
+        </label>
+      </div>
+
+      <div class="notif-row" id="row-meals">
+        <div class="notif-row-icon" style="background:rgba(158,214,43,.10);color:var(--primary)">
+          <i class="fas fa-utensils"></i>
+        </div>
+        <div class="notif-row-content">
+          <div class="notif-row-title">Comidas</div>
+          <div class="notif-row-sub">Desayuno, media mañana, comida, merienda y cena</div>
+          <span class="notif-time-badge"><i class="fas fa-clock" style="font-size:9px;margin-right:3px"></i>7:30, 10:30, 15:00, 17:00, 21:30</span>
+        </div>
+        <label class="ts" title="Recordatorios de comidas">
+          <input type="checkbox" id="toggle-meals" onchange="onTypeToggle('meals', this.checked)">
+          <span class="ts-bar"></span>
+          <span class="ts-knob"></span>
+        </label>
+      </div>
+
+    </div>
+
+    <!-- Actions -->
+    <div class="notif-actions">
+      <button class="action-btn" onclick="sendTestNotification()">
+        <i class="fas fa-paper-plane"></i>
+        Enviar notificación de prueba
+      </button>
+      <button class="action-btn danger" id="revoke-btn" onclick="revokeAll()" style="display:none">
+        <i class="fas fa-bell-slash"></i>
+        Desactivar y eliminar suscripción
+      </button>
+    </div>
+
+    <!-- PWA info -->
+    <div class="pwa-info">
+      <i class="fas fa-info-circle"></i>
+      <p>Para recibir notificaciones con el <strong>móvil bloqueado</strong>, instala VeloMind como app: en iOS pulsa <strong>Compartir → Añadir a pantalla de inicio</strong>; en Android pulsa <strong>Instalar app</strong> en el menú del navegador.</p>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const PREFS_KEY = 'velomind_notif_prefs';
+
+// ── Defaults ─────────────────────────────────────────────────────
+var DEFAULT_PREFS = {
+  enabled: false,
+  types: { training: true, fatigue: true, streak: true, water: true, meals: true }
+};
+
+function loadPrefs() {
+  try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || DEFAULT_PREFS; }
+  catch { return DEFAULT_PREFS; }
+}
+function savePrefs(p) { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); }
+
+function getToken() {
+  return localStorage.getItem('velomind_token') || sessionStorage.getItem('velomind_token') || '';
+}
+
+// ── Permission chip ───────────────────────────────────────────────
+function renderPermChip() {
+  var wrap = document.getElementById('perm-chip-wrap');
+  if (!('Notification' in window)) {
+    wrap.innerHTML = '<span class="perm-chip default"><i class="fas fa-ban" style="font-size:10px"></i> No soportado</span>';
+    return;
+  }
+  var p = Notification.permission;
+  if (p === 'granted') {
+    wrap.innerHTML = '<span class="perm-chip granted"><span class="perm-dot"></span> Activadas</span>';
+  } else if (p === 'denied') {
+    wrap.innerHTML = '<span class="perm-chip denied"><i class="fas fa-exclamation-circle" style="font-size:10px"></i> Bloqueadas</span>';
+    document.getElementById('perm-banner').classList.add('show');
+  } else {
+    wrap.innerHTML = '<span class="perm-chip default"><i class="fas fa-circle-question" style="font-size:10px"></i> Sin permiso</span>';
+  }
+}
+
+// ── Apply prefs to UI ─────────────────────────────────────────────
+function applyPrefsToUI(prefs) {
+  var masterOn = prefs.enabled;
+  document.getElementById('master-toggle').checked = masterOn;
+
+  var types = prefs.types || {};
+  document.getElementById('toggle-training').checked = !!types.training;
+  document.getElementById('toggle-fatigue').checked  = !!types.fatigue;
+  document.getElementById('toggle-streak').checked   = !!types.streak;
+  document.getElementById('toggle-water').checked    = !!types.water;
+  document.getElementById('toggle-meals').checked    = !!types.meals;
+
+  // Dim type rows when master is off
+  ['training','fatigue','streak','water','meals'].forEach(function(k) {
+    document.getElementById('row-' + k).classList.toggle('muted', !masterOn);
+  });
+
+  document.getElementById('revoke-btn').style.display = masterOn ? 'flex' : 'none';
+}
+
+// ── Web Push helpers ──────────────────────────────────────────────
+function urlB64ToUint8(b64) {
+  var pad = '='.repeat((4 - b64.length % 4) % 4);
+  var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  var out = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function doSubscribe(notifyTypes) {
+  if (!('PushManager' in window)) return false;
+  try {
+    var keyRes = await fetch(window.API_URL + '/push/vapid-key');
+    if (!keyRes.ok) return false;
+    var { publicKey } = await keyRes.json();
+    var reg = await navigator.serviceWorker.ready;
+    var sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(publicKey) });
+    var token = getToken();
+    await fetch(window.API_URL + '/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ subscription: sub.toJSON(), notifyTypes: notifyTypes, waterTimes: [], mealTimes: [] })
+    });
+    return true;
+  } catch (e) { console.warn('[push]', e.message); return false; }
+}
+
+async function doUnsubscribe() {
+  var token = getToken();
+  try {
+    fetch(window.API_URL + '/push/subscribe', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }).catch(() => {});
+    var reg = await navigator.serviceWorker?.ready.catch(() => null);
+    var sub = reg ? await reg.pushManager?.getSubscription().catch(() => null) : null;
+    if (sub) sub.unsubscribe().catch(() => {});
+  } catch {}
+}
+
+// ── Master toggle ─────────────────────────────────────────────────
+async function onMasterToggle(on) {
+  if (on) {
+    if (!('Notification' in window)) {
+      document.getElementById('master-toggle').checked = false;
+      showToast('Tu navegador no soporta notificaciones', '#ef4444'); return;
+    }
+    var perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      document.getElementById('master-toggle').checked = false;
+      renderPermChip();
+      showToast('Permiso denegado. Actívalo en el navegador.', '#ef4444'); return;
+    }
+    renderPermChip();
+    var prefs = loadPrefs();
+    prefs.enabled = true;
+    savePrefs(prefs);
+    var ok = await doSubscribe(prefs.types);
+    if (ok) showToast('Notificaciones activadas', '#10B981');
+    else    showToast('No se pudo conectar. Reintenta.', '#f59e0b');
+  } else {
+    var prefs = loadPrefs();
+    prefs.enabled = false;
+    savePrefs(prefs);
+    await doUnsubscribe();
+    showToast('Notificaciones desactivadas', '#64748b');
+  }
+  applyPrefsToUI(loadPrefs());
+}
+
+// ── Per-type toggle ───────────────────────────────────────────────
+async function onTypeToggle(key, on) {
+  var prefs = loadPrefs();
+  prefs.types[key] = on;
+  savePrefs(prefs);
+  if (prefs.enabled) {
+    await doSubscribe(prefs.types);
+    showToast(on ? 'Tipo de aviso activado' : 'Tipo de aviso desactivado', on ? '#10B981' : '#64748b');
+  }
+}
+
+// ── Test notification ─────────────────────────────────────────────
+async function sendTestNotification() {
+  var prefs = loadPrefs();
+  if (!prefs.enabled) { showToast('Activa primero las notificaciones', '#f59e0b'); return; }
+  try {
+    var token = getToken();
+    var res = await fetch(window.API_URL + '/push/test', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (res.ok) showToast('Notificación de prueba enviada', '#10B981');
+    else        showToast('Error al enviar. Revisa la suscripción.', '#ef4444');
+  } catch (e) { showToast('Error de conexión', '#ef4444'); }
+}
+
+// ── Revoke ────────────────────────────────────────────────────────
+async function revokeAll() {
+  if (!confirm('¿Desactivar todas las notificaciones y eliminar la suscripción?')) return;
+  document.getElementById('master-toggle').checked = false;
+  await onMasterToggle(false);
+}
+
+// ── Toast ─────────────────────────────────────────────────────────
+function showToast(msg, color) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' + (color || '#333') + ';color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.4);white-space:nowrap';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(function() { t.remove(); }, 350); }, 2500);
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+(function init() {
+  renderPermChip();
+  var prefs = loadPrefs();
+  // If browser permission was revoked externally, sync state
+  if (prefs.enabled && 'Notification' in window && Notification.permission !== 'granted') {
+    prefs.enabled = false;
+    savePrefs(prefs);
+  }
+  applyPrefsToUI(prefs);
+})();
+</script>
+</body>
+</html>

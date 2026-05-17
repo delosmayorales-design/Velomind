@@ -3,9 +3,20 @@ const webpush  = require('web-push');
 const supabase = require('../db');
 const { getTSBStatus } = require('../utils/training');
 
+function realSub(sub) {
+  // Extract only the WebPush fields (strip our custom notify_types field)
+  return { endpoint: sub.subscription.endpoint, keys: sub.subscription.keys, expirationTime: sub.subscription.expirationTime ?? null };
+}
+
+function notifAllowed(sub, type) {
+  const nt = sub.subscription?.notify_types;
+  if (!nt) return true; // legacy subscriptions: allow all
+  return nt[type] !== false;
+}
+
 async function pushTo(sub, payload, expiredSet) {
   try {
-    await webpush.sendNotification(sub.subscription, JSON.stringify(payload));
+    await webpush.sendNotification(realSub(sub), JSON.stringify(payload));
   } catch (e) {
     if (e.statusCode === 410) expiredSet.add(sub.user_id);
     else console.error('[push]', payload.tag, e.message);
@@ -30,26 +41,30 @@ async function sendReminders() {
     const uid = sub.user_id;
 
     // ── Agua ────────────────────────────────────────────────
-    for (const mins of (sub.water_times || [])) {
-      if (mins !== currentMin) continue;
-      await pushTo(sub, {
-        title: '💧 Hora de hidratarte',
-        body:  'Bebe un vaso de agua ahora para mantener un buen rendimiento.',
-        tag:   `agua-${mins}`, url: './nutrition.html'
-      }, expired);
+    if (notifAllowed(sub, 'water')) {
+      for (const mins of (sub.water_times || [])) {
+        if (mins !== currentMin) continue;
+        await pushTo(sub, {
+          title: '💧 Hora de hidratarte',
+          body:  'Bebe un vaso de agua ahora para mantener un buen rendimiento.',
+          tag:   `agua-${mins}`, url: './nutrition.html'
+        }, expired);
+      }
     }
 
     // ── Comidas ─────────────────────────────────────────────
-    for (const meal of (sub.meal_times || [])) {
-      if (meal.hour * 60 + meal.minute !== currentMin) continue;
-      await pushTo(sub, {
-        title: meal.title, body: meal.body,
-        tag:   `comida-${currentMin}`, url: './nutrition.html'
-      }, expired);
+    if (notifAllowed(sub, 'meals')) {
+      for (const meal of (sub.meal_times || [])) {
+        if (meal.hour * 60 + meal.minute !== currentMin) continue;
+        await pushTo(sub, {
+          title: meal.title, body: meal.body,
+          tag:   `comida-${currentMin}`, url: './nutrition.html'
+        }, expired);
+      }
     }
 
     // ── Recordatorio entreno mañana (21:00) ─────────────────
-    if (now.getHours() === 21 && now.getMinutes() === 0) {
+    if (now.getHours() === 21 && now.getMinutes() === 0 && notifAllowed(sub, 'training')) {
       try {
         const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
         const tomorrowStr = tomorrow.toISOString().split('T')[0];
@@ -71,7 +86,7 @@ async function sendReminders() {
     }
 
     // ── Alerta TSB crítico (09:00) ──────────────────────────
-    if (now.getHours() === 9 && now.getMinutes() === 0) {
+    if (now.getHours() === 9 && now.getMinutes() === 0 && notifAllowed(sub, 'fatigue')) {
       try {
         const { data: pmcRow } = await supabase
           .from('pmc').select('tsb, ctl')
@@ -90,7 +105,7 @@ async function sendReminders() {
     }
 
     // ── Racha de sesiones perdidas (20:00) ──────────────────
-    if (now.getHours() === 20 && now.getMinutes() === 0) {
+    if (now.getHours() === 20 && now.getMinutes() === 0 && notifAllowed(sub, 'streak')) {
       try {
         const cutoff = new Date(now); cutoff.setDate(now.getDate() - 4);
         const cutoffStr = cutoff.toISOString().split('T')[0];

@@ -20,15 +20,29 @@ router.get('/vapid-key', (req, res) => {
   res.json({ publicKey: key });
 });
 
-// Guardar suscripción + horarios
+// Guardar suscripción + horarios + preferencias por tipo
 router.post('/subscribe', requireAuth, async (req, res) => {
   try {
-    const { subscription, waterTimes, mealTimes } = req.body;
+    const { subscription, waterTimes, mealTimes, notifyTypes } = req.body;
     if (!subscription?.endpoint) return res.status(400).json({ error: 'Suscripción inválida' });
+
+    // Embed notifyTypes inside the subscription JSONB so no schema change is needed
+    const subWithPrefs = {
+      endpoint: subscription.endpoint,
+      keys:     subscription.keys,
+      expirationTime: subscription.expirationTime ?? null,
+      notify_types: {
+        training: notifyTypes?.training !== false,
+        fatigue:  notifyTypes?.fatigue  !== false,
+        streak:   notifyTypes?.streak   !== false,
+        water:    notifyTypes?.water    !== false,
+        meals:    notifyTypes?.meals    !== false,
+      }
+    };
 
     const { error } = await supabase.from('push_subscriptions').upsert({
       user_id: String(req.user.id),
-      subscription,
+      subscription: subWithPrefs,
       water_times: waterTimes || [],
       meal_times:  mealTimes  || [],
       active: true,
@@ -66,7 +80,8 @@ router.post('/test', requireAuth, async (req, res) => {
 
     if (!data) return res.status(404).json({ error: 'Sin suscripción activa' });
 
-    await webpush.sendNotification(data.subscription, JSON.stringify({
+    const realSub = { endpoint: data.subscription.endpoint, keys: data.subscription.keys, expirationTime: data.subscription.expirationTime ?? null };
+    await webpush.sendNotification(realSub, JSON.stringify({
       title: '🚴 VeloMind',
       body:  'Notificaciones en segundo plano funcionando ✅',
       tag:   'test'
