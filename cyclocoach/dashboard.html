@@ -1217,21 +1217,22 @@ function renderToday(plan, athlete) {
       restRec = ['💧 Hidratación y buena alimentación', '🍽️ Come bien para compensar la energía usada', '🚶 Un paseo suave si quieres sumar algo sin estrés', '🛌 Descansa bien esta noche para la próxima sesión'];
     }
 
-    const hex2 = color.length === 7 ? color : '#9ED62B';
     const evalEmojis = ['🎯','✅','⚡','🏆','🔥','💪'];
     wrap.innerHTML = `
-      <div class="today-hero" style="--today-grad:linear-gradient(135deg,${evalColor}1A,${evalColor}08);border:1px solid ${evalColor}44;position:relative">
-        <div style="position:absolute;top:14px;right:14px;font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 10px;border-radius:20px;background:${evalColor}18;border:1px solid ${evalColor}44;color:${evalColor}">✓ Completada</div>
+      <div class="today-hero" style="--today-grad:linear-gradient(135deg,${evalColor}1A,${evalColor}08);border:1px solid ${evalColor}44">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;position:relative;flex-wrap:wrap;gap:6px">
+          <span class="today-emoji-badge" style="color:${evalColor};border-color:${evalColor}55;background:${evalColor}12">
+            ${dayName} · ${wt.label}
+          </span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 10px;border-radius:20px;background:${evalColor}18;border:1px solid ${evalColor}44;color:${evalColor};white-space:nowrap">✓ Completada</span>
+        </div>
         <div class="today-emoji-wrap">
           <span class="today-emoji" id="today-anim-emoji" style="animation-duration:6s">${evalEmoji}</span>
           <div>
-            <span class="today-emoji-badge" style="color:${evalColor};border-color:${evalColor}55;background:${evalColor}12">
-              ${dayName} · ${sess.name || wt.label}
-            </span>
+            <div class="today-title-big">${evalTitle}</div>
+            ${todayAct ? `<div class="today-subtitle">${todayAct.name||'Actividad de hoy'} · ${actualMin} min${actualTSS ? ' · '+actualTSS+' TSS' : ''}</div>` : '<div class="today-subtitle">Sesión marcada como completada</div>'}
           </div>
         </div>
-        <div class="today-title-big">${evalTitle}</div>
-        ${todayAct ? `<div class="today-subtitle">${todayAct.name||'Actividad de hoy'} · ${actualMin} min${actualTSS ? ' · '+actualTSS+' TSS' : ''}</div>` : '<div class="today-subtitle">Sesión marcada como completada</div>'}
       </div>
       ${pros.length ? `
       <div class="why-block" style="border-left-color:#10b981;margin-bottom:10px">
