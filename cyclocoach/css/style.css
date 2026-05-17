@@ -1396,6 +1396,7 @@ html.light-theme .why-block, html.light-theme .meal-card { background: #f1f5f9 !
 html.light-theme .form-input, html.light-theme select, html.light-theme textarea, html.light-theme .mechanic-textarea { background: #ffffff !important; color: #111827 !important; border-color: rgba(0,0,0,0.15) !important; }
 html.light-theme .tab-btn { color: #4b5563 !important; }
 html.light-theme .tab-btn.active { color: #ffffff !important; background: var(--primary) !important; }
+html.light-theme .tools-tab-btn.active { color: #ffffff !important; }
 html.light-theme .diag-table th { background: #f3f4f6 !important; color: #374151 !important; border-bottom: 1px solid rgba(0,0,0,0.1) !important; }
 html.light-theme .diag-table td { color: #111827 !important; border-bottom: 1px solid rgba(0,0,0,0.1) !important; }
 html.light-theme .torque-item, html.light-theme .trouble-item { background: #f3f4f6 !important; }
