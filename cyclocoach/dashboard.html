@@ -921,6 +921,12 @@
       <div id="training-ctx-content"></div>
     </div>
 
+    <!-- ── PROYECCIÓN PMC ── -->
+    <div class="card" id="projection-card" style="margin-bottom:16px;display:none">
+      <div class="card-eyebrow"><i class="fas fa-chart-line" style="color:var(--primary)"></i> ¿Cómo estarás en 4 semanas?</div>
+      <div id="projection-content"></div>
+    </div>
+
     <!-- ── RECUPERACIÓN / WELLNESS ── -->
     <div class="card" id="wellness-card" style="margin-bottom:16px;display:none">
       <div class="card-eyebrow"><i class="fas fa-heart-pulse" style="color:#ef4444"></i> Recuperación de hoy</div>
@@ -1072,7 +1078,22 @@ function renderHero(athlete, metrics, plan) {
     state === 'rest'    ? 'hoy tocas recarga total' :
                           'tu aventura empieza hoy'
   } 👊`;
-  document.getElementById('hero-phrase').textContent = pick(PHRASES[state]);
+
+  // Consejo específico según TSB en lenguaje humano (sin jerga)
+  const tsbAdvice =
+    tsbNow === null   ? '' :
+    tsbNow > 20       ? '🚀 Tu cuerpo está fresco y cargado. Ideal para una sesión exigente o competición.' :
+    tsbNow > 5        ? '✅ Buena forma. Es buen momento para entrenar con calidad.' :
+    tsbNow > -10      ? '💪 Equilibrio perfecto entre fitness y fatiga. Sigue el plan.' :
+    tsbNow > -20      ? '⚠️ Acumulas algo de fatiga. Entrena suave o descansa hoy.' :
+    tsbNow > -30      ? '🔴 Estás fatigado. Prioriza el descanso y el sueño esta noche.' :
+                        '🛑 Señal de sobrecarga. Para y descansa varios días antes de volver.';
+  const phraseEl = document.getElementById('hero-phrase');
+  if (tsbAdvice && tsbNow !== null) {
+    phraseEl.innerHTML = `<span style="display:block;margin-bottom:6px">${tsbAdvice}</span><span style="color:var(--text-muted);font-size:13px">${pick(PHRASES[state])}</span>`;
+  } else {
+    phraseEl.textContent = pick(PHRASES[state]);
+  }
   document.getElementById('hero-chips').innerHTML =
     chips.map(c => `<span class="hero-chip">${c}</span>`).join('');
 }
@@ -1724,11 +1745,49 @@ function renderWeek(plan) {
     </div>`;
   }).join('');
 
+  // ── Alerta de adherencia ─────────────────────────────────
+  // Cuenta cuántas sesiones planificadas de los últimos 14 días se hicieron
+  const twoWeeksAgo = new Date(monday); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 7);
+  const recentActs = (AppState.activities||[]).filter(a => {
+    const d = new Date((a.date||'').slice(0,10)+'T00:00:00');
+    return !isNaN(d) && d >= twoWeeksAgo && CYCLING_TYPES.includes(a.sport_type||a.type||'');
+  });
+  // Sesiones del plan esta semana que ya han pasado y no se hicieron
+  const missedPast = missedIdxs.filter(i => i < todayIdx);
+  // Días sin actividad en las últimas 2 semanas (excluyendo hoy en adelante)
+  const expectedDays = (AppState.athlete?.days_per_week || 4) * 2;
+  const actualDays14  = recentActs.length + doneIdxs.length;
+  const adherence14   = expectedDays > 0 ? Math.round(actualDays14 / expectedDays * 100) : null;
+
+  let adherenceAlert = '';
+  if (missedPast.length >= 2) {
+    adherenceAlert = `
+      <div style="margin-top:12px;padding:10px 12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#f59e0b">⚠️ Llevas ${missedPast.length} sesiones sin hacer esta semana</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">¿La carga es demasiada? Puedes ajustar el plan para adaptarlo a tu disponibilidad.</div>
+        </div>
+        <a href="training-plan.html" style="font-size:11px;font-weight:700;color:#f59e0b;text-decoration:none;white-space:nowrap;border:1px solid rgba(245,158,11,.4);border-radius:6px;padding:4px 10px">Ajustar plan →</a>
+      </div>`;
+  } else if (adherence14 !== null && adherence14 < 50 && expectedDays >= 4) {
+    adherenceAlert = `
+      <div style="margin-top:12px;padding:10px 12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:10px">
+        <div style="font-size:12px;font-weight:700;color:#ef4444">📉 Adherencia baja: ${adherence14}% en las últimas 2 semanas</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Si la rutina cuesta, adapta el plan a menos días o sesiones más cortas.</div>
+      </div>`;
+  } else if (doneIdxs.length === plannedIdxs.length && plannedIdxs.length >= 3) {
+    adherenceAlert = `
+      <div style="margin-top:12px;padding:8px 12px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.2);border-radius:10px">
+        <div style="font-size:12px;font-weight:600;color:#10b981">🎯 Semana perfecta. Sigues el plan al 100% — sigue así.</div>
+      </div>`;
+  }
+
   el.innerHTML = `
     <div style="margin-bottom:10px;padding:10px 12px;background:var(--bg-input);border-radius:10px;border:1px solid var(--border)">
       ${line1}${line2}${line3}
     </div>
     <div class="week-days-row">${cols}</div>
+    ${adherenceAlert}
     ${tgtTSS ? `
     <div style="margin-top:10px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
@@ -1795,6 +1854,52 @@ async function loadPlan() {
       renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
     }
   } catch {}
+}
+
+/* ── PROYECCIÓN PMC ─────────────────────────────────────── */
+async function renderProjection() {
+  const card = document.getElementById('projection-card');
+  const el   = document.getElementById('projection-content');
+  if (!el || !card) return;
+
+  const weeklyTSS = dashPlan?.targetTSS || null;
+  const url = `${window.API_URL}/analytics/projection${weeklyTSS ? `?weekly_tss=${weeklyTSS}` : ''}`;
+  let data;
+  try {
+    data = await fetch(url, { headers: Auth.getHeaders() }).then(r => r.json());
+  } catch { return; }
+
+  const { projection } = data;
+  if (!projection?.length) return;
+
+  // Mostrar semanas 1, 2, 3 y 4
+  const weeks = [7, 14, 21, 28].map(d => projection.find(p => p.day === d)).filter(Boolean);
+
+  const stateColor = tsb =>
+    tsb > 20 ? '#60a5fa' : tsb > 5 ? '#10b981' : tsb > -10 ? '#9ED62B' :
+    tsb > -20 ? '#f59e0b' : '#ef4444';
+
+  const stateEmoji = tsb =>
+    tsb > 20 ? '🚀' : tsb > 5 ? '✅' : tsb > -10 ? '💪' : tsb > -20 ? '⚠️' : '🔴';
+
+  el.innerHTML = `
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
+      Proyección si mantienes un ritmo de <b>${data.daily_tss_assumed} TSS/día</b> (${Math.round(data.daily_tss_assumed * 7)} TSS/semana)
+    </p>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+      ${weeks.map((w, i) => `
+        <div style="text-align:center;background:var(--bg-card);border:1px solid ${stateColor(w.tsb)}33;border-radius:12px;padding:12px 6px">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">Semana ${i + 1}</div>
+          <div style="font-size:22px;margin-bottom:4px">${stateEmoji(w.tsb)}</div>
+          <div style="font-size:12px;font-weight:700;color:${stateColor(w.tsb)}">${w.status}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:3px">TSB ${w.tsb > 0 ? '+' : ''}${w.tsb}</div>
+          <div style="font-size:10px;color:var(--text-muted)">CTL ${w.ctl}</div>
+        </div>`).join('')}
+    </div>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5">
+      ${weeks[3]?.advice || ''}
+    </p>`;
+  card.style.display = '';
 }
 
 /* ── CONTEXTO DE ENTRENAMIENTO ──────────────────────────── */
@@ -1883,6 +1988,7 @@ function renderMacrocycle() {
   await loadPlan();
   renderMacrocycle();
   loadWellness();
+  renderProjection();
 
   BackendSync.loadActivities().then(() => {
     const m = AppState.pmcData?.length ? AppState.getCurrentMetrics() : null;
@@ -1894,6 +2000,7 @@ function renderMacrocycle() {
     renderMacrocycle();
     renderWeeklySummary();
     detectFTPBreakthrough();
+    renderProjection();
   });
 
   BackendSync.loadProfile().then(profile => {

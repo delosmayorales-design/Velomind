@@ -1,7 +1,8 @@
 const express = require('express');
-const supabase = require('../db'); // Ahora db es el cliente de Supabase
+const supabase = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { getPMC, getCurrentMetrics, recalculatePMC } = require('../services/pmc');
+const { ZONES: COGGAN_ZONES, getTSBStatus } = require('../utils/training');
 const router = express.Router();
 router.use(requireAuth);
 
@@ -65,15 +66,7 @@ router.get('/zones', async (req, res) => {
     .eq('user_id', uid)
     .gt('avg_power', 0);
 
-  const ZONES = [
-    { id:1, name:'Z1', min:0,    max:0.55, color:'#6B7280' },
-    { id:2, name:'Z2', min:0.55, max:0.75, color:'#3B82F6' },
-    { id:3, name:'Z3', min:0.75, max:0.90, color:'#10B981' },
-    { id:4, name:'Z4', min:0.90, max:1.05, color:'#F59E0B' },
-    { id:5, name:'Z5', min:1.05, max:1.20, color:'#EF4444' },
-    { id:6, name:'Z6', min:1.20, max:1.50, color:'#8B5CF6' },
-    { id:7, name:'Z7', min:1.50, max:999,  color:'#EC4899' },
-  ].map(z => ({ ...z, duration_min: 0, count: 0 }));
+  const ZONES = COGGAN_ZONES.map(z => ({ ...z, duration_min: 0, count: 0 }));
 
   let realCount = 0, estimCount = 0;
 
@@ -311,6 +304,53 @@ router.get('/decoupling', async (req, res) => {
     sessions_analyzed: z2Acts.length,
     data: efData,
   });
+});
+
+// ── Proyección PMC a 28 días ──────────────────────────────────────────────────
+// Recibe el TSS planificado semanal (o lo estima del plan actual) y proyecta
+// CTL, ATL y TSB día a día durante las próximas 4 semanas.
+router.get('/projection', async (req, res) => {
+  const uid = req.user.id;
+  const weeklyTSS = parseFloat(req.query.weekly_tss) || null;
+
+  const current = await getCurrentMetrics(uid);
+  if (!current) return res.json({ projection: [] });
+
+  let ctl = current.ctl || 0;
+  let atl = current.atl || 0;
+
+  // Si no viene weekly_tss, usar la media de las últimas 4 semanas
+  let dailyTSS = weeklyTSS ? weeklyTSS / 7 : null;
+  if (!dailyTSS) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 28);
+    const { data: recent } = await supabase
+      .from('activities').select('tss').eq('user_id', uid)
+      .gte('date', cutoff.toISOString().split('T')[0]);
+    const totalTSS = (recent || []).reduce((s, a) => s + (a.tss || 0), 0);
+    dailyTSS = totalTSS / 28;
+  }
+
+  const projection = [];
+  for (let d = 1; d <= 28; d++) {
+    ctl = ctl + (dailyTSS - ctl) / 42;
+    atl = atl + (dailyTSS - atl) / 7;
+    const tsb = ctl - atl;
+    const date = new Date();
+    date.setDate(date.getDate() + d);
+    const status = getTSBStatus(tsb);
+    projection.push({
+      date: date.toISOString().split('T')[0],
+      day: d,
+      ctl: Math.round(ctl * 10) / 10,
+      atl: Math.round(atl * 10) / 10,
+      tsb: Math.round(tsb * 10) / 10,
+      status: status.label,
+      advice: status.advice,
+    });
+  }
+
+  res.json({ projection, daily_tss_assumed: Math.round(dailyTSS * 10) / 10 });
 });
 
 module.exports = router;

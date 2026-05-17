@@ -2,8 +2,9 @@ const express = require('express');
 const supabase = require('../db'); // Ahora db es el cliente de Supabase
 const { requireAuth } = require('../middleware/auth');
 const { requirePremium } = require('../middleware/subscriptionMiddleware');
-const Anthropic = require('@anthropic-ai/sdk'); // Asegúrate de que este paquete esté instalado
+const Anthropic = require('@anthropic-ai/sdk');
 const { callAI } = require('../services/ai');
+const { calcIF, calcTSS, getZone, getTSBStatus } = require('../utils/training');
 const router = express.Router();
 const fs = require('fs');
 const multer = require('multer');
@@ -17,37 +18,9 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 
-// ── Helpers ──────────────────────────────────────────────────
-
-function calcIF(np, ftp) { return ftp ? Math.round(np / ftp * 100) / 100 : 0; }
-function calcTSS(np, dur, ftp) {
-  if (!np || !dur || !ftp) return 0;
-  const ifv = calcIF(np, ftp);
-  return Math.round(dur * np * ifv / (ftp * 3600) * 100);
-}
-
-// Zona Coggan según % FTP
-function powerZone(np, ftp) {
-  if (!ftp || !np) return 0;
-  const pct = np / ftp;
-  if (pct < 0.55) return 1;
-  if (pct < 0.75) return 2;
-  if (pct < 0.90) return 3;
-  if (pct < 1.05) return 4;
-  if (pct < 1.20) return 5;
-  if (pct < 1.50) return 6;
-  return 7;
-}
-
-// Estado de forma según TSB
-function formState(tsb) {
-  if (tsb > 25)  return { label: 'Muy fresco', color: 'blue',   risk: 'bajo' };
-  if (tsb > 5)   return { label: 'Fresco',     color: 'green',  risk: 'bajo' };
-  if (tsb > -10) return { label: 'En forma',   color: 'lime',   risk: 'bajo' };
-  if (tsb > -20) return { label: 'Cansado',    color: 'yellow', risk: 'medio' };
-  if (tsb > -30) return { label: 'Fatigado',   color: 'orange', risk: 'alto' };
-  return           { label: 'Sobreentrenado',  color: 'red',    risk: 'muy alto' };
-}
+// powerZone y formState son alias locales de los utils centralizados
+const powerZone = (np, ftp) => getZone(np, ftp)?.id || 0;
+const formState = getTSBStatus;
 
 // Detectar fase de entrenamiento según tendencia CTL
 function detectPhase(pmc) {

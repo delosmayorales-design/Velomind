@@ -2,6 +2,7 @@ const express = require('express');
 const supabase = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { recalculatePMC } = require('../services/pmc');
+const { calcIF, calcTSS, calcVI } = require('../utils/training');
 const router = express.Router();
 
 router.use(requireAuth);
@@ -57,10 +58,10 @@ router.post('/', async (req, res) => {
     let ifValue = Number(a.if_value) || 0;
     let vi = 0;
     if (!tss && a.np && a.duration && ftp > 0) {
-      ifValue = Math.round((a.np / ftp) * 100) / 100;
-      tss = Math.round((a.duration * a.np * ifValue) / (ftp * 3600) * 100);
+      ifValue = calcIF(a.np, ftp);
+      tss     = calcTSS(a.np, a.duration, ftp);
     }
-    if (a.np && a.avg_power > 0) vi = Math.round((a.np / a.avg_power) * 100) / 100;
+    if (a.np && a.avg_power > 0) vi = calcVI(a.np, a.avg_power);
     const id = a.id || `act_${uid}_${a.date}_${Date.now()}`;
 
     const { error } = await supabase.from('activities').upsert({
@@ -106,11 +107,9 @@ async function updateNP(req, res) {
       .eq('id', id).eq('user_id', uid).single();
     if (!act) return res.status(404).json({ error: 'No encontrada' });
 
-    const npNum    = Math.round(Number(np));
-    const ifValue  = Math.round((npNum / ftp) * 100) / 100;
-    const tss      = act.duration
-      ? Math.round((act.duration * npNum * ifValue) / (ftp * 3600) * 100)
-      : 0;
+    const npNum   = Math.round(Number(np));
+    const ifValue = calcIF(npNum, ftp);
+    const tss     = act.duration ? calcTSS(npNum, act.duration, ftp) : 0;
 
     const { error } = await supabase.from('activities')
       .update({ np: npNum, if_value: ifValue, tss })
@@ -140,8 +139,8 @@ router.post('/batch', async (req, res) => {
       const id = a.id || `act_${uid}_${a.date}_${Date.now()}_${rows.length}`;
       let tss = Number(a.tss) || 0, ifValue = 0;
       if (!tss && a.np && a.duration && ftp > 0) {
-        ifValue = Math.round((a.np / ftp) * 100) / 100;
-        tss = Math.round((a.duration * a.np * ifValue) / (ftp * 3600) * 100);
+        ifValue = calcIF(a.np, ftp);
+        tss     = calcTSS(a.np, a.duration, ftp);
       }
       const distMeters = (a.source === 'Manual' || a.source === 'CSV') ? (Number(a.distance) * 1000) : (Number(a.distance) || 0);
       rows.push({

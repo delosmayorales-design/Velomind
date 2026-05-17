@@ -250,16 +250,59 @@
         <div class="step-subtitle">Estos datos generan tus zonas de potencia exactas</div>
       </div>
       <div class="info-box">
-        <strong>¿Qué es el FTP?</strong> La potencia máxima sostenible durante 1 hora.
-        Si no lo sabes, usa <strong>2.5 × peso</strong> como estimación inicial.
-        Un test de rampa (20 min al máximo) te dará un valor preciso.
+        <strong>¿Qué es el FTP?</strong> La potencia máxima que puedes mantener durante una hora.
+        Es el número clave: todo tu plan se calcula desde él.
       </div>
-      <div class="form-group">
+
+      <!-- Opciones FTP -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button type="button" onclick="ftpMode('know')"  id="ftp-btn-know"  style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--primary);background:var(--primary);color:#0a0e1a;font-weight:700;font-size:13px;cursor:pointer">Ya sé mi FTP</button>
+        <button type="button" onclick="ftpMode('est')"   id="ftp-btn-est"   style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--text);font-weight:600;font-size:13px;cursor:pointer">Estimarlo por peso</button>
+        <button type="button" onclick="ftpMode('ramp')"  id="ftp-btn-ramp"  style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--text);font-weight:600;font-size:13px;cursor:pointer">Hacer el test ahora</button>
+      </div>
+
+      <!-- Panel: conozco mi FTP -->
+      <div id="ftp-panel-know" class="form-group">
         <label class="form-label">FTP — Umbral Funcional de Potencia (W)</label>
-        <input type="number" id="ob-ftp" class="form-input" placeholder="235" min="80" max="550" inputmode="numeric" oninput="previewWkg()">
+        <input type="number" id="ob-ftp-visible" class="form-input" placeholder="235" min="80" max="550" inputmode="numeric" oninput="document.getElementById('ob-ftp').value=this.value;previewWkg()">
         <div class="field-error" id="err-ftp">FTP inválido. Introduce entre 80 y 550 W.</div>
         <div class="form-hint" id="ftp-hint" style="color:var(--primary);font-weight:600"></div>
       </div>
+
+      <!-- Panel: estimación por peso -->
+      <div id="ftp-panel-est" style="display:none" class="form-group">
+        <label class="form-label">FTP estimado automáticamente</label>
+        <div id="ftp-est-result" style="padding:14px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;font-size:14px;color:var(--text-muted)">
+          Introduce tu peso en el paso 1 para ver la estimación.
+        </div>
+        <div class="form-hint" style="margin-top:8px">Fórmula: 2.5 × peso. Sirve para empezar — ajústalo cuando hagas el test.</div>
+      </div>
+
+      <!-- Panel: ramp test guiado -->
+      <div id="ftp-panel-ramp" style="display:none">
+        <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px">🚀 Test de Rampa — Protocolo (30 min totales)</div>
+          <div style="font-size:13px;line-height:2;color:var(--text-secondary)">
+            <div>① <b>10 min</b> calentamiento suave (Z1, cadencia alta ~90 rpm)</div>
+            <div>② Empieza en <b>100 W</b> y sube <b>20 W cada minuto</b></div>
+            <div>③ Pedalea hasta que no puedas mantener el escalón — apunta la potencia de ese último minuto</div>
+            <div>④ <b>5 min</b> vuelta a calma muy suave</div>
+          </div>
+          <div style="margin-top:12px;padding:10px;background:rgba(158,214,43,.08);border-radius:8px;font-size:12px;color:var(--text-muted)">
+            📐 <b>Cálculo:</b> FTP = potencia del último minuto × 0.75
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Potencia máxima del último minuto completo (W)</label>
+          <input type="number" id="ramp-max-power" class="form-input" placeholder="ej. 320" min="80" max="800" inputmode="numeric" oninput="calcRampFTP()">
+          <div class="form-hint" id="ramp-ftp-result" style="color:var(--primary);font-weight:700;margin-top:8px"></div>
+        </div>
+      </div>
+
+      <!-- FTP final (único input real, siempre presente) -->
+      <input type="hidden" id="ob-ftp" value="">
+      <div class="field-error" id="err-ftp">FTP inválido (80-550 W).</div>
+      <div class="form-hint" id="ftp-hint" style="color:var(--primary);font-weight:600"></div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">FC Máxima (bpm)</label>
@@ -494,18 +537,65 @@ function selectGoal(el) {
   data.goal = el.dataset.val;
 }
 
+// ── FTP mode switcher ────────────────────────────────────────
+let _ftpMode = 'know';
+function ftpMode(mode) {
+  _ftpMode = mode;
+  ['know','est','ramp'].forEach(m => {
+    const panel = document.getElementById(`ftp-panel-${m}`);
+    const btn   = document.getElementById(`ftp-btn-${m}`);
+    if (!panel || !btn) return;
+    const active = m === mode;
+    panel.style.display = active ? '' : 'none';
+    btn.style.background = active ? 'var(--primary)' : 'transparent';
+    btn.style.color      = active ? '#0a0e1a' : 'var(--text)';
+    btn.style.border     = active ? '2px solid var(--primary)' : '2px solid var(--border)';
+  });
+  if (mode === 'est') {
+    const w = data.weight || parseFloat(document.getElementById('ob-weight')?.value) || 0;
+    const est = w > 0 ? Math.round(w * 2.5) : null;
+    const resultEl = document.getElementById('ftp-est-result');
+    if (resultEl) {
+      resultEl.innerHTML = est
+        ? `<b style="color:var(--primary);font-size:18px">${est} W</b> <span style="color:var(--text-muted)">(estimado desde ${w} kg × 2.5)</span>`
+        : 'Introduce tu peso en el paso 1 para ver la estimación.';
+    }
+    const ftpEl = document.getElementById('ob-ftp');
+    if (ftpEl && est) { ftpEl.value = est; previewWkg(); }
+  }
+}
+
+function calcRampFTP() {
+  const maxP = parseInt(document.getElementById('ramp-max-power').value);
+  const ftpEl = document.getElementById('ob-ftp');
+  const resultEl = document.getElementById('ramp-ftp-result');
+  if (maxP >= 80) {
+    const ftp = Math.round(maxP * 0.75);
+    if (ftpEl) ftpEl.value = ftp;
+    if (resultEl) resultEl.textContent = `→ Tu FTP estimado: ${ftp} W`;
+    previewWkg();
+  } else {
+    if (resultEl) resultEl.textContent = '';
+  }
+}
+
 function previewWkg() {
-  const ftp = parseInt(document.getElementById('ob-ftp').value);
-  const w   = data.weight || parseFloat(document.getElementById('ob-weight').value) || 0;
+  // En panel "know" el input visible escribe directamente en ob-ftp (type=text→number→hidden)
+  // En paneles est/ramp, calcRampFTP/ftpMode ya escriben en ob-ftp hidden
+  const visibleFtp = _ftpMode === 'know'
+    ? parseInt(document.getElementById('ob-ftp-visible')?.value || document.getElementById('ob-ftp').value)
+    : parseInt(document.getElementById('ob-ftp').value);
+  const ftp = visibleFtp || 0;
+  const w   = data.weight || parseFloat(document.getElementById('ob-weight')?.value) || 0;
   const hint = document.getElementById('ftp-hint');
   if (ftp>0 && w>0) {
     const wkg = (ftp/w).toFixed(2);
     const cats = [{v:2,l:'Principiante'},{v:3,l:'Aficionado C4'},{v:3.5,l:'Aficionado C3'},{v:4,l:'Aficionado C2'},{v:4.5,l:'Aficionado C1'},{v:5.3,l:'Amateur Élite'},{v:99,l:'Nivel Pro'}];
     const cat = cats.find(c=>parseFloat(wkg)<c.v);
-    hint.textContent = `${wkg} W/kg — ${cat ? cat.l : 'Nivel Pro'}`;
+    if (hint) hint.textContent = `${wkg} W/kg — ${cat ? cat.l : 'Nivel Pro'}`;
   } else if (ftp>0) {
-    hint.textContent = `${ftp} W configurado`;
-  } else { hint.textContent=''; }
+    if (hint) hint.textContent = `${ftp} W configurado`;
+  } else { if (hint) hint.textContent=''; }
 }
 
 function autoLthr() {

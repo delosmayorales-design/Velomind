@@ -8,15 +8,48 @@ const supabase = require('./db');
 const PORT = process.env.PORT || 3000;
 
 // ─────────────────────────────────────────
-// ✅ CORS (ABIERTO PARA QUE FUNCIONE YA)
+// CORS — restringido a orígenes conocidos
 // ─────────────────────────────────────────
+const _allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+  : null;
+
 app.use(cors({
-  origin: true,
+  origin: (origin, cb) => {
+    // Peticiones sin origen (Postman, curl, server-to-server) se permiten en dev
+    if (!origin) return cb(null, process.env.NODE_ENV !== 'production');
+    if (!_allowedOrigins) return cb(null, true); // dev sin env var: abierto
+    if (_allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error(`Origen no permitido: ${origin}`));
+  },
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],
 }));
 app.options('*', cors());
+
+// ─────────────────────────────────────────
+// Rate limiting en memoria (sin dependencias)
+// ─────────────────────────────────────────
+const _rlStore = new Map();
+setInterval(() => {
+  const now = Date.now();
+  _rlStore.forEach((hits, key) => { if (!hits.length || now - hits[hits.length-1] > 3600000) _rlStore.delete(key); });
+}, 5 * 60 * 1000);
+
+function rateLimit(max, windowMs) {
+  return (req, res, next) => {
+    const key = (req.ip || 'x') + req.path;
+    const now = Date.now();
+    const hits = (_rlStore.get(key) || []).filter(t => now - t < windowMs);
+    if (hits.length >= max) {
+      return res.status(429).json({ error: 'Demasiadas peticiones. Intenta de nuevo en unos minutos.', code: 'RATE_LIMIT' });
+    }
+    hits.push(now);
+    _rlStore.set(key, hits);
+    next();
+  };
+}
 
 // Body parser (necesario para POST con JSON)
 app.use(express.json({ limit: '5mb' }));
@@ -24,6 +57,12 @@ app.use(express.json({ limit: '5mb' }));
 // ─────────────────────────────────────────
 // ✅ RUTAS
 // ─────────────────────────────────────────
+// Rate limits en rutas sensibles
+app.post('/api/auth/login',    rateLimit(10, 15 * 60 * 1000)); // 10 intentos / 15 min
+app.post('/api/auth/register', rateLimit(5,  60 * 60 * 1000)); // 5 registros / hora
+app.post('/api/auth/demo',     rateLimit(3,  60 * 60 * 1000)); // 3 demos / hora
+app.post('/api/auth/forgot-password', rateLimit(5, 60 * 60 * 1000));
+
 app.use('/api/auth',       require('./routes/auth'));
 app.use('/api/activities', require('./routes/activities'));
 app.use('/api/analytics',  require('./routes/analytics'));
@@ -59,6 +98,8 @@ app.use((err, req, res, next) => {
 // ─────────────────────────────────────────
 // Push reminders scheduler
 if (process.env.NODE_ENV !== 'test') require('./services/pushScheduler').start();
+// Demo user cleanup (diario 3:00 AM)
+if (process.env.NODE_ENV !== 'test') require('./services/demoCleanup').start();
 
 // Keepalive: evita que Render free tier duerma el servidor
 if (process.env.NODE_ENV === 'production') {
