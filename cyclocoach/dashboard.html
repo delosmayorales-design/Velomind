@@ -1092,7 +1092,7 @@ const EMOJIS = {
   z2:        ['🚴','💚','🌿','⛰️','☀️','🏔️'],
   endurance: ['🚴','🌄','🏔️','💚','⛅','🗺️'],
   long:      ['🚴','🗺️','🏔️','🌅','💪','⛰️'],
-  tempo:     ['⚡','🔥','💪','🎯','🏃','🌡️'],
+  tempo:     ['⚡','🔥','💪','🎯','🚴','🌡️'],
   threshold: ['🎯','🔥','💪','⚡','🏆','📈'],
   vo2max:    ['🚀','💥','⚡','🏆','🔥','🫁'],
   sprint:    ['💥','⚡','🚀','🏎️','🔥','💨'],
@@ -1157,6 +1157,115 @@ function renderToday(plan, athlete) {
   const tss    = Math.round((sess.tssShare||0)*(plan.targetTSS||0)) || sess.tss || 0;
   const dur    = sess.durationMin ? `${sess.durationMin} min` : '';
   const isDone = !!sess.completed;
+
+  if (isDone) {
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const CYCLING_TYPES = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide','cycling','Cycling'];
+    const todayAct = (AppState.activities||[])
+      .filter(a => (a.date||'').slice(0,10) === todayKey && CYCLING_TYPES.includes(a.sport_type||a.type||''))
+      .sort((a,b) => (Number(b.duration)||0) - (Number(a.duration)||0))[0];
+
+    const plannedMin = sess.durationMin || 0;
+    const actualMin  = todayAct ? Math.round((Number(todayAct.duration)||0)/60) : null;
+    const actualTSS  = todayAct ? Math.round(Number(todayAct.tss)||0) : null;
+    const durRatio   = (plannedMin > 0 && actualMin !== null) ? actualMin/plannedMin : null;
+    const tssRatio   = (tss > 0 && actualTSS !== null) ? actualTSS/tss : null;
+
+    let evalEmoji, evalTitle, evalColor;
+    if (durRatio === null) {
+      evalEmoji = '✅'; evalTitle = 'Sesión completada'; evalColor = '#10b981';
+    } else if (durRatio >= 0.9 && durRatio <= 1.15) {
+      evalEmoji = '🎯'; evalTitle = 'Exactamente lo que pedía el plan'; evalColor = '#10b981';
+    } else if (durRatio > 1.15) {
+      evalEmoji = '⚡'; evalTitle = 'Te pasaste del plan'; evalColor = '#f59e0b';
+    } else if (durRatio >= 0.6) {
+      evalEmoji = '📉'; evalTitle = 'Algo por debajo del plan'; evalColor = '#f59e0b';
+    } else {
+      evalEmoji = '⚠️'; evalTitle = 'Bastante por debajo del plan'; evalColor = '#ef4444';
+    }
+
+    const pros = [], cons = [];
+    if (actualMin !== null) {
+      if (durRatio >= 0.9 && durRatio <= 1.15) {
+        pros.push(`Duración perfecta: ${actualMin} min (el plan pedía ${plannedMin} min)`);
+      } else if (durRatio > 1.15) {
+        pros.push(`Completaste ${actualMin} min — más que suficiente`);
+        cons.push(`Excediste el volumen en un ${Math.round((durRatio-1)*100)}% (${plannedMin} min planificados) — puede acumular fatiga`);
+      } else {
+        cons.push(`Duración más corta: ${actualMin} min de los ${plannedMin} planificados (${Math.round(durRatio*100)}%)`);
+        if (durRatio >= 0.6) pros.push('El estímulo fue suficiente para contar como sesión válida');
+      }
+    }
+    if (tssRatio !== null) {
+      if (tssRatio >= 0.85 && tssRatio <= 1.2) {
+        pros.push(`Carga ideal: ${actualTSS} TSS real vs ${tss} TSS planificado`);
+      } else if (tssRatio > 1.2) {
+        cons.push(`Carga más alta de lo previsto (${actualTSS} vs ${tss} TSS) — asegura buena recuperación`);
+      } else {
+        cons.push(`Carga por debajo: ${actualTSS} vs ${tss} TSS planificado — intensidad inferior a la esperada`);
+      }
+    }
+    if (pros.length === 0 && cons.length === 0) pros.push('Sesión registrada como completada');
+
+    let restRec;
+    if (durRatio === null || (durRatio >= 0.85 && durRatio <= 1.1)) {
+      restRec = ['💧 Hidratación constante el resto del día', '🍽️ Proteína en las próximas 2h para recuperar músculo', '🛌 Asegura 8h de sueño esta noche', '🧘 Estiramientos suaves si te apetece'];
+    } else if (durRatio > 1.1) {
+      restRec = ['🛌 Prioriza el descanso total — nada más de carga', '💧 Extra de hidratación y electrolitos', '🍽️ Ingesta extra de carbohidratos para reponer', '❌ Evita cualquier actividad intensa adicional hoy'];
+    } else {
+      restRec = ['💧 Hidratación y buena alimentación', '🍽️ Come bien para compensar la energía usada', '🚶 Un paseo suave si quieres sumar algo sin estrés', '🛌 Descansa bien esta noche para la próxima sesión'];
+    }
+
+    const hex2 = color.length === 7 ? color : '#9ED62B';
+    const evalEmojis = ['🎯','✅','⚡','🏆','🔥','💪'];
+    wrap.innerHTML = `
+      <div class="today-hero" style="--today-grad:linear-gradient(135deg,${evalColor}1A,${evalColor}08);border:1px solid ${evalColor}44;position:relative">
+        <div style="position:absolute;top:14px;right:14px;font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 10px;border-radius:20px;background:${evalColor}18;border:1px solid ${evalColor}44;color:${evalColor}">✓ Completada</div>
+        <div class="today-emoji-wrap">
+          <span class="today-emoji" id="today-anim-emoji" style="animation-duration:6s">${evalEmoji}</span>
+          <div>
+            <span class="today-emoji-badge" style="color:${evalColor};border-color:${evalColor}55;background:${evalColor}12">
+              ${dayName} · ${sess.name || wt.label}
+            </span>
+          </div>
+        </div>
+        <div class="today-title-big">${evalTitle}</div>
+        ${todayAct ? `<div class="today-subtitle">${todayAct.name||'Actividad de hoy'} · ${actualMin} min${actualTSS ? ' · '+actualTSS+' TSS' : ''}</div>` : '<div class="today-subtitle">Sesión marcada como completada</div>'}
+      </div>
+      ${pros.length ? `
+      <div class="why-block" style="border-left-color:#10b981;margin-bottom:10px">
+        <b style="color:#10b981">✓ Puntos positivos</b>
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.7">
+          ${pros.map(p=>`<li>${p}</li>`).join('')}
+        </ul>
+      </div>` : ''}
+      ${cons.length ? `
+      <div class="why-block" style="border-left-color:#f59e0b;margin-bottom:10px">
+        <b style="color:#f59e0b">⚠ A tener en cuenta</b>
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.7">
+          ${cons.map(c=>`<li>${c}</li>`).join('')}
+        </ul>
+      </div>` : ''}
+      <div class="why-block" style="border-left-color:#60a5fa">
+        <b>Lo mejor para el resto del día</b>
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.7">
+          ${restRec.map(r=>`<li>${r}</li>`).join('')}
+        </ul>
+      </div>
+      <button class="btn-done done" onclick="event.preventDefault();event.stopPropagation();toggleTodayDone();" style="position:relative;z-index:10;-webkit-tap-highlight-color:transparent">
+        <i class="fas fa-rotate-left"></i> Desmarcar sesión
+      </button>`;
+
+    let ei2 = 0;
+    _emojiTimer = setInterval(() => {
+      const el = document.getElementById('today-anim-emoji'); if (!el) return;
+      ei2 = (ei2 + 1) % evalEmojis.length;
+      el.style.opacity = '0'; el.style.transform = 'scale(0.75)';
+      setTimeout(() => { el.textContent = evalEmojis[ei2]; el.style.opacity = '1'; el.style.transform = ''; }, 260);
+    }, 3000);
+    return;
+  }
 
   const sessType = (sess.type||'').toLowerCase();
   const whyKey   = Object.keys(WHY).find(k => sessType.includes(k));
