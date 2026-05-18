@@ -966,7 +966,12 @@
     </div>
     <div class="card mb-6">
       <div class="card-header">
-        <div class="card-title"><i class="fas fa-chart-line" style="color:var(--accent-green)"></i> Progresión de Carga Sugerida (12 semanas)</div>
+        <div>
+          <div class="card-title"><i class="fas fa-chart-line" style="color:var(--accent-green)"></i> Progresión de Carga Sugerida (12 semanas)</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.4">
+            Durante el taper (Peak → Carrera) la carga baja a propósito: el <span style="color:#FFC800;font-weight:700">Fitness</span> cae levemente pero la <span style="color:#FFC800;font-weight:700">Forma</span> sube al máximo — así llegas fresco y rápido el día de carrera.
+          </div>
+        </div>
         <span class="badge badge-green">Modelo de periodización</span>
       </div>
       <div class="chart-container">
@@ -2942,38 +2947,60 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
   const ctx = canvas.getContext('2d');
 
   const phases = ['Base 1', 'Base 2', 'Base 3', 'Build 1', 'Build 2', 'Build 3', 'Build 4', 'Peak 1', 'Peak 2', 'Peak 3', 'Rec.', 'Carrera'];
-  const phaseMultipliers = [0.85, 0.92, 0.78, 1.05, 1.12, 0.85, 1.15, 0.95, 0.75, 0.65, 0.45, 0.30];
+  // Multiplicadores de carga semanal: el taper (Peak/Carrera) baja la carga para que la FORMA suba
+  const phaseMultipliers = [0.85, 0.92, 0.78, 1.05, 1.12, 0.85, 1.18, 0.85, 0.65, 0.50, 0.35, 0.28];
   const phaseIndexMap = { base: 1, build: 4, peak: 8, recovery: 10, race: 11 };
   const currentIdx = phaseIndexMap[currentPhase] ?? 0;
+  const raceIdx = phases.length - 1; // índice de "Carrera"
 
   const base = weeklyTSS;
   const tssData = phaseMultipliers.map(m => Math.round(base * m));
+
+  // Simular CTL (42 días) y ATL (7 días) semana a semana para obtener TSB = CTL - ATL
   let ctl = currentCTL;
-  const ctlData = [ctl];
-  tssData.forEach(tss => { ctl = ctl + (2 / (42 + 1)) * (tss / 7 - ctl); ctlData.push(Math.round(ctl * 10) / 10); });
+  let atl = currentCTL; // arrancamos con ATL = CTL → TSB = 0 (estado neutro actual)
+  const ctlData = [], atlData = [], tsbData = [];
+  tssData.forEach(tss => {
+    const dailyTSS = tss / 7;
+    ctl = ctl + (2 / 43) * (dailyTSS - ctl); // constante 42 días
+    atl = atl + (2 / 8)  * (dailyTSS - atl); // constante 7 días
+    ctlData.push(Math.round(ctl * 10) / 10);
+    atlData.push(Math.round(atl * 10) / 10);
+    tsbData.push(Math.round((ctl - atl) * 10) / 10);
+  });
 
+  // Gradientes
   const barGrad = ctx.createLinearGradient(0, 0, 0, 300);
-  barGrad.addColorStop(0, 'rgba(158, 214, 43, 0.4)');
-  barGrad.addColorStop(1, 'rgba(158, 214, 43, 0.01)');
+  barGrad.addColorStop(0, 'rgba(158,214,43,0.38)');
+  barGrad.addColorStop(1, 'rgba(158,214,43,0.01)');
 
-  const lineGrad = ctx.createLinearGradient(0, 0, 0, 300);
-  lineGrad.addColorStop(0, 'rgba(0, 212, 255, 0.15)');
-  lineGrad.addColorStop(1, 'rgba(0, 212, 255, 0)');
+  const ctlGrad = ctx.createLinearGradient(0, 0, 0, 300);
+  ctlGrad.addColorStop(0, 'rgba(0,212,255,0.10)');
+  ctlGrad.addColorStop(1, 'rgba(0,212,255,0)');
 
-  // Colores de barras: la semana actual en lima sólido
+  const tsbGrad = ctx.createLinearGradient(0, 0, 0, 300);
+  tsbGrad.addColorStop(0, 'rgba(255,200,0,0.12)');
+  tsbGrad.addColorStop(1, 'rgba(255,200,0,0)');
+
+  // Barras: semana actual en lima, "Carrera" en rosa
   const barColors = tssData.map((_, i) =>
-    i === currentIdx ? 'rgba(196, 239, 68, 0.85)' : barGrad
+    i === currentIdx ? 'rgba(196,239,68,0.85)' :
+    i === raceIdx    ? 'rgba(236,72,153,0.55)' : barGrad
   );
   const barBorders = tssData.map((_, i) =>
-    i === currentIdx ? '#C4EF44' : 'rgba(158, 214, 43, 0.5)'
+    i === currentIdx ? '#C4EF44' :
+    i === raceIdx    ? '#EC4899' : 'rgba(158,214,43,0.45)'
   );
 
-  // Punto grande en la línea CTL en la semana actual
-  const pointRadii = ctlData.slice(1).map((_, i) => i === currentIdx ? 7 : 0);
-  const pointHoverRadii = ctlData.slice(1).map((_, i) => i === currentIdx ? 9 : 6);
+  // Puntos en líneas CTL y TSB
+  const ctlPointR = ctlData.map((_, i) => i === currentIdx ? 6 : i === raceIdx ? 7 : 0);
+  const tsbPointR = tsbData.map((_, i) => i === raceIdx ? 8 : 0);
+  const tsbPointColor = tsbData.map((_, i) => i === raceIdx ? '#EC4899' : '#FFC800');
 
-  // Etiquetas: la semana actual lleva "← Hoy"
-  const labels = phases.map((p, i) => i === currentIdx ? `${p} ← Hoy` : p);
+  const labels = phases.map((p, i) =>
+    i === currentIdx ? `${p} — Hoy` :
+    i === raceIdx    ? `${p} 🏁`   : p
+  );
 
   if (progressionChart) progressionChart.destroy();
   progressionChart = new Chart(canvas, {
@@ -2982,24 +3009,42 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
       labels,
       datasets: [
         {
-          label: 'Fitness (CTL) proyectado',
-          data: ctlData.slice(1),
+          label: 'Fitness acumulado (CTL)',
+          data: ctlData,
           type: 'line',
           borderColor: '#00D4FF',
-          backgroundColor: lineGrad,
-          borderWidth: 3,
+          backgroundColor: ctlGrad,
+          borderWidth: 2,
           tension: 0.4,
           fill: true,
-          pointRadius: pointRadii,
-          pointHoverRadius: pointHoverRadii,
+          pointRadius: ctlPointR,
+          pointHoverRadius: ctlPointR.map(r => r + 2),
           pointBackgroundColor: '#C4EF44',
           pointBorderColor: '#0a0b0f',
           pointBorderWidth: 2,
           yAxisID: 'y1',
-          order: 1
+          order: 1,
         },
         {
-          label: 'TSS semanal',
+          label: 'Forma pico (TSB) — sube en taper',
+          data: tsbData,
+          type: 'line',
+          borderColor: '#FFC800',
+          backgroundColor: tsbGrad,
+          borderWidth: 2,
+          tension: 0.4,
+          fill: false,
+          borderDash: [5, 3],
+          pointRadius: tsbPointR,
+          pointHoverRadius: tsbPointR.map(r => r + 2),
+          pointBackgroundColor: tsbPointColor,
+          pointBorderColor: '#0a0b0f',
+          pointBorderWidth: 2,
+          yAxisID: 'y1',
+          order: 1,
+        },
+        {
+          label: 'Carga semanal (TSS)',
           data: tssData,
           backgroundColor: barColors,
           borderColor: barBorders,
@@ -3008,7 +3053,7 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
           borderSkipped: false,
           yAxisID: 'y',
           barPercentage: 0.45,
-          order: 2
+          order: 2,
         },
       ],
     },
@@ -3018,10 +3063,8 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
       layout: { padding: { top: 10 } },
       plugins: {
         legend: {
-          display: true,
-          position: 'top',
-          align: 'end',
-          labels: { color: '#9CA3AF', font: { size: 10, family: 'Plus Jakarta Sans', weight: '600' }, usePointStyle: true, boxWidth: 4, padding: 15 }
+          display: true, position: 'top', align: 'end',
+          labels: { color: '#9CA3AF', font: { size: 10, family: 'Plus Jakarta Sans', weight: '600' }, usePointStyle: true, boxWidth: 4, padding: 12 }
         },
         tooltip: {
           backgroundColor: '#13151c',
@@ -3031,17 +3074,25 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
           borderWidth: 1,
           padding: 12,
           titleFont: { family: 'Plus Jakarta Sans', size: 13, weight: '700' },
-            bodyFont: { family: 'Inter', size: 12 },
+          bodyFont: { family: 'Inter', size: 12 },
           cornerRadius: 8,
-          displayColors: true
+          displayColors: true,
+          callbacks: {
+            afterBody(items) {
+              const i = items[0]?.dataIndex;
+              if (i === raceIdx) return ['', '🏁 La forma es máxima: CTL alto + fatiga mínima'];
+              if (i >= 7 && i <= 9)  return ['', '↘ CTL baja levemente para que la Forma suba'];
+              return [];
+            }
+          }
         },
       },
       scales: {
         x: {
           grid: { display: false },
           ticks: {
-            color: (c) => c.index === currentIdx ? '#C4EF44' : '#4B5563',
-            font: (c) => ({ size: 9, family: 'Plus Jakarta Sans', weight: c.index === currentIdx ? '700' : '400' }),
+            color: (c) => c.index === currentIdx ? '#C4EF44' : c.index === raceIdx ? '#EC4899' : '#4B5563',
+            font: (c) => ({ size: 9, family: 'Plus Jakarta Sans', weight: (c.index === currentIdx || c.index === raceIdx) ? '700' : '400' }),
           }
         },
         y: {
@@ -3052,7 +3103,7 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
         y1: {
           type: 'linear', position: 'right',
           grid: { display: false },
-          ticks: { color: '#00D4FF', font: { size: 10, weight: 'bold' } }
+          ticks: { color: '#6B7280', font: { size: 9 } }
         },
       },
     },
