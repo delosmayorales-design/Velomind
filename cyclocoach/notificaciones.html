@@ -429,10 +429,11 @@ async function doSubscribe(notifyTypes) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({
-        subscription: sub.toJSON(),
-        notifyTypes:  notifyTypes,
-        waterTimes:   _buildWaterTimes(),
-        mealTimes:    _buildMealTimes()
+        subscription:   sub.toJSON(),
+        notifyTypes:    notifyTypes,
+        waterTimes:     _buildWaterTimes(),
+        mealTimes:      _buildMealTimes(),
+        timezoneOffset: new Date().getTimezoneOffset()
       })
     });
     return true;

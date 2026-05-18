@@ -14,6 +14,13 @@ function notifAllowed(sub, type) {
   return nt[type] !== false;
 }
 
+// Convert a fixed local hour to UTC minutes using the stored browser timezone offset
+// offset = getTimezoneOffset() → negative for UTC+X zones (e.g. Spain UTC+2 = -120)
+function localHourUtcMin(sub, localHour) {
+  const off = sub.subscription?.timezone_offset ?? 0;
+  return ((localHour * 60 + off) % 1440 + 1440) % 1440;
+}
+
 async function pushTo(sub, payload, expiredSet) {
   try {
     await webpush.sendNotification(realSub(sub), JSON.stringify(payload));
@@ -63,8 +70,9 @@ async function sendReminders() {
       }
     }
 
-    // ── Recordatorio entreno mañana (21:00) ─────────────────
-    if (now.getHours() === 21 && now.getMinutes() === 0 && notifAllowed(sub, 'training')) {
+    // ── Recordatorio entreno mañana (21:00 hora local) ──────
+    const trainUtc = localHourUtcMin(sub, 21);
+    if (currentMin === trainUtc && notifAllowed(sub, 'training')) {
       try {
         const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
         const tomorrowStr = tomorrow.toISOString().split('T')[0];
@@ -85,8 +93,9 @@ async function sendReminders() {
       } catch {}
     }
 
-    // ── Alerta TSB crítico (09:00) ──────────────────────────
-    if (now.getHours() === 9 && now.getMinutes() === 0 && notifAllowed(sub, 'fatigue')) {
+    // ── Alerta TSB crítico (09:00 hora local) ───────────────
+    const fatigUtc = localHourUtcMin(sub, 9);
+    if (currentMin === fatigUtc && notifAllowed(sub, 'fatigue')) {
       try {
         const { data: pmcRow } = await supabase
           .from('pmc').select('tsb, ctl')
@@ -104,8 +113,9 @@ async function sendReminders() {
       } catch {}
     }
 
-    // ── Racha de sesiones perdidas (20:00) ──────────────────
-    if (now.getHours() === 20 && now.getMinutes() === 0 && notifAllowed(sub, 'streak')) {
+    // ── Racha de sesiones perdidas (20:00 hora local) ───────
+    const streakUtc = localHourUtcMin(sub, 20);
+    if (currentMin === streakUtc && notifAllowed(sub, 'streak')) {
       try {
         const cutoff = new Date(now); cutoff.setDate(now.getDate() - 4);
         const cutoffStr = cutoff.toISOString().split('T')[0];

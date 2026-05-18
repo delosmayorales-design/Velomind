@@ -31,6 +31,7 @@ router.post('/subscribe', requireAuth, async (req, res) => {
       endpoint: subscription.endpoint,
       keys:     subscription.keys,
       expirationTime: subscription.expirationTime ?? null,
+      timezone_offset: typeof req.body.timezoneOffset === 'number' ? req.body.timezoneOffset : 0,
       notify_types: {
         training: notifyTypes?.training !== false,
         fatigue:  notifyTypes?.fatigue  !== false,
