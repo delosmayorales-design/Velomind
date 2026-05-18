@@ -717,6 +717,9 @@
       /* Header: etiquetas de texto ocultas, solo iconos */
       .phb span { display: none; }
       .phb { width: 32px; justify-content: center; padding: 5px; }
+      /* Regenerar: siempre muestra texto en móvil */
+      .phb-regen { width: auto !important; padding: 5px 10px !important; gap: 5px !important; }
+      .phb-regen span { display: inline !important; font-size: 12px; }
       .header-subtitle { display: none; }
       .page-header { gap: 8px; }
 
@@ -727,6 +730,22 @@
     @media (min-width: 601px) {
       .top-card-toggle .fa-chevron-down { display: none; }
     }
+
+    /* ── Resumen semana siguiente ────────────────────────────────── */
+    .nw-grid { display: flex; flex-direction: column; gap: 4px; }
+    .nw-day {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px; border-radius: 7px; font-size: 12px;
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+    }
+    .nw-day.nw-rest { opacity: .5; }
+    .nw-dname { font-weight: 700; color: var(--text-muted); font-size: 11px; width: 26px; flex-shrink: 0; }
+    .nw-icon  { font-size: 14px; flex-shrink: 0; }
+    .nw-dtype { flex: 1; color: var(--text); text-transform: capitalize; }
+    .nw-tss   { font-weight: 700; color: var(--primary); font-size: 11px; white-space: nowrap; }
+    .nw-dur   { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+    html.light-theme .nw-day { background: rgba(0,0,0,.02); border-color: rgba(0,0,0,.07); }
+    #btn-next-week:hover { background: rgba(196,239,68,.15); border-color: rgba(196,239,68,.45); }
   </style>
 </head>
 <body>
@@ -801,7 +820,7 @@
       <button class="phb" onclick="exportWeekToZwift()" title="Exportar semana a Zwift">
         <i class="fas fa-bolt"></i><span>Zwift</span>
       </button>
-      <button class="phb" onclick="regeneratePlan()" title="Regenerar plan">
+      <button class="phb phb-regen" onclick="regeneratePlan()" title="Regenerar plan">
         <i class="fas fa-sync-alt"></i><span>Regenerar</span>
       </button>
       <button class="phb phb-save" id="btn-save-plan" onclick="savePlan()" title="Guardar plan">
@@ -859,6 +878,10 @@
               <label>Peso (kg)</label>
               <input type="number" id="adj-weight" class="params-input" placeholder="70">
             </div>
+            <div class="params-field" style="grid-column:span 2">
+              <label>Fecha evento / carrera</label>
+              <input type="date" id="adj-event" class="params-input" style="height:28px;width:100%">
+            </div>
             <button class="params-apply-btn top-card-update-btn" onclick="applyAdjustments()">
               <i class="fas fa-sync-alt"></i> Actualizar
             </button>
@@ -914,7 +937,15 @@
             <span id="plan-summary-inline">Cargando objetivos...</span>
           </div>
         </div>
-        <div id="week-dates" style="font-size:13px;color:var(--text-muted)"></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div id="week-dates" style="font-size:13px;color:var(--text-muted)"></div>
+          <button onclick="toggleNextWeekSummary()" id="btn-next-week" style="
+            display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+            background:rgba(196,239,68,.08);border:1px solid rgba(196,239,68,.25);
+            color:var(--primary);border-radius:8px;font-size:11px;font-weight:700;
+            cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap
+          "><i class="fas fa-forward"></i> Próxima semana</button>
+        </div>
       </div>
       <div id="missed-check-banner" style="display:none;padding:0 0 12px 0"></div>
       <div id="weekly-plan" class="session-cards-grid">
@@ -922,6 +953,10 @@
           <i class="fas fa-spinner spinning" style="font-size:32px;margin-bottom:12px"></i>
           <div>Generando tu plan personalizado...</div>
         </div>
+      </div>
+      <!-- Resumen semana siguiente -->
+      <div id="next-week-panel" style="display:none;border-top:1px solid rgba(196,239,68,.12);padding:14px 16px;background:rgba(196,239,68,.03)">
+        <div id="next-week-content"></div>
       </div>
     </div>
 
@@ -3375,7 +3410,7 @@ async function applyAdjustments() {
     const updates = {};
     if (hours)  updates.weekly_hours = hours;
     if (goal)   updates.goal = goal;
-    if (event)  updates.event_date = event;
+    updates.event_date = event || null;
     if (ftp)    updates.ftp = ftp;
     if (weight) updates.weight = weight;
     AppState.saveAthlete(updates);
@@ -3389,6 +3424,87 @@ async function applyAdjustments() {
   silentSavePlan();
 
   showToast('✅ Plan de entrenamiento y nutrición recalculado', 'var(--accent-green)');
+}
+
+function toggleNextWeekSummary() {
+  const panel = document.getElementById('next-week-panel');
+  const btn   = document.getElementById('btn-next-week');
+  if (!panel) return;
+  if (panel.style.display === 'none') {
+    _renderNextWeekSummary();
+    panel.style.display = 'block';
+    btn.innerHTML = '<i class="fas fa-times"></i> Cerrar';
+  } else {
+    panel.style.display = 'none';
+    btn.innerHTML = '<i class="fas fa-forward"></i> Próxima semana';
+  }
+}
+
+function _renderNextWeekSummary() {
+  const athlete = AppState.athlete || getDefaultAthlete();
+
+  // Simular semana siguiente: restar 7 días al evento (misma distancia temporal desde dentro de 7 días)
+  const nextAthlete = Object.assign({}, athlete);
+  if (athlete.event_date) {
+    const d = new Date(athlete.event_date);
+    d.setDate(d.getDate() - 7);
+    nextAthlete.event_date = d.toISOString().split('T')[0];
+  }
+
+  const nextPlan = TrainingPlanGenerator.generate(nextAthlete, AppState.activities);
+
+  // Rango de fechas de la semana siguiente
+  const now        = new Date();
+  const nextMonday = new Date(now);
+  nextMonday.setDate(now.getDate() - (now.getDay() || 7) + 1 + 7);
+  const nextSunday = new Date(nextMonday);
+  nextSunday.setDate(nextMonday.getDate() + 6);
+  const dateRange  = nextMonday.toLocaleDateString('es-ES', { day:'numeric', month:'short' })
+    + ' – ' + nextSunday.toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' });
+
+  const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const TYPE_ICON = { recovery:'😴', endurance:'🚴', long:'🏔️', tempo:'📈', threshold:'⚡', sweet_spot:'🎯', vo2max:'🔥', sprint:'💥', strength:'💪' };
+  const PHASE_LABEL = { base:'Base', build:'Build', peak:'Peak', recovery:'Recuperación', race:'Carrera' };
+  const PHASE_COLOR = { base:'#00D4FF', build:'#FF6B35', peak:'#FFC800', recovery:'#00C882', race:'#EC4899' };
+  const phaseLabel = PHASE_LABEL[nextPlan.phase] || nextPlan.phase || '';
+  const phaseColor = PHASE_COLOR[nextPlan.phase] || 'var(--primary)';
+
+  let daysHtml = '';
+  (nextPlan.sessions || []).forEach((s, i) => {
+    if (!s || s.isRest) {
+      daysHtml += `<div class="nw-day nw-rest">
+        <span class="nw-dname">${DAYS[i]}</span>
+        <span class="nw-dtype" style="color:var(--text-muted)">—</span>
+      </div>`;
+    } else {
+      const icon = TYPE_ICON[s.type] || '🚴';
+      const name = (s.name || s.type || '').replace(/_/g,' ');
+      daysHtml += `<div class="nw-day">
+        <span class="nw-dname">${DAYS[i]}</span>
+        <span class="nw-icon">${icon}</span>
+        <span class="nw-dtype">${name}</span>
+        <span class="nw-tss">${s.tss || '--'} TSS</span>
+        <span class="nw-dur">${s.durationMin || '--'} min</span>
+      </div>`;
+    }
+  });
+
+  const adaptHtml = nextPlan.adaptation
+    ? `<div style="margin-top:10px;padding:8px 10px;border-radius:8px;font-size:11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--text-secondary)">
+        <strong>${nextPlan.adaptation.icon} ${nextPlan.adaptation.title}</strong><br>
+        <span style="opacity:.85">${nextPlan.adaptation.text}</span>
+       </div>` : '';
+
+  document.getElementById('next-week-content').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700;color:var(--text)">Semana siguiente</span>
+      <span style="font-size:11px;color:var(--text-muted)">${dateRange}</span>
+      <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid ${phaseColor}33;color:${phaseColor};background:${phaseColor}1a">${phaseLabel}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">TSS obj: <strong style="color:var(--text)">${nextPlan.targetTSS}</strong></span>
+    </div>
+    <div class="nw-grid">${daysHtml}</div>
+    ${adaptHtml}
+  `;
 }
 
 async function savePlan() {
