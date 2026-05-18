@@ -1521,6 +1521,10 @@ function renderPlan(plan, athlete) {
       if (s.isRest || !s.type) return;
       s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, 'main');
       s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, 'alt');
+      if (TrainingPlanGenerator._buildDesc) {
+        s.description     = TrainingPlanGenerator._buildDesc(s.intervals);
+        s.alt_description = TrainingPlanGenerator._buildDesc(s.alt_intervals);
+      }
     });
   }
 
