@@ -8,6 +8,18 @@ const FITWorkoutEncoder = (() => {
     return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  // Garmin rejects step names with non-ASCII Unicode (e.g. subscript ₂).
+  // This normalises to plain ASCII before writing into the TCX.
+  function asciiName(str) {
+    return (str || '')
+      .replace(/[áàâä]/g,'a').replace(/[éèêë]/g,'e').replace(/[íìîï]/g,'i')
+      .replace(/[óòôö]/g,'o').replace(/[úùûü]/g,'u').replace(/ñ/g,'n')
+      .replace(/[₀-₉]/g, c => String(c.codePointAt(0) - 0x2080))
+      .replace(/[⁰-⁹]/g, c => String(c.codePointAt(0) - 0x2070))
+      .replace(/[^\x20-\x7E]/g, '')
+      .trim().slice(0, 15);
+  }
+
   function pct(watts, ftp) {
     return (watts / ftp).toFixed(3);
   }
@@ -129,7 +141,7 @@ const FITWorkoutEncoder = (() => {
         ? '<Duration xsi:type="UserInitiated_t"/>'
         : `<Duration xsi:type="Time_t"><Seconds>${s.sec}</Seconds></Duration>`;
       const powerSuffix = (s.lo > 0 && s.hi > 0) ? ` ${s.lo}-${s.hi}W` : '';
-      const stepName    = escapeXml((s.name || 'Paso') + powerSuffix);
+      const stepName    = escapeXml(asciiName((s.name || 'Paso') + powerSuffix));
       return `    <Step xsi:type="Step_t">
       <StepId>${i + 1}</StepId>
       <Name>${stepName}</Name>
@@ -146,7 +158,7 @@ const FITWorkoutEncoder = (() => {
   xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd">
   <Workouts>
     <Workout Sport="Biking">
-      <Name>${escapeXml(workoutName)}</Name>
+      <Name>${escapeXml(asciiName(workoutName))}</Name>
 ${stepXml}
     </Workout>
   </Workouts>
