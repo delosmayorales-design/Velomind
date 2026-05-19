@@ -3993,17 +3993,16 @@ function showGarminImportGuide() {
       <span style="font-weight:700;color:#00c97b;font-size:14px"><i class="fas fa-watch"></i> Cargar en tu Garmin</span>
       <button onclick="this.closest('#garmin-guide-toast').remove()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:16px;line-height:1;padding:0 0 0 8px">&#x2715;</button>
     </div>
-    <a href="https://connect.garmin.com/modern/workout" target="_blank" rel="noopener"
-       style="display:flex;align-items:center;justify-content:center;gap:8px;background:#00c97b;color:#000;font-weight:700;font-size:13px;padding:10px 14px;border-radius:8px;text-decoration:none;margin-bottom:10px">
-      <i class="fas fa-external-link-alt"></i> Abrir Garmin Connect &rarr; Entrenamientos
-    </a>
-    <div style="font-size:12px;color:#94a3b8;line-height:1.7">
-      1&nbsp; En esa p&aacute;gina busca el bot&oacute;n <strong style="color:#e2e8f0">Importar</strong> (icono nube &uarr;)<br>
-      2&nbsp; Sube el archivo <strong style="color:#00c97b">.tcx</strong> que acabas de descargar<br>
-      3&nbsp; Sincroniza tu reloj con la app <strong style="color:#e2e8f0">Garmin Connect</strong>
+    <div style="font-size:12px;color:#94a3b8;line-height:2">
+      1&nbsp; Abre <a href="https://connect.garmin.com" target="_blank" rel="noopener" style="color:#00c97b">connect.garmin.com</a><br>
+      2&nbsp; Men&uacute; izquierdo &rarr; <strong style="color:#e2e8f0">Entreno/planificaci&oacute;n</strong><br>
+      3&nbsp; Haz clic en <strong style="color:#e2e8f0">Entrenamientos</strong><br>
+      4&nbsp; Busca el bot&oacute;n <strong style="color:#e2e8f0">Importar</strong> (icono de nube o flecha &uarr;)<br>
+      5&nbsp; Sube el archivo <strong style="color:#00c97b">.tcx</strong> descargado<br>
+      6&nbsp; Sincroniza el reloj con la app Garmin Connect
     </div>
     <div style="margin-top:8px;padding:5px 8px;background:rgba(245,158,11,0.1);border-radius:6px;font-size:11px;color:#fbbf24">
-      &#9888; No uses "Importar datos" del men&uacute; lateral &mdash; esa secci&oacute;n es para salidas ya hechas.
+      &#9888; No uses "Importar datos" &mdash; esa secci&oacute;n es solo para salidas ya realizadas.
     </div>`;
   document.body.appendChild(t);
   setTimeout(() => t && t.remove(), 12000);
