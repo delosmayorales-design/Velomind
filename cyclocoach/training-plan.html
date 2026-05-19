@@ -1437,6 +1437,15 @@ function _sanitizeCyclingContent(plan) {
     if (typeof s.terrain === 'string' && RUN_RE.test(s.terrain)) {
       s.terrain = CLEAN_TERRAIN[s.type] || '🛣️ Terreno adecuado para ciclismo.';
     }
+    // Sanear terrain/advice con segmento sintético (contienen "~" porque no hay segmentos reales)
+    // → sustituir por el texto limpio del tipo; quita tiempo y km inventados
+    if (typeof s.terrain === 'string' && s.terrain.includes('~')) {
+      s.terrain = CLEAN_TERRAIN[s.type] || s.terrain.replace(/\s*\(\d+\.?\d*\s*km\s*\/\s*\d+%\)/g, '');
+    }
+    if (typeof s.advice === 'string' && s.advice.includes('~')) {
+      s.advice = s.advice.replace(/\s*⛰️\s*Terreno ideal:[^.—]*~[^.—]*[.—][^\n]*/g, '').trim();
+      s.advice = s.advice.replace(/\s*⚡\s*Terreno ideal:[^.—]*~[^.—]*[.—][^\n]*/g, '').trim();
+    }
     // Eliminar sólo las frases con running de description/advice/alt_description
     ['description', 'advice', 'alt_description'].forEach(field => {
       if (typeof s[field] !== 'string' || !RUN_RE.test(s[field])) return;
