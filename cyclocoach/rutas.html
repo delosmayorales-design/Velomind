@@ -1,4 +1,4 @@
-﻿<html lang="es">
+﻿﻿<html lang="es">
 ﻿<html lang="es">
 <head>
   <script>
@@ -245,6 +245,7 @@
       padding: 9px 10px;
       box-shadow: 0 6px 24px rgba(0,0,0,0.55);
       white-space: nowrap;
+      transition: bottom 0.3s ease;
     }
     .draw-toolbar.visible { display: flex; }
     .dt-types   { display: flex; gap: 5px; }
@@ -281,6 +282,7 @@
       width: 240px;
       box-shadow: var(--shadow-md);
       display: none;
+      transition: bottom 0.3s ease;
     }
     .wind-card.visible { display: block; }
     .wind-card-hdr { display:flex;align-items:center;justify-content:space-between;margin-bottom:10px; }
@@ -642,6 +644,12 @@
       background: rgba(158,214,43,0.12) !important;
       border-color: rgba(158,214,43,0.45) !important;
       color: #9ED62B !important;
+    }
+
+    /* Desplazar elementos hacia arriba cuando la previsión 24h está abierta */
+    body.timeline-open .draw-toolbar,
+    body.timeline-open .wind-card {
+      bottom: 110px;
     }
 
     /* ── GPS Tracking HUD ──────────────────────────────────────── */
@@ -1110,6 +1118,10 @@
       }
       html[data-theme="light"] #weather-timeline {
         border-color: rgba(0,0,0,0.15) !important;
+      }
+      body.timeline-open .draw-toolbar,
+      body.timeline-open .wind-card {
+        bottom: calc(166px + env(safe-area-inset-bottom, 0px)) !important;
       }
     }
 
@@ -3878,6 +3890,7 @@ async function toggleWeatherTimeline() {
     tl.style.display = 'none';
     btn?.classList.remove('active');
     windHourOverride = null;
+      document.body.classList.remove('timeline-open');
     return;
   }
 
@@ -3893,6 +3906,7 @@ async function toggleWeatherTimeline() {
     tl.style.display = 'block';
     btn?.classList.remove('loading');
     btn?.classList.add('active');
+      document.body.classList.add('timeline-open');
 
     // Activar las flechas animadas en el mapa si están apagadas
     if (!windArrowsActive) await toggleWindArrows();
