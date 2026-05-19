@@ -1403,6 +1403,15 @@ function renderStreamCharts(s, ftp) {
   // ── Crosshair sync + selección estilo Garmin Connect ────────────────
   const streamKeys = ['streamWatts','streamHR','streamSpeed','streamElev','streamCadence'];
 
+  function _setAllTooltips(enabled) {
+    streamKeys.forEach(k => {
+      const c = chartInsts[k];
+      if (!c) return;
+      c.options.plugins.tooltip.enabled = enabled;
+      c.update('none');
+    });
+  }
+
   streamKeys.forEach(key => {
     const chart = chartInsts[key];
     if (!chart) return;
@@ -1511,6 +1520,7 @@ function renderStreamCharts(s, ftp) {
       const wasActive = _mouseDragging || _dragEndpoint !== null;
       _mouseDragging = false; _dragEndpoint = null;
       chart.canvas.style.cursor = 'crosshair';
+      _setAllTooltips(true);
       if (wasActive && _selA !== null && _selB !== null && _selA !== _selB)
         _showIntervalStats();
       window.removeEventListener('mousemove', _winMouseMove);
@@ -1532,6 +1542,7 @@ function renderStreamCharts(s, ftp) {
         _selA = idx; _selB = null;
         const panel = document.getElementById('interval-stats-panel');
         if (panel) panel.style.display = 'none';
+        _setAllTooltips(false);
         _updateAllCharts();
       }
       window.addEventListener('mousemove', _winMouseMove);
@@ -1561,6 +1572,7 @@ function renderStreamCharts(s, ftp) {
       _selA = idx; _selB = null;
       const panel = document.getElementById('interval-stats-panel');
       if (panel) panel.style.display = 'none';
+      _setAllTooltips(false);
       _updateAllCharts();
     }, { passive: false });
 
@@ -1581,6 +1593,7 @@ function renderStreamCharts(s, ftp) {
 
     chart.canvas.addEventListener('touchend', () => {
       _touchDragging = false; _dragEndpoint = null;
+      _setAllTooltips(true);
       if (_selA !== null && _selB !== null && _selA !== _selB) _showIntervalStats();
     });
   });
