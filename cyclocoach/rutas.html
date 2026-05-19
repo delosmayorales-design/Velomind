@@ -2834,6 +2834,7 @@ async function showWindSuggestion() {
 let windArrowsActive = false;
 let windArrowsFrame  = null;
 let windArrowsGrid   = [];   // {hx,hy,phase,wind} — posiciones de pantalla
+let windAvgSpeed     = 20;   // Velocidad media para ajustar densidad
 let windSpatialGrid  = [];   // {lat,lon,r,c,deg,spd,u,v,color} — malla geográfica
 let windGrid2D       = [];   // windGrid2D[r][c] → punto (lookup O(1) para interpolación)
 let windGridDims     = null; // {rows,cols,sw,latStep,lonStep}
@@ -2849,6 +2850,11 @@ const _WIND_TTL  = 15 * 60 * 1000;
 // ── Helpers ──────────────────────────────────────────────────────
 function _windColor(spd) {
   return spd < 15 ? '#1E90FF' : spd < 30 ? '#FFD600' : spd < 50 ? '#FF3D3D' : '#C84BFF';
+}
+
+function _arrowGridSpacing(avgSpeed = 20) {
+  // Densidad dinámica: más viento = más flechas (GRID más pequeño)
+  return Math.round(Math.max(45, Math.min(120, 140 - avgSpeed * 1.6)));
 }
 
 function _gridDensity(zoom) {
@@ -2961,12 +2967,12 @@ function _bilinearInterp(lat, lon) {
 }
 
 // ── Proyectar malla + asignar viento interpolado por flecha ──────
-function _assignArrowsToGrid(canvas) {
+function _assignArrowsToGrid(canvas, avgSpeed = 20) {
   const size = map.getSize();
   canvas.width  = size.x;
   canvas.height = size.y;
 
-  const GRID = 68;
+  const GRID = _arrowGridSpacing(avgSpeed);
   const offX = (size.x % GRID) / 2;
   const offY = (size.y % GRID) / 2;
   windArrowsGrid = [];
@@ -3064,6 +3070,7 @@ async function toggleWindArrows() {
   try {
     windSpatialGrid = await _fetchWindGrid();
     if (!windSpatialGrid.length) throw new Error('Sin datos de viento');
+    windAvgSpeed = windSpatialGrid.reduce((sum, p) => sum + (p.spd || 0), 0) / (windSpatialGrid.length || 1);
 
     windArrowsActive = true;
     windHourOverride = null;
@@ -3075,7 +3082,7 @@ async function toggleWindArrows() {
 
     const canvas = document.getElementById('wind-map-canvas');
     canvas.style.display = 'block';
-    _assignArrowsToGrid(canvas);
+    _assignArrowsToGrid(canvas, windAvgSpeed);
     _animateWindArrows(canvas);
 
     windLastZoom = map.getZoom();
@@ -3143,7 +3150,7 @@ function _onMapMoveEnd() {
   const zoom   = map.getZoom();
   const center = map.getCenter();
 
-  _assignArrowsToGrid(canvas); // reproyectar inmediatamente (sin red)
+  _assignArrowsToGrid(canvas, windAvgSpeed); // reproyectar inmediatamente (sin red)
 
   const { cols: prevCols } = _gridDensity(windLastZoom || zoom);
   const { cols: newCols  } = _gridDensity(zoom);
@@ -3161,8 +3168,9 @@ function _onMapMoveEnd() {
   windRefetchTimer = setTimeout(async () => {
     try {
       windSpatialGrid = await _fetchWindGrid();
+      windAvgSpeed = windSpatialGrid.reduce((sum, p) => sum + (p.spd || 0), 0) / (windSpatialGrid.length || 1);
       windLastZoom    = map.getZoom();
-      _assignArrowsToGrid(canvas);
+      _assignArrowsToGrid(canvas, windAvgSpeed);
     } catch (e) { console.warn('[WindArrows] re-fetch fallido', e); }
     finally     { _showWindLoading(false); }
   }, 600);
