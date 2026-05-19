@@ -3456,28 +3456,47 @@ function regeneratePlan() {
 }
 
 async function applyAdjustments() {
-  const hours  = parseFloat(document.getElementById('adj-hours')?.value || 8);
-  const goal   = window.GoalUtils ? window.GoalUtils.normalize(document.getElementById('adj-goal')?.value || 'resistencia') : (document.getElementById('adj-goal')?.value || 'resistencia');
-  const event  = document.getElementById('adj-event')?.value || '';
-  const ftp    = parseFloat(document.getElementById('adj-ftp')?.value || 200);
-  const weight = parseFloat(document.getElementById('adj-weight')?.value || 70);
+  const hoursVal  = document.getElementById('adj-hours')?.value?.trim();
+  const ftpVal    = document.getElementById('adj-ftp')?.value?.trim();
+  const weightVal = document.getElementById('adj-weight')?.value?.trim();
+  const goalEl    = document.getElementById('adj-goal');
+  const event     = document.getElementById('adj-event')?.value || '';
+
+  const hours  = hoursVal  ? parseFloat(hoursVal)  : null;
+  const ftp    = ftpVal    ? parseFloat(ftpVal)    : null;
+  const weight = weightVal ? parseFloat(weightVal) : null;
+  const goal   = window.GoalUtils
+    ? window.GoalUtils.normalize(goalEl?.value || 'resistencia')
+    : (goalEl?.value || 'resistencia');
 
   if (AppState.athlete) {
     const updates = {};
-    if (hours)  updates.weekly_hours = hours;
-    if (goal)   updates.goal = goal;
+    if (hours  !== null && !isNaN(hours)  && hours  > 0)   updates.weekly_hours = hours;
+    if (ftp    !== null && !isNaN(ftp)    && ftp    >= 50)  updates.ftp = ftp;
+    if (weight !== null && !isNaN(weight) && weight > 0)   updates.weight = weight;
+    if (goal)  updates.goal = goal;
     updates.event_date = event || null;
-    if (ftp)    updates.ftp = ftp;
-    if (weight) updates.weight = weight;
     AppState.saveAthlete(updates);
     if (typeof BackendSync !== 'undefined') BackendSync.saveProfile(updates).catch(() => {});
   } else {
-    AppState.athlete = { ftp: ftp || 200, weight: weight || 70, weekly_hours: hours || 8, goal: goal || 'resistencia', experience: 'intermedio' };
+    AppState.athlete = {
+      ftp:          (ftp    !== null && ftp    >= 50) ? ftp    : 200,
+      weight:       (weight !== null && weight > 0)  ? weight : 70,
+      weekly_hours: (hours  !== null && hours  > 0)  ? hours  : 8,
+      goal:         goal || 'resistencia',
+      experience:   'intermedio'
+    };
   }
 
   generatePlan();
   renderAthleteSidebar();
   silentSavePlan();
+
+  // Si el panel "Próxima semana" está abierto, refrescarlo con el nuevo plan
+  const nextWeekPanel = document.getElementById('next-week-panel');
+  if (nextWeekPanel && nextWeekPanel.style.display !== 'none') {
+    _renderNextWeekSummary();
+  }
 
   showToast('✅ Plan de entrenamiento y nutrición recalculado', 'var(--accent-green)');
 }
