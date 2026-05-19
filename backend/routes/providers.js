@@ -747,6 +747,58 @@ router.post('/garmin/sync', requireAuth, async (req, res) => {
   }
 });
 
+// ── GARMIN WORKOUT PUSH ─────────────────────────────────────────────────────
+// Uploads a TCX workout file to Garmin Connect so the device syncs it.
+// Requires the user to have their Garmin account connected (OAuth).
+// Falls back gracefully: on API-level errors the response includes a hint so
+// the frontend can offer a manual download instead.
+router.post('/garmin/push-workout', requireAuth, async (req, res) => {
+  const uid = req.user.id;
+  const { workoutName, tcxContent } = req.body || {};
+  if (!workoutName || !tcxContent) {
+    return res.status(400).json({ error: 'workoutName y tcxContent son requeridos' });
+  }
+
+  const { data: user, error: userErr } = await supabase.from('users').select('*').eq('id', uid).single();
+  if (userErr || !user) return res.status(500).json({ error: 'Error al obtener usuario' });
+  if (!user.garmin_token) {
+    return res.status(400).json({ error: 'Garmin no conectado. Ve a Integraciones y conecta tu cuenta.' });
+  }
+
+  try {
+    const token = await refreshGarminIfNeeded(user);
+    const filename = workoutName.replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 60) + '.tcx';
+
+    const formData = new FormData();
+    formData.append('file', new Blob([tcxContent], { type: 'application/octet-stream' }), filename);
+
+    const uploadRes = await fetch('https://connectapi.garmin.com/upload-service/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'NK': 'NT'
+      },
+      body: formData
+    });
+
+    const rawText = await uploadRes.text();
+    let uploadData;
+    try { uploadData = JSON.parse(rawText); } catch { uploadData = { raw: rawText.slice(0, 300) }; }
+
+    if (!uploadRes.ok) {
+      return res.status(uploadRes.status).json({
+        error: `Garmin upload HTTP ${uploadRes.status}`,
+        detail: uploadData,
+        hint: 'Descarga el archivo TCX e impórtalo manualmente en Garmin Connect > Entrenamientos.'
+      });
+    }
+
+    res.json({ ok: true, message: 'Workout enviado a Garmin Connect. Sincroniza tu reloj para verlo.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.delete('/garmin/disconnect', requireAuth, async (req, res) => {
   try {
     const { data: user } = await supabase.from('users').select('garmin_token').eq('id', req.user.id).single();

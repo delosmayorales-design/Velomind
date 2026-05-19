@@ -216,6 +216,52 @@ ${stepsXml}
     return erg;
   }
 
+  // ── Nutrition / hydration alert injection ─────────────────────────────────
+  // Splits long active blocks into 20-min segments and inserts 30-second alert
+  // steps so the Garmin displays a reminder on screen during the workout.
+  function injectNutritionAlerts(steps) {
+    const CHUNK_SEC = 20 * 60;
+    const result = [];
+    let alertCount = 0;
+
+    for (const step of steps) {
+      if (step.isAlert || step.open || step.intensity === 1 || !step.sec || step.sec <= CHUNK_SEC) {
+        result.push(step);
+        continue;
+      }
+      let remaining = step.sec;
+      while (remaining > 0) {
+        const seg = Math.min(CHUNK_SEC, remaining);
+        result.push({ ...step, sec: seg });
+        remaining -= seg;
+        if (remaining > 0) {
+          alertCount++;
+          const isNutrition = alertCount % 2 === 0;
+          result.push({
+            name: isNutrition ? 'Tomar gel o barrita' : 'Beber 500ml agua',
+            sec: 30,
+            intensity: 1,
+            lo: 0, hi: 0,
+            isAlert: true
+          });
+        }
+      }
+    }
+    return result;
+  }
+
+  // Returns { tcxContent, workoutName } for backend push to Garmin Connect.
+  // Always includes nutrition/hydration alerts.
+  function buildTCXForPush(session, ftp) {
+    if (!ftp || ftp < 50) ftp = 200;
+    const wt           = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[session.type]) || {};
+    const sessionLabel = (wt.label || session.name || session.type || 'Entrenamiento').slice(0, 40);
+    const baseSteps    = buildSteps(session, ftp);
+    const durMin       = session.durationMin || 60;
+    const steps        = durMin >= 60 ? injectNutritionAlerts(baseSteps) : baseSteps;
+    return { tcxContent: encodeTCX(sessionLabel, steps), workoutName: sessionLabel };
+  }
+
   // ── Export helpers ─────────────────────────────────────────────────────────
 
   function exportSession(session, ftp, format) {
@@ -223,14 +269,17 @@ ${stepsXml}
     if (!ftp || ftp < 50) ftp = 200;
     const wt           = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[session.type]) || {};
     const sessionLabel = (wt.label || session.name || session.type || 'Entrenamiento').slice(0, 40);
-    const steps        = buildSteps(session, ftp);
+    const baseSteps    = buildSteps(session, ftp);
+    const durMin       = session.durationMin || 60;
     if (format === 'zwo') {
-      download(`VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.zwo`, encodeZWO(sessionLabel, steps, ftp));
+      download(`VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.zwo`, encodeZWO(sessionLabel, baseSteps, ftp));
     } else if (format === 'gpx') {
-      download(`VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.gpx`, encodeGPX(sessionLabel, steps));
+      download(`VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.gpx`, encodeGPX(sessionLabel, baseSteps));
     } else if (format === 'erg' || format === 'fit') {
-      download(`VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.erg`, encodeERG(sessionLabel, steps, ftp));
+      download(`VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.erg`, encodeERG(sessionLabel, baseSteps, ftp));
     } else {
+      // TCX: inject nutrition alerts for rides >= 60 min
+      const steps = durMin >= 60 ? injectNutritionAlerts(baseSteps) : baseSteps;
       download(`VeloMind_${sanitize(session.day)}_${sanitize(sessionLabel)}.tcx`, encodeTCX(sessionLabel, steps));
     }
   }
@@ -247,7 +296,7 @@ ${stepsXml}
     next();
   }
 
-  return { buildSteps, encodeTCX, encodeZWO, encodeGPX, encodeERG, download, exportSession, exportWeek };
+  return { buildSteps, encodeTCX, encodeZWO, encodeGPX, encodeERG, download, exportSession, exportWeek, buildTCXForPush };
 })();
 
 window.FITWorkoutEncoder = FITWorkoutEncoder;

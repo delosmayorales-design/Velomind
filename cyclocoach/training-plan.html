@@ -537,6 +537,8 @@
     }
     .sess-act-roller { background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); color: #818cf8; }
     .sess-act-audio  { background: rgba(196,239,68,0.15);  border: 1px solid rgba(196,239,68,0.4);  color: #C4EF44; }
+    .sess-fmt-btn--garmin { background: rgba(0,168,107,0.12); border-color: rgba(0,168,107,0.4); color: #00c97b; }
+    .sess-fmt-btn--garmin:hover { background: rgba(0,168,107,0.22); border-color: #00c97b; color: #fff; }
     /* Mobile toggle (oculto en desktop) */
     .sess-export-toggle { display: none; }
 
@@ -1837,6 +1839,7 @@ function renderPlan(plan, athlete) {
         </div>
       </div>` : '');
 
+    const _garminConn = localStorage.getItem('velomind_garmin_connected') === '1';
     const actionButtons = !sess.isRest ? `
       <div class="sess-actions">
         <div class="sess-export-section">
@@ -1846,6 +1849,7 @@ function renderPlan(plan, athlete) {
             <button class="sess-fmt-btn" onclick="exportSessionToZwift(${i})">ZWO</button>
             <button class="sess-fmt-btn" onclick="exportSessionToERG(${i})">ERG</button>
             <button class="sess-fmt-btn" onclick="exportSessionToGPX(${i})">GPX</button>
+            ${_garminConn ? `<button class="sess-fmt-btn sess-fmt-btn--garmin" onclick="pushSessionToGarmin(${i})" title="Enviar al reloj Garmin (incluye alertas de hidratación y nutrición)"><i class="fas fa-watch"></i> Garmin</button>` : ''}
           </div>
           <button class="sess-export-toggle" onclick="toggleSessExport(this)">
             <i class="fas fa-download"></i> Exportar <i class="fas fa-chevron-down chev"></i>
@@ -3969,6 +3973,34 @@ function toggleSessExport(btn) {
 function exportSessionToGarmin(index) {
   if (!currentPlan) { alert('El plan aún no está generado.'); return; }
   FITWorkoutEncoder.exportSession(currentPlan.sessions[index], (AppState.athlete || {}).ftp || 200, 'tcx');
+  showGarminImportGuide();
+}
+
+function showGarminImportGuide() {
+  if (document.getElementById('garmin-guide-toast')) return;
+  const t = document.createElement('div');
+  t.id = 'garmin-guide-toast';
+  t.style.cssText = [
+    'position:fixed;bottom:80px;left:50%;transform:translateX(-50%)',
+    'background:#0f172a;border:1px solid rgba(0,201,123,0.35)',
+    'color:#e2e8f0;padding:14px 18px;border-radius:12px',
+    'font-size:13px;z-index:9999;box-shadow:0 6px 28px rgba(0,0,0,0.55)',
+    'max-width:340px;width:calc(100vw - 32px);line-height:1.6'
+  ].join(';');
+  t.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-weight:700;color:#00c97b;font-size:14px"><i class="fas fa-watch"></i> Cómo cargarlo en tu Garmin</span>
+      <button onclick="this.closest('#garmin-guide-toast').remove()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:16px;line-height:1;padding:0 0 0 8px">✕</button>
+    </div>
+    <ol style="margin:0;padding-left:18px;color:#cbd5e1">
+      <li>Abre <strong style="color:#fff">connect.garmin.com</strong> en el navegador</li>
+      <li>Ve a <strong style="color:#fff">Entrenamientos → Importar</strong></li>
+      <li>Sube el archivo <strong style="color:#00c97b">.tcx</strong> que acabas de descargar</li>
+      <li>Sincroniza tu reloj con la app Garmin Connect</li>
+    </ol>
+    <div style="margin-top:8px;font-size:11px;color:#475569">El reloj mostrará los pasos de hidratación y nutrición automáticamente.</div>`;
+  document.body.appendChild(t);
+  setTimeout(() => t && t.remove(), 12000);
 }
 
 function exportSessionToZwift(index) {
@@ -3988,9 +4020,81 @@ function exportSessionToGPX(index) {
   FITWorkoutEncoder.exportSession(currentPlan.sessions[index], (AppState.athlete || {}).ftp || 200, 'gpx');
 }
 
+// ── Garmin push (envío directo al reloj vía Garmin Connect) ───────────────
+
+async function pushSessionToGarmin(index) {
+  if (!currentPlan) { alert('El plan aún no está generado.'); return; }
+  const sess = currentPlan.sessions[index];
+  if (sess.isRest) { alert('Los días de descanso no necesitan enviarse.'); return; }
+  const ftp = (AppState.athlete || {}).ftp || 200;
+  const { tcxContent, workoutName } = FITWorkoutEncoder.buildTCXForPush(sess, ftp);
+
+  // Show toast feedback
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#e2e8f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:center;gap:8px';
+  toast.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:#00c97b"></i> Enviando a Garmin Connect...';
+  document.body.appendChild(toast);
+
+  try {
+    const r = await fetch(`${window.API_URL}/providers/garmin/push-workout`, {
+      method: 'POST',
+      headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workoutName, tcxContent })
+    });
+    const data = await r.json();
+    if (r.ok) {
+      toast.innerHTML = '<i class="fas fa-check-circle" style="color:#00c97b"></i> Enviado a Garmin Connect. ¡Sincroniza tu reloj!';
+    } else {
+      toast.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> No se pudo enviar. Descargando TCX...`;
+      FITWorkoutEncoder.exportSession(sess, ftp, 'tcx');
+      console.warn('[GarminPush]', data);
+    }
+  } catch (e) {
+    toast.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> Error de red. Descargando TCX...`;
+    FITWorkoutEncoder.exportSession(sess, ftp, 'tcx');
+  }
+  setTimeout(() => toast.remove(), 4000);
+}
+
+async function pushWeekToGarmin() {
+  if (!currentPlan) { alert('El plan aún no está generado.'); return; }
+  const ftp = (AppState.athlete || {}).ftp || 200;
+  const sessions = currentPlan.sessions.filter(s => !s.isRest);
+  if (!sessions.length) { alert('No hay sesiones de entrenamiento esta semana.'); return; }
+
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#e2e8f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:center;gap:8px';
+  document.body.appendChild(toast);
+
+  let sent = 0, failed = 0;
+  for (const sess of sessions) {
+    toast.innerHTML = `<i class="fas fa-spinner fa-spin" style="color:#00c97b"></i> Enviando ${sent + 1}/${sessions.length} a Garmin Connect...`;
+    const { tcxContent, workoutName } = FITWorkoutEncoder.buildTCXForPush(sess, ftp);
+    try {
+      const r = await fetch(`${window.API_URL}/providers/garmin/push-workout`, {
+        method: 'POST',
+        headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutName, tcxContent })
+      });
+      if (r.ok) { sent++; } else { failed++; FITWorkoutEncoder.exportSession(sess, ftp, 'tcx'); }
+    } catch { failed++; FITWorkoutEncoder.exportSession(sess, ftp, 'tcx'); }
+    await new Promise(res => setTimeout(res, 500));
+  }
+
+  toast.innerHTML = failed === 0
+    ? `<i class="fas fa-check-circle" style="color:#00c97b"></i> ${sent} sesiones enviadas a Garmin Connect.`
+    : `<i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> ${sent} enviadas, ${failed} descargadas como TCX.`;
+  setTimeout(() => toast.remove(), 5000);
+}
+
 function exportWeekToGarmin() {
   if (!currentPlan) { alert('El plan aún no está generado.'); return; }
-  FITWorkoutEncoder.exportWeek(currentPlan.sessions, (AppState.athlete || {}).ftp || 200, 'tcx');
+  if (localStorage.getItem('velomind_garmin_connected') === '1') {
+    pushWeekToGarmin();
+  } else {
+    FITWorkoutEncoder.exportWeek(currentPlan.sessions, (AppState.athlete || {}).ftp || 200, 'tcx');
+    showGarminImportGuide();
+  }
 }
 
 function exportWeekToZwift() {
