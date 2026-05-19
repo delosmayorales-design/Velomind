@@ -307,7 +307,8 @@ const _streamSelPlugin = {
     if (!chart.canvas?.id?.startsWith('chart-stream-w') &&
         !chart.canvas?.id?.startsWith('chart-stream-h') &&
         !chart.canvas?.id?.startsWith('chart-stream-s') &&
-        !chart.canvas?.id?.startsWith('chart-stream-e')) return;
+        !chart.canvas?.id?.startsWith('chart-stream-e') &&
+        !chart.canvas?.id?.startsWith('chart-stream-c')) return;
     if (_selA === null) return;
     const { ctx, chartArea, scales } = chart;
     if (!chartArea || !scales.x) return;
@@ -348,7 +349,7 @@ function clearStreamSelection() {
   _selA = null; _selB = null; _dragEndpoint = null;
   const panel = document.getElementById('interval-stats-panel');
   if (panel) panel.style.display = 'none';
-  ['streamWatts','streamHR','streamSpeed','streamElev'].forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
+  ['streamWatts','streamHR','streamSpeed','streamElev','streamCadence'].forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
 }
 
 function _showIntervalStats() {
@@ -360,7 +361,7 @@ function _showIntervalStats() {
   const i2 = Math.max(0, Math.min(Math.round(_selB * step), origLen - 1));
   const sl = arr => arr ? arr.slice(i1, i2 + 1) : [];
   const tSl = sl(s.time), wSl = sl(s.watts), hrSl = sl(s.heartrate);
-  const spdSl = sl(s.velocity_smooth), altSl = sl(s.altitude);
+  const spdSl = sl(s.velocity_smooth), altSl = sl(s.altitude), cadSl = sl(s.cadence);
 
   const dur  = tSl.length >= 2 ? tSl[tSl.length-1] - tSl[0] : 0;
   const avgW = wSl.length ? Math.round(wSl.reduce((a,b)=>a+b,0)/wSl.length) : null;
@@ -374,6 +375,8 @@ function _showIntervalStats() {
   const IF   = (npW && _sFTP) ? Math.round(npW/_sFTP*100)/100 : null;
   const avgHR= hrSl.length ? Math.round(hrSl.reduce((a,b)=>a+b,0)/hrSl.length) : null;
   const avgSpd=spdSl.length ? Math.round(spdSl.reduce((a,b)=>a+b,0)/spdSl.length*3.6*10)/10 : null;
+  const cadNZ=cadSl.filter(v=>v>0);
+  const avgCad=cadNZ.length ? Math.round(cadNZ.reduce((a,b)=>a+b,0)/cadNZ.length) : null;
   let elevGain=0;
   for(let i=1;i<altSl.length;i++){const d=altSl[i]-altSl[i-1];if(d>0)elevGain+=d;}
 
@@ -398,6 +401,7 @@ function _showIntervalStats() {
       ${m('IF',IF,'#F59E0B')}
       ${m('FC Media',avgHR?avgHR+' bpm':null,'#ef4444')}
       ${m('Velocidad',avgSpd?avgSpd+' km/h':null,'#38bdf8')}
+      ${m('Cadencia',avgCad?avgCad+' rpm':null,'#a78bfa')}
       ${elevGain>0?m('Desnivel','+'+Math.round(elevGain)+'m','#94a3b8'):''}
     </div>`;
   panel.style.display='';
@@ -1020,6 +1024,15 @@ function showActivityDetail(actId) {
             <canvas id="chart-stream-elev"></canvas>
           </div>
         </div>
+        <div id="cwrap-stream-cadence" class="stream-card" style="display:none">
+          <div class="stream-header">
+            <span class="stream-label"><i class="fas fa-sync-alt" style="color:#a78bfa;margin-right:4px"></i>Cadencia · rpm</span>
+            <span class="stream-stats" id="stats-cadence"></span>
+          </div>
+          <div class="stream-canvas-wrap">
+            <canvas id="chart-stream-cadence"></canvas>
+          </div>
+        </div>
 
         <!-- Panel de intervalo seleccionado -->
         <div id="interval-stats-panel" style="display:none;background:var(--bg-input);border:1px solid rgba(158,214,43,0.3);border-radius:12px;padding:12px 14px;margin-top:4px"></div>
@@ -1356,8 +1369,39 @@ function renderStreamCharts(s, ftp) {
     });
   }
 
+  // ── 5. CADENCIA ──────────────────────────────────────────────────────
+  const cadCanvas = document.getElementById('chart-stream-cadence');
+  if (cadCanvas && s.cadence?.length) {
+    document.getElementById('cwrap-stream-cadence').style.display = '';
+    const [, cadDs] = dsampleAll([s.time, s.cadence], MAX_PTS);
+    const cadNZ = s.cadence.filter(v => v > 0);
+    const avgCad = cadNZ.length ? Math.round(cadNZ.reduce((a, b) => a + b, 0) / cadNZ.length) : 0;
+    const maxCad = s.cadence.length ? Math.max(...s.cadence) : 0;
+    document.getElementById('stats-cadence').innerHTML =
+      `<span style="color:#a78bfa">⌀ ${avgCad} rpm</span> <span style="color:var(--text-muted)">· máx ${maxCad}</span>`;
+
+    chartInsts.streamCadence = new Chart(cadCanvas, {
+      type: 'line',
+      data: {
+        labels: cadDs.map((_, i) => i),
+        datasets: [{
+          label: 'Cadencia', data: cadDs,
+          borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.10)',
+          borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: true
+        }]
+      },
+      options: {
+        ...commonOpts(' rpm', v => v + ' rpm'),
+        scales: {
+          x: { display: false },
+          y: { ticks: { color: tickC, font: { size: 8 }, callback: v => v + ' rpm' }, grid: { color: gridC } }
+        }
+      }
+    });
+  }
+
   // ── Crosshair sync + selección estilo Garmin Connect ────────────────
-  const streamKeys = ['streamWatts','streamHR','streamSpeed','streamElev'];
+  const streamKeys = ['streamWatts','streamHR','streamSpeed','streamElev','streamCadence'];
 
   streamKeys.forEach(key => {
     const chart = chartInsts[key];
