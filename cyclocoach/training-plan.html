@@ -3989,19 +3989,21 @@ function showGarminImportGuide() {
     'max-width:340px;width:calc(100vw - 32px);line-height:1.6'
   ].join(';');
   t.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <span style="font-weight:700;color:#00c97b;font-size:14px"><i class="fas fa-watch"></i> Cómo cargarlo en tu Garmin</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-weight:700;color:#00c97b;font-size:14px"><i class="fas fa-watch"></i> Cargar en tu Garmin</span>
       <button onclick="this.closest('#garmin-guide-toast').remove()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:16px;line-height:1;padding:0 0 0 8px">&#x2715;</button>
     </div>
-    <ol style="margin:0;padding-left:18px;color:#cbd5e1">
-      <li>Abre <strong style="color:#fff">connect.garmin.com</strong> en el navegador</li>
-      <li>En el menú superior ve a <strong style="color:#fff">Entrenamiento &rarr; Entrenamientos</strong></li>
-      <li>Haz clic en <strong style="color:#fff">Importar</strong> (no "Importar datos")</li>
-      <li>Sube el archivo <strong style="color:#00c97b">.tcx</strong> que acabas de descargar</li>
-      <li>Sincroniza tu reloj con la app Garmin Connect</li>
-    </ol>
-    <div style="margin-top:6px;padding:6px 8px;background:rgba(245,158,11,0.1);border-radius:6px;font-size:11px;color:#fbbf24">
-      &#9888; No uses "Importar datos" &mdash; esa secci&oacute;n es para actividades completadas, no para entrenamientos planificados.
+    <a href="https://connect.garmin.com/modern/workout" target="_blank" rel="noopener"
+       style="display:flex;align-items:center;justify-content:center;gap:8px;background:#00c97b;color:#000;font-weight:700;font-size:13px;padding:10px 14px;border-radius:8px;text-decoration:none;margin-bottom:10px">
+      <i class="fas fa-external-link-alt"></i> Abrir Garmin Connect &rarr; Entrenamientos
+    </a>
+    <div style="font-size:12px;color:#94a3b8;line-height:1.7">
+      1&nbsp; En esa p&aacute;gina busca el bot&oacute;n <strong style="color:#e2e8f0">Importar</strong> (icono nube &uarr;)<br>
+      2&nbsp; Sube el archivo <strong style="color:#00c97b">.tcx</strong> que acabas de descargar<br>
+      3&nbsp; Sincroniza tu reloj con la app <strong style="color:#e2e8f0">Garmin Connect</strong>
+    </div>
+    <div style="margin-top:8px;padding:5px 8px;background:rgba(245,158,11,0.1);border-radius:6px;font-size:11px;color:#fbbf24">
+      &#9888; No uses "Importar datos" del men&uacute; lateral &mdash; esa secci&oacute;n es para salidas ya hechas.
     </div>`;
   document.body.appendChild(t);
   setTimeout(() => t && t.remove(), 12000);
