@@ -401,7 +401,8 @@ router.post('/biomechanics-video', upload.single('video'), async (req, res) => {
     const prompt = `Eres un Biomecánico de Ciclismo profesional. Analiza el video del ciclista y devuelve ÚNICAMENTE un JSON válido en español. No añadas texto fuera del JSON.
 
 Para cada métrica asigna EXACTAMENTE uno de estos tres valores de "rating": "OK", "Mejorable" o "Problema".
-En "detail" describe en máximo 100 caracteres lo que observas objetivamente.
+Sé crítico y objetivo: si ves cualquier desviación, asigna "Mejorable" o "Problema". Solo asigna "OK" si la técnica es claramente correcta.
+En "detail" describe en máximo 100 caracteres lo que observas objetivamente, mencionando siempre el defecto observado o confirmando la técnica correcta.
 
 CRITERIOS OBJETIVOS (úsalos como referencia estricta):
 - hip_stability: OK=cadera estable sin balanceo lateral visible; Mejorable=ligero balanceo (<2 cm); Problema=balanceo evidente (>2 cm, indica sillín alto)
@@ -409,8 +410,10 @@ CRITERIOS OBJETIVOS (úsalos como referencia estricta):
 - ankle_technique: OK=tobillo neutro con ligera flexión plantar en PMI; Mejorable=talón muy caído o exceso de puntilla; Problema=movimiento excesivo o muy irregular del tobillo
 - pedaling_smoothness: OK=círculo fluido sin puntos muertos visibles; Mejorable=ligero tirón en la fase de recobro; Problema=movimiento claramente a pistón
 
-Formato JSON obligatorio:
-{"dynamic_analysis":{"hip_stability":{"rating":"OK","detail":"..."},"knee_tracking":{"rating":"OK","detail":"..."},"ankle_technique":{"rating":"OK","detail":"..."},"pedaling_smoothness":{"rating":"OK","detail":"..."}},"expert_diagnosis":{"summary":"...","red_flags":["..."],"recommended_adjustments":[{"component":"saddle_height","action":"bajar","reason":"..."}]}}`;
+Si la calidad del video no permite evaluar una métrica con certeza, asigna "Mejorable" con detail="Calidad de video insuficiente para evaluar con precisión".
+
+Formato JSON obligatorio (sustituye RATING por el valor real, no uses "OK" por defecto):
+{"dynamic_analysis":{"hip_stability":{"rating":"RATING","detail":"descripción objetiva"},"knee_tracking":{"rating":"RATING","detail":"descripción objetiva"},"ankle_technique":{"rating":"RATING","detail":"descripción objetiva"},"pedaling_smoothness":{"rating":"RATING","detail":"descripción objetiva"}},"expert_diagnosis":{"summary":"resumen general","red_flags":["alerta si la hay"],"recommended_adjustments":[{"component":"componente","action":"acción","reason":"motivo"}]}}`;
 
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const analyzeRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`, {
