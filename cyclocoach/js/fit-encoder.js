@@ -412,21 +412,36 @@ ${stepsXml}
     return result;
   }
 
-  // Downloads a binary .fit file for a single session, including nutrition alerts.
-  function exportFIT(session, ftp, nutrition) {
+  // Downloads a binary .fit file for a single session via backend generator.
+  async function exportFIT(session, ftp, nutrition) {
     if (session.isRest) { alert('Los días de descanso no necesitan exportarse.'); return; }
     if (!ftp || ftp < 50) ftp = 200;
-    const wt    = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[session.type]) || {};
-    const label = (wt.label || session.name || session.type || 'Entrenamiento').slice(0, 15);
-    const steps = buildSteps(session, ftp);
+    const wt     = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[session.type]) || {};
+    const label  = (wt.label || session.name || session.type || 'Entrenamiento').slice(0, 15);
     const durMin = session.durationMin || 60;
-    const bytes = encodeFIT(label, steps, durMin >= 45 ? nutrition : null);
-    const fname = `VeloMind_${sanitize(session.day || 'entreno')}_${sanitize(label)}.fit`;
-    const blob  = new Blob([bytes], { type: 'application/octet-stream' });
-    const url   = URL.createObjectURL(blob);
-    const a     = Object.assign(document.createElement('a'), { href: url, download: fname });
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const base   = buildSteps(session, ftp);
+    const steps  = (durMin >= 45 && nutrition) ? _fitInjectNutrition(base, nutrition) : base;
+    const fname  = `VeloMind_${sanitize(session.day || 'entreno')}_${sanitize(label)}.fit`;
+
+    try {
+      const headers = (typeof Auth !== 'undefined' && Auth.getHeaders) ? Auth.getHeaders() : {};
+      const resp = await fetch('/api/plans/export-fit', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body:    JSON.stringify({ name: label, steps }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: resp.statusText }));
+        throw new Error(err.error || resp.statusText);
+      }
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = Object.assign(document.createElement('a'), { href: url, download: fname });
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      alert('Error al generar el archivo FIT: ' + e.message);
+    }
   }
 
   // Returns { tcxContent, workoutName } for backend push to Garmin Connect.

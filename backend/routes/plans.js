@@ -1,6 +1,7 @@
 const express   = require('express');
 const supabase  = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { generateWorkoutFIT, toAscii } = require('../fitWorkoutGenerator');
 const router    = express.Router();
 router.use(requireAuth);
 
@@ -173,6 +174,43 @@ router.delete('/biomechanics-snapshot/:id', async (req, res) => {
     .eq('user_id', req.user.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
+});
+
+// ── FIT Export ────────────────────────────────────────────────────────────
+
+router.post('/export-fit', async (req, res) => {
+  const { name, steps } = req.body;
+
+  if (!Array.isArray(steps) || steps.length === 0)
+    return res.status(400).json({ error: 'steps requerido y no puede estar vacío' });
+
+  // Sanear pasos recibidos del cliente
+  const clean = steps.map(s => ({
+    name:      String(s.name || 'Paso').slice(0, 30),
+    sec:       Math.max(0, Math.round(Number(s.sec) || 0)),
+    intensity: Number(s.intensity) || 0,
+    lo:        Math.max(0, Math.round(Number(s.lo) || 0)),
+    hi:        Math.max(0, Math.round(Number(s.hi) || 0)),
+    open:      Boolean(s.open),
+    isAlert:   Boolean(s.isAlert),
+  }));
+
+  try {
+    const fitBuf  = generateWorkoutFIT(name || 'VeloMind', clean);
+    const safeName = toAscii(name || 'VeloMind')
+      .replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 40) || 'workout';
+
+    res.set({
+      'Content-Type':        'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${safeName}.fit"`,
+      'Content-Length':      fitBuf.length,
+      'Cache-Control':       'no-store',
+    });
+    res.end(fitBuf);
+  } catch (err) {
+    console.error('[export-fit]', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;
