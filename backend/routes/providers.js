@@ -799,6 +799,95 @@ router.post('/garmin/push-workout', requireAuth, async (req, res) => {
   }
 });
 
+// ── GARMIN STRUCTURED WORKOUT PUSH (workout-service JSON API) ───────────────
+// Crea un workout estructurado directamente en Garmin Connect vía la misma API
+// que usan Intervals.icu / TrainingPeaks. El dispositivo lo recibe en la próxima
+// sincronización Bluetooth/WiFi sin necesidad de copiar archivos por USB.
+router.post('/garmin/push-structured-workout', requireAuth, async (req, res) => {
+  const uid = req.user.id;
+  const { name, steps } = req.body || {};
+  if (!name || !Array.isArray(steps) || !steps.length) {
+    return res.status(400).json({ error: 'name y steps son requeridos' });
+  }
+
+  const { data: user, error: userErr } = await supabase.from('users').select('*').eq('id', uid).single();
+  if (userErr || !user) return res.status(500).json({ error: 'Error al obtener usuario' });
+  if (!user.garmin_token) {
+    return res.status(400).json({ error: 'no_garmin', message: 'Garmin no conectado. Ve a Integraciones.' });
+  }
+
+  // Convierte nuestro formato de pasos al JSON de Garmin Connect workout-service
+  function toGarminWorkout(workoutName, rawSteps) {
+    const stepTypeMap = {
+      2: { stepTypeId: 1, stepTypeKey: 'warmup' },
+      3: { stepTypeId: 2, stepTypeKey: 'cooldown' },
+      1: { stepTypeId: 4, stepTypeKey: 'recovery' },
+      0: { stepTypeId: 3, stepTypeKey: 'interval' },
+    };
+    const workoutSteps = rawSteps.map((s, i) => {
+      const intensity = typeof s.intensity === 'number' ? s.intensity : 0;
+      const stepType  = stepTypeMap[intensity] || stepTypeMap[0];
+      const hasPow    = (s.lo > 0 || s.hi > 0);
+      return {
+        type:           'ExecutableStepDTO',
+        stepOrder:      i + 1,
+        stepType,
+        endCondition:   s.open
+          ? { conditionTypeId: 1, conditionTypeKey: 'lap.button' }
+          : { conditionTypeId: 2, conditionTypeKey: 'time' },
+        endConditionValue: s.open ? null : (s.sec || 0),
+        targetType:     hasPow
+          ? { workoutTargetTypeId: 2, workoutTargetTypeKey: 'power.zone' }
+          : { workoutTargetTypeId: 1, workoutTargetTypeKey: 'no.target' },
+        targetValueOne:  hasPow ? (s.lo || null) : null,
+        targetValueTwo:  hasPow ? (s.hi || null) : null,
+        zoneNumber:      null,
+      };
+    });
+    return {
+      sportType:    { sportTypeId: 2, sportTypeKey: 'cycling' },
+      workoutName:  workoutName.slice(0, 100),
+      description:  'Generado por VeloMind',
+      workoutSegments: [{
+        segmentOrder: 1,
+        sportType:    { sportTypeId: 2, sportTypeKey: 'cycling' },
+        workoutSteps,
+      }],
+    };
+  }
+
+  try {
+    const token   = await refreshGarminIfNeeded(user);
+    const payload = toGarminWorkout(name, steps);
+
+    const gcRes = await fetch('https://connectapi.garmin.com/workout-service/workout', {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type':  'application/json',
+        'NK':            'NT',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const rawText = await gcRes.text();
+    let gcData;
+    try { gcData = JSON.parse(rawText); } catch { gcData = { raw: rawText.slice(0, 300) }; }
+
+    if (!gcRes.ok) {
+      return res.status(gcRes.status).json({
+        error:  `Garmin workout-service HTTP ${gcRes.status}`,
+        detail: gcData,
+      });
+    }
+
+    res.json({ ok: true, workoutId: gcData?.workoutId || null,
+      message: 'Workout creado en Garmin Connect. Sincroniza tu reloj para verlo en Entrenamientos.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.delete('/garmin/disconnect', requireAuth, async (req, res) => {
   try {
     const { data: user } = await supabase.from('users').select('garmin_token').eq('id', req.user.id).single();

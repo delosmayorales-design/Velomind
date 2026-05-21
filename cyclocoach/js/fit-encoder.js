@@ -491,7 +491,7 @@ ${stepsXml}
     next();
   }
 
-  return { buildSteps, encodeTCX, encodeZWO, encodeGPX, encodeERG, encodeFIT, exportFIT, download, exportSession, exportWeek, buildTCXForPush };
+  return { buildSteps, encodeTCX, encodeZWO, encodeGPX, encodeERG, encodeFIT, exportFIT, download, exportSession, exportWeek, buildTCXForPush, _fitInjectNutrition };
 })();
 
 window.FITWorkoutEncoder = FITWorkoutEncoder;
