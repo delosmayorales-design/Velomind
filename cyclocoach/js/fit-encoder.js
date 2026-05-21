@@ -262,6 +262,182 @@ ${stepsXml}
     return result;
   }
 
+  // ── FIT binary (Garmin native .fit) ──────────────────────────────────────
+
+  // ASCII-safe transliteration (no length limit, unlike asciiName)
+  function _toAscii(str) {
+    return (str || '')
+      .replace(/[áàâä]/gi,'a').replace(/[éèêë]/gi,'e')
+      .replace(/[íìîï]/gi,'i').replace(/[óòôö]/gi,'o')
+      .replace(/[úùûü]/gi,'u').replace(/ñ/gi,'n')
+      .replace(/[^\x20-\x7E]/g,'');
+  }
+
+  // CRC-16 per FIT Protocol specification
+  function _fitCRC(data) {
+    const T = [
+      0x0000,0xCC01,0xD801,0x1400,0xF001,0x3C00,0x2800,0xE401,
+      0xA001,0x6C00,0x7800,0xB401,0x5000,0x9C01,0x8801,0x4400,
+    ];
+    let crc = 0;
+    for (let i = 0; i < data.length; i++) {
+      const b = data[i];
+      let tmp = T[crc & 0xF];
+      crc = (crc >> 4) ^ tmp ^ T[b & 0xF];
+      tmp = T[crc & 0xF];
+      crc = (crc >> 4) ^ tmp ^ T[(b >> 4) & 0xF];
+    }
+    return crc & 0xFFFF;
+  }
+
+  // Splits active blocks into 30-min chunks and injects 30-second reminder steps.
+  // Uses real nutrition plan data when available, falls back to generic labels.
+  function _fitInjectNutrition(steps, nutrition) {
+    const CHUNK_SEC = 30 * 60;
+    const { pre_workout = '', during_workout = '', post_workout = '' } = nutrition || {};
+    const result = [];
+    let alertCount = 0;
+
+    steps.forEach((origStep, si) => {
+      const step = { ...origStep };
+
+      // Annotate warmup with pre-workout and cooldown with post-workout notes
+      if (si === 0 && step.intensity === 2 && pre_workout)
+        step.notes = _toAscii(pre_workout).slice(0, 49);
+      if (si === steps.length - 1 && step.intensity === 3 && post_workout)
+        step.notes = _toAscii('Post: ' + post_workout).slice(0, 49);
+
+      // Only split active main-effort blocks (not warmup/cooldown/rest)
+      const isMainWork = !step.isAlert && !step.open
+        && step.intensity !== 1 && step.intensity !== 2 && step.intensity !== 3
+        && step.sec > CHUNK_SEC;
+
+      if (!isMainWork) { result.push(step); return; }
+
+      let remaining = step.sec;
+      while (remaining > 0) {
+        const seg = Math.min(CHUNK_SEC, remaining);
+        result.push({ ...step, sec: seg });
+        remaining -= seg;
+        if (remaining > 0) {
+          alertCount++;
+          const isGel = alertCount % 2 === 1;
+          // wkt_step_name shows on device screen (max 15 chars)
+          const name  = isGel ? 'GEL/BARRITA' : 'BEBER 500ml';
+          // notes shows in Garmin Connect app
+          const notes = _toAscii(during_workout || (isGel ? '25-30g carbohidratos' : '500ml agua o isotonica')).slice(0, 49);
+          result.push({ name, sec: 30, intensity: 1, lo: 0, hi: 0, isAlert: true, notes });
+        }
+      }
+    });
+    return result;
+  }
+
+  // Encodes a structured workout to a binary .fit file (Uint8Array).
+  // steps: array from buildSteps(); nutrition: object from /api/plans/nutrition (optional)
+  function encodeFIT(workoutName, steps, nutrition) {
+    const allSteps = nutrition ? _fitInjectNutrition(steps, nutrition) : injectNutritionAlerts(steps);
+    const out = [];
+
+    const u8  = v => out.push(v & 0xFF);
+    const u16 = v => { out.push(v & 0xFF, (v >> 8) & 0xFF); };
+    const u32 = v => { v = v >>> 0; out.push(v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF); };
+    // Fixed-size null-terminated string (for step/workout names, ASCII only)
+    const strN = (s, len) => {
+      const b = asciiName(s || '').slice(0, len - 1);
+      for (let i = 0; i < b.length; i++) out.push(b.charCodeAt(i));
+      for (let i = b.length; i < len; i++) out.push(0);
+    };
+    // Fixed-size string for notes (transliterated, not truncated to 15)
+    const strNote = (s, len) => {
+      const b = _toAscii(s || '').slice(0, len - 1);
+      for (let i = 0; i < b.length; i++) out.push(b.charCodeAt(i));
+      for (let i = b.length; i < len; i++) out.push(0);
+    };
+
+    // ── Definition + data: FILE_ID (global=0, local=0) ──────────────────────
+    out.push(0x40, 0x00, 0x00); u16(0); u8(2);   // def header, reserved, arch, global, nfields
+    u8(0); u8(1); u8(0x00);   // field 0: type, 1 byte, enum
+    u8(1); u8(2); u8(0x84);   // field 1: manufacturer, 2 bytes, uint16
+    out.push(0x00);            // data header local=0
+    u8(5); u16(255);           // type=workout, manufacturer=other
+
+    // ── Definition + data: WORKOUT (global=26, local=1) ─────────────────────
+    out.push(0x41, 0x00, 0x00); u16(26); u8(3);
+    u8(4);  u8(1);  u8(0x00);  // sport: enum
+    u8(6);  u8(2);  u8(0x84);  // num_valid_steps: uint16
+    u8(8);  u8(16); u8(0x07);  // wkt_name: string[16]
+    out.push(0x01);
+    u8(2); u16(allSteps.length); strN(workoutName, 16);
+
+    // ── Definition: WORKOUT_STEP (global=27, local=2) ───────────────────────
+    out.push(0x42, 0x00, 0x00); u16(27); u8(9);
+    u8(0);   u8(16); u8(0x07);  // wkt_step_name: string[16]
+    u8(1);   u8(1);  u8(0x00);  // duration_type: enum
+    u8(2);   u8(4);  u8(0x86);  // duration_value: uint32 (seconds)
+    u8(3);   u8(1);  u8(0x00);  // target_type: enum
+    u8(4);   u8(4);  u8(0x86);  // target_value: uint32
+    u8(5);   u8(4);  u8(0x86);  // custom_target_value_low: uint32 (watts)
+    u8(6);   u8(4);  u8(0x86);  // custom_target_value_high: uint32 (watts)
+    u8(7);   u8(1);  u8(0x00);  // intensity: enum
+    u8(8);   u8(50); u8(0x07);  // notes: string[50]
+
+    // ── Data: WORKOUT_STEPs ─────────────────────────────────────────────────
+    allSteps.forEach(s => {
+      const durType  = s.open ? 5 : 0;          // 5=open, 0=time
+      const durVal   = s.open ? 0 : (s.sec | 0); // seconds
+      const hasPow   = s.lo > 0 || s.hi > 0;
+      const tgtType  = hasPow ? 3 : 0;           // 3=power, 0=speed/none
+      // 0=active, 1=rest, 2=warmup, 3=cooldown
+      const intEnum  = s.intensity === 2 ? 2 : s.intensity === 3 ? 3 : s.intensity === 1 ? 1 : 0;
+
+      out.push(0x02);
+      strN(s.name || 'Paso', 16);
+      u8(durType); u32(durVal);
+      u8(tgtType); u32(0);           // target_value=0 means custom
+      u32(s.lo || 0);                // custom power low (watts)
+      u32(s.hi || 0);                // custom power high (watts)
+      u8(intEnum);
+      strNote(s.notes || '', 50);
+    });
+
+    // ── Build final binary: header + data + CRCs ────────────────────────────
+    const dataBytes = new Uint8Array(out);
+
+    const fhdr = new Uint8Array(14);
+    fhdr[0]  = 14;   fhdr[1]  = 0x10;  // header size, protocol v1.0
+    fhdr[2]  = 0x54; fhdr[3]  = 0x08;  // profile version 2132 (0x0854)
+    const dl = dataBytes.length;
+    fhdr[4]  = dl & 0xFF; fhdr[5] = (dl >> 8) & 0xFF;
+    fhdr[6]  = (dl >> 16) & 0xFF; fhdr[7] = (dl >> 24) & 0xFF;
+    fhdr[8]  = 0x2E; fhdr[9] = 0x46; fhdr[10] = 0x49; fhdr[11] = 0x54; // ".FIT"
+    const hc = _fitCRC(fhdr.slice(0, 12));
+    fhdr[12] = hc & 0xFF; fhdr[13] = (hc >> 8) & 0xFF;
+
+    const fc = _fitCRC(dataBytes); // file CRC covers data records only (not header)
+    const result = new Uint8Array(14 + dataBytes.length + 2);
+    result.set(fhdr); result.set(dataBytes, 14);
+    result[14 + dl] = fc & 0xFF; result[14 + dl + 1] = (fc >> 8) & 0xFF;
+    return result;
+  }
+
+  // Downloads a binary .fit file for a single session, including nutrition alerts.
+  function exportFIT(session, ftp, nutrition) {
+    if (session.isRest) { alert('Los días de descanso no necesitan exportarse.'); return; }
+    if (!ftp || ftp < 50) ftp = 200;
+    const wt    = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[session.type]) || {};
+    const label = (wt.label || session.name || session.type || 'Entrenamiento').slice(0, 15);
+    const steps = buildSteps(session, ftp);
+    const durMin = session.durationMin || 60;
+    const bytes = encodeFIT(label, steps, durMin >= 45 ? nutrition : null);
+    const fname = `VeloMind_${sanitize(session.day || 'entreno')}_${sanitize(label)}.fit`;
+    const blob  = new Blob([bytes], { type: 'application/octet-stream' });
+    const url   = URL.createObjectURL(blob);
+    const a     = Object.assign(document.createElement('a'), { href: url, download: fname });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   // Returns { tcxContent, workoutName } for backend push to Garmin Connect.
   // Always includes nutrition/hydration alerts.
   function buildTCXForPush(session, ftp) {
@@ -308,7 +484,7 @@ ${stepsXml}
     next();
   }
 
-  return { buildSteps, encodeTCX, encodeZWO, encodeGPX, encodeERG, download, exportSession, exportWeek, buildTCXForPush };
+  return { buildSteps, encodeTCX, encodeZWO, encodeGPX, encodeERG, encodeFIT, exportFIT, download, exportSession, exportWeek, buildTCXForPush };
 })();
 
 window.FITWorkoutEncoder = FITWorkoutEncoder;
