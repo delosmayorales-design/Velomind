@@ -539,8 +539,6 @@
     .sess-act-audio  { background: rgba(196,239,68,0.15);  border: 1px solid rgba(196,239,68,0.4);  color: #C4EF44; }
     .sess-fmt-btn--garmin { background: rgba(0,168,107,0.12); border-color: rgba(0,168,107,0.4); color: #00c97b; }
     .sess-fmt-btn--garmin:hover { background: rgba(0,168,107,0.22); border-color: #00c97b; color: #fff; }
-    .sess-fmt-btn--fit { background: rgba(196,239,68,0.1); border-color: rgba(196,239,68,0.35); color: #C4EF44; }
-    .sess-fmt-btn--fit:hover { background: rgba(196,239,68,0.2); border-color: #C4EF44; color: #fff; }
     /* Mobile toggle (oculto en desktop) */
     .sess-export-toggle { display: none; }
 
@@ -548,11 +546,11 @@
       .sess-actions { padding: 10px 12px; gap: 8px; position: relative; flex-wrap: nowrap; }
       .sess-export-lbl, .sess-export-formats { display: none !important; }
       .sess-export-formats.open {
-        display: flex !important; flex-wrap: nowrap; gap: 7px;
+        display: flex !important; flex-wrap: wrap; gap: 7px;
         position: absolute;
-        bottom: calc(100% + 6px); left: 12px;
+        bottom: calc(100% + 6px); left: 12px; right: 12px;
         background: var(--bg-card); border: 1px solid var(--border);
-        border-radius: 10px; padding: 8px 10px;
+        border-radius: 10px; padding: 10px 12px;
         box-shadow: 0 8px 24px rgba(0,0,0,0.45);
         z-index: 20;
         animation: fadeIn 0.15s ease;
@@ -1865,7 +1863,7 @@ function renderPlan(plan, athlete) {
         <div class="sess-export-section">
           <span class="sess-export-lbl"><i class="fas fa-download"></i> Exportar:</span>
           <div class="sess-export-formats">
-            <button class="sess-fmt-btn sess-fmt-btn--fit" onclick="exportSessionToFIT(${i})" title="Archivo .fit nativo Garmin con alertas de nutrición"><i class="fas fa-microchip"></i> FIT</button>
+            <button class="sess-fmt-btn" onclick="exportSessionToFIT(${i})" title="Archivo .fit nativo Garmin con alertas de nutrición">FIT</button>
             <button class="sess-fmt-btn" onclick="exportSessionToGarmin(${i})">TCX</button>
             <button class="sess-fmt-btn" onclick="exportSessionToZwift(${i})">ZWO</button>
             <button class="sess-fmt-btn" onclick="exportSessionToERG(${i})">ERG</button>
