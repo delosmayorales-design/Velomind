@@ -348,13 +348,6 @@ ${stepsXml}
       for (let i = 0; i < b.length; i++) out.push(b.charCodeAt(i));
       for (let i = b.length; i < len; i++) out.push(0);
     };
-    // Fixed-size string for notes (transliterated, not truncated to 15)
-    const strNote = (s, len) => {
-      const b = _toAscii(s || '').slice(0, len - 1);
-      for (let i = 0; i < b.length; i++) out.push(b.charCodeAt(i));
-      for (let i = b.length; i < len; i++) out.push(0);
-    };
-
     // ── Definition + data: FILE_ID (global=0, local=0) ──────────────────────
     out.push(0x40, 0x00, 0x00); u16(0); u8(2);   // def header, reserved, arch, global, nfields
     u8(0); u8(1); u8(0x00);   // field 0: type, 1 byte, enum
@@ -371,34 +364,32 @@ ${stepsXml}
     u8(2); u16(allSteps.length); strN(workoutName, 16);
 
     // ── Definition: WORKOUT_STEP (global=27, local=2) ───────────────────────
-    out.push(0x42, 0x00, 0x00); u16(27); u8(9);
+    // duration_value for Time type is stored in milliseconds (FIT SDK scale=1000, units=s)
+    out.push(0x42, 0x00, 0x00); u16(27); u8(8);
     u8(0);   u8(16); u8(0x07);  // wkt_step_name: string[16]
     u8(1);   u8(1);  u8(0x00);  // duration_type: enum
-    u8(2);   u8(4);  u8(0x86);  // duration_value: uint32 (seconds)
+    u8(2);   u8(4);  u8(0x86);  // duration_value: uint32 (milliseconds)
     u8(3);   u8(1);  u8(0x00);  // target_type: enum
     u8(4);   u8(4);  u8(0x86);  // target_value: uint32
     u8(5);   u8(4);  u8(0x86);  // custom_target_value_low: uint32 (watts)
     u8(6);   u8(4);  u8(0x86);  // custom_target_value_high: uint32 (watts)
     u8(7);   u8(1);  u8(0x00);  // intensity: enum
-    u8(8);   u8(50); u8(0x07);  // notes: string[50]
 
     // ── Data: WORKOUT_STEPs ─────────────────────────────────────────────────
     allSteps.forEach(s => {
-      const durType  = s.open ? 5 : 0;          // 5=open, 0=time
-      const durVal   = s.open ? 0 : (s.sec | 0); // seconds
+      const durType  = s.open ? 5 : 0;
+      const durValMs = s.open ? 0 : (s.sec | 0) * 1000; // convert seconds → milliseconds
       const hasPow   = s.lo > 0 || s.hi > 0;
-      const tgtType  = hasPow ? 3 : 0;           // 3=power, 0=speed/none
-      // 0=active, 1=rest, 2=warmup, 3=cooldown
+      const tgtType  = hasPow ? 3 : 0;  // 3=power, 0=none
       const intEnum  = s.intensity === 2 ? 2 : s.intensity === 3 ? 3 : s.intensity === 1 ? 1 : 0;
 
       out.push(0x02);
       strN(s.name || 'Paso', 16);
-      u8(durType); u32(durVal);
-      u8(tgtType); u32(0);           // target_value=0 means custom
-      u32(s.lo || 0);                // custom power low (watts)
-      u32(s.hi || 0);                // custom power high (watts)
+      u8(durType); u32(durValMs);
+      u8(tgtType); u32(0);
+      u32(s.lo || 0);
+      u32(s.hi || 0);
       u8(intEnum);
-      strNote(s.notes || '', 50);
     });
 
     // ── Build final binary: header + data + CRCs ────────────────────────────
