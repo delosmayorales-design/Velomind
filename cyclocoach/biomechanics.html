@@ -1607,15 +1607,22 @@ async function detectWithMoveNet(imgEl) {
       if (kp && kp.score > 0.15) result[joint] = { x: kp.x / W, y: kp.y / H };
     }
 
-    // Estimar foot_tip: el pie se extiende perpendicular a la espinilla (no en su misma dirección)
-    // En posición 6 en punto la espinilla es vertical → la punta del pie queda hacia adelante (x)
+    // Estimar foot_tip: el pie se extiende perpendicular a la espinilla hacia adelante
+    // "Adelante" = dirección del manillar, que siempre está frente a la cadera en ciclismo
     if (result.ankle && result.knee) {
       const shinX = result.ankle.x - result.knee.x;
       const shinY = result.ankle.y - result.knee.y;
       const shinLen = Math.sqrt(shinX*shinX + shinY*shinY) || 1;
-      const footLen = shinLen * 0.30; // pie ≈ 30% de la espinilla en imagen lateral
-      // Si usamos el lado izquierdo el ciclista mira a la derecha (sign=+1), y viceversa
-      const sign = (sideMap === LEFT) ? 1 : -1;
+      const footLen = shinLen * 0.30;
+      // La muñeca (manillar) está siempre delante de la cadera → determina dirección adelante
+      let sign = 1;
+      if (result.wrist && result.hip) {
+        sign = result.wrist.x > result.hip.x ? 1 : -1;
+      } else if (result.shoulder && result.hip) {
+        sign = result.shoulder.x > result.hip.x ? 1 : -1;
+      } else {
+        sign = (sideMap === LEFT) ? -1 : 1;
+      }
       result.foot_tip = {
         x: Math.max(0, Math.min(1, result.ankle.x + sign * (shinY / shinLen) * footLen)),
         y: Math.max(0, Math.min(1, result.ankle.y - sign * (shinX / shinLen) * footLen + footLen * 0.2))
