@@ -1491,6 +1491,7 @@ function buildHourlyRow(hourly) {
     const prob  = Math.round(hourly.precipitation_probability?.[idx] ?? 0);
     const wcode = hourly.weather_code?.[idx] ?? 0;
     const wind  = Math.round(hourly.wind_speed_10m?.[idx] ?? 0);
+    const wdir  = hourly.wind_direction_10m?.[idx] ?? 0;
     const RAIN_CODES = [51,53,55,61,63,65,80,81,82,95,96,99];
     const isRain = RAIN_CODES.includes(wcode) || prob >= 40;
     const probColor = prob >= 70 ? '#60a5fa' : prob >= 40 ? '#93c5fd' : 'var(--text-muted)';
@@ -1501,7 +1502,10 @@ function buildHourlyRow(hourly) {
         <span style="font-size:10px">${isRain ? '🌧️' : '☀️'}</span>
         <span style="font-size:10px;font-weight:700;color:var(--text-primary)">${temp}°</span>
         <span style="font-size:9px;font-weight:600;color:${probColor}">${prob}%</span>
-        <span style="font-size:9px;font-weight:600;color:${windColor}">${wind}km</span>
+        <span style="font-size:9px;font-weight:600;color:${windColor};display:flex;align-items:center;gap:2px">
+          <svg width="9" height="9" viewBox="0 0 10 10" style="transform:rotate(${wdir}deg);flex-shrink:0">
+            <polygon points="5,0 8,8 5,6 2,8" fill="${windColor}"/>
+          </svg>${wind}km</span>
       </div>`;
   }).join('');
 
@@ -1560,7 +1564,7 @@ async function fetchWeather() {
     try {
       const { latitude: lat, longitude: lon } = pos.coords;
       // Petición combinada: current + daily + hourly
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&daily=weather_code,precipitation_sum,wind_speed_10m_max,temperature_2m_max&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&wind_speed_unit=kmh&timezone=auto&forecast_days=2`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&daily=weather_code,precipitation_sum,wind_speed_10m_max,temperature_2m_max&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=auto&forecast_days=2`;
       const data = await fetch(url).then(r => r.json());
       const c    = data.current;
       // Guardar pronóstico de mañana para smart-insights
