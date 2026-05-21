@@ -435,7 +435,7 @@
       display: flex; gap: 14px; padding: 14px 16px;
       background: var(--bg-input); border: 1px solid var(--border);
       border-radius: var(--radius-md); cursor: pointer;
-      transition: border-color .18s, background .18s; position: relative;
+      transition: border-color .18s, background .18s;
     }
     .snapshot-card:hover { border-color: var(--primary); background: var(--primary-glow); }
     .snapshot-thumb {
@@ -447,6 +447,15 @@
       background: var(--bg-card); display: flex; align-items: center;
       justify-content: center; font-size: 26px;
     }
+    .snap-delete-btn {
+      flex-shrink: 0; align-self: flex-start;
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 14px;
+      padding: 6px 8px; border-radius: 6px;
+      transition: color .15s, background .15s;
+      line-height: 1;
+    }
+    .snap-delete-btn:hover { color: var(--danger); background: rgba(239,68,68,.1); }
     .snap-badge {
       display: inline-flex; align-items: center; gap: 3px;
       padding: 2px 8px; border-radius: 20px;
@@ -481,8 +490,9 @@
     @media (max-width: 768px) {
       .snap-box { padding: 16px; border-radius: var(--radius-md); }
       .snap-box h3 { font-size: 14px; margin-bottom: 14px; }
-      .snapshot-thumb, .snapshot-thumb-placeholder { width: 58px; height: 58px; }
-      .snapshot-card { padding: 11px 12px; gap: 10px; }
+      .snapshot-thumb, .snapshot-thumb-placeholder { width: 56px; height: 56px; font-size: 22px; }
+      .snapshot-card { padding: 10px 12px; gap: 10px; }
+      .snap-delete-btn { padding: 8px; font-size: 15px; }
       .snap-angle-row { flex-direction: column; align-items: flex-start; gap: 4px; }
       .snap-angle-row > div { width: 100%; justify-content: flex-end; }
     }
@@ -2369,17 +2379,16 @@ function renderSnapshots() {
       <div class="snapshot-card" onclick="viewSnapshot('${s.id}')">
         ${thumb}
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:7px">
-            <span style="font-weight:700;font-size:13px">${dateStr} <span style="color:var(--text-muted);font-weight:400">${timeStr}</span>${deltaHtml}</span>
+          <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:4px;margin-bottom:7px">
+            <span style="font-weight:700;font-size:13px">${dateStr}</span>
+            <span style="color:var(--text-muted);font-size:12px">${timeStr}</span>
+            ${deltaHtml}
             ${bikeLine}
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:4px">${badges}</div>
           ${notesLine}
         </div>
-        <button onclick="event.stopPropagation();deleteSnapshot('${s.id}')"
-          style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:4px 6px;border-radius:6px;transition:color .15s"
-          onmouseenter="this.style.color='var(--danger)'" onmouseleave="this.style.color='var(--text-muted)'"
-          title="Eliminar análisis">
+        <button class="snap-delete-btn" onclick="event.stopPropagation();deleteSnapshot('${s.id}')" title="Eliminar análisis">
           <i class="fas fa-trash"></i>
         </button>
       </div>`;
