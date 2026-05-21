@@ -664,7 +664,7 @@
     }
     .top-row-main {
       display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-      align-items: start;
+      align-items: stretch;
     }
     .top-card {
       background: var(--bg-card); border: 1px solid var(--border);
@@ -815,12 +815,6 @@
       </button>
       <button class="phb phb-ai" id="btn-ai-coach" onclick="runAICoach()" title="Diagnóstico IA">
         <i class="fas fa-chart-line"></i><span>Diagnóstico</span>
-      </button>
-      <button class="phb" onclick="exportWeekToGarmin()" title="Exportar semana a Garmin">
-        <i class="fas fa-stopwatch"></i><span>Garmin</span>
-      </button>
-      <button class="phb" onclick="exportWeekToZwift()" title="Exportar semana a Zwift">
-        <i class="fas fa-bolt"></i><span>Zwift</span>
       </button>
       <button class="phb phb-regen" onclick="regeneratePlan()" title="Regenerar plan">
         <i class="fas fa-sync-alt"></i><span>Regenerar</span>
