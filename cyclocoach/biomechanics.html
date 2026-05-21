@@ -1006,14 +1006,18 @@ const ANGLE_DEFS = [
 
 // ─── Resize canvas to wrapper ───────────────────────────────
 function resizeCanvas() {
+  const isMobile = window.innerWidth <= 768;
   const totalW = wrapper.clientWidth || 700;
-  const W = totalW / 2;
+  const W = isMobile ? totalW : Math.round(totalW / 2);
   canvas.width = W;
-  canvas.height = bioImg ? Math.round(W / (bioImg.width / bioImg.height)) : 420;
-  canvas.height = Math.min(canvas.height, 560);
+  canvas.height = bioImg ? Math.round(W / (bioImg.width / bioImg.height)) : (isMobile ? 340 : 420);
+  canvas.height = Math.min(canvas.height, isMobile ? 520 : 560);
   updateImgRegion();
   draw();
 }
+
+// Escala de puntos/líneas proporcional al tamaño del canvas
+function _ptScale() { return Math.max(0.5, Math.min(1.2, canvas.width / 400)); }
 
 function updateImgRegion() {
   if (!bioImg) { imgR = null; return; }
@@ -1065,6 +1069,7 @@ function draw() {
   }
 
   // Skeleton lines
+  const sc = _ptScale();
   SEGS.forEach(({ a, b, c }) => {
     const pa = pts[a], pb = pts[b];
     if (!pa || !pb) return;
@@ -1072,7 +1077,7 @@ function draw() {
     ctx.moveTo(pa.x, pa.y);
     ctx.lineTo(pb.x, pb.y);
     ctx.strokeStyle = c;
-    ctx.lineWidth   = 3;
+    ctx.lineWidth   = Math.max(1.5, 3 * sc);
     ctx.globalAlpha = .85;
     ctx.stroke();
     ctx.globalAlpha = 1;
@@ -1087,17 +1092,15 @@ function draw() {
 
   // Trunk angle line
   if (pts.shoulder && pts.hip) {
-    const dx = pts.hip.x - pts.shoulder.x;
-    const dy = pts.hip.y - pts.shoulder.y;
     const trunkDeg = angles.trunk;
     if (trunkDeg !== null) {
       const mx = (pts.shoulder.x + pts.hip.x) / 2;
       const my = (pts.shoulder.y + pts.hip.y) / 2;
-      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.font = `bold ${Math.round(12 * sc)}px Inter, sans-serif`;
       ctx.fillStyle = '#FF6B35';
       ctx.textAlign = 'center';
       ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 4;
-      ctx.fillText(trunkDeg + '°', mx + 20, my);
+      ctx.fillText(trunkDeg + '°', mx + Math.round(20 * sc), my);
       ctx.shadowBlur = 0;
     }
   }
@@ -1110,7 +1113,7 @@ function draw() {
     // Glow ring in edit mode
     if (editMode && p) {
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, Math.round(16 * sc), 0, Math.PI * 2);
       ctx.fillStyle = PT_COLOR[key] + '30';
       ctx.fill();
     }
@@ -1118,20 +1121,20 @@ function draw() {
     if (p) {
       // Circle
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, Math.round(9 * sc), 0, Math.PI * 2);
       ctx.fillStyle   = PT_COLOR[key];
       ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 6;
       ctx.fill();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1.5, 2 * sc);
       ctx.stroke();
       ctx.shadowBlur = 0;
 
       // Label
-      ctx.font      = 'bold 11px Inter, sans-serif';
+      ctx.font      = `bold ${Math.round(11 * sc)}px Inter, sans-serif`;
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
       ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 4;
-      ctx.fillText(PT_LABELS[key], p.x, p.y - 14);
+      ctx.fillText(PT_LABELS[key], p.x, p.y - Math.round(14 * sc));
       ctx.shadowBlur = 0;
     } else if (isPlacing) {
       // Show hint cursor circle
@@ -1268,24 +1271,25 @@ function resetVideoPanel() {
 
 function drawAngleArc(pA, pB, pC, angleDeg, color) {
   if (!pA || !pB || !pC || angleDeg === null) return;
-  const r  = 28;
+  const sc = _ptScale();
+  const r  = Math.round(28 * sc);
   const a1 = Math.atan2(pA.y - pB.y, pA.x - pB.x);
   const a2 = Math.atan2(pC.y - pB.y, pC.x - pB.x);
 
   ctx.beginPath();
   ctx.arc(pB.x, pB.y, r, a1, a2);
   ctx.strokeStyle = color;
-  ctx.lineWidth   = 2.5;
+  ctx.lineWidth   = Math.max(1.5, 2.5 * sc);
   ctx.globalAlpha = .75;
   ctx.stroke();
   ctx.globalAlpha = 1;
 
   // Angle value label
   let midA = (a1 + a2) / 2;
-  // Ensure label is inside the angle (not on the reflex side)
-  const testX = pB.x + Math.cos(midA) * (r + 18);
-  const testY = pB.y + Math.sin(midA) * (r + 18);
-  ctx.font      = 'bold 13px Inter, sans-serif';
+  const labelOff = r + Math.round(18 * sc);
+  const testX = pB.x + Math.cos(midA) * labelOff;
+  const testY = pB.y + Math.sin(midA) * labelOff;
+  ctx.font      = `bold ${Math.round(13 * sc)}px Inter, sans-serif`;
   ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 5;
@@ -1432,7 +1436,7 @@ function canvasCoords(e) {
 }
 
 function hitTest(pos) {
-  const R = 18;
+  const R = Math.round(18 * _ptScale());
   for (const key of POINT_ORDER) {
     const p = pts[key];
     if (!p) continue;
