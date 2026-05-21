@@ -26,34 +26,44 @@
   <script src="js/biomechanicsUtils.js"></script>
   <style>
     /* ── Layout ─────────────────────────────────── */
-    .bio-layout {
-      display: grid;
-      grid-template-columns: 360px 1fr;
-      gap: 20px;
-      align-items: start;
-    }
-    @media (max-width: 1100px) { .bio-layout { grid-template-columns: 1fr; } }
+    .bio-layout { display: flex; flex-direction: column; gap: 16px; }
 
-    /* ── Left panel ─────────────────────────────── */
-    .bio-panel { display: flex; flex-direction: column; gap: 16px; }
-
-    .upload-zone {
-      border: 2px dashed var(--border-light);
+    /* ── Top bar ─────────────────────────────────── */
+    .bio-topbar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 16px;
+      background: var(--bg-card); border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 24px;
-      text-align: center;
-      cursor: pointer;
-      background: var(--bg-input);
-      transition: border-color .2s, background .2s;
     }
-    .upload-zone:hover, .upload-zone.dragover {
-      border-color: var(--primary);
-      background: var(--primary-glow);
+    .bio-upload-compact {
+      display: flex; align-items: center; gap: 7px; padding: 7px 13px;
+      border: 1.5px dashed var(--border-light); border-radius: var(--radius-md);
+      cursor: pointer; font-size: 13px; font-weight: 600;
+      color: var(--text-secondary); background: var(--bg-input);
+      transition: border-color .2s, background .2s, color .2s;
+      white-space: nowrap; flex-shrink: 0;
     }
-  #dropZoneVideo:hover, #dropZoneVideo.dragover {
-    border-color: #3b82f6 !important;
-    background: rgba(59,130,246,0.1) !important;
-  }
+    .bio-upload-compact:hover, .bio-upload-compact.dragover {
+      border-color: var(--primary); background: var(--primary-glow); color: var(--primary);
+    }
+    .bio-upload-compact.has-file { border-style: solid; border-color: var(--primary); color: var(--primary); }
+    .bio-upload-video:hover, .bio-upload-video.dragover {
+      border-color: #3b82f6 !important; background: rgba(59,130,246,0.1) !important; color: #60a5fa !important;
+    }
+    .bio-upload-video.has-file { border-style: solid; border-color: #3b82f6; color: #60a5fa; }
+    .bio-topbar-sep { width: 1px; height: 28px; background: var(--border); flex-shrink: 0; }
+    .bio-topbar .photo-strip { flex-wrap: nowrap; gap: 5px; margin: 0; }
+    .bio-topbar .photo-thumb { width: 42px; height: 42px; border-radius: 6px; }
+    .bio-topbar .photo-thumb .del { width: 14px; height: 14px; font-size: 9px; line-height: 14px; }
+
+    /* ── Left panel (solo para pestaña manual) ── */
+    .bio-panel { display: flex; flex-direction: column; gap: 16px; }
+    .upload-zone {
+      border: 2px dashed var(--border-light); border-radius: var(--radius-lg);
+      padding: 24px; text-align: center; cursor: pointer;
+      background: var(--bg-input); transition: border-color .2s, background .2s;
+    }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: var(--primary-glow); }
     .photo-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .photo-thumb {
       width: 68px; height: 68px;
@@ -343,7 +353,7 @@
       background: #000;
       border-radius: 0 0 var(--radius-lg) var(--radius-lg);
       overflow: hidden;
-      min-height: 400px;
+      min-height: 560px;
       border-top: 1px solid var(--border);
     }
     .canvas-box {
@@ -357,10 +367,14 @@
     .canvas-box:last-child { border-right: none; background: #05070a; }
 
     @media (max-width: 768px) {
-      .bio-canvas-container { flex-direction: column; }
-      .canvas-box { border-right: none; border-bottom: 1px solid var(--border); min-height: 380px; }
+      .bio-canvas-container { flex-direction: column; min-height: unset; }
+      .canvas-box { border-right: none; border-bottom: 1px solid var(--border); min-height: 340px; }
       .canvas-box:last-child { border-bottom: none; }
       .field-row { grid-template-columns: 1fr; }
+      .bio-topbar { padding: 10px 12px; gap: 8px; }
+      .bio-topbar-sep { display: none; }
+      .bio-topbar .field-select,
+      .bio-topbar .field-input { min-width: 0 !important; width: 100% !important; flex: 1 1 120px; }
     }
     .video-panel-state {
       position: absolute; inset: 0;
@@ -569,73 +583,43 @@
 
     <div class="bio-layout" id="tab-ai-content">
 
-      <!-- ══ LEFT PANEL ══════════════════════════════════════ -->
-      <div class="bio-panel">
-
-        <!-- Upload Foto -->
-        <div class="card">
-          <div class="card-header"><div class="card-title"><i class="fas fa-camera" style="color:var(--primary)"></i> Análisis Estático (Foto)</div></div>
-          <div class="card-body">
-            <div class="upload-zone" id="dropZonePhoto" onclick="document.getElementById('fileInputPhoto').click()">
-              <div style="font-size:22px;color:var(--primary)"><i class="fas fa-image"></i></div>
-              <div style="font-weight:600;font-size:13px;margin-top:6px">Sube tu foto lateral</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">JPG / PNG / WEBP · hasta 4 fotos</div>
-            </div>
-            <input type="file" id="fileInputPhoto" accept="image/*" multiple style="display:none">
-            <div class="photo-strip" id="photoStrip"></div>
-          </div>
+      <!-- ══ TOP BAR ══════════════════════════════════════ -->
+      <div class="bio-topbar">
+        <!-- Foto -->
+        <div class="bio-upload-compact" id="dropZonePhoto" onclick="document.getElementById('fileInputPhoto').click()">
+          <i class="fas fa-image" style="color:var(--primary)"></i>
+          <span>Foto lateral</span>
         </div>
+        <input type="file" id="fileInputPhoto" accept="image/*" multiple style="display:none">
+        <div class="photo-strip" id="photoStrip"></div>
 
-        <!-- Upload Video -->
-        <div class="card">
-          <div class="card-header"><div class="card-title"><i class="fas fa-video" style="color:#60a5fa"></i> Análisis Dinámico (Video)</div></div>
-          <div class="card-body">
-            <div class="upload-zone" id="dropZoneVideo" onclick="document.getElementById('fileInputVideo').click()" style="border-color:rgba(59,130,246,0.3); background:rgba(59,130,246,0.05)">
-              <div style="font-size:22px;color:#60a5fa"><i class="fas fa-film"></i></div>
-              <div style="font-weight:600;font-size:13px;margin-top:6px">Sube tu video pedaleando</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">MP4 / MOV · max 100 MB</div>
-            </div>
-            <input type="file" id="fileInputVideo" accept="video/*" style="display:none">
-          </div>
+        <div class="bio-topbar-sep"></div>
+
+        <!-- Video -->
+        <div class="bio-upload-compact bio-upload-video" id="dropZoneVideo" onclick="document.getElementById('fileInputVideo').click()">
+          <i class="fas fa-film" style="color:#60a5fa"></i>
+          <span>Video rodillo</span>
         </div>
+        <input type="file" id="fileInputVideo" accept="video/*" style="display:none">
 
-          <div class="card">
-            <div class="card-body">
-              <div class="field-group">
-                <div class="field-label">Disciplina</div>
-                <select id="discipline" class="field-select" onchange="draw(); updateAIDisciplineWarning();">
-                  <option value="carretera">Carretera</option>
-                  <option value="gravel">Gravel</option>
-                  <option value="mtb">MTB</option>
-                  <option value="triatlon">Triatlón / TT</option>
-                </select>
-              </div>
-              <div class="field-group">
-                <div class="field-label">Objetivo principal</div>
-                <select id="objective" class="field-select" onchange="draw();">
-                  <option value="rendimiento">Rendimiento</option>
-                  <option value="confort">Confort</option>
-                  <option value="aero">Aerodinámica</option>
-                </select>
-              </div>
-              <div class="field-group">
-                <div class="field-label">Zona de dolor (si hay)</div>
-                <input type="text" id="painArea" class="field-input"
-                  placeholder="rodilla, espalda, manos...">
-              </div>
+        <div class="bio-topbar-sep"></div>
 
-              <button class="btn-full" id="analyzeBtn" onclick="analyzeAI()">
-                <i class="fas fa-magic"></i> Autodetectar Puntos
-              </button>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">
-                Necesitas al menos 1 foto · Vista lateral recomendada
-              </div>
-            </div>
-          </div>
+        <!-- Campos -->
+        <select id="discipline" class="field-select" style="width:auto;min-width:130px" onchange="draw(); updateAIDisciplineWarning();">
+          <option value="carretera">Carretera</option>
+          <option value="gravel">Gravel</option>
+          <option value="mtb">MTB</option>
+          <option value="triatlon">Triatlón / TT</option>
+        </select>
+        <select id="objective" class="field-select" style="width:auto;min-width:130px" onchange="draw();">
+          <option value="rendimiento">Rendimiento</option>
+          <option value="confort">Confort</option>
+          <option value="aero">Aerodinámica</option>
+        </select>
+        <input type="text" id="painArea" class="field-input" style="min-width:150px;flex:1" placeholder="Zona de dolor (opcional)">
+      </div>
 
-      </div><!-- end left panel -->
-
-      <!-- ══ RIGHT AREA ══════════════════════════════════════ -->
+      <!-- ══ CANVAS AREA ══════════════════════════════════════ -->
       <div class="bio-main">
 
         <!-- Canvas -->
@@ -682,7 +666,7 @@
                       </div>
                     </div>
                     <div style="margin-top:8px;padding:6px 8px;background:rgba(196,239,68,.06);border-radius:6px;border-left:2px solid #C4EF44">
-                      <span style="font-size:10px;color:#C4EF44"><i class="fas fa-arrow-up"></i> <strong>Sube o arrastra tu foto</strong> en el panel izquierdo para comenzar</span>
+                      <span style="font-size:10px;color:#C4EF44"><i class="fas fa-arrow-up"></i> <strong>Sube o arrastra tu foto</strong> arriba para comenzar</span>
                     </div>
                   </div>
                 </div>
@@ -728,7 +712,7 @@
                       <span style="font-size:10px;color:#fca5a5"><i class="fas fa-exclamation-triangle"></i> <strong>Ángulo trasero o frontal no sirven</strong> — la IA necesita el perfil completo.</span>
                     </div>
                     <div style="margin-top:8px;padding:6px 8px;background:rgba(59,130,246,.06);border-radius:6px;border-left:2px solid #3b82f6">
-                      <span style="font-size:10px;color:#60a5fa"><i class="fas fa-arrow-up"></i> <strong>Sube o arrastra tu video</strong> en el panel izquierdo para comenzar</span>
+                      <span style="font-size:10px;color:#60a5fa"><i class="fas fa-arrow-up"></i> <strong>Sube o arrastra tu video</strong> arriba para comenzar</span>
                     </div>
                   </div>
                 </div>
@@ -756,35 +740,43 @@
           </div>
         </div>
 
-        <!-- Angles grid -->
-        <div class="angles-section" id="anglesSection" style="display:none">
-          <h3>📐 Ángulos Articulares (se actualizan al mover los puntos)</h3>
-          <div class="angles-grid" id="anglesGrid"></div>
-          <div style="margin-top:14px;display:flex;justify-content:flex-end">
-            <button onclick="openSaveSnapshotModal()" style="display:flex;align-items:center;gap:7px;padding:9px 18px;background:var(--primary);color:#111;border:none;border-radius:var(--radius-md);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-              <i class="fas fa-bookmark"></i> Guardar análisis
-            </button>
-          </div>
+        <!-- Autodetectar button — justo debajo del canvas -->
+        <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button class="btn-full" id="analyzeBtn" onclick="analyzeAI()" style="max-width:300px">
+            <i class="fas fa-magic"></i> Autodetectar Puntos
+          </button>
+          <span style="font-size:11px;color:var(--text-muted)">Necesitas al menos 1 foto · Vista lateral recomendada</span>
         </div>
 
-        <!-- Diagnosis (from AI) -->
-        <div id="diagSection" style="display:none">
-          <!-- CAJA MATEMÁTICAS -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                 Ajustes Recomendados
-                <span id="diagBadge" style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:8px"></span>
-              </div>
-            </div>
-            <div class="card-body">
-              <div id="diagFlags" style="margin-bottom:14px"></div>
-              <div id="diagAdj"></div>
+      </div><!-- end canvas card -->
+
+      <!-- Ángulos articulares -->
+      <div class="angles-section" id="anglesSection" style="display:none">
+        <h3>📐 Ángulos Articulares (se actualizan al mover los puntos)</h3>
+        <div class="angles-grid" id="anglesGrid"></div>
+        <div style="margin-top:14px;display:flex;justify-content:flex-end">
+          <button onclick="openSaveSnapshotModal()" style="display:flex;align-items:center;gap:7px;padding:9px 18px;background:var(--primary);color:#111;border:none;border-radius:var(--radius-md);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+            <i class="fas fa-bookmark"></i> Guardar análisis
+          </button>
+        </div>
+      </div>
+
+      <!-- Diagnóstico IA -->
+      <div id="diagSection" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+               Ajustes Recomendados
+              <span id="diagBadge" style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:8px"></span>
             </div>
           </div>
+          <div class="card-body">
+            <div id="diagFlags" style="margin-bottom:14px"></div>
+            <div id="diagAdj"></div>
+          </div>
         </div>
+      </div>
 
-      </div><!-- end right area -->
     </div> <!-- end tab-ai-content bio-layout -->
 
     <!-- ── SNAPSHOT HISTORY ── -->
@@ -1022,6 +1014,7 @@ function loadFiles(files, type) {
     const reader = new FileReader();
     reader.onload = ev => {
       photos.push({ dataUrl: ev.target.result, name: f.name });
+      dropZonePhoto.classList.add('has-file');
       renderStrip();
       selectPhoto(photos.length - 1);
     };
@@ -1048,7 +1041,7 @@ function removePhoto(i) {
   selIdx = Math.max(0, Math.min(selIdx, photos.length - 1));
   renderStrip();
   if (photos.length) selectPhoto(selIdx);
-  else clearCanvas();
+  else { clearCanvas(); dropZonePhoto.classList.remove('has-file'); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1117,8 +1110,8 @@ function resizeCanvas() {
   const totalW = wrapper.clientWidth || 700;
   const W = isMobile ? totalW : Math.round(totalW / 2);
   canvas.width = W;
-  canvas.height = bioImg ? Math.round(W / (bioImg.width / bioImg.height)) : (isMobile ? 340 : 420);
-  canvas.height = Math.min(canvas.height, isMobile ? 520 : 560);
+  canvas.height = bioImg ? Math.round(W / (bioImg.width / bioImg.height)) : (isMobile ? 340 : 560);
+  canvas.height = Math.min(canvas.height, isMobile ? 520 : 680);
   updateImgRegion();
 
   // Re-project pts into new canvas coords to keep angles correct after resize
@@ -1277,6 +1270,7 @@ async function handleVideoFile(file) {
   videoEl.style.display = 'block';
   videoEl.play().catch(() => {});
 
+  dropZoneVideo.classList.add('has-file');
   document.getElementById('videoUploadArea').style.display   = 'none';
   document.getElementById('videoLoadingArea').style.display  = 'flex';
   document.getElementById('videoResultsArea').style.display  = 'none';
@@ -1380,6 +1374,7 @@ function resetVideoPanel() {
   videoEl.style.display = 'none';
   if (window._videoBlobUrl) { URL.revokeObjectURL(window._videoBlobUrl); window._videoBlobUrl = null; }
 
+  dropZoneVideo.classList.remove('has-file');
   document.getElementById('videoUploadArea').style.display  = 'flex';
   document.getElementById('videoLoadingArea').style.display = 'none';
   document.getElementById('videoResultsArea').style.display = 'none';
