@@ -1571,8 +1571,10 @@ function renderPlan(plan, athlete) {
   if (window.TrainingPlanGenerator) {
     (plan.sessions || []).forEach(s => {
       if (s.isRest || !s.type) return;
-      s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, 'main');
-      s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, 'alt');
+      const sv    = s.intervalVariant || 'main';
+      const svAlt = sv === 'main' ? 'alt' : 'main';
+      s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, sv);
+      s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, svAlt);
       if (TrainingPlanGenerator._buildDesc) {
         s.description     = TrainingPlanGenerator._buildDesc(s.intervals);
         s.alt_description = TrainingPlanGenerator._buildDesc(s.alt_intervals);

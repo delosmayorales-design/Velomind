@@ -1607,14 +1607,18 @@ async function detectWithMoveNet(imgEl) {
       if (kp && kp.score > 0.15) result[joint] = { x: kp.x / W, y: kp.y / H };
     }
 
-    // Estimar foot_tip desde la dirección rodilla→tobillo
+    // Estimar foot_tip: el pie se extiende perpendicular a la espinilla (no en su misma dirección)
+    // En posición 6 en punto la espinilla es vertical → la punta del pie queda hacia adelante (x)
     if (result.ankle && result.knee) {
-      const dx = result.ankle.x - result.knee.x;
-      const dy = result.ankle.y - result.knee.y;
-      const len = Math.sqrt(dx*dx + dy*dy) || 1;
+      const shinX = result.ankle.x - result.knee.x;
+      const shinY = result.ankle.y - result.knee.y;
+      const shinLen = Math.sqrt(shinX*shinX + shinY*shinY) || 1;
+      const footLen = shinLen * 0.30; // pie ≈ 30% de la espinilla en imagen lateral
+      // Si usamos el lado izquierdo el ciclista mira a la derecha (sign=+1), y viceversa
+      const sign = (sideMap === LEFT) ? 1 : -1;
       result.foot_tip = {
-        x: Math.max(0, Math.min(1, result.ankle.x + (dx/len)*0.05)),
-        y: Math.max(0, Math.min(1, result.ankle.y + (dy/len)*0.03))
+        x: Math.max(0, Math.min(1, result.ankle.x + sign * (shinY / shinLen) * footLen)),
+        y: Math.max(0, Math.min(1, result.ankle.y - sign * (shinX / shinLen) * footLen + footLen * 0.2))
       };
     }
 

@@ -1832,12 +1832,27 @@ function renderLastAct() {
 }
 
 /* ── LOAD PLAN ───────────────────────────────────────────── */
+function _rebuildDashDescriptions(sessions) {
+  if (!window.TrainingPlanGenerator?._buildIntervals || !window.TrainingPlanGenerator?._buildDesc) return;
+  const ftp = AppState.athlete?.ftp || 200;
+  (sessions || []).forEach(s => {
+    if (s.isRest || !s.type) return;
+    const sv    = s.intervalVariant || 'main';
+    const svAlt = sv === 'main' ? 'alt' : 'main';
+    s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, sv);
+    s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, svAlt);
+    s.description     = TrainingPlanGenerator._buildDesc(s.intervals);
+    s.alt_description = TrainingPlanGenerator._buildDesc(s.alt_intervals);
+  });
+}
+
 async function loadPlan() {
   const currentWeekStart = getMondayString();
   try {
     const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan')||'{}');
     if (local?.sessions && local.week_start === currentWeekStart) {
       dashPlan = { sessions:local.sessions, phase:local.phase, targetTSS:local.tss_target, advice:local.advice||{} };
+      _rebuildDashDescriptions(dashPlan.sessions);
       renderToday(dashPlan, AppState.athlete);
       renderWeek(dashPlan);
       renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
@@ -1848,6 +1863,7 @@ async function loadPlan() {
     if (data?.sessions && data.week_start === currentWeekStart) {
       if (dashPlan?.sessions) data.sessions.forEach((s,i)=>{ if (dashPlan.sessions[i]?.completed) s.completed=true; if (dashPlan.sessions[i]?.manuallyUnmarked) s.manuallyUnmarked=true; });
       dashPlan = { sessions:data.sessions, phase:data.phase, targetTSS:data.tss_target, advice:data.advice||{} };
+      _rebuildDashDescriptions(dashPlan.sessions);
       localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ week_start:data.week_start||getMondayString(), sessions:data.sessions, tss_target:data.tss_target, phase:data.phase, advice:data.advice, savedAt:Date.now() }));
       renderToday(dashPlan, AppState.athlete);
       renderWeek(dashPlan);

@@ -754,6 +754,7 @@ const TrainingPlanGenerator = {
         advice: t.description + terrainAdvice,
         intervals,
         alt_intervals,
+        intervalVariant,
       };
     });
 

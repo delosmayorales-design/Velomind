@@ -117,6 +117,24 @@
       margin-bottom: 22px; flex-wrap: wrap;
     }
     .bike-detail-emoji { font-size: 52px; line-height: 1; flex-shrink: 0; }
+    .bike-photo-thumb {
+      width: 54px; height: 54px; border-radius: 10px;
+      object-fit: cover; flex-shrink: 0; border: 1px solid var(--border);
+    }
+    .bike-photo-thumb-lg {
+      width: 72px; height: 72px; border-radius: 12px;
+      object-fit: cover; flex-shrink: 0; border: 1px solid var(--border);
+    }
+    .bike-photo-upload-area {
+      border: 2px dashed var(--border); border-radius: var(--radius-md);
+      padding: 14px; text-align: center; cursor: pointer;
+      transition: var(--transition); position: relative; overflow: hidden;
+    }
+    .bike-photo-upload-area:hover { border-color: var(--primary); background: var(--primary-glow); }
+    .bike-photo-preview {
+      width: 100%; max-height: 140px; object-fit: cover;
+      border-radius: var(--radius-sm); margin-bottom: 8px; display: none;
+    }
     .bike-detail-info { flex: 1; min-width: 200px; }
     .bike-detail-name { font-size: 22px; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text); margin-bottom: 3px; }
     .bike-detail-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
@@ -1039,6 +1057,21 @@
       <input type="text" id="eb-strava" placeholder="Ej: b12345678">
       <small>Ve a <strong>strava.com → Mi Perfil → Equipamiento</strong>. El ID aparece en la URL: /bikes/<strong>b12345678</strong></small>
     </div>
+    <div class="modal-divider"></div>
+    <div class="fg">
+      <label><i class="fas fa-camera" style="color:var(--primary)"></i> Foto de la bici</label>
+      <div class="bike-photo-upload-area" id="eb-photo-area" onclick="document.getElementById('eb-photo-input').click()">
+        <img id="eb-photo-preview" class="bike-photo-preview" src="" alt="preview">
+        <div id="eb-photo-placeholder">
+          <i class="fas fa-image" style="font-size:24px;color:var(--text-muted);margin-bottom:6px;display:block"></i>
+          <div style="font-size:12px;color:var(--text-muted)">Toca para subir una foto de tu bici</div>
+        </div>
+        <input type="file" id="eb-photo-input" accept="image/*" style="display:none" onchange="G._onBikePhotoChange(event)">
+      </div>
+      <div id="eb-photo-remove-wrap" style="display:none;margin-top:6px">
+        <button type="button" onclick="G._removeBikePhoto()" style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;color:var(--text-muted);font-size:12px;cursor:pointer"><i class="fas fa-trash"></i> Quitar foto</button>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn-mc" onclick="G.closeModal('m-edit-bike')">Cancelar</button>
       <button class="btn-mok" onclick="G.saveBikeConfig()"><i class="fas fa-save"></i> Guardar</button>
@@ -1440,10 +1473,14 @@ const G = (() => {
     const bm = [bike.brand, bike.model].filter(Boolean).join(' ');
     const strTag = bike.strava_gear_id
       ? `<span class="strava-badge linked" style="font-size:10px;padding:2px 7px"><i class="fab fa-strava"></i></span>` : '';
+    const cardPhoto = _getBikePhoto(bike.id);
+    const cardIcon = cardPhoto
+      ? `<img class="bike-photo-thumb" src="${cardPhoto}" alt="${bike.name}">`
+      : `<div class="bike-emoji">${m.emoji}</div>`;
     return `
     <div class="bike-card" style="--bike-color:${m.color}" onclick="G.showBike('${bike.id}')">
       <div class="bike-card-header">
-        <div class="bike-emoji">${m.emoji}</div>
+        ${cardIcon}
         <div class="bike-card-meta">
           <div class="bike-card-name">${bike.name}</div>
           <span class="bike-type-badge" style="background:${m.color}22;color:${m.color};border:1px solid ${m.color}44">${m.label}</span>
@@ -1486,9 +1523,13 @@ const G = (() => {
       ? `<span class="strava-badge linked"><i class="fab fa-strava"></i> ${bike.strava_gear_id}</span>`
       : `<span class="strava-badge unlinked" onclick="G.openEditBike('${bike.id}')" style="cursor:pointer"><i class="fab fa-strava"></i> Vincular</span>`;
 
+    const detailPhoto = _getBikePhoto(bike.id);
+    const detailIcon = detailPhoto
+      ? `<img class="bike-photo-thumb-lg" src="${detailPhoto}" alt="${bike.name}">`
+      : `<div class="bike-detail-emoji">${m.emoji}</div>`;
     const header = `
     <div class="bike-detail-header">
-      <div class="bike-detail-emoji">${m.emoji}</div>
+      ${detailIcon}
       <div class="bike-detail-info">
         <div class="bike-detail-name">${bike.name}</div>
         <div class="bike-detail-sub">${bm || m.label}</div>
@@ -1820,6 +1861,82 @@ const G = (() => {
     }
   }
 
+  // ─── Bike photo helpers ──────────────────────────────────
+  function _bikePhotoKey(id) { return 'velomind_bike_photo_' + id; }
+
+  function _getBikePhoto(id) {
+    try { return localStorage.getItem(_bikePhotoKey(id)) || null; } catch { return null; }
+  }
+
+  function _setBikePhoto(id, base64) {
+    try { if (base64) localStorage.setItem(_bikePhotoKey(id), base64); else localStorage.removeItem(_bikePhotoKey(id)); } catch {}
+  }
+
+  function _compressImage(file, maxPx, quality, cb) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(img.width  * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        cb(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function _onBikePhotoChange(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    _compressImage(file, 600, 0.80, b64 => {
+      const preview = document.getElementById('eb-photo-preview');
+      const placeholder = document.getElementById('eb-photo-placeholder');
+      const removeWrap = document.getElementById('eb-photo-remove-wrap');
+      preview.src = b64;
+      preview.style.display = 'block';
+      placeholder.style.display = 'none';
+      removeWrap.style.display = '';
+      preview.dataset.pending = b64;
+    });
+  }
+
+  function _removeBikePhoto() {
+    const preview = document.getElementById('eb-photo-preview');
+    const placeholder = document.getElementById('eb-photo-placeholder');
+    const removeWrap = document.getElementById('eb-photo-remove-wrap');
+    preview.src = '';
+    preview.style.display = 'none';
+    preview.dataset.pending = '';
+    placeholder.style.display = '';
+    removeWrap.style.display = 'none';
+    document.getElementById('eb-photo-input').value = '';
+  }
+
+  function _loadEditPhotoUI(bikeId) {
+    const photo = _getBikePhoto(bikeId);
+    const preview = document.getElementById('eb-photo-preview');
+    const placeholder = document.getElementById('eb-photo-placeholder');
+    const removeWrap = document.getElementById('eb-photo-remove-wrap');
+    if (photo) {
+      preview.src = photo;
+      preview.style.display = 'block';
+      placeholder.style.display = 'none';
+      removeWrap.style.display = '';
+      preview.dataset.pending = '';
+    } else {
+      preview.src = '';
+      preview.style.display = 'none';
+      placeholder.style.display = '';
+      removeWrap.style.display = 'none';
+      preview.dataset.pending = '';
+    }
+    document.getElementById('eb-photo-input').value = '';
+  }
+
   function openEditBike(id) {
     const bike = st.bikes.find(b => b.id === id);
     if (!bike) return;
@@ -1831,6 +1948,7 @@ const G = (() => {
     document.getElementById('eb-year').value  = bike.year  || new Date().getFullYear();
     document.getElementById('eb-km').value    = bike.total_km || 0;
     document.getElementById('eb-strava').value = bike.strava_gear_id || '';
+    _loadEditPhotoUI(id);
     openModal('m-edit-bike');
   }
 
@@ -1865,6 +1983,13 @@ const G = (() => {
     } else if (bike.id && typeof BackendSync !== 'undefined') {
       // ID no UUID (ej. bike_strava_*) — intentar persistir odómetro igualmente
       BackendSync.updateBikeOdometer(bike.id, bike.total_km, bike.total_hours || 0).catch(() => {});
+    }
+    // Guardar foto si se subió o eliminó
+    const preview = document.getElementById('eb-photo-preview');
+    const pending = preview?.dataset?.pending;
+    if (pending !== undefined) {
+      if (pending) _setBikePhoto(id, pending);
+      else if (preview.style.display === 'none') _setBikePhoto(id, null);
     }
     closeModal('m-edit-bike');
     toast('green','✅ Guardado', `${bike.name} configurada.`);
@@ -2125,7 +2250,7 @@ const G = (() => {
     }
   }
 
-  return { init, showOverview, showBike, showTools, openCheckin, confirmCheckin, openEditComp, saveCompEdit, searchPrice, searchInModal, openEditBike, saveBikeConfig, openAddKm, confirmAddKm, openHistory, openModal, closeModal, syncActivities, exportPDF, importFromStrava, openAddBike, saveNewBike, deleteBike };
+  return { init, showOverview, showBike, showTools, openCheckin, confirmCheckin, openEditComp, saveCompEdit, searchPrice, searchInModal, openEditBike, saveBikeConfig, openAddKm, confirmAddKm, openHistory, openModal, closeModal, syncActivities, exportPDF, importFromStrava, openAddBike, saveNewBike, deleteBike, _onBikePhotoChange, _removeBikePhoto };
 })();
 
 
