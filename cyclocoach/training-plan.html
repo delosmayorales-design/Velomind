@@ -330,31 +330,56 @@
     .zone-bar-fill  { height:100%; border-radius:3px; transition:width .6s; }
 
     /* ── Estado de Forma ─────────────────────────────────────── */
-    .fs-header { display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap; }
+    #form-state-section {
+      background: linear-gradient(155deg, var(--bg-card) 45%, rgba(56,189,248,.05) 100%);
+      position: relative;
+    }
+    #form-state-section::after {
+      content:''; position:absolute; top:-40px; right:-40px;
+      width:110px; height:110px; border-radius:50%;
+      background:radial-gradient(circle, rgba(56,189,248,.07) 0%, transparent 70%);
+      pointer-events:none;
+    }
+    @keyframes fsEnter { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+    .fs-card-enter { animation: fsEnter .35s cubic-bezier(.4,0,.2,1) both; }
+    .fs-header { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+    .fs-phase-dot {
+      width:6px; height:6px; border-radius:50%; flex-shrink:0;
+      animation: fsDotPulse 2.5s ease-in-out infinite;
+    }
+    @keyframes fsDotPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.25;transform:scale(.5)} }
     .fs-date { margin-left:auto; font-size:9px; color:var(--text-muted); font-weight:600;
                text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; }
     .fs-pmc-grid {
       display:grid; grid-template-columns:1fr 1px 1fr 1px 1fr;
-      gap:0; margin-bottom:5px;
+      gap:0; margin-bottom:8px;
     }
-    .fs-vdiv { background:rgba(255,255,255,.07); }
-    .fs-metric { display:flex; flex-direction:column; align-items:center; padding:2px 4px; gap:1px; }
-    .fs-val { font-size:18px; font-weight:800; font-family:'Plus Jakarta Sans',sans-serif; line-height:1; }
-    .fs-name { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.7px;
-               color:var(--text-muted); display:flex; gap:3px; align-items:center; }
-    .fs-name span { font-weight:400; opacity:.65; }
-    .fs-bar-track { width:44px; height:2px; background:rgba(255,255,255,.08); border-radius:2px;
-                    overflow:hidden; margin:2px 0 0; }
-    .fs-bar-fill  { height:100%; border-radius:2px; transition:width .7s ease; }
+    .fs-vdiv { background:rgba(255,255,255,.06); }
+    .fs-metric { display:flex; flex-direction:column; align-items:center; padding:4px 2px; gap:2px; }
+    .fs-val { font-size:26px; font-weight:900; font-family:'Plus Jakarta Sans',sans-serif; line-height:1; letter-spacing:-1.5px; }
+    .fs-val-ctl { color:#38BDF8; filter:drop-shadow(0 0 10px rgba(56,189,248,.6)); }
+    .fs-val-atl { color:#F97316; filter:drop-shadow(0 0 10px rgba(249,115,22,.6)); }
+    .fs-name { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.8px;
+               color:var(--text-muted); display:flex; gap:3px; align-items:center; margin-top:1px; }
+    .fs-name span { font-weight:400; opacity:.5; }
+    .fs-bar-track { width:52px; height:4px; background:rgba(255,255,255,.07); border-radius:4px;
+                    overflow:hidden; margin:4px 0 0; }
+    .fs-bar-fill  { height:100%; border-radius:4px; transition:width 1.1s cubic-bezier(.4,0,.2,1); }
     .fs-period { display:none; }
-    .fs-tsb-chip { font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px;
-                   margin:1px 0 0; }
+    .fs-tsb-chip { font-size:8px; font-weight:800; padding:2px 7px; border-radius:10px;
+                   margin-top:3px; letter-spacing:.3px; white-space:nowrap;
+                   animation: fsTsbPulse 3s ease-in-out infinite; }
+    @keyframes fsTsbPulse { 0%,100%{opacity:1} 50%{opacity:.55} }
     .fs-secondary {
-      display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-      padding-top:5px; border-top:1px solid rgba(255,255,255,.06);
-      font-size:10px; color:var(--text-muted);
+      display:flex; align-items:center; justify-content:space-around;
+      padding-top:7px; border-top:1px solid rgba(255,255,255,.06); gap:0;
     }
-    .fs-secondary i { margin-right:2px; opacity:.7; }
+    .fs-stat { display:flex; flex-direction:column; align-items:center; gap:1px; }
+    .fs-stat-val { font-size:13px; font-weight:800; color:var(--text-secondary);
+                   font-family:'Plus Jakarta Sans',sans-serif; }
+    .fs-stat-lbl { font-size:8px; text-transform:uppercase; letter-spacing:.6px;
+                   color:var(--text-muted); font-weight:600; }
+    .fs-stat-div { width:1px; height:22px; background:rgba(255,255,255,.07); flex-shrink:0; }
 
 
     /* ── Helpers ─────────────────────────────────────────────── */
@@ -1114,64 +1139,132 @@ async function loadCoachData() {
 function renderFormState(s, training) {
   if (document.getElementById('form-state-loading')) document.getElementById('form-state-loading').style.display = 'none';
   const phaseClass = { base:'phase-base', build:'phase-build', peak:'phase-peak', recovery:'phase-recovery', race:'phase-race' }[s.phase] || 'phase-base';
-  const formClass  = { blue:'form-blue', green:'form-green', lime:'form-lime', yellow:'form-yellow', orange:'form-orange', red:'form-red' }[s.form?.color] || 'form-lime';
 
   const tsb = s.pmc.tsb;
   const tsbSign = tsb > 0 ? '+' : '';
 
   function tsbState(v) {
-    if (v > 25)  return { label:'Muy fresco',       emoji:'🚀', color:'#64a0ff', bg:'rgba(100,160,255,.14)' };
-    if (v > 5)   return { label:'Fresco',           emoji:'✅', color:'#00C882', bg:'rgba(0,200,130,.14)'   };
-    if (v > -10) return { label:'En forma',         emoji:'💪', color:'#b4e600', bg:'rgba(180,230,0,.14)'   };
-    if (v > -20) return { label:'Carga alta',       emoji:'⚖️', color:'#FFC800', bg:'rgba(255,200,0,.14)'   };
-    if (v > -30) return { label:'Fatiga acumulada', emoji:'🔥', color:'#FF9632', bg:'rgba(255,150,50,.14)'  };
-    return             { label:'Sobreentrenado',    emoji:'🛑', color:'#ff4757', bg:'rgba(255,71,87,.14)'   };
+    if (v > 25)  return { label:'Muy fresco',       emoji:'🚀', color:'#64a0ff', bg:'rgba(100,160,255,.15)' };
+    if (v > 5)   return { label:'Fresco',           emoji:'✅', color:'#00C882', bg:'rgba(0,200,130,.15)'   };
+    if (v > -10) return { label:'En forma',         emoji:'💪', color:'#b4e600', bg:'rgba(180,230,0,.15)'   };
+    if (v > -20) return { label:'Carga alta',       emoji:'⚖️', color:'#FFC800', bg:'rgba(255,200,0,.15)'   };
+    if (v > -30) return { label:'Fatiga',           emoji:'🔥', color:'#FF9632', bg:'rgba(255,150,50,.15)'  };
+    return             { label:'Sobreentrenado',    emoji:'🛑', color:'#ff4757', bg:'rgba(255,71,87,.15)'   };
   }
   const tsbs = tsbState(tsb);
 
-  // CTL escala relativa /100, ATL /80 — valores típicos para amateur
-  const ctlPct  = Math.min(100, Math.round((s.pmc.ctl / 100) * 100));
-  const atlPct  = Math.min(100, Math.round((s.pmc.atl / 80)  * 100));
+  const ctlPct = Math.min(100, Math.round((s.pmc.ctl / 100) * 100));
+  const atlPct = Math.min(100, Math.round((s.pmc.atl / 80)  * 100));
+  const today  = new Date().toLocaleDateString('es-ES', { day:'numeric', month:'short' });
 
-  const today = new Date().toLocaleDateString('es-ES', { day:'numeric', month:'short' });
+  // TSB arc gauge (semi-circle speedometer)
+  const tsbClamped  = Math.max(-40, Math.min(40, tsb));
+  const arcPct      = (tsbClamped + 40) / 80; // 0 = left, 1 = right
+  const arcAngleRad = (1 - arcPct) * Math.PI;
+  const [acx, acy, ar] = [28, 28, 23];
+  const aex = (acx + ar * Math.cos(arcAngleRad)).toFixed(2);
+  const aey = (acy - ar * Math.sin(arcAngleRad)).toFixed(2);
+  const showArc = arcPct > 0.02;
+
+  const phaseColors = { base:'#38BDF8', build:'#b4e600', peak:'#FF9632', recovery:'#00C882', race:'#ff4757' };
+  const dotColor = phaseColors[s.phase] || '#b4e600';
 
   const content = document.getElementById('form-state-content');
-  if (content) content.innerHTML = `
-    <div class="fs-header">
-      <span class="phase-badge ${phaseClass}">${phaseLabel(s.phase)}</span>
-      <span class="fs-date"><i class="fas fa-calendar-day" style="margin-right:4px;opacity:.5"></i>${today}</span>
-    </div>
+  if (!content) return;
+  content.innerHTML = `
+    <div class="fs-card-enter">
+      <div class="fs-header">
+        <span class="fs-phase-dot" style="background:${dotColor};box-shadow:0 0 6px ${dotColor}"></span>
+        <span class="phase-badge ${phaseClass}">${phaseLabel(s.phase)}</span>
+        <span class="fs-date"><i class="fas fa-calendar-day" style="margin-right:3px;opacity:.4"></i>${today}</span>
+      </div>
 
-    <div class="fs-pmc-grid">
-      <div class="fs-metric">
-        <div class="fs-val" style="color:#38BDF8">${s.pmc.ctl}</div>
-        <div class="fs-name">CTL <span>fitness</span></div>
-        <div class="fs-bar-track"><div class="fs-bar-fill" style="width:${ctlPct}%;background:#38BDF8;opacity:.85"></div></div>
-        <div class="fs-period">media 42 días</div>
+      <div class="fs-pmc-grid">
+        <div class="fs-metric">
+          <div class="fs-val fs-val-ctl" id="fs-ctl-val">0</div>
+          <div class="fs-name">CTL <span>fitness</span></div>
+          <div class="fs-bar-track">
+            <div class="fs-bar-fill" id="fs-ctl-bar" style="width:0%;background:linear-gradient(90deg,#1a7aa8,#38BDF8);box-shadow:0 0 8px rgba(56,189,248,.5)"></div>
+          </div>
+        </div>
+        <div class="fs-vdiv"></div>
+        <div class="fs-metric">
+          <div class="fs-val fs-val-atl" id="fs-atl-val">0</div>
+          <div class="fs-name">ATL <span>fatiga</span></div>
+          <div class="fs-bar-track">
+            <div class="fs-bar-fill" id="fs-atl-bar" style="width:0%;background:linear-gradient(90deg,#9a4410,#F97316);box-shadow:0 0 8px rgba(249,115,22,.5)"></div>
+          </div>
+        </div>
+        <div class="fs-vdiv"></div>
+        <div class="fs-metric">
+          <div class="fs-val" id="fs-tsb-val" style="color:${tsbs.color};filter:drop-shadow(0 0 10px ${tsbs.color}88)">0</div>
+          <div class="fs-name">TSB <span>forma</span></div>
+          <svg viewBox="0 0 56 30" width="56" height="30" style="overflow:visible;margin-top:4px;flex-shrink:0">
+            <path d="M 5,28 A 23,23 0 0,1 51,28" stroke="rgba(255,255,255,.08)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            ${showArc
+              ? `<path d="M 5,28 A 23,23 0 0,1 ${aex},${aey}" stroke="${tsbs.color}" stroke-width="3.5" fill="none" stroke-linecap="round" style="filter:drop-shadow(0 0 4px ${tsbs.color})"/>
+                 <circle cx="${aex}" cy="${aey}" r="3.5" fill="${tsbs.color}" style="filter:drop-shadow(0 0 7px ${tsbs.color})"/>`
+              : `<circle cx="5" cy="28" r="3.5" fill="${tsbs.color}"/>`}
+          </svg>
+          <div class="fs-tsb-chip" style="color:${tsbs.color};background:${tsbs.bg}">${tsbs.emoji} ${tsbs.label}</div>
+        </div>
       </div>
-      <div class="fs-vdiv"></div>
-      <div class="fs-metric">
-        <div class="fs-val" style="color:#F97316">${s.pmc.atl}</div>
-        <div class="fs-name">ATL <span>fatiga</span></div>
-        <div class="fs-bar-track"><div class="fs-bar-fill" style="width:${atlPct}%;background:#F97316;opacity:.85"></div></div>
-        <div class="fs-period">media 7 días</div>
-      </div>
-      <div class="fs-vdiv"></div>
-      <div class="fs-metric">
-        <div class="fs-val" style="color:${tsbs.color}">${tsbSign}${tsb}</div>
-        <div class="fs-name">TSB <span>forma</span></div>
-        <div class="fs-tsb-chip" style="color:${tsbs.color};background:${tsbs.bg}">${tsbs.emoji} ${tsbs.label}</div>
-        <div class="fs-period">CTL − ATL · hoy</div>
-      </div>
-    </div>
 
-    <div class="fs-secondary">
-      <span><i class="fas fa-bicycle"></i>${s.rides} salidas · 30d</span>
-      <span><i class="fas fa-gauge-high"></i>${s.avgTSS} TSS/sal.</span>
-      ${s.wkg ? `<span><i class="fas fa-bolt"></i>${s.wkg} W/kg</span>` : ''}
+      <div class="fs-secondary">
+        <div class="fs-stat">
+          <div class="fs-stat-val"><i class="fas fa-bicycle" style="font-size:9px;margin-right:2px;opacity:.6"></i>${s.rides}</div>
+          <div class="fs-stat-lbl">salidas · 30d</div>
+        </div>
+        <div class="fs-stat-div"></div>
+        <div class="fs-stat">
+          <div class="fs-stat-val">${s.avgTSS}</div>
+          <div class="fs-stat-lbl">TSS / sal.</div>
+        </div>
+        ${s.wkg ? `
+        <div class="fs-stat-div"></div>
+        <div class="fs-stat">
+          <div class="fs-stat-val" style="color:var(--primary)">${s.wkg}</div>
+          <div class="fs-stat-lbl">W/kg</div>
+        </div>` : ''}
+      </div>
     </div>
   `;
-  if (content) content.classList.remove('hidden');
+  content.classList.remove('hidden');
+
+  // Animate bars + count-up on next frame
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const cb = document.getElementById('fs-ctl-bar');
+    const ab = document.getElementById('fs-atl-bar');
+    if (cb) cb.style.width = ctlPct + '%';
+    if (ab) ab.style.width = atlPct + '%';
+    _fsCountUp('fs-ctl-val', s.pmc.ctl, 900);
+    _fsCountUp('fs-atl-val', s.pmc.atl, 900);
+    _fsTSBCountUp('fs-tsb-val', tsb, 900, tsbSign, tsbs.color);
+  }));
+}
+
+function _fsCountUp(id, to, dur) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const t0 = performance.now();
+  (function tick(t) {
+    const p = Math.min((t - t0) / dur, 1);
+    el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3)));
+    if (p < 1) requestAnimationFrame(tick);
+  })(t0);
+}
+
+function _fsTSBCountUp(id, to, dur, sign, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const abs = Math.abs(to);
+  const neg = to < 0;
+  const t0  = performance.now();
+  (function tick(t) {
+    const p = Math.min((t - t0) / dur, 1);
+    el.textContent = (neg ? '-' : sign) + Math.round(abs * (1 - Math.pow(1 - p, 3)));
+    if (p < 1) requestAnimationFrame(tick);
+  })(t0);
 }
 
 function renderZoneBars(z) {
