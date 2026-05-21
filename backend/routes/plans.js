@@ -118,4 +118,62 @@ router.post('/biomechanics', async (req, res) => {
   res.status(201).json({ message: 'Biomecánica guardada', id: data.id });
 });
 
+// ── Biomechanics Snapshots ─────────────────────────────────────────────────
+
+router.get('/biomechanics-snapshots', async (req, res) => {
+  const { data, error } = await supabase
+    .from('biomechanics_snapshots')
+    .select('id, created_at, bike_id, bike_name, discipline, objective, notes, angles, canvas_thumbnail')
+    .eq('user_id', req.user.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ snapshots: data || [] });
+});
+
+router.post('/biomechanics-snapshot', async (req, res) => {
+  const { bike_id, bike_name, discipline, objective, notes, angles, keypoints, canvas_thumbnail } = req.body;
+  if (!angles) return res.status(400).json({ error: 'angles requerido' });
+
+  const { data, error } = await supabase
+    .from('biomechanics_snapshots')
+    .insert({
+      user_id:          req.user.id,
+      bike_id:          bike_id          || null,
+      bike_name:        bike_name        || null,
+      discipline:       discipline       || 'carretera',
+      objective:        objective        || 'rendimiento',
+      notes:            notes            || null,
+      angles,
+      keypoints:        keypoints        || {},
+      canvas_thumbnail: canvas_thumbnail || null,
+    })
+    .select('id, created_at')
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json({ ok: true, snapshot: data });
+});
+
+router.get('/biomechanics-snapshot/:id', async (req, res) => {
+  const { data, error } = await supabase
+    .from('biomechanics_snapshots')
+    .select('*')
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .maybeSingle();
+  if (error || !data) return res.status(404).json({ error: 'Snapshot no encontrado' });
+  res.json({ snapshot: data });
+});
+
+router.delete('/biomechanics-snapshot/:id', async (req, res) => {
+  const { error } = await supabase
+    .from('biomechanics_snapshots')
+    .delete()
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
 module.exports = router;

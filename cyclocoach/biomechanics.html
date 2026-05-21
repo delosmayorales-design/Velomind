@@ -429,6 +429,54 @@
     @media (max-width: 700px) {
       .bio-form-col-l { border-right: none; border-bottom: 1px solid var(--border); }
     }
+
+    /* ── Snapshot history ───────────────────────────────── */
+    .snapshot-card {
+      display: flex; gap: 14px; padding: 14px 16px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-md); cursor: pointer;
+      transition: border-color .18s, background .18s; position: relative;
+    }
+    .snapshot-card:hover { border-color: var(--primary); background: var(--primary-glow); }
+    .snapshot-thumb {
+      width: 72px; height: 72px; border-radius: 8px; object-fit: cover;
+      flex-shrink: 0; background: var(--bg-card);
+    }
+    .snapshot-thumb-placeholder {
+      width: 72px; height: 72px; border-radius: 8px; flex-shrink: 0;
+      background: var(--bg-card); display: flex; align-items: center;
+      justify-content: center; font-size: 26px;
+    }
+    .snap-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 8px; border-radius: 20px;
+      font-size: 10px; font-weight: 700; white-space: nowrap;
+    }
+    .snap-badge.ok      { background: rgba(34,197,94,.15);  color: #22c55e; }
+    .snap-badge.warning { background: rgba(251,191,36,.15); color: #fbbf24; }
+    .snap-badge.bad     { background: rgba(239,68,68,.15);  color: #ef4444; }
+
+    /* ── Snapshot modals ────────────────────────────────── */
+    .snap-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.65);
+      backdrop-filter: blur(4px); z-index: 1000;
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+    }
+    .snap-box {
+      background: var(--bg-card); border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg); width: 100%; max-width: 520px;
+      max-height: 90vh; overflow-y: auto; padding: 24px;
+    }
+    .snap-box h3 { margin: 0 0 18px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+    .snap-angle-row { display: flex; justify-content: space-between; align-items: center;
+      padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .snap-angle-row:last-child { border-bottom: none; }
+    .snap-angle-val { font-weight: 700; font-size: 17px; }
+    .snap-angle-status { font-size: 11px; font-weight: 700; }
+    .snap-delta { font-size: 11px; font-weight: 600; }
+    .snap-delta.up   { color: #22c55e; }
+    .snap-delta.down { color: #ef4444; }
+    .snap-delta.neu  { color: var(--text-muted); }
   </style>
 </head>
 <body>
@@ -693,6 +741,11 @@
         <div class="angles-section" id="anglesSection" style="display:none">
           <h3>📐 Ángulos Articulares (se actualizan al mover los puntos)</h3>
           <div class="angles-grid" id="anglesGrid"></div>
+          <div style="margin-top:14px;display:flex;justify-content:flex-end">
+            <button onclick="openSaveSnapshotModal()" style="display:flex;align-items:center;gap:7px;padding:9px 18px;background:var(--primary);color:#111;border:none;border-radius:var(--radius-md);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+              <i class="fas fa-bookmark"></i> Guardar análisis
+            </button>
+          </div>
         </div>
 
         <!-- Diagnosis (from AI) -->
@@ -714,6 +767,28 @@
 
       </div><!-- end right area -->
     </div> <!-- end tab-ai-content bio-layout -->
+
+    <!-- ── SNAPSHOT HISTORY ── -->
+    <div id="snapshotHistorySection" style="display:none;margin-top:8px">
+      <div class="card">
+        <div class="card-header" onclick="toggleSnapshotHistory()" style="cursor:pointer;user-select:none">
+          <div class="card-title">
+            <i class="fas fa-history" style="color:var(--primary)"></i>
+            Historial de Análisis Biomecánicos
+            <span id="snapshotCount" style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:6px"></span>
+          </div>
+          <i id="snapshotChevron" class="fas fa-chevron-down" style="color:var(--text-muted);transition:transform .2s"></i>
+        </div>
+        <div id="snapshotListWrap" style="display:none">
+          <div class="card-body" style="padding-top:0">
+            <div id="snapshotList" style="display:flex;flex-direction:column;gap:10px"></div>
+            <div id="snapshotListEmpty" style="display:none;padding:24px;text-align:center;color:var(--text-muted);font-size:13px">
+              Sin análisis guardados aún. Coloca los puntos en la foto y pulsa <strong>Guardar análisis</strong>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ── MANUAL TAB CONTENT (FULL WIDTH) ── -->
     <div id="tab-manual-content" style="display:none;">
@@ -2099,6 +2174,328 @@ async function loadMeasurements() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// SNAPSHOT HISTORY
+// ═══════════════════════════════════════════════════════════
+let _snapshots  = [];
+let _garageBikes = [];
+
+const SNAP_ANGLE_LABELS  = { knee_extension:'Extensión Rodilla', hip_angle:'Ángulo Cadera', trunk_angle:'Ángulo Tronco', elbow_angle:'Ángulo Codo', ankle_angle:'Ángulo Tobillo' };
+const SNAP_STATUS_COLOR  = { ok:'#22c55e', warning:'#fbbf24', low:'#ef4444', high:'#ef4444', bad:'#ef4444' };
+const SNAP_STATUS_LABEL  = { ok:'Óptimo', warning:'Ajustar', low:'Bajo', high:'Alto', bad:'Corregir' };
+const SNAP_STATUS_CLASS  = { ok:'ok', warning:'warning', low:'bad', high:'bad', bad:'bad' };
+
+function _captureThumb(maxW = 220) {
+  if (!bioImg && !POINT_ORDER.some(k => pts[k])) return null;
+  try {
+    const tc = document.createElement('canvas');
+    const ratio = canvas.height / canvas.width;
+    tc.width  = maxW;
+    tc.height = Math.round(maxW * ratio);
+    tc.getContext('2d').drawImage(canvas, 0, 0, tc.width, tc.height);
+    return tc.toDataURL('image/jpeg', 0.78);
+  } catch(e) { return null; }
+}
+
+function _getPtsNormalized() {
+  if (!imgR) return {};
+  const { dx, dy, dw, dh } = imgR;
+  const norm = {};
+  for (const k of POINT_ORDER) {
+    const p = pts[k];
+    if (p) norm[k] = {
+      x: Math.max(0, Math.min(1, (p.x - dx) / dw)),
+      y: Math.max(0, Math.min(1, (p.y - dy) / dh)),
+    };
+  }
+  return norm;
+}
+
+async function _loadBikesForSelector() {
+  if (_garageBikes.length) return _garageBikes;
+  try {
+    const r = await fetch(`${window.API_URL}/garage`, { headers: Auth.getHeaders() });
+    if (r.ok) {
+      const data = await r.json();
+      _garageBikes = (data.bikes || data || []).map(b => ({ id: b.id, name: b.name }));
+    }
+  } catch(e) {}
+  return _garageBikes;
+}
+
+async function openSaveSnapshotModal() {
+  const result = BiomechanicsUtils.processBiomechanics(pts, document.getElementById('objective').value);
+  if (!result.isValid) { alert('Coloca todos los puntos en la imagen antes de guardar.'); return; }
+
+  const thumb = _captureThumb(400);
+  const prev  = document.getElementById('snapThumbPreview');
+  if (thumb) { prev.src = thumb; prev.style.display = ''; }
+  else prev.style.display = 'none';
+
+  const bikes = await _loadBikesForSelector();
+  const sel   = document.getElementById('snapBikeSelect');
+  sel.innerHTML = '<option value="">— Sin bici asociada —</option>' +
+    bikes.map(b => `<option value="${b.id}">${_esc(b.name)}</option>`).join('');
+
+  document.getElementById('snapNotes').value = '';
+  const btn = document.getElementById('confirmSnapBtn');
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-bookmark"></i> Guardar';
+  document.getElementById('saveSnapshotModal').style.display = 'flex';
+}
+
+function closeSaveSnapshotModal() {
+  document.getElementById('saveSnapshotModal').style.display = 'none';
+}
+
+async function confirmSaveSnapshot() {
+  const btn = document.getElementById('confirmSnapBtn');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+
+  try {
+    const objective  = document.getElementById('objective').value;
+    const discipline = document.getElementById('discipline').value;
+    const result     = BiomechanicsUtils.processBiomechanics(pts, objective);
+    if (!result.isValid) throw new Error('Puntos incompletos');
+
+    const angles = {};
+    for (const [key] of Object.entries(SNAP_ANGLE_LABELS)) {
+      const ref = result.angles[key];
+      if (ref && ref.value != null) angles[key] = { value: Math.round(ref.value), status: ref.status };
+    }
+
+    const bikeId   = document.getElementById('snapBikeSelect').value;
+    const bikeName = bikeId ? (_garageBikes.find(b => b.id == bikeId)?.name || '') : '';
+    const notes    = document.getElementById('snapNotes').value.trim() || null;
+
+    const r = await fetch(`${window.API_URL}/plans/biomechanics-snapshot`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
+      body: JSON.stringify({
+        bike_id: bikeId || null, bike_name: bikeName || null,
+        discipline, objective, notes, angles,
+        keypoints:        _getPtsNormalized(),
+        canvas_thumbnail: _captureThumb(220),
+      }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Error guardando');
+
+    const { snapshot } = await r.json();
+    closeSaveSnapshotModal();
+    // Prepend to local cache and re-render
+    _snapshots.unshift({
+      id: snapshot.id, created_at: snapshot.created_at,
+      bike_name: bikeName || null, discipline, objective, notes,
+      angles, canvas_thumbnail: _captureThumb(220),
+    });
+    renderSnapshots();
+    // Auto-expand history
+    document.getElementById('snapshotHistorySection').style.display = '';
+    document.getElementById('snapshotListWrap').style.display       = '';
+    document.getElementById('snapshotChevron').style.transform      = 'rotate(180deg)';
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-bookmark"></i> Guardar';
+  }
+}
+
+async function loadSnapshots() {
+  try {
+    const r = await fetch(`${window.API_URL}/plans/biomechanics-snapshots`, { headers: Auth.getHeaders() });
+    if (!r.ok) return;
+    const data = await r.json();
+    _snapshots  = data.snapshots || [];
+    renderSnapshots();
+  } catch(e) {}
+}
+
+function renderSnapshots() {
+  const list  = document.getElementById('snapshotList');
+  const empty = document.getElementById('snapshotListEmpty');
+  const sec   = document.getElementById('snapshotHistorySection');
+  const count = document.getElementById('snapshotCount');
+
+  if (!_snapshots.length) {
+    list.innerHTML = '';
+    empty.style.display = '';
+    sec.style.display   = 'none';
+    return;
+  }
+  sec.style.display   = '';
+  empty.style.display = 'none';
+  count.textContent   = `(${_snapshots.length})`;
+
+  list.innerHTML = _snapshots.map((s, idx) => {
+    const dateStr = new Date(s.created_at).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' });
+    const timeStr = new Date(s.created_at).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+    const thumb   = s.canvas_thumbnail
+      ? `<img class="snapshot-thumb" src="${s.canvas_thumbnail}" alt="miniatura">`
+      : `<div class="snapshot-thumb-placeholder">📐</div>`;
+
+    const badges = Object.entries(SNAP_ANGLE_LABELS).map(([key, lbl]) => {
+      const a = s.angles?.[key]; if (!a) return '';
+      const cls = SNAP_STATUS_CLASS[a.status] || 'ok';
+      return `<span class="snap-badge ${cls}">${lbl.split(' ')[lbl.split(' ').length-1]} ${a.value}°</span>`;
+    }).join('');
+
+    // Delta extensión rodilla vs snapshot anterior
+    let deltaHtml = '';
+    if (idx < _snapshots.length - 1) {
+      const prev = _snapshots[idx + 1];
+      const d    = (s.angles?.knee_extension?.value ?? null) - (prev.angles?.knee_extension?.value ?? null);
+      if (!isNaN(d) && d !== 0) {
+        const cls = d > 0 ? 'up' : 'down';
+        const ico = d > 0 ? '▲' : '▼';
+        deltaHtml = `<span class="snap-delta ${cls}" style="margin-left:6px">${ico}${Math.abs(d)}° rodilla</span>`;
+      }
+    }
+
+    const bikeLine = s.bike_name
+      ? `<span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-bicycle"></i> ${_esc(s.bike_name)}</span>`
+      : '';
+    const notesLine = s.notes
+      ? `<div style="font-size:11px;color:var(--text-muted);margin-top:5px;line-height:1.4">${_esc(s.notes.slice(0,90))}${s.notes.length>90?'…':''}</div>`
+      : '';
+
+    return `
+      <div class="snapshot-card" onclick="viewSnapshot('${s.id}')">
+        ${thumb}
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:7px">
+            <span style="font-weight:700;font-size:13px">${dateStr} <span style="color:var(--text-muted);font-weight:400">${timeStr}</span>${deltaHtml}</span>
+            ${bikeLine}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${badges}</div>
+          ${notesLine}
+        </div>
+        <button onclick="event.stopPropagation();deleteSnapshot('${s.id}')"
+          style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:4px 6px;border-radius:6px;transition:color .15s"
+          onmouseenter="this.style.color='var(--danger)'" onmouseleave="this.style.color='var(--text-muted)'"
+          title="Eliminar análisis">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>`;
+  }).join('');
+}
+
+function toggleSnapshotHistory() {
+  const wrap    = document.getElementById('snapshotListWrap');
+  const chevron = document.getElementById('snapshotChevron');
+  const open    = wrap.style.display !== 'none';
+  wrap.style.display         = open ? 'none' : '';
+  chevron.style.transform    = open ? '' : 'rotate(180deg)';
+}
+
+async function viewSnapshot(id) {
+  // Try to get full data (with keypoints) from backend
+  let snap = _snapshots.find(s => s.id === id) || {};
+  try {
+    const r = await fetch(`${window.API_URL}/plans/biomechanics-snapshot/${id}`, { headers: Auth.getHeaders() });
+    if (r.ok) snap = (await r.json()).snapshot || snap;
+  } catch(e) {}
+
+  _renderDetailModal(snap);
+  document.getElementById('detailSnapshotModal').style.display = 'flex';
+}
+
+function _renderDetailModal(snap) {
+  const dateStr = new Date(snap.created_at).toLocaleString('es-ES',
+    { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+  // Find previous snapshot for comparison
+  const idx  = _snapshots.findIndex(s => s.id === snap.id);
+  const prev = idx >= 0 && idx < _snapshots.length - 1 ? _snapshots[idx + 1] : null;
+
+  const thumbHtml = snap.canvas_thumbnail
+    ? `<img src="${snap.canvas_thumbnail}" style="width:100%;border-radius:10px;margin-bottom:18px;object-fit:cover;max-height:260px">`
+    : '';
+
+  const metaLine = [
+    snap.bike_name ? `<i class="fas fa-bicycle"></i> ${_esc(snap.bike_name)}` : '',
+    snap.discipline || '', snap.objective || '',
+  ].filter(Boolean).join(' · ');
+
+  const angleRows = Object.entries(SNAP_ANGLE_LABELS).map(([key, lbl]) => {
+    const a = snap.angles?.[key]; if (!a) return '';
+    const color = SNAP_STATUS_COLOR[a.status]  || '#94a3b8';
+    const label = SNAP_STATUS_LABEL[a.status]  || '';
+
+    let deltaHtml = '';
+    if (prev) {
+      const pa = prev.angles?.[key];
+      if (pa) {
+        const d = a.value - pa.value;
+        if (d !== 0) {
+          const cls = d > 0 ? 'up' : 'down';
+          deltaHtml = `<span class="snap-delta ${cls}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}°</span>`;
+        } else {
+          deltaHtml = `<span class="snap-delta neu">= igual</span>`;
+        }
+      }
+    }
+
+    return `<div class="snap-angle-row">
+      <span style="color:var(--text-secondary)">${lbl}</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        ${deltaHtml}
+        <span class="snap-angle-val">${a.value}°</span>
+        <span class="snap-angle-status" style="color:${color}">${label}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const compLabel = prev
+    ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Flechas (▲▼) = diferencia vs análisis anterior del ${new Date(prev.created_at).toLocaleDateString('es-ES')}</div>`
+    : '';
+
+  const hasKeypoints = snap.keypoints && Object.keys(snap.keypoints).length >= 5;
+  const notesHtml = snap.notes
+    ? `<div style="margin-top:16px;padding:10px 14px;background:var(--bg-input);border-radius:8px;font-size:12px;color:var(--text-secondary);line-height:1.5">${_esc(snap.notes)}</div>`
+    : '';
+
+  const box = document.getElementById('detailModalContent');
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <h3 style="margin:0;font-size:15px"><i class="fas fa-chart-line" style="color:var(--primary)"></i> ${dateStr}</h3>
+      <button onclick="closeDetailSnapshotModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1;padding:0">✕</button>
+    </div>
+    ${thumbHtml}
+    ${metaLine ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">${metaLine}</div>` : ''}
+    ${compLabel}
+    <div>${angleRows}</div>
+    ${notesHtml}
+    ${hasKeypoints ? `<button onclick="loadSnapshotPoints()" style="margin-top:18px;width:100%;padding:11px;background:var(--primary);color:#111;border:none;border-radius:var(--radius-md);cursor:pointer;font-weight:700;font-size:13px;font-family:inherit"><i class="fas fa-redo"></i> Cargar puntos de este análisis</button>` : ''}
+  `;
+  box._keypoints = snap.keypoints || null;
+}
+
+function closeDetailSnapshotModal() {
+  document.getElementById('detailSnapshotModal').style.display = 'none';
+}
+
+function loadSnapshotPoints() {
+  const kp = document.getElementById('detailModalContent')._keypoints;
+  if (!kp || Object.keys(kp).length < 5) return;
+  closeDetailSnapshotModal();
+  loadAIKeypoints(kp);
+}
+
+async function deleteSnapshot(id) {
+  if (!confirm('¿Eliminar este análisis? Esta acción no se puede deshacer.')) return;
+  try {
+    const r = await fetch(`${window.API_URL}/plans/biomechanics-snapshot/${id}`, {
+      method: 'DELETE', headers: Auth.getHeaders(),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Error eliminando');
+    _snapshots = _snapshots.filter(s => s.id !== id);
+    renderSnapshots();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+function _esc(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════════════════════════
 Auth.init().then(user => {
@@ -2110,9 +2507,48 @@ Auth.init().then(user => {
   if (window.AppState) AppState.init().then(() => loadMeasurements());
   else loadMeasurements();
 
+  loadSnapshots();
+
   // Revelar página tras renderizado inicial
   requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
 });
 </script>
+
+<!-- ── SAVE SNAPSHOT MODAL ── -->
+<div id="saveSnapshotModal" class="snap-overlay" style="display:none" onclick="if(event.target===this)closeSaveSnapshotModal()">
+  <div class="snap-box">
+    <h3><i class="fas fa-bookmark" style="color:var(--primary)"></i> Guardar análisis biomecánico</h3>
+
+    <img id="snapThumbPreview" src="" alt="miniatura" style="width:100%;border-radius:10px;margin-bottom:18px;display:none;object-fit:cover;max-height:220px">
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Bicicleta</div>
+        <select id="snapBikeSelect" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;font-family:inherit">
+          <option value="">— Sin bici asociada —</option>
+        </select>
+      </div>
+
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Notas / Motivo del análisis</div>
+        <textarea id="snapNotes" rows="3" placeholder="ej. Tras bajar el sillín 5mm por dolor de rodilla…" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button onclick="closeSaveSnapshotModal()" style="flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer;font-family:inherit;font-size:13px">Cancelar</button>
+      <button id="confirmSnapBtn" onclick="confirmSaveSnapshot()" style="flex:2;padding:10px;background:var(--primary);color:#111;border:none;border-radius:var(--radius-md);font-weight:700;cursor:pointer;font-family:inherit;font-size:13px">
+        <i class="fas fa-bookmark"></i> Guardar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DETAIL SNAPSHOT MODAL ── -->
+<div id="detailSnapshotModal" class="snap-overlay" style="display:none" onclick="if(event.target===this)closeDetailSnapshotModal()">
+  <div class="snap-box">
+    <div id="detailModalContent"></div>
+  </div>
+</div>
 </body>
 </html>
