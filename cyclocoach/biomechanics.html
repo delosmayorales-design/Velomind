@@ -2225,7 +2225,8 @@ async function _loadBikesForSelector() {
     const r = await fetch(`${window.API_URL}/garage`, { headers: Auth.getHeaders() });
     if (r.ok) {
       const data = await r.json();
-      _garageBikes = (data.bikes || data || []).map(b => ({ id: b.id, name: b.name }));
+      const list = data.garage?.bikes || data.bikes || [];
+      _garageBikes = list.map(b => ({ id: String(b.id), name: b.name }));
     }
   } catch(e) {}
   return _garageBikes;

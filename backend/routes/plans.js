@@ -139,7 +139,7 @@ router.post('/biomechanics-snapshot', async (req, res) => {
     .from('biomechanics_snapshots')
     .insert({
       user_id:          req.user.id,
-      bike_id:          bike_id          || null,
+      bike_id:          bike_id ? String(bike_id) : null,
       bike_name:        bike_name        || null,
       discipline:       discipline       || 'carretera',
       objective:        objective        || 'rendimiento',
