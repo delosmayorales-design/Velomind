@@ -3620,7 +3620,7 @@ function toggleNextWeekSummary() {
 function _renderNextWeekSummary() {
   const athlete = AppState.athlete || getDefaultAthlete();
 
-  // Simular semana siguiente: restar 7 días al evento (misma distancia temporal desde dentro de 7 días)
+  // Simular semana siguiente: evento 7 días más cercano
   const nextAthlete = Object.assign({}, athlete);
   if (athlete.event_date) {
     const d = new Date(athlete.event_date);
@@ -3628,7 +3628,16 @@ function _renderNextWeekSummary() {
     nextAthlete.event_date = d.toISOString().split('T')[0];
   }
 
-  const nextPlan = TrainingPlanGenerator.generate(nextAthlete, AppState.activities);
+  // Avanzar el ciclo 3:1 en +1 posición respecto a la semana actual:
+  // si hoy es semana 2, la siguiente es semana 3 (más carga);
+  // si hoy es semana 3, la siguiente es semana 4 (recuperación, −25%).
+  const _cyclingTypes = ['cycling','Cycling','Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide'];
+  const currentCycle = TrainingPlanGenerator._detectCycleWeek(
+    (AppState.activities || []).filter(a => !a.type || _cyclingTypes.includes(a.type))
+  );
+  const nextWeekInCycle = currentCycle.weekInCycle >= 4 ? 1 : currentCycle.weekInCycle + 1;
+
+  const nextPlan = TrainingPlanGenerator.generate(nextAthlete, AppState.activities, { cycleWeekOverride: nextWeekInCycle });
 
   // Rango de fechas de la semana siguiente
   const now        = new Date();
@@ -3672,12 +3681,21 @@ function _renderNextWeekSummary() {
         <span style="opacity:.85">${nextPlan.adaptation.text}</span>
        </div>` : '';
 
+  const cycleLabel = nextWeekInCycle === 4
+    ? 'Semana recuperación'
+    : `Semana ${nextWeekInCycle} de carga`;
+  const cycleColor = nextWeekInCycle === 4 ? '#00C882' : 'var(--text-muted)';
+  const tssVsCurrent = currentPlan
+    ? (nextPlan.targetTSS > currentPlan.targetTSS ? `▲ +${nextPlan.targetTSS - currentPlan.targetTSS}` : nextPlan.targetTSS < currentPlan.targetTSS ? `▼ −${currentPlan.targetTSS - nextPlan.targetTSS}` : '= igual')
+    : '';
+
   document.getElementById('next-week-content').innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
       <span style="font-size:13px;font-weight:700;color:var(--text)">Semana siguiente</span>
       <span style="font-size:11px;color:var(--text-muted)">${dateRange}</span>
       <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid ${phaseColor}33;color:${phaseColor};background:${phaseColor}1a">${phaseLabel}</span>
-      <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">TSS obj: <strong style="color:var(--text)">${nextPlan.targetTSS}</strong></span>
+      <span style="font-size:10px;font-weight:700;color:${cycleColor};padding:1px 6px;border-radius:8px;background:${cycleColor}18">${cycleLabel}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">TSS obj: <strong style="color:var(--text)">${nextPlan.targetTSS}</strong>${tssVsCurrent ? ` <span style="font-size:9px;color:${cycleColor}">${tssVsCurrent}</span>` : ''}</span>
     </div>
     <div class="nw-grid">${daysHtml}</div>
     ${adaptHtml}

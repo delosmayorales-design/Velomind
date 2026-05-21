@@ -285,7 +285,7 @@ const TrainingPlanGenerator = {
    * - athlete.experience: 'principiante' | 'intermedio' | 'avanzado'
    * - pmcData para TSB/CTL actuales
    */
-  generate(athlete, activities) {
+  generate(athlete, activities, options = {}) {
     const ftp    = athlete.ftp    || 200;
     const weight = athlete.weight || 75;
     const hours  = Math.max(4, Math.min(20, athlete.weekly_hours || 8));
@@ -312,7 +312,9 @@ const TrainingPlanGenerator = {
     const adherence = this._calculateAdherence(cyclingActs, hours);
 
     // ── Ciclo 3:1 — detectar semana del microciclo desde historial TSS ──
-    const cycleInfo = this._detectCycleWeek(cyclingActs);
+    const cycleInfo = options.cycleWeekOverride != null
+      ? this._buildCycleFromWeek(options.cycleWeekOverride)
+      : this._detectCycleWeek(cyclingActs);
 
     // ── TSS objetivo semanal ──
     const baseIF = { principiante: 0.60, intermedio: 0.68, avanzado: 0.74 }[exp] || 0.68;
@@ -493,6 +495,18 @@ const TrainingPlanGenerator = {
     }
 
     return { weekInCycle, loadMultiplier, isRecoveryWeek, weeklyTSS: weekTSS };
+  },
+
+  // Construir cycleInfo sintético para simulación de semana futura
+  _buildCycleFromWeek(weekInCycle) {
+    const w = Math.max(1, Math.min(4, weekInCycle));
+    const multipliers = { 1: 1.00, 2: 1.05, 3: 1.10, 4: 0.75 };
+    return {
+      weekInCycle: w,
+      loadMultiplier: multipliers[w],
+      isRecoveryWeek: w === 4,
+      weeklyTSS: [0, 0, 0, 0],
+    };
   },
 
   // ── Macrociclo: contexto de posición hacia el evento ────────────
