@@ -425,7 +425,8 @@ ${stepsXml}
 
     try {
       const headers = (typeof Auth !== 'undefined' && Auth.getHeaders) ? Auth.getHeaders() : {};
-      const resp = await fetch('/api/plans/export-fit', {
+      const apiBase = (typeof window !== 'undefined' && window.API_URL) ? window.API_URL : '/api';
+      const resp = await fetch(`${apiBase}/plans/export-fit`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
         body:    JSON.stringify({ name: label, steps }),

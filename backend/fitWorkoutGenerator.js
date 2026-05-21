@@ -20,13 +20,13 @@
 // FIT Epoch: 00:00:00 UTC del 31-12-1989 = Unix epoch 631065600
 const FIT_EPOCH_OFFSET = 631065600;
 
-// Base types del perfil FIT
+// Base types del perfil FIT (FIT Protocol Rev 2.3, §3 Base Types)
 const BT = {
   ENUM:    0x00,
   UINT8:   0x02,
   UINT16:  0x84,
   UINT32:  0x86,
-  UINT32Z: 0x8E,
+  UINT32Z: 0x8C,  // uint32z — valor inválido = 0x00000000 (no 0x8E que es sint64)
   STRING:  0x07,
 };
 
@@ -141,21 +141,19 @@ function generateWorkoutFIT(workoutName, steps) {
 
   // ── WORKOUT (global=26, local=2) ─────────────────────────────────────────
   w.def(2, 26, [
-    { num: 4,  size: 1,  bt: BT.ENUM    }, // sport
-    { num: 1,  size: 4,  bt: BT.UINT32Z }, // capabilities
-    { num: 6,  size: 2,  bt: BT.UINT16  }, // num_valid_steps
-    { num: 8,  size: 16, bt: BT.STRING  }, // wkt_name
-    { num: 10, size: 1,  bt: BT.ENUM    }, // sub_sport
+    { num: 4, size: 1,  bt: BT.ENUM    }, // sport
+    { num: 5, size: 4,  bt: BT.UINT32Z }, // capabilities (field 5, no field 1)
+    { num: 6, size: 2,  bt: BT.UINT16  }, // num_valid_steps
+    { num: 8, size: 16, bt: BT.STRING  }, // wkt_name
   ]);
   w.hdr(2);
   w.u8(2);             // sport=2 (cycling)
   w.u32(0);            // capabilities=0
   w.u16(steps.length); // num_valid_steps
   w.str(name, 16);     // wkt_name
-  w.u8(0);             // sub_sport=0 (generic)
 
   // ── WORKOUT_STEP (global=27, local=3) ────────────────────────────────────
-  // duration_value para TIME está en SEGUNDOS (FIT Protocol Rev 2.3, §WORKOUT_STEP)
+  // duration_value para TIME: valor RAW en milisegundos (Profile scale=1000, units=s)
   w.def(3, 27, [
     { num: 254, size: 2,  bt: BT.UINT16 }, // message_index (orden del paso)
     { num: 0,   size: 16, bt: BT.STRING }, // wkt_step_name
@@ -170,7 +168,7 @@ function generateWorkoutFIT(workoutName, steps) {
 
   steps.forEach((s, i) => {
     const durType = s.open ? 5 : 0;
-    const durSec  = s.open ? 0 : Math.max(0, s.sec | 0); // segundos
+    const durMs   = s.open ? 0 : Math.max(0, s.sec | 0) * 1000; // ms (Profile scale=1000)
     const hasPow  = (s.lo > 0 || s.hi > 0);
     const tgtType = hasPow ? 3 : 0; // 3=power, 0=sin objetivo
     const intKey  = s.intensity === 2 ? 'warmup'
@@ -182,7 +180,7 @@ function generateWorkoutFIT(workoutName, steps) {
     w.u16(i);
     w.str(toAscii(s.name || 'Paso').slice(0, 15), 16);
     w.u8(durType);
-    w.u32(durSec);
+    w.u32(durMs);
     w.u8(tgtType);
     w.u32(0);               // target_value=0 → usar rango personalizado
     w.u32(s.lo || 0);       // custom_target_value_low
