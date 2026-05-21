@@ -4472,8 +4472,12 @@ function adaptToRoller(idx) {
     }
   }
   const _rollerChartBars = _rollerExpanded.map(iv => {
-    const _dm = String(iv.dur || '').match(/(\d+(?:\.\d+)?)/);
-    const _dMin = _dm ? parseFloat(_dm[1]) : 1;
+    const _durStr = String(iv.dur || '');
+    const _dm = _durStr.match(/(\d+(?:\.\d+)?)/);
+    const _rawNum = _dm ? parseFloat(_dm[1]) : 1;
+    // Convertir a minutos: si la unidad es segundos ("s"), dividir entre 60
+    const _isSeconds = /\d\s*s\b/i.test(_durStr) && !/min/i.test(_durStr);
+    const _dMin = _isSeconds ? Math.max(0.1, _rawNum / 60) : _rawNum;
     const _wn = (String(iv.watts || '').match(/\d+/g) || []).map(Number);
     let _in = 0.35;
     if (_wn.length >= 2) _in = Math.max(0.2, Math.min(1.1, (_wn[0] + _wn[1]) / 2 / ftp));
