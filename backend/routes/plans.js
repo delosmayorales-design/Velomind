@@ -123,7 +123,7 @@ router.post('/biomechanics', async (req, res) => {
 router.get('/biomechanics-snapshots', async (req, res) => {
   const { data, error } = await supabase
     .from('biomechanics_snapshots')
-    .select('id, created_at, bike_id, bike_name, discipline, objective, notes, angles, canvas_thumbnail')
+    .select('id, created_at, bike_name, discipline, objective, notes, angles, canvas_thumbnail')
     .eq('user_id', req.user.id)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -132,14 +132,13 @@ router.get('/biomechanics-snapshots', async (req, res) => {
 });
 
 router.post('/biomechanics-snapshot', async (req, res) => {
-  const { bike_id, bike_name, discipline, objective, notes, angles, keypoints, canvas_thumbnail } = req.body;
+  const { bike_name, discipline, objective, notes, angles, keypoints, canvas_thumbnail } = req.body;
   if (!angles) return res.status(400).json({ error: 'angles requerido' });
 
   const { data, error } = await supabase
     .from('biomechanics_snapshots')
     .insert({
       user_id:          req.user.id,
-      bike_id:          bike_id ? String(bike_id) : null,
       bike_name:        bike_name        || null,
       discipline:       discipline       || 'carretera',
       objective:        objective        || 'rendimiento',

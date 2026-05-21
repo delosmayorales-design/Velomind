@@ -2273,28 +2273,28 @@ async function confirmSaveSnapshot() {
     }
 
     const bikeId   = document.getElementById('snapBikeSelect').value;
-    const bikeName = bikeId ? (_garageBikes.find(b => b.id == bikeId)?.name || '') : '';
+    const bikeName = bikeId ? (_garageBikes.find(b => b.id === bikeId)?.name || '') : '';
     const notes    = document.getElementById('snapNotes').value.trim() || null;
+    const thumb    = _captureThumb(220);
 
     const r = await fetch(`${window.API_URL}/plans/biomechanics-snapshot`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
       body: JSON.stringify({
-        bike_id: bikeId || null, bike_name: bikeName || null,
+        bike_name: bikeName || null,
         discipline, objective, notes, angles,
         keypoints:        _getPtsNormalized(),
-        canvas_thumbnail: _captureThumb(220),
+        canvas_thumbnail: thumb,
       }),
     });
     if (!r.ok) throw new Error((await r.json()).error || 'Error guardando');
 
     const { snapshot } = await r.json();
     closeSaveSnapshotModal();
-    // Prepend to local cache and re-render
     _snapshots.unshift({
       id: snapshot.id, created_at: snapshot.created_at,
       bike_name: bikeName || null, discipline, objective, notes,
-      angles, canvas_thumbnail: _captureThumb(220),
+      angles, canvas_thumbnail: thumb,
     });
     renderSnapshots();
     // Auto-expand history
