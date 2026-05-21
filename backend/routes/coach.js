@@ -603,7 +603,7 @@ async function analyzeBiomechanicsWithAI(photos, rider, userPoints = {}) {
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': googleKey },
             body: JSON.stringify({
               contents: [{ role: 'user', parts }],
-              generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
+              generationConfig: { temperature: 0, maxOutputTokens: 4096 },
             }),
           }
         );
@@ -661,7 +661,7 @@ async function analyzeBiomechanicsWithAI(photos, rider, userPoints = {}) {
       const resp = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
-        body: JSON.stringify({ model: 'gpt-4o', messages: oaiMessages, max_tokens: 4096, response_format: { type: 'json_object' } }),
+        body: JSON.stringify({ model: 'gpt-4o', messages: oaiMessages, max_tokens: 4096, temperature: 0, response_format: { type: 'json_object' } }),
       });
       if (resp.ok) {
         const data = await resp.json();

@@ -1006,6 +1006,19 @@ const ANGLE_DEFS = [
 
 // ─── Resize canvas to wrapper ───────────────────────────────
 function resizeCanvas() {
+  // Save normalized pts before resize so they survive the new imgR
+  const oldImgR = imgR;
+  const normalizedBefore = {};
+  if (oldImgR) {
+    for (const k of POINT_ORDER) {
+      const p = pts[k];
+      if (p) normalizedBefore[k] = {
+        x: (p.x - oldImgR.dx) / oldImgR.dw,
+        y: (p.y - oldImgR.dy) / oldImgR.dh,
+      };
+    }
+  }
+
   const isMobile = window.innerWidth <= 768;
   const totalW = wrapper.clientWidth || 700;
   const W = isMobile ? totalW : Math.round(totalW / 2);
@@ -1013,6 +1026,16 @@ function resizeCanvas() {
   canvas.height = bioImg ? Math.round(W / (bioImg.width / bioImg.height)) : (isMobile ? 340 : 420);
   canvas.height = Math.min(canvas.height, isMobile ? 520 : 560);
   updateImgRegion();
+
+  // Re-project pts into new canvas coords to keep angles correct after resize
+  if (imgR && Object.keys(normalizedBefore).length) {
+    const { dx, dy, dw, dh } = imgR;
+    for (const k of POINT_ORDER) {
+      const n = normalizedBefore[k];
+      if (n) pts[k] = { x: dx + n.x * dw, y: dy + n.y * dh };
+    }
+  }
+
   draw();
 }
 
