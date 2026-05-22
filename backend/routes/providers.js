@@ -326,7 +326,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       const type = 'cycling';
 
       // Calcular TSS e Intensity Factor (IF) basándonos en la potencia normalizada
-      const np = a.weighted_average_watts || a.average_watts || 0;
+      const np = a.weighted_average_watts || 0;
       const duration = a.moving_time || a.elapsed_time || 0;
       let tss = 0, ifValue = 0;
       let finalNp = np;
@@ -674,7 +674,9 @@ function mapGarminActivity(a, uid, ftp) {
   const startSec = Number(a.startTimeInSeconds || a.startTimeOffsetInSeconds || 0);
   const duration = Math.round(Number(a.durationInSeconds || a.activeTimeInSeconds || a.elapsedDurationInSeconds || 0));
   const avgPower = Math.round(Number(a.averagePowerInWatts || a.avgPower || 0));
-  const np = Math.round(Number(a.normalizedPowerInWatts || a.normPower || avgPower || 0));
+  const np = (a.normalizedPowerInWatts || a.normPower)
+    ? Math.round(Number(a.normalizedPowerInWatts || a.normPower))
+    : null;
   let ifValue = 0, tss = 0;
   if (np > 0 && duration > 0 && ftp > 0) {
     ifValue = Math.round((np / ftp) * 100) / 100;
@@ -693,7 +695,7 @@ function mapGarminActivity(a, uid, ftp) {
     max_speed: Math.round(Number(a.maxSpeedInMetersPerSecond || 0) * 36) / 10,
     avg_power: Math.min(avgPower, 2500),
     max_power: Math.min(Math.round(Number(a.maxPowerInWatts || 0)), 3500),
-    np: Math.min(np, 2500),
+    np: np != null ? Math.min(np, 2500) : null,
     avg_hr: Math.min(Math.round(Number(a.averageHeartRateInBeatsPerMinute || a.averageHR || 0)), 250),
     max_hr: Math.min(Math.round(Number(a.maxHeartRateInBeatsPerMinute || a.maxHR || 0)), 250),
     avg_cadence: Math.round(Number(a.averageBikeCadenceInRoundsPerMinute || a.averageCadence || 0)),

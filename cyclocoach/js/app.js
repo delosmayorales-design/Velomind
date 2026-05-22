@@ -1637,7 +1637,12 @@ const FileParser = {
           max_power:   eff.max_power ? Math.round(Number(eff.max_power)) : null,
           np:          eff.normalized_power
             ? Math.round(Number(eff.normalized_power))
-            : (avgPower ? Math.round(avgPower * 1.05) : null),
+            : (() => {
+                const pts = records
+                  .filter(r => r.power != null && r.power >= 0 && r.power <= maxPCap && r.timestamp)
+                  .map(r => ({ time: new Date(r.timestamp), power: r.power }));
+                return FileParser._calcNP(pts) || null;
+              })(),
           avg_hr:      avgHR     || null,
           max_hr:      eff.max_heart_rate ? Math.round(Number(eff.max_heart_rate)) : null,
           avg_cadence: avgCad    || null,
@@ -1730,7 +1735,7 @@ const FileParser = {
       np: (() => {
         const gpxPowerPoints = validPowers.filter(p => p.time && !isNaN(p.time.getTime()))
           .map(p => ({ time: p.time, power: p.power }));
-        return this._calcNP(gpxPowerPoints) || (avgPower ? Math.round(avgPower * 1.05) : null);
+        return this._calcNP(gpxPowerPoints) || null;
       })(),
       avg_hr: avgHR || null,
       max_hr: maxHR || null,
@@ -1811,7 +1816,7 @@ const FileParser = {
       distance: Math.round(distance),
       avg_power: avgPower || null,
       max_power: maxPower || null,
-      np: this._calcNP(powerPoints) || (avgPower ? Math.round(avgPower * 1.05) : null),
+      np: this._calcNP(powerPoints) || null,
       avg_hr: avgHR || null,
       max_hr: maxHR || null,
       avg_cadence: avgCad,
