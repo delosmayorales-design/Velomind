@@ -944,6 +944,7 @@
 
     <!-- PLAN SEMANAL -->
     <div id="coach-alerts-section" class="hidden" style="margin-bottom:12px"></div>
+    <div id="event-phase-banner" style="display:none;margin-bottom:12px"></div>
     <div id="ramp-rate-bar" style="display:none;margin-bottom:16px;padding:8px 14px;background:var(--bg-input);border-radius:8px;font-size:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"></div>
     <div id="recalc-summary" style="display:none;margin-bottom:20px"></div>
 
@@ -1687,6 +1688,39 @@ function renderPlan(plan, athlete) {
 
   renderRecalcSummary(plan);
 
+  // ── Banner fase race/peak por fecha de evento ────────────────
+  const eventBanner = document.getElementById('event-phase-banner');
+  if (eventBanner) {
+    const evDate = athlete?.event_date;
+    if (evDate && (plan.phase === 'race' || plan.phase === 'peak')) {
+      const evLocal = new Date(evDate + 'T00:00:00');
+      const todayL  = new Date(); todayL.setHours(0, 0, 0, 0);
+      const dUntil  = Math.floor((evLocal - todayL) / 86400000);
+      const evFmt   = evLocal.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+      const isRace  = plan.phase === 'race';
+      const color   = isRace ? '#EC4899' : '#FFC800';
+      const icon    = isRace ? '🏁' : '⚡';
+      const label   = isRace
+        ? `Semana de carrera — tu evento es el <strong>${evFmt}</strong> (en ${dUntil} día${dUntil !== 1 ? 's' : ''})`
+        : `Fase taper/puesta a punto — tu evento es el <strong>${evFmt}</strong> (en ${dUntil} día${dUntil !== 1 ? 's' : ''})`;
+      eventBanner.style.display = 'block';
+      eventBanner.innerHTML = `
+        <div style="background:${color}18;border:1px solid ${color}44;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="font-size:20px">${icon}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;color:${color};font-weight:700;margin-bottom:2px">Plan en modo ${isRace ? 'Carrera' : 'Peak/Taper'}</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${label}. El plan se adapta automáticamente a la semana de carrera.</div>
+          </div>
+          <button onclick="clearEventDate()" style="flex-shrink:0;padding:6px 12px;background:rgba(255,255,255,.06);border:1px solid ${color}55;border-radius:8px;color:${color};font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">
+            <i class="fas fa-times"></i> Fecha incorrecta — borrar
+          </button>
+        </div>`;
+    } else {
+      eventBanner.style.display = 'none';
+      eventBanner.innerHTML = '';
+    }
+  }
+
   // ── Banner de adaptación por TSB ──────────────────────────────
   const alertSection = document.getElementById('coach-alerts-section');
   if (alertSection) {
@@ -1772,6 +1806,14 @@ function renderPlan(plan, athlete) {
               🛌 Cambiar a descanso
             </button>
           </div>` : ''}
+          ${i > todayIdx ? (() => {
+            const swapBtns = plan.sessions
+              .map((s, j) => ({ j, day: s.day }))
+              .filter(({ j }) => j > todayIdx && j !== i)
+              .map(({ j, day }) => `<button onclick="event.stopPropagation();swapDays(${i},${j})" style="padding:7px 12px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#818cf8;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;transition:all .2s" onmouseover="this.style.background='rgba(99,102,241,.22)'" onmouseout="this.style.background='rgba(99,102,241,.12)'">⇄ ${day}</button>`)
+              .join('');
+            return swapBtns ? `<div style="margin-bottom:10px"><div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Intercambiar con:</div><div style="display:flex;gap:6px;flex-wrap:wrap">${swapBtns}</div></div>` : '';
+          })() : ''}
           <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">${sess.isRest ? '¿Qué vas a entrenar?' : 'Describe tu sesión:'}</div>
           <textarea class="adapt-input" id="override-input-${i}" placeholder="Ej: puertos 125km 2000m+, rodaje llano 2h, salida suave recuperación..." style="min-height:60px;resize:vertical;padding:10px;margin-bottom:8px;width:100%;box-sizing:border-box"></textarea>
           <button class="adapt-submit" id="override-btn-${i}" onclick="recalculateWeek(${i}, true)">
@@ -3534,6 +3576,34 @@ function _sanitizePlanSessions(plan) {
       sess.durationMin = Math.min(maxDur, Math.round((maxTSS / (Math.pow(ifVal, 2) * 100)) * 60));
     }
   });
+}
+
+function clearEventDate() {
+  if (!AppState.athlete) return;
+  AppState.saveAthlete({ event_date: null });
+  if (typeof BackendSync !== 'undefined') BackendSync.saveProfile({ event_date: null }).catch(() => {});
+  const adjEvt = document.getElementById('adj-event');
+  if (adjEvt) adjEvt.value = '';
+  localStorage.removeItem('cyclocoach_plan_snapshot');
+  localStorage.removeItem('cyclocoach_training_plan');
+  generatePlan();
+  silentSavePlan();
+  showToast('✅ Fecha de evento eliminada. Plan recalculado.', 'var(--accent-green)');
+}
+
+function swapDays(idx1, idx2) {
+  if (!currentPlan?.sessions) return;
+  const s = currentPlan.sessions;
+  if (idx1 < 0 || idx2 < 0 || idx1 >= s.length || idx2 >= s.length) return;
+  const day1 = s[idx1].day;
+  const day2 = s[idx2].day;
+  const tmp = { ...s[idx1] };
+  currentPlan.sessions[idx1] = { ...s[idx2], day: day1 };
+  currentPlan.sessions[idx2] = { ...tmp, day: day2 };
+  document.querySelectorAll('.adapt-body').forEach(el => { el.style.display = 'none'; });
+  renderPlan(currentPlan, AppState.athlete);
+  silentSavePlan();
+  showToast(`✅ ${day1} y ${day2} intercambiados`, 'var(--primary)');
 }
 
 function regeneratePlan() {

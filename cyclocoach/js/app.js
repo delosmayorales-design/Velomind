@@ -408,7 +408,9 @@ const TrainingPlanGenerator = {
 
     // Con fecha de evento configurada
     if (eventDate) {
-      const daysUntil = Math.floor((new Date(eventDate) - new Date()) / 86400000);
+      const eventLocal = new Date(eventDate + 'T00:00:00'); // hora local, no UTC
+      const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0);
+      const daysUntil = Math.floor((eventLocal - todayLocal) / 86400000);
       if (daysUntil < 0)  return 'recovery'; // evento pasado → recuperación post-evento
       if (daysUntil < 7)  return 'race';
       if (daysUntil < 21) return 'peak';
@@ -513,7 +515,9 @@ const TrainingPlanGenerator = {
   _getMacrocycleContext(eventDate, currentCTL, ftp, weight) {
     if (!eventDate) return { blockLabel: null, weeklyTSSTarget: null, weeksToEvent: null };
 
-    const daysToEvent = Math.floor((new Date(eventDate) - new Date()) / 86400000);
+    const eventLocalM = new Date(eventDate + 'T00:00:00');
+    const todayLocalM = new Date(); todayLocalM.setHours(0, 0, 0, 0);
+    const daysToEvent = Math.floor((eventLocalM - todayLocalM) / 86400000);
     if (daysToEvent < 0) return { blockLabel: 'Post-evento — Recuperación', weeklyTSSTarget: null, weeksToEvent: 0 };
 
     const weeksToEvent = Math.ceil(daysToEvent / 7);

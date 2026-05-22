@@ -1925,7 +1925,8 @@ Recalcular la semana optimizando rendimiento (NO solo fatiga), manteniendo estí
 ════════════════════════════════════
 CONSTRAINTS DUROS (OBLIGATORIOS)
 ════════════════════════════════════
-1. COMPENSACIÓN POR ACTIVIDAD EXTRA: Si el usuario entrena en un día que era de descanso (HOY), debes buscar un día de entrenamiento futuro en la semana y convertirlo en descanso ("isRest": true) para no exceder el total de días de carga previstos.
+1. COMPENSACIÓN HOY: Si el usuario entrena HOY (índice ${todayIdx}) en un día que era de descanso, busca un día de entrenamiento FUTURO y conviértelo en descanso para no superar el total de días planificados. SOLO aplica a HOY, NO a días futuros.
+   ⚠ EXCEPCIÓN DÍAS FUTUROS: Si el día objetivo es un día FUTURO (índice > ${todayIdx}) y el usuario pide explícitamente entrenar en ese día (aunque fuera descanso), DEBES respetar su petición y convertirlo en entrenamiento. El usuario tiene autonomía sobre sus días futuros. Solo ajusta la carga de días adyacentes si es necesario por fisiología.
 2. PROTECCIÓN DE CALIDAD: No permitas dos sesiones de alta intensidad (Z4, Z5, Z6) en días consecutivos. Si el usuario añade una hoy, la de mañana debe pasar a ser Z2 o descanso.
    * 1 sesión VO2max o alta intensidad
    * 1 sesión threshold/tempo/sweetspot
@@ -1979,7 +1980,7 @@ LÓGICA DE REPLANIFICACIÓN
 REGLAS DE LA APP (IMPORTANTES)
 ════════════════════════════════════
 * ${hoyRegla}
-* LÍMITE DE DÍAS: El plan actual tiene ${totalTrainingDays} días de entrenamiento. BAJO NINGÚN CONCEPTO superes los ${totalTrainingDays} días de entrenamiento en total. Si cambias hoy de descanso a entrenamiento, DEBES OBLIGATORIAMENTE cambiar un día de entrenamiento futuro a descanso ("isRest": true), sacrificando la sesión más suave, pero respetando SIEMPRE la regla de NO descansos consecutivos.
+* LÍMITE DE DÍAS (solo para HOY, índice ${todayIdx}): Si el usuario entrena HOY en un día de descanso, no superes ${totalTrainingDays} días de entrenamiento en total y convierte otro día futuro en descanso. Para días FUTUROS (índice > ${todayIdx}): el usuario puede cambiar un descanso a entrenamiento sin necesidad estricta de compensar, salvo que el total exceda ${totalTrainingDays + 1} días (margen de 1 extra permitido).
 * Mantener tipos válidos: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength"
 
 ════════════════════════════════════

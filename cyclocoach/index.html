@@ -128,13 +128,51 @@
 
     @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.9); } }
 
+    /* ── Barra de progreso móvil (visible cuando left-panel oculto) ── */
+    .mobile-steps{display:none;justify-content:center;gap:8px;padding:16px 20px 0;flex-wrap:wrap;}
+    .mobile-step{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--text-muted);}
+    .mobile-step.active{color:var(--primary);}
+    .mobile-step.done{color:var(--success);}
+    .mobile-step-dot{width:22px;height:22px;border-radius:50%;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;}
+
     @media(max-width:800px){
       .left-panel{display:none;}
-      .right-panel{padding:24px 20px;}
+      .right-panel{padding:20px 16px 32px;align-items:flex-start;}
+      .form-wrap{max-width:100%;}
+      .mobile-steps{display:flex;}
+      .goal-grid{grid-template-columns:1fr 1fr;}
+      .form-row{grid-template-columns:1fr 1fr;}
+      .btn-row{flex-direction:column-reverse;gap:8px;}
+      .btn-row .btn{width:100%;justify-content:center;}
+      .summary-grid{grid-template-columns:repeat(2,1fr)!important;}
+    }
+    @media(max-width:420px){
+      .form-row{grid-template-columns:1fr;}
+      .goal-grid{grid-template-columns:1fr;}
+      .summary-grid{grid-template-columns:1fr!important;}
     }
   </style>
 </head>
 <body>
+
+<!-- Header de volver (solo en modo edición, visible una vez que prefill detecta perfil existente) -->
+<div id="edit-back-header" style="display:none;position:fixed;top:0;left:0;right:0;z-index:100;background:var(--bg-card,#0E1117);border-bottom:1px solid var(--border);padding:12px 20px;display:none;align-items:center;gap:12px">
+  <a href="training-plan.html" style="display:flex;align-items:center;gap:6px;color:var(--primary);text-decoration:none;font-size:13px;font-weight:600">
+    <i class="fas fa-arrow-left"></i> Volver al plan
+  </a>
+  <span style="color:var(--text-muted);font-size:12px">· Editando perfil</span>
+</div>
+
+<!-- Barra de progreso en móvil (reemplaza el left-panel oculto) -->
+<div class="mobile-steps" id="mobile-steps-bar">
+  <div class="mobile-step active" id="ms-1"><div class="mobile-step-dot">1</div><span>Datos</span></div>
+  <span style="color:var(--border);align-self:center">—</span>
+  <div class="mobile-step" id="ms-2"><div class="mobile-step-dot">2</div><span>Rendimiento</span></div>
+  <span style="color:var(--border);align-self:center">—</span>
+  <div class="mobile-step" id="ms-3"><div class="mobile-step-dot">3</div><span>Objetivos</span></div>
+  <span style="color:var(--border);align-self:center">—</span>
+  <div class="mobile-step" id="ms-4"><div class="mobile-step-dot">4</div><span>Resumen</span></div>
+</div>
 
 <!-- LEFT PANEL -->
 <div class="left-panel">
@@ -490,6 +528,15 @@ function updateLeft() {
     if (i < currentStep) { ps.classList.add('done'); sc.innerHTML='<i class="fas fa-check" style="font-size:10px"></i>'; }
     else if (i === currentStep) { ps.classList.add('active'); sc.textContent=i; }
     else { sc.textContent=i; }
+    // Barra de progreso móvil
+    const ms = document.getElementById('ms-'+i);
+    if (ms) {
+      ms.classList.remove('active','done');
+      const dot = ms.querySelector('.mobile-step-dot');
+      if (i < currentStep) { ms.classList.add('done'); if(dot) dot.innerHTML='<i class="fas fa-check" style="font-size:9px"></i>'; }
+      else if (i === currentStep) { ms.classList.add('active'); if(dot) dot.textContent=i; }
+      else { if(dot) dot.textContent=i; }
+    }
   }
 }
 
@@ -701,7 +748,7 @@ async function saveAndGo() {
     }
   } catch(e) { console.warn('Backend no disponible, guardado localmente'); }
 
-  window.location.href='activities.html';
+  window.location.href = _isEditing ? 'training-plan.html' : 'activities.html';
 }
 
 // Auto-suggest FC max when age is entered
@@ -746,6 +793,7 @@ async function handleProfileAvatarChange(input) {
 }
 
 // Pre-fill if existing profile
+let _isEditing = false;
 (async function prefill(){
   try {
     let a = JSON.parse(localStorage.getItem('velomind_athlete')||'null');
@@ -757,19 +805,42 @@ async function handleProfileAvatarChange(input) {
     }
 
     if (!a) return;
+    _isEditing = !!(a.name && a.ftp);
     renderProfileAvatar(a);
     const set = (id,v)=>{ const el=document.getElementById(id); if(el&&v!=null&&v!=='') el.value=v; };
     set('ob-name',a.name); set('ob-age',a.age); set('ob-sex',a.sex);
     set('ob-weight',a.weight); set('ob-height',a.height);
-    set('ob-ftp',a.ftp); set('ob-maxhr',a.max_hr); set('ob-lthr',a.lthr);
+    // FTP: set hidden + visible input y activar modo "conozco mi FTP"
+    if (a.ftp) {
+      set('ob-ftp', a.ftp);
+      set('ob-ftp-visible', a.ftp);
+      ftpMode('know');
+      setTimeout(previewWkg, 0);
+    }
+    set('ob-maxhr',a.max_hr); set('ob-lthr',a.lthr);
     set('ob-experience',a.experience);
-    set('ob-hours',a.weekly_hours); set('ob-days',a.days_per_week);
+    // weekly_hours puede ser float (8.0) → convertir a entero para que el select haga match
+    if (a.weekly_hours) set('ob-hours', parseInt(a.weekly_hours));
+    set('ob-days',a.days_per_week);
     set('ob-event',a.event_date);
     if (a.goal) {
       data.goal = a.goal;
       document.querySelectorAll('.goal-opt').forEach(o=>o.classList.toggle('selected',o.dataset.val===a.goal));
     }
     data = {...a};
+
+    // Modo edición: actualizar textos de la UI
+    if (_isEditing) {
+      LEFT_META[1].title = 'Edita tu perfil<br>de <span class="accent">atleta</span>';
+      LEFT_META[1].desc  = 'Actualiza tus datos para recalibrar el plan de entrenamiento.';
+      updateLeft();
+      const btnSave = document.getElementById('btn-save');
+      if (btnSave) btnSave.textContent = 'Guardar cambios';
+      const backHdr = document.getElementById('edit-back-header');
+      if (backHdr) { backHdr.style.display = 'flex'; }
+      // Añadir padding-top al body para no ocultar contenido bajo el header fijo
+      document.body.style.paddingTop = '49px';
+    }
   } catch(e){}
 })();
 
