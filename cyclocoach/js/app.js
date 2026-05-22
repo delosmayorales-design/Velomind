@@ -3079,21 +3079,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let _fabDrag = false, _fabMoved = false;
   let _fabSX, _fabSY, _fabBL, _fabBT;
 
-  const _fabDown = (e) => {
-    _fabDrag = true; _fabMoved = false;
-    const p = e.touches ? e.touches[0] : e;
-    _fabSX = p.clientX; _fabSY = p.clientY;
-    const r = _themeBtn.getBoundingClientRect();
-    _fabBL = r.left; _fabBT = r.top;
-    _themeBtn.style.transition = 'none';
-    _themeBtn.style.cursor = 'grabbing';
-    // Solo en ratón: evita selección de texto durante arrastre.
-    // En touch NO se llama preventDefault para que el navegador
-    // genere el click sintético y el cambio de tema funcione.
-    if (!e.touches) e.preventDefault();
-  };
   const _fabMove = (e) => {
-    if (!_fabDrag) return;
     const p = e.touches ? e.touches[0] : e;
     const dx = p.clientX - _fabSX, dy = p.clientY - _fabSY;
     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) _fabMoved = true;
@@ -3103,6 +3089,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const _fabUp = () => {
     if (!_fabDrag) return;
     _fabDrag = false;
+    document.removeEventListener('mousemove', _fabMove);
+    document.removeEventListener('touchmove', _fabMove);
+    document.removeEventListener('mouseup',   _fabUp);
+    document.removeEventListener('touchend',  _fabUp);
     _themeBtn.style.transition = '';
     _themeBtn.style.cursor = 'grab';
     if (_fabMoved) {
@@ -3110,13 +3100,23 @@ document.addEventListener('DOMContentLoaded', () => {
       try { localStorage.setItem('_vm_fab_pos', JSON.stringify({ l: r.left, t: r.top })); } catch (_) {}
     }
   };
+  const _fabDown = (e) => {
+    _fabDrag = true; _fabMoved = false;
+    const p = e.touches ? e.touches[0] : e;
+    _fabSX = p.clientX; _fabSY = p.clientY;
+    const r = _themeBtn.getBoundingClientRect();
+    _fabBL = r.left; _fabBT = r.top;
+    _themeBtn.style.transition = 'none';
+    _themeBtn.style.cursor = 'grabbing';
+    document.addEventListener('mousemove', _fabMove, { passive: false });
+    document.addEventListener('touchmove', _fabMove, { passive: false });
+    document.addEventListener('mouseup',   _fabUp);
+    document.addEventListener('touchend',  _fabUp);
+    if (!e.touches) e.preventDefault();
+  };
 
   _themeBtn.addEventListener('mousedown',  _fabDown, { passive: false });
-  _themeBtn.addEventListener('touchstart', _fabDown, { passive: false });
-  document.addEventListener('mousemove',   _fabMove, { passive: false });
-  document.addEventListener('touchmove',   _fabMove, { passive: false });
-  document.addEventListener('mouseup',     _fabUp);
-  document.addEventListener('touchend',    _fabUp);
+  _themeBtn.addEventListener('touchstart', _fabDown, { passive: true });
 
   // Click solo si no hubo arrastre
   _themeBtn.addEventListener('click', () => {
