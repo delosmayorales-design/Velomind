@@ -1892,7 +1892,12 @@ const G = (() => {
   function _bikePhotoKey(id) { return 'velomind_bike_photo_' + id; }
 
   function _getBikePhoto(id) {
-    try { return localStorage.getItem(_bikePhotoKey(id)) || null; } catch { return null; }
+    try {
+      const cached = localStorage.getItem(_bikePhotoKey(id));
+      if (cached) return cached;
+      const bike = st?.bikes?.find(b => b.id === id);
+      return bike?.photo_url || null;
+    } catch { return null; }
   }
 
   function _setBikePhoto(id, base64) {
@@ -2014,9 +2019,23 @@ const G = (() => {
     // Guardar foto si se subió o eliminó
     const preview = document.getElementById('eb-photo-preview');
     const pending = preview?.dataset?.pending;
+    let photoForBackend;
     if (pending !== undefined) {
-      if (pending) _setBikePhoto(id, pending);
-      else if (preview.style.display === 'none') _setBikePhoto(id, null);
+      if (pending) {
+        _setBikePhoto(id, pending);
+        photoForBackend = pending;
+      } else if (preview.style.display === 'none') {
+        _setBikePhoto(id, null);
+        photoForBackend = null;
+      }
+    }
+    // Sincronizar foto al backend si la bici tiene UUID y hubo cambio
+    if (bike.id && bike.id.length === 36 && photoForBackend !== undefined) {
+      fetch(`${window.API_URL}/garage/${bike.id}/photo`, {
+        method: 'POST',
+        headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photo_base64: photoForBackend }),
+      }).catch(() => {});
     }
     closeModal('m-edit-bike');
     toast('green','✅ Guardado', `${bike.name} configurada.`);

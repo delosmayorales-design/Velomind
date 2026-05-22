@@ -132,6 +132,7 @@ router.get('/', async (req, res) => {
       total_km:       bike.total_km || 0,
       total_hours:    bike.total_hours || 0,
       is_active:      bike.is_active !== false,
+      photo_url:      bike.photo_url || null,
       components,
     };
   }));
@@ -225,6 +226,17 @@ router.put('/:bikeId', async (req, res) => {
 
   await supabase.from('bikes').update(updates).eq('id', req.params.bikeId);
   res.json({ message: 'Bici actualizada' });
+});
+
+// POST /api/garage/:bikeId/photo
+router.post('/:bikeId/photo', async (req, res) => {
+  const { photo_base64 } = req.body;
+  const { data: bike } = await supabase.from('bikes').select('id').eq('id', req.params.bikeId).eq('user_id', req.user.id).single();
+  if (!bike) return res.status(404).json({ error: 'Bici no encontrada' });
+  const photoVal = photo_base64 || null;
+  const { error } = await supabase.from('bikes').update({ photo_url: photoVal }).eq('id', req.params.bikeId);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
 });
 
 // DELETE /api/garage/:bikeId
