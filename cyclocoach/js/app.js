@@ -1869,7 +1869,7 @@ const FileParser = {
         duration: Math.round(durSec),
         distance: parseFloat(r[distKey]) * (parseFloat(r[distKey]) < 200 ? 1000 : 1) || null,
         avg_power: parseFloat(r[powerKey]) || null,
-        np:        parseFloat(r[powerKey]) ? Math.round(parseFloat(r[powerKey]) * 1.05) : null,
+        np:        null,
         avg_hr:    parseFloat(r[hrKey]) || null,
         tss:       parseFloat(r[tssKey]) || 0,
         if_value:  0,

@@ -1247,18 +1247,31 @@ function renderStreamCharts(s, ftp) {
     const [tDs, rawDs, maDs] = dsampleAll([s.time, s.watts, ma30], MAX_PTS);
 
     const maxW = Math.max(...s.watts), avgW = Math.round(s.watts.reduce((a,b)=>a+b,0)/s.watts.length);
-    // NP estilo Garmin: primero quitar ceros, luego media móvil 30s, luego 4ª potencia
-    const wattsNZ = s.watts.filter(v => v > 0);
-    const maNZ = [];
-    let nzSum = 0;
-    for (let i = 0; i < wattsNZ.length; i++) {
-      nzSum += wattsNZ[i];
-      if (i >= 30) nzSum -= wattsNZ[i - 30];
-      maNZ.push(nzSum / Math.min(i + 1, 30));
-    }
-    const npW = maNZ.length
-      ? Math.round(Math.sqrt(Math.sqrt(maNZ.reduce((a,b)=>a+Math.pow(b,4),0)/maNZ.length)))
-      : 0;
+    // NP algoritmo TrainingPeaks/Garmin: interpolar a 1s → rolling 30s (con ceros) → 4ª potencia → media → raíz 4ª
+    const npW = (() => {
+      const times = s.time, watts = s.watts;
+      if (!times?.length || times.length < 2) return 0;
+      const durSec = Math.round(times[times.length - 1] - times[0]);
+      if (durSec < 30) return 0;
+      const t0 = times[0];
+      const sec = new Float64Array(durSec + 1);
+      let pi = 0;
+      for (let t = 0; t <= durSec; t++) {
+        while (pi < times.length - 1 && times[pi + 1] - t0 <= t) pi++;
+        sec[t] = Math.max(0, watts[pi] || 0);
+      }
+      const WIN = 30;
+      let sum = 0;
+      for (let i = 0; i < WIN; i++) sum += sec[i];
+      let pow4sum = 0;
+      const count = sec.length - WIN + 1;
+      for (let i = WIN - 1; i < sec.length; i++) {
+        if (i >= WIN) sum += sec[i] - sec[i - WIN];
+        const avg = sum / WIN;
+        pow4sum += avg * avg * avg * avg;
+      }
+      return Math.round(Math.pow(pow4sum / count, 0.25));
+    })();
     calculatedNP = npW;
     document.getElementById('stats-watts').innerHTML =
       `<span style="color:var(--text-muted)">Media</span> ${avgW}W &nbsp;
