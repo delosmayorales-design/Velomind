@@ -377,6 +377,9 @@
       .bio-topbar .field-select,
       .bio-topbar .field-input { min-width: 0 !important; width: 100% !important; flex: 1 1 120px; }
       #painArea { flex: 1 1 100% !important; }
+      /* Evitar que las etiquetas de panel se superpongan con el texto informativo */
+      #canvas-placeholder { padding-top: 40px !important; }
+      #videoUploadArea { padding-top: 40px !important; }
     }
     .video-panel-state {
       position: absolute; inset: 0;
@@ -1059,6 +1062,11 @@ let editMode  = false;
 let dragging  = null;       // key name being dragged
 let placingIdx = -1;        // index into POINT_ORDER for sequential placement
 
+// ─── Zoom / Pan state ───────────────────────────────────────
+let viewZoom = 1.0, viewPanX = 0, viewPanY = 0;
+let _pinching = false, _pinchStartDist = 0, _pinchStartZoom = 1;
+let _panning = false, _panLastX = 0, _panLastY = 0, _lastTap = 0;
+
 const POINT_ORDER = ['shoulder','elbow','wrist','hip','knee','ankle','foot_tip'];
 
 // Point storage in canvas px (null = not placed)
@@ -1150,10 +1158,10 @@ function loadImageToCanvas(dataUrl) {
   const image = new Image();
   image.onload = () => {
     bioImg = image;
+    viewZoom = 1; viewPanX = 0; viewPanY = 0;
     resizeCanvas();
     updateAnglesGrid();
     document.getElementById('anglesSection').style.display = '';
-        if (!editMode) toggleEdit();
   };
   image.src = dataUrl;
 }
@@ -1169,6 +1177,9 @@ function clearCanvas() {
 // ─── Draw ───────────────────────────────────────────────────
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(viewPanX, viewPanY);
+  ctx.scale(viewZoom, viewZoom);
 
   // Background
   if (bioImg && imgR) {
@@ -1176,7 +1187,7 @@ function draw() {
     // Dark overlay for better point visibility in edit mode
     if (editMode) {
       ctx.fillStyle = 'rgba(0,0,0,0.22)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(imgR.dx, imgR.dy, imgR.dw, imgR.dh);
     }
   }
 
@@ -1253,6 +1264,7 @@ function draw() {
     }
   });
 
+  ctx.restore();
   updateAnglesGrid();
 }
 
@@ -1516,9 +1528,7 @@ function toggleEdit() {
     ? '<i class="fas fa-check"></i> Listo'
     : '<i class="fas fa-arrows-alt"></i> Ajustar puntos';
   canvas.classList.toggle('edit-mode', editMode);
-  document.getElementById('toolbar-hint').textContent = editMode
-    ? 'Arrastra los puntos blancos para ajustar su posición'
-    : '';
+  _updateZoomHint();
   updatePlacingLabel();
   draw();
 }
@@ -1543,9 +1553,11 @@ function canvasCoords(e) {
   const scaleX = canvas.width  / rect.width;
   const scaleY = canvas.height / rect.height;
   const src = e.touches ? (e.touches[0] || e.changedTouches[0]) : e;
+  const cx = (src.clientX - rect.left) * scaleX;
+  const cy = (src.clientY - rect.top)  * scaleY;
   return {
-    x: (src.clientX - rect.left) * scaleX,
-    y: (src.clientY - rect.top)  * scaleY,
+    x: (cx - viewPanX) / viewZoom,
+    y: (cy - viewPanY) / viewZoom,
   };
 }
 
@@ -1559,15 +1571,14 @@ function hitTest(pos) {
   return null;
 }
 
+// ─── Mouse events ───────────────────────────────────────────
 canvas.addEventListener('mousedown', e => {
   if (!editMode) return;
   e.preventDefault();
-  const pos  = canvasCoords(e);
-  const hit  = hitTest(pos);
-  if (hit) {
-    dragging = hit;
-  } else if (placingIdx >= 0) {
-    // Place next unset point
+  const pos = canvasCoords(e);
+  const hit = hitTest(pos);
+  if (hit) { dragging = hit; }
+  else if (placingIdx >= 0) {
     const key = POINT_ORDER[placingIdx];
     pts[key]  = pos;
     placingIdx = getNextUnplaced();
@@ -1586,27 +1597,104 @@ canvas.addEventListener('mousemove', e => {
 canvas.addEventListener('mouseup', () => { dragging = null; });
 canvas.addEventListener('mouseleave', () => { dragging = null; });
 
+// Actualiza hint de zoom en toolbar
+function _updateZoomHint() {
+  const hint = document.getElementById('toolbar-hint');
+  if (!hint) return;
+  if (editMode) {
+    hint.textContent = 'Arrastra los puntos blancos para ajustar su posición';
+    return;
+  }
+  if (viewZoom !== 1) {
+    hint.textContent = `Zoom ${viewZoom.toFixed(1)}× — Doble toque para resetear`;
+  } else {
+    hint.textContent = 'Pellizca para hacer zoom · Arrastra para mover';
+  }
+}
+
+// Zoom con rueda del ratón (escritorio)
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.12 : 0.89;
+  viewZoom = Math.max(0.5, Math.min(6, viewZoom * factor));
+  draw(); _updateZoomHint();
+}, { passive: false });
+
+// ─── Touch events: pinch-to-zoom + pan + edición ────────────
 canvas.addEventListener('touchstart', e => {
-  if (!editMode) return; e.preventDefault();
-  const pos = canvasCoords(e);
-  const hit = hitTest(pos);
-  if (hit) dragging = hit;
-  else if (placingIdx >= 0) {
-    const key = POINT_ORDER[placingIdx]; pts[key] = pos;
-    placingIdx = getNextUnplaced(); updatePlacingLabel(); draw();
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    dragging = null; _panning = false;
+    _pinching = true;
+    _pinchStartDist = Math.hypot(
+      e.touches[1].clientX - e.touches[0].clientX,
+      e.touches[1].clientY - e.touches[0].clientY
+    );
+    _pinchStartZoom = viewZoom;
+    return;
+  }
+  if (e.touches.length === 1) {
+    if (editMode) {
+      e.preventDefault();
+      const pos = canvasCoords(e);
+      const hit = hitTest(pos);
+      if (hit) { dragging = hit; }
+      else if (placingIdx >= 0) {
+        const key = POINT_ORDER[placingIdx]; pts[key] = pos;
+        placingIdx = getNextUnplaced(); updatePlacingLabel(); draw();
+      }
+    } else {
+      // Pan con un dedo cuando no se está editando
+      _panning = true;
+      _panLastX = e.touches[0].clientX;
+      _panLastY = e.touches[0].clientY;
+    }
   }
 }, { passive: false });
 
 canvas.addEventListener('touchmove', e => {
-  if (!dragging) return; e.preventDefault();
-  pts[dragging] = canvasCoords(e); draw();
+  if (_pinching && e.touches.length >= 2) {
+    e.preventDefault();
+    const dist = Math.hypot(
+      e.touches[1].clientX - e.touches[0].clientX,
+      e.touches[1].clientY - e.touches[0].clientY
+    );
+    viewZoom = Math.max(0.5, Math.min(6, _pinchStartZoom * dist / _pinchStartDist));
+    draw(); _updateZoomHint();
+    return;
+  }
+  if (_panning && e.touches.length === 1) {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const sc = canvas.width / rect.width;
+    viewPanX += (e.touches[0].clientX - _panLastX) * sc;
+    viewPanY += (e.touches[0].clientY - _panLastY) * sc;
+    _panLastX = e.touches[0].clientX;
+    _panLastY = e.touches[0].clientY;
+    draw();
+    return;
+  }
+  if (!dragging) return;
+  e.preventDefault();
+  pts[dragging] = canvasCoords(e);
+  draw();
 }, { passive: false });
 
-canvas.addEventListener('touchend', () => { dragging = null; });
+canvas.addEventListener('touchend', e => {
+  if (e.touches.length < 2) _pinching = false;
+  if (e.touches.length === 0) { dragging = null; _panning = false; }
+  // Doble toque para resetear zoom
+  const now = Date.now();
+  if (now - _lastTap < 280 && e.changedTouches.length === 1) {
+    viewZoom = 1; viewPanX = 0; viewPanY = 0; draw(); _updateZoomHint();
+    _lastTap = 0;
+  } else { _lastTap = now; }
+});
 
 function resetPoints() {
   POINT_ORDER.forEach(k => pts[k] = null);
   placingIdx = editMode ? 0 : -1;
+  viewZoom = 1; viewPanX = 0; viewPanY = 0;
   updatePlacingLabel();
   draw();
 }
@@ -1646,7 +1734,6 @@ function loadDefaults() {
   draw();
   document.getElementById('anglesSection').style.display = '';
   updateAnglesGrid();
-  if (!editMode) toggleEdit();
 }
 
 // ─── Load AI keypoints ──────────────────────────────────────
@@ -1827,8 +1914,7 @@ async function analyzeAI() {
       if (hasValidPoints) {
         loadAIKeypoints(data.points);
       } else {
-        alert('La IA no pudo detectar las articulaciones con claridad en esta foto. Por favor, colócalas manualmente.');
-        if (!editMode) toggleEdit();
+        alert('La IA no pudo detectar las articulaciones con claridad en esta foto. Por favor, pulsa "Ajustar puntos" y colócalas manualmente.');
       }
     }
     
