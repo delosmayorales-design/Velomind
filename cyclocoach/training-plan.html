@@ -1843,10 +1843,10 @@ function renderPlan(plan, athlete) {
           ></textarea>
           <div class="ob-actions">
             ${!sess._overriddenToRest && !sess.isRest ? `<button class="ob-btn ob-btn-rest" onclick="event.stopPropagation();overrideToRest(${i})">🛌 Descanso</button>` : ''}
-            ${i > todayIdx ? (() => {
+            ${i >= todayIdx ? (() => {
               const pills = plan.sessions
                 .map((s, j) => ({ j, day: s.day }))
-                .filter(({ j }) => j > todayIdx && j !== i)
+                .filter(({ j }) => j >= todayIdx && j !== i)
                 .map(({ j, day }) => `<button class="ob-swap-pill" onclick="event.stopPropagation();swapDays(${i},${j})">⇄ ${day}</button>`)
                 .join('');
               return pills ? `<button class="ob-btn ob-btn-swap" id="swap-toggle-${i}" onclick="event.stopPropagation();toggleSwapPills(${i})"><i class="fas fa-right-left" style="font-size:10px"></i> Intercambiar</button><div class="ob-swap-pills" id="swap-pills-${i}">${pills}</div>` : '';
