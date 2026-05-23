@@ -149,3 +149,32 @@ CREATE TABLE IF NOT EXISTS routes (
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   updated_at        TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ── Salidas grupales ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS group_rides (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  route_id         UUID REFERENCES routes(id) ON DELETE SET NULL,
+  title            TEXT NOT NULL,
+  description      TEXT,
+  departure_time   TIMESTAMPTZ NOT NULL,
+  meeting_point    TEXT,
+  meeting_lat      NUMERIC,
+  meeting_lng      NUMERIC,
+  distance_km      NUMERIC,
+  elevation_gain_m NUMERIC,
+  route_type       TEXT DEFAULT 'road',
+  is_public        BOOLEAN DEFAULT true,
+  max_participants INTEGER,
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS group_ride_participants (
+  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ride_id   UUID NOT NULL REFERENCES group_rides(id) ON DELETE CASCADE,
+  user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status    TEXT NOT NULL DEFAULT 'confirmed',
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(ride_id, user_id)
+);

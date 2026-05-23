@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('velomind_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'light') document.documentElement.classList.add('light-theme');
+      document.documentElement.style.opacity = '0';
+    })();
+  </script>
+  <style>
+    html { color-scheme: dark; background-color: #0a0b0f; transition: opacity .18s ease; }
+    html[data-theme="light"] { color-scheme: light; background-color: #f3f4f6; }
+  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Salidas Grupales — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <style>
+    /* ── Tabs ──────────────────────────────────────────────── */
+    .rides-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+    }
+    .rides-tab {
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .rides-tab.active {
+      background: rgba(255,107,53,.12);
+      border-color: rgba(255,107,53,.4);
+      color: var(--primary);
+    }
+
+    /* ── Ride cards grid ───────────────────────────────────── */
+    .rides-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+    }
+    @media (max-width: 600px) {
+      .rides-grid { grid-template-columns: 1fr; }
+    }
+
+    .ride-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color .18s, box-shadow .18s;
+    }
+    .ride-card:hover {
+      border-color: rgba(255,107,53,.35);
+      box-shadow: 0 4px 20px rgba(0,0,0,.15);
+    }
+    .ride-card.is-mine {
+      border-left: 3px solid var(--primary);
+    }
+
+    .ride-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .ride-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+    .ride-card-badge {
+      flex-shrink: 0;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .badge-road   { background: rgba(59,130,246,.15); color: #60a5fa; }
+    .badge-gravel { background: rgba(245,158,11,.15); color: #fbbf24; }
+    .badge-mtb    { background: rgba(34,197,94,.15); color: #4ade80; }
+    .badge-urban  { background: rgba(168,85,247,.15); color: #c084fc; }
+
+    .ride-card-date {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .ride-card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .ride-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .ride-meta-item i { font-size: 10px; }
+
+    .ride-card-creator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .creator-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg,var(--primary),#ff9a56);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .creator-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .creator-info { flex: 1; min-width: 0; }
+    .creator-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .creator-label {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .participants-badge {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .ride-card-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-join {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity .18s;
+    }
+    .btn-join:hover { opacity: .85; }
+    .btn-join.joined {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .btn-join.joined:hover { border-color: #f87171; color: #f87171; }
+    .btn-join:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-delete-ride {
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .btn-delete-ride:hover { border-color: #f87171; color: #f87171; }
+
+    /* ── Empty state ───────────────────────────────────────── */
+    .rides-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .rides-empty i {
+      font-size: 48px;
+      margin-bottom: 16px;
+      display: block;
+      opacity: .4;
+    }
+    .rides-empty p { font-size: 14px; }
+
+    /* ── Modal ─────────────────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 520px;
+      max-height: 92vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-close:hover { color: var(--text-primary); }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: inherit;
+      box-sizing: border-box;
+      transition: border-color .15s;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .form-group textarea { resize: vertical; min-height: 70px; }
+
+    .modal-footer {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    .btn-cancel {
+      flex: 0;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .btn-cancel:hover { color: var(--text-primary); }
+    .btn-submit {
+      flex: 1;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .btn-submit:hover { opacity: .88; }
+    .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Skeleton ──────────────────────────────────────────── */
+    @keyframes skelShimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .skel {
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--bg-input) 25%, var(--border) 50%, var(--bg-input) 75%);
+      background-size: 200% 100%;
+      animation: skelShimmer 1.4s ease infinite;
+    }
+    .skel-card {
+      height: 200px;
+      border-radius: var(--radius);
+    }
+  </style>
+  <script>window.API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : 'https://velomind-backend.onrender.com/api';</script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo2.png" alt="VeloMind">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="dashboard.html" class="nav-item"><i class="fas fa-home"></i> Inicio</a>
+    <a href="activities.html" class="nav-item"><i class="fas fa-history"></i> Actividades</a>
+    <a href="analytics.html" class="nav-item"><i class="fas fa-chart-bar"></i> Métricas</a>
+
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item"><i class="fas fa-calendar-check"></i> Entrenamiento</a>
+    <a href="nutrition.html" class="nav-item"><i class="fas fa-apple-alt"></i> Nutrición</a>
+    <a href="body-weight.html" class="nav-item"><i class="fas fa-weight"></i> Peso</a>
+
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="rutas.html" class="nav-item"><i class="fas fa-map-marked-alt"></i> Rutas</a>
+    <a href="salidas-grupales.html" class="nav-item active"><i class="fas fa-users"></i> Salidas Grupales</a>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Garaje</a>
+
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+    <a href="notificaciones.html" class="nav-item"><i class="fas fa-bell"></i> Notificaciones</a>
+    <a href="soporte.html" class="nav-item"><i class="fas fa-life-ring"></i> Soporte</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-name">Cargando...</div>
+        <div class="ftp" id="athlete-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1><i class="fas fa-users" style="color:var(--primary)"></i> Salidas Grupales</h1>
+      <p>Únete a salidas con otros ciclistas o crea la tuya y reúne al grupo.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" id="btn-nueva-salida">
+        <i class="fas fa-plus"></i> Nueva salida
+      </button>
+    </div>
+  </header>
+
+  <div class="page-body">
+    <!-- Tabs -->
+    <div class="rides-tabs">
+      <button class="rides-tab active" data-tab="proximas">Próximas</button>
+      <button class="rides-tab" data-tab="mis-salidas">Mis Salidas</button>
+    </div>
+
+    <!-- Ride list -->
+    <div class="rides-grid" id="rides-grid">
+      <!-- skeleton -->
+      <div class="skel skel-card"></div>
+      <div class="skel skel-card"></div>
+      <div class="skel skel-card"></div>
+    </div>
+
+    <div class="rides-empty" id="rides-empty" style="display:none">
+      <i class="fas fa-bicycle"></i>
+      <p id="rides-empty-msg">No hay salidas próximas.</p>
+      <button class="btn btn-primary" style="margin-top:16px" onclick="openModal()">
+        <i class="fas fa-plus"></i> Crear la primera salida
+      </button>
+    </div>
+  </div>
+</main>
+
+<!-- ── Modal crear salida ───────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Nueva Salida Grupal</span>
+      <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+
+    <form id="create-ride-form" autocomplete="off">
+      <div class="form-group">
+        <label>Título *</label>
+        <input type="text" id="f-title" placeholder="Ej: Vuelta al embalse" maxlength="80" required>
+      </div>
+
+      <div class="form-group">
+        <label>Descripción</label>
+        <textarea id="f-description" placeholder="Detalles del recorrido, nivel requerido..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fecha y hora de salida *</label>
+          <input type="datetime-local" id="f-departure" required>
+        </div>
+        <div class="form-group">
+          <label>Tipo de ruta</label>
+          <select id="f-route-type">
+            <option value="road">Carretera</option>
+            <option value="gravel">Gravel</option>
+            <option value="mtb">MTB</option>
+            <option value="urban">Urbana</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Punto de encuentro</label>
+        <input type="text" id="f-meeting-point" placeholder="Ej: Plaza Mayor, Bar El Cruce...">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Distancia (km)</label>
+          <input type="number" id="f-distance" min="1" max="9999" step="0.1" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Desnivel (m)</label>
+          <input type="number" id="f-elevation" min="0" max="99999" step="1" placeholder="0">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Máx. participantes</label>
+          <input type="number" id="f-max-participants" min="2" max="999" placeholder="Sin límite">
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;gap:8px;padding-bottom:2px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text-primary);margin-bottom:0">
+            <input type="checkbox" id="f-is-public" checked style="width:auto;accent-color:var(--primary)">
+            Salida pública
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
+        <button type="submit" class="btn-submit" id="btn-submit-ride">
+          <i class="fas fa-plus"></i> Crear salida
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.documentElement.style.opacity = '1';
+
+  const API = window.API_URL;
+  let currentTab = 'proximas';
+  let currentUserId = null;
+  let ridesCache = { proximas: null, mine: null };
+
+  // ── Auth + init ────────────────────────────────────────────
+  async function init() {
+    const token = localStorage.getItem('velomind_token');
+    if (!token) { location.href = 'login.html'; return; }
+
+    try {
+      const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) { location.href = 'login.html'; return; }
+      const user = await res.json();
+      currentUserId = user.id;
+
+      const avatarEl = document.getElementById('athlete-avatar');
+      const nameEl   = document.getElementById('athlete-name');
+      const ftpEl    = document.getElementById('athlete-ftp');
+      if (nameEl) nameEl.textContent = user.name || 'Ciclista';
+      if (ftpEl)  ftpEl.textContent  = user.ftp ? `FTP: ${user.ftp} W` : 'FTP: -- W';
+      if (avatarEl) {
+        if (user.avatar_url) {
+          avatarEl.innerHTML = `<img src="${user.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+        } else {
+          avatarEl.textContent = (user.name || 'C')[0].toUpperCase();
+        }
+      }
+    } catch(e) {
+      location.href = 'login.html'; return;
+    }
+
+    loadRides('proximas');
+  }
+
+  // ── Tabs ───────────────────────────────────────────────────
+  document.querySelectorAll('.rides-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.rides-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentTab = tab.dataset.tab;
+      loadRides(currentTab);
+    });
+  });
+
+  // ── Load rides ─────────────────────────────────────────────
+  async function loadRides(tab, forceRefresh = false) {
+    const grid  = document.getElementById('rides-grid');
+    const empty = document.getElementById('rides-empty');
+
+    if (!forceRefresh && ridesCache[tab === 'proximas' ? 'proximas' : 'mine']) {
+      renderRides(ridesCache[tab === 'proximas' ? 'proximas' : 'mine']);
+      return;
+    }
+
+    grid.innerHTML = `
+      <div class="skel skel-card"></div>
+      <div class="skel skel-card"></div>
+      <div class="skel skel-card"></div>`;
+    empty.style.display = 'none';
+
+    const token    = localStorage.getItem('velomind_token');
+    const endpoint = tab === 'mis-salidas' ? `${API}/group-rides/mine` : `${API}/group-rides`;
+    try {
+      const res  = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      ridesCache[tab === 'proximas' ? 'proximas' : 'mine'] = data;
+      renderRides(data, tab);
+    } catch(e) {
+      grid.innerHTML = '';
+      empty.style.display = 'block';
+      document.getElementById('rides-empty-msg').textContent = 'Error al cargar salidas.';
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────
+  function renderRides(rides, tab) {
+    const grid  = document.getElementById('rides-grid');
+    const empty = document.getElementById('rides-empty');
+    grid.innerHTML = '';
+
+    if (!rides || rides.length === 0) {
+      empty.style.display = 'block';
+      document.getElementById('rides-empty-msg').textContent =
+        tab === 'mis-salidas'
+          ? 'Aún no tienes salidas creadas ni apuntadas.'
+          : 'No hay salidas públicas próximas. ¡Sé el primero!';
+      return;
+    }
+    empty.style.display = 'none';
+
+    rides.forEach(ride => {
+      grid.appendChild(buildCard(ride));
+    });
+  }
+
+  function buildCard(ride) {
+    const card = document.createElement('div');
+    card.className = 'ride-card' + (ride.is_mine ? ' is-mine' : '');
+    card.dataset.id = ride.id;
+
+    const dt       = new Date(ride.departure_time);
+    const dateStr  = dt.toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+    const timeStr  = dt.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+    const initials = (ride.creator_name || 'C')[0].toUpperCase();
+
+    const typeLabels = { road:'Carretera', gravel:'Gravel', mtb:'MTB', urban:'Urbana' };
+    const typeCls    = { road:'badge-road', gravel:'badge-gravel', mtb:'badge-mtb', urban:'badge-urban' };
+    const typeLabel  = typeLabels[ride.route_type] || ride.route_type || 'Carretera';
+    const typeBadge  = typeCls[ride.route_type]    || 'badge-road';
+
+    const maxInfo = ride.max_participants
+      ? `${ride.participant_count}/${ride.max_participants}`
+      : ride.participant_count;
+    const isFull = ride.max_participants && ride.participant_count >= ride.max_participants && !ride.is_joined;
+
+    const avatarHtml = ride.creator_avatar
+      ? `<img src="${ride.creator_avatar}" alt="">`
+      : initials;
+
+    card.innerHTML = `
+      <div class="ride-card-top">
+        <div class="ride-card-title">${escHtml(ride.title)}</div>
+        <span class="ride-card-badge ${typeBadge}">${typeLabel}</span>
+      </div>
+
+      <div class="ride-card-date">
+        <i class="fas fa-calendar-day"></i>
+        ${dateStr} · ${timeStr}
+      </div>
+
+      ${ride.meeting_point ? `
+      <div class="ride-card-meta">
+        <span class="ride-meta-item">
+          <i class="fas fa-map-marker-alt"></i> ${escHtml(ride.meeting_point)}
+        </span>
+      </div>` : ''}
+
+      <div class="ride-card-meta">
+        ${ride.distance_km ? `<span class="ride-meta-item"><i class="fas fa-road"></i> ${ride.distance_km} km</span>` : ''}
+        ${ride.elevation_gain_m ? `<span class="ride-meta-item"><i class="fas fa-mountain"></i> ${ride.elevation_gain_m} m</span>` : ''}
+        ${ride.description ? `<span class="ride-meta-item" style="width:100%;display:block;font-size:11px;color:var(--text-secondary);margin-top:2px">${escHtml(ride.description.substring(0,90))}${ride.description.length > 90 ? '…' : ''}</span>` : ''}
+      </div>
+
+      <div class="ride-card-creator">
+        <div class="creator-avatar">${avatarHtml}</div>
+        <div class="creator-info">
+          <div class="creator-name">${escHtml(ride.creator_name)}</div>
+          <div class="creator-label">${ride.is_mine ? 'Organizador (tú)' : 'Organizador'}</div>
+        </div>
+        <div class="participants-badge">
+          <i class="fas fa-users"></i> ${maxInfo}
+        </div>
+      </div>
+
+      <div class="ride-card-actions">
+        ${!ride.is_mine ? `
+          <button class="btn-join ${ride.is_joined ? 'joined' : ''} ${isFull ? 'disabled' : ''}"
+            data-id="${ride.id}" data-joined="${ride.is_joined ? '1' : '0'}"
+            ${isFull ? 'disabled title="Salida completa"' : ''}>
+            ${ride.is_joined ? '<i class="fas fa-times"></i> Salir' : (isFull ? 'Completa' : '<i class="fas fa-check"></i> Apuntarme')}
+          </button>
+        ` : ''}
+        ${ride.is_mine ? `
+          <button class="btn-delete-ride" data-id="${ride.id}">
+            <i class="fas fa-trash"></i> Eliminar
+          </button>
+        ` : ''}
+      </div>
+    `;
+
+    // Join / leave
+    const joinBtn = card.querySelector('.btn-join');
+    if (joinBtn) joinBtn.addEventListener('click', () => toggleJoin(ride, card));
+
+    // Delete
+    const delBtn = card.querySelector('.btn-delete-ride');
+    if (delBtn) delBtn.addEventListener('click', () => deleteRide(ride.id, card));
+
+    return card;
+  }
+
+  // ── Join / Leave ───────────────────────────────────────────
+  async function toggleJoin(ride, card) {
+    const btn    = card.querySelector('.btn-join');
+    const joined = btn.dataset.joined === '1';
+    btn.disabled = true;
+
+    const token = localStorage.getItem('velomind_token');
+    const method = joined ? 'DELETE' : 'POST';
+    try {
+      const res = await fetch(`${API}/group-rides/${ride.id}/join`, {
+        method,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Error al procesar la solicitud.');
+        btn.disabled = false;
+        return;
+      }
+      // Invalidate cache and reload
+      ridesCache.proximas = null;
+      ridesCache.mine     = null;
+      loadRides(currentTab, true);
+    } catch(e) {
+      alert('Error de red.');
+      btn.disabled = false;
+    }
+  }
+
+  // ── Delete ─────────────────────────────────────────────────
+  async function deleteRide(id, card) {
+    if (!confirm('¿Eliminar esta salida? No se puede deshacer.')) return;
+    const token = localStorage.getItem('velomind_token');
+    try {
+      await fetch(`${API}/group-rides/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      ridesCache.proximas = null;
+      ridesCache.mine     = null;
+      loadRides(currentTab, true);
+    } catch(e) {
+      alert('Error al eliminar.');
+    }
+  }
+
+  // ── Modal ──────────────────────────────────────────────────
+  document.getElementById('btn-nueva-salida').addEventListener('click', openModal);
+
+  function openModal() {
+    // Default datetime to next hour
+    const now = new Date();
+    now.setHours(now.getHours() + 1, 0, 0, 0);
+    const pad = n => String(n).padStart(2, '0');
+    const local = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
+    document.getElementById('f-departure').value = local;
+    document.getElementById('modal-overlay').classList.add('show');
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('show');
+    document.getElementById('create-ride-form').reset();
+  }
+
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+
+  document.getElementById('create-ride-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit-ride');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+
+    const token = localStorage.getItem('velomind_token');
+    const body = {
+      title:            document.getElementById('f-title').value.trim(),
+      description:      document.getElementById('f-description').value.trim() || null,
+      departure_time:   new Date(document.getElementById('f-departure').value).toISOString(),
+      meeting_point:    document.getElementById('f-meeting-point').value.trim() || null,
+      distance_km:      parseFloat(document.getElementById('f-distance').value) || null,
+      elevation_gain_m: parseFloat(document.getElementById('f-elevation').value) || null,
+      route_type:       document.getElementById('f-route-type').value,
+      is_public:        document.getElementById('f-is-public').checked,
+      max_participants: parseInt(document.getElementById('f-max-participants').value) || null,
+    };
+
+    try {
+      const res = await fetch(`${API}/group-rides`, {
+        method: 'POST',
+        headers: {
+          Authorization:  `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Error al crear la salida.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plus"></i> Crear salida';
+        return;
+      }
+      closeModal();
+      ridesCache.proximas = null;
+      ridesCache.mine     = null;
+      // Switch to "mis salidas" to show the new one
+      document.querySelectorAll('.rides-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === 'mis-salidas');
+      });
+      currentTab = 'mis-salidas';
+      loadRides('mis-salidas', true);
+    } catch(err) {
+      alert('Error de red.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-plus"></i> Crear salida';
+    }
+  });
+
+  // ── Util ───────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  init();
+</script>
+</body>
+</html>
