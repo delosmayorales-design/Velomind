@@ -2057,10 +2057,10 @@ async function calcRoute(type) {
     setTimeStat(distKm, elevGain ?? 0, type);
     document.getElementById('map-stats').classList.add('visible');
 
-    if (elevGain != null) {
+    if (elevs?.length) {
       document.getElementById('stat-elev').textContent = elevGain;
-      if (elevs?.length) renderElevChart(elevs);
-    } else if (latLngs.length > 1) { // Only fetch elevation if there's a valid route
+      renderElevChart(elevs);
+    } else if (latLngs.length > 1) {
       fetchElevation(latLngs);
     }
   } catch (e) {
