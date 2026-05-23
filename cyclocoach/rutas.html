@@ -2088,14 +2088,40 @@ function showToast(msg, type = 'info') {
   setTimeout(() => t.remove(), 4000);
 }
 
-// ── Elevación (Open-Meteo SRTM 30m) ──────────────────────────────────────────────────
-// Stale-guard: cada llamada captura myId; si llega otra antes de terminar, descarta el resultado.
+// Muestrea n puntos a intervalos de distancia uniforme a lo largo de la ruta.
+// Evita el sesgo por índice: en rutas de montaña el GeoJSON tiene cientos de puntos
+// apretados en cada curva y pocos en las rectas donde ocurre el desnivel real.
+function _sampleByDistance(latLngs, n) {
+  if (latLngs.length <= n) return latLngs;
+  const cum = [0];
+  for (let i = 1; i < latLngs.length; i++) {
+    const [a1, o1] = latLngs[i - 1], [a2, o2] = latLngs[i];
+    const da = (a2 - a1) * Math.PI / 180, dlo = (o2 - o1) * Math.PI / 180;
+    const h = Math.sin(da/2)**2 + Math.cos(a1*Math.PI/180)*Math.cos(a2*Math.PI/180)*Math.sin(dlo/2)**2;
+    cum.push(cum[i - 1] + 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)));
+  }
+  const total = cum[cum.length - 1], interval = total / (n - 1);
+  const out = [latLngs[0]];
+  let target = interval, j = 1;
+  while (out.length < n - 1 && j < latLngs.length) {
+    while (j < latLngs.length - 1 && cum[j] < target) j++;
+    const seg = cum[j] - cum[j - 1];
+    const t = seg > 0 ? (target - cum[j - 1]) / seg : 0;
+    const [a1, o1] = latLngs[j - 1], [a2, o2] = latLngs[j];
+    out.push([a1 + t * (a2 - a1), o1 + t * (o2 - o1)]);
+    target += interval;
+  }
+  out.push(latLngs[latLngs.length - 1]);
+  return out;
+}
+
+// ── Elevación (Open-Meteo SRTM 90m) ──────────────────────────────────────────────────
+// Stale-guard: cada llamada captura myId; si llega otra antes de terminar, descarta resultado.
 // Lotes de 100 en paralelo con .catch(() => []) para que un fallo parcial no aborte todo.
 async function fetchElevation(latLngs) {
   const myId = ++_elevFetchId;
   const MAX_SAMPLES = 1000, BATCH = 100;
-  const step    = Math.max(1, Math.floor(latLngs.length / MAX_SAMPLES));
-  const sampled = latLngs.filter((_, i) => i % step === 0).slice(0, MAX_SAMPLES);
+  const sampled = _sampleByDistance(latLngs, Math.min(latLngs.length, MAX_SAMPLES));
   const promises = [];
   for (let i = 0; i < sampled.length; i += BATCH) {
     const batch = sampled.slice(i, i + BATCH);
