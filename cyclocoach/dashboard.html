@@ -1554,71 +1554,138 @@ function buildRainAlert(todayCode, todayPrec, daily) {
     </div>`).join('');
 }
 
+// Convierte el código de símbolo de MET Norway al código WMO que usa el resto de la app
+function _symToWmo(sym) {
+  if (!sym) return 3;
+  const base = sym.replace(/_day$|_night$|_polartwilight$/, '');
+  return ({ clearsky:0, fair:1, partlycloudy:2, cloudy:3, fog:45,
+    lightdrizzle:51, drizzle:53, heavydrizzle:55,
+    lightrain:61, rain:63, heavyrain:65,
+    lightrainshowers:80, rainshowers:81, heavyrainshowers:82,
+    lightsleet:61, sleet:63, heavysleet:65,
+    lightsnow:71, snow:73, heavysnow:75,
+    lightsnowshowers:71, snowshowers:73, heavysnowshowers:75,
+    thunder:95, lightrainandthunder:95, rainandthunder:95, heavyrainandthunder:99,
+  })[base] ?? 3;
+}
+
+// Convierte la respuesta de api.met.no al mismo formato que Open-Meteo
+function _metNorwayToOpenMeteo(ts) {
+  const now  = Date.now();
+  const cur  = ts.find(e => new Date(e.time).getTime() >= now - 1800000) || ts[0];
+  const inst = cur.data.instant.details;
+  const sym1 = cur.data.next_1_hours?.summary?.symbol_code || cur.data.next_6_hours?.summary?.symbol_code || 'cloudy';
+  const wmo  = _symToWmo(sym1);
+  const prec = cur.data.next_1_hours?.details?.precipitation_amount ?? cur.data.next_6_hours?.details?.precipitation_amount ?? 0;
+  const wKmh = inst.wind_speed * 3.6;
+  const t    = inst.air_temperature;
+  const feels = (t < 10 && wKmh > 10)
+    ? Math.round(13.12 + 0.6215*t - 11.37*wKmh**0.16 + 0.3965*t*wKmh**0.16) : Math.round(t);
+  const hourly = { time:[], temperature_2m:[], precipitation_probability:[], weather_code:[], wind_speed_10m:[], wind_direction_10m:[] };
+  let n = 0;
+  for (const e of ts) {
+    if (new Date(e.time).getTime() < now - 1800000) continue;
+    if (n >= 12) break;
+    const s = e.data.next_1_hours?.summary?.symbol_code || e.data.next_6_hours?.summary?.symbol_code || 'cloudy';
+    hourly.time.push(e.time);
+    hourly.temperature_2m.push(e.data.instant.details.air_temperature);
+    hourly.precipitation_probability.push(e.data.next_1_hours?.details?.probability_of_precipitation ?? 0);
+    hourly.weather_code.push(_symToWmo(s));
+    hourly.wind_speed_10m.push(e.data.instant.details.wind_speed * 3.6);
+    hourly.wind_direction_10m.push(e.data.instant.details.wind_from_direction ?? 0);
+    n++;
+  }
+  return {
+    current: { temperature_2m:t, apparent_temperature:feels, precipitation:prec, wind_speed_10m:wKmh, weather_code:wmo },
+    daily:   { weather_code:[wmo,wmo], precipitation_sum:[prec,0], wind_speed_10m_max:[wKmh,wKmh], temperature_2m_max:[t,t] },
+    hourly,
+  };
+}
+
+function _renderWeather(el, data) {
+  const c     = data.current;
+  if (data.daily?.weather_code?.[1] !== undefined) {
+    wxTomorrow = {
+      code:   data.daily.weather_code[1],
+      precip: data.daily.precipitation_sum?.[1] || 0,
+      wind:   data.daily.wind_speed_10m_max?.[1] || 0,
+      temp:   data.daily.temperature_2m_max?.[1] || 15,
+    };
+  }
+  const code   = c.weather_code;
+  const temp   = Math.round(c.temperature_2m);
+  const feels  = Math.round(c.apparent_temperature);
+  const wind   = c.wind_speed_10m;
+  const prec   = c.precipitation;
+  const wx     = WX[code] || { l:'Variable', i:'fa-cloud-sun', c:'#93C5FD' };
+  const sess   = dashPlan?.sessions?.[todayIdx];
+  const rec    = getRouteRec(code, wind, prec, temp, sess);
+  const clothes = getClothing(temp, wind, prec, code);
+  el.innerHTML = `
+    <div class="wx-main">
+      <div class="wx-icon" style="background:${wx.c}18;color:${wx.c}">
+        <i class="fas ${wx.i}"></i>
+      </div>
+      <div>
+        <div class="wx-temp">${temp}°<span style="font-size:22px;font-weight:400;opacity:.5">C</span></div>
+        <div class="wx-sub">${wx.l} · Sensación ${feels}°C</div>
+      </div>
+    </div>
+    <div class="wx-stats">
+      <div class="wx-stat"><i class="fas fa-wind" style="color:#60a5fa"></i> ${wind.toFixed(0)} km/h</div>
+      <div class="wx-stat"><i class="fas fa-tint" style="color:#38bdf8"></i> ${prec.toFixed(1)} mm</div>
+    </div>
+    <div class="rec-box" style="border-color:${rec.color}35;background:${rec.color}0a;margin-bottom:10px">
+      <div class="rec-box-label" style="color:${rec.color}">Ruta recomendada</div>
+      <div class="rec-box-title">${rec.icon} ${rec.type}</div>
+      <div class="rec-box-desc">${rec.msg}</div>
+    </div>
+    <div class="clothes-box">
+      <div class="clothes-label">Ropa para hoy</div>
+      <div class="clothes-items">
+        ${clothes.map(i => `<div class="clothes-item">${i}</div>`).join('')}
+      </div>
+    </div>
+    ${buildRainAlert(code, prec, data.daily)}
+    ${buildHourlyRow(data.hourly)}`;
+}
+
 async function fetchWeather() {
   const el = document.getElementById('wx-content');
-  if (!navigator.geolocation && !window.getGeoPosition) {
-    el.innerHTML = `<div class="empty-state"><i class="fas fa-map-marker-alt"></i> Geolocalización no disponible</div>`;
+  let pos;
+  try {
+    pos = await (window.getGeoPosition
+      ? window.getGeoPosition()
+      : new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej)));
+  } catch {
+    el.innerHTML = `<div class="empty-state" style="padding:16px 0"><i class="fas fa-map-marker-slash"></i> Permite el acceso a tu ubicación para ver el tiempo y la ropa recomendada</div>`;
     return;
   }
-  (window.getGeoPosition ? window.getGeoPosition() : new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej))).then(async pos => {
-    try {
-      const { latitude: lat, longitude: lon } = pos.coords;
-      // Petición combinada: current + daily + hourly
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&daily=weather_code,precipitation_sum,wind_speed_10m_max,temperature_2m_max&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=auto&forecast_days=2`;
-      const data = await fetch(url).then(r => r.json());
-      const c    = data.current;
-      // Guardar pronóstico de mañana para smart-insights
-      if (data.daily?.weather_code?.[1] !== undefined) {
-        wxTomorrow = {
-          code:   data.daily.weather_code[1],
-          precip: data.daily.precipitation_sum?.[1] || 0,
-          wind:   data.daily.wind_speed_10m_max?.[1] || 0,
-          temp:   data.daily.temperature_2m_max?.[1] || 15,
-        };
-      }
-      const code = c.weather_code;
-      const temp = Math.round(c.temperature_2m);
-      const feels= Math.round(c.apparent_temperature);
-      const wind = c.wind_speed_10m;
-      const prec = c.precipitation;
-      const wx   = WX[code] || { l:'Variable', e:'🌥️' };
-      const sess = dashPlan?.sessions?.[todayIdx];
-      const rec  = getRouteRec(code, wind, prec, temp, sess);
-      const clothes = getClothing(temp, wind, prec, code);
 
-      el.innerHTML = `
-        <div class="wx-main">
-          <div class="wx-icon" style="background:${wx.c}18;color:${wx.c}">
-            <i class="fas ${wx.i}"></i>
-          </div>
-          <div>
-            <div class="wx-temp">${temp}°<span style="font-size:22px;font-weight:400;opacity:.5">C</span></div>
-            <div class="wx-sub">${wx.l} · Sensación ${feels}°C</div>
-          </div>
-        </div>
-        <div class="wx-stats">
-          <div class="wx-stat"><i class="fas fa-wind" style="color:#60a5fa"></i> ${wind.toFixed(0)} km/h</div>
-          <div class="wx-stat"><i class="fas fa-tint" style="color:#38bdf8"></i> ${prec.toFixed(1)} mm</div>
-        </div>
-        <div class="rec-box" style="border-color:${rec.color}35;background:${rec.color}0a;margin-bottom:10px">
-          <div class="rec-box-label" style="color:${rec.color}">Ruta recomendada</div>
-          <div class="rec-box-title">${rec.icon} ${rec.type}</div>
-          <div class="rec-box-desc">${rec.msg}</div>
-        </div>
-        <div class="clothes-box">
-          <div class="clothes-label">Ropa para hoy</div>
-          <div class="clothes-items">
-            ${clothes.map(i => `<div class="clothes-item">${i}</div>`).join('')}
-          </div>
-        </div>
-        ${buildRainAlert(code, prec, data.daily)}
-        ${buildHourlyRow(data.hourly)}`;
-    } catch {
-      el.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> No se pudo obtener el tiempo</div>`;
+  const { latitude: lat, longitude: lon } = pos.coords;
+
+  // Caché 1 h: evita agotar el límite diario de Open-Meteo (10 000 req/día por IP)
+  try {
+    const c = JSON.parse(localStorage.getItem('velo_wx') || 'null');
+    if (c && Date.now() - c.ts < 3600000 && Math.abs(c.lat - lat) < 0.1 && Math.abs(c.lon - lon) < 0.1) {
+      _renderWeather(el, c.data);
+      return;
     }
-  }).catch(() => {
-    el.innerHTML = `<div class="empty-state" style="padding:16px 0"><i class="fas fa-map-marker-slash"></i> Permite el acceso a tu ubicación para ver el tiempo y la ropa recomendada</div>`;
-  });
+  } catch {}
+
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&daily=weather_code,precipitation_sum,wind_speed_10m_max,temperature_2m_max&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=auto&forecast_days=2`;
+    let data = await fetch(url).then(r => r.json());
+    if (data.error) {
+      // Fallback: MET Norway — sin límite diario, sin autenticación
+      const met = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}`).then(r => r.json());
+      data = _metNorwayToOpenMeteo(met.properties.timeseries);
+    }
+    try { localStorage.setItem('velo_wx', JSON.stringify({ ts: Date.now(), lat, lon, data })); } catch {}
+    _renderWeather(el, data);
+  } catch {
+    el.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> No se pudo obtener el tiempo</div>`;
+  }
 }
 
 /* ── FTP READINESS ──────────────────────────────────────── */
