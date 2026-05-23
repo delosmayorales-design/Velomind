@@ -1977,7 +1977,8 @@ async function routeValhalla(type) {
   if (!res.ok) throw new Error('Valhalla HTTP ' + res.status);
   const data = await res.json();
   const latLngs = data.trip.legs.flatMap(leg => decodePolyline6(leg.shape));
-  const elevs   = data.trip.legs.flatMap(leg => leg.elevation || []);
+  let elevs     = data.trip.legs.flatMap(leg => leg.elevation || []);
+  if (!elevs.length) elevs = await _fetchElevsForCoords(latLngs);
   const distKm  = data.trip.summary.length;
   const elevGain = calcElevGain(elevs, 1);
   return {
@@ -2004,10 +2005,14 @@ async function routeOSRM(type) {
   const route   = data.routes[0];
   const latLngs = route.geometry.coordinates.map(([ln, la]) => [la, ln]);
   const distKm  = route.distance / 1000;
+  const elevs   = await _fetchElevsForCoords(latLngs);
+  const elevGain = calcElevGain(elevs, 1);
   return {
     latLngs,
     distKm,
-    durMin:  estimateRideTime(distKm, 0, type), // OSRM no devuelve elevación
+    durMin:  estimateRideTime(distKm, elevGain, type),
+    elevGain,
+    elevs,
   };
 }
 
@@ -2060,15 +2065,10 @@ async function calcRoute(type) {
     setTimeStat(distKm, elevGain ?? 0, type);
     document.getElementById('map-stats').classList.add('visible');
 
-    if (elevs?.length) {
-      _computedElevGain = elevGain;
-      _pendingElevFetch = null;
-      document.getElementById('stat-elev').textContent = elevGain;
-      renderElevChart(elevs);
-    } else if (latLngs.length > 1) {
-      _computedElevGain = null;
-      _pendingElevFetch = fetchElevation(latLngs);
-    }
+    _computedElevGain = elevs?.length ? elevGain : null;
+    _pendingElevFetch = null;
+    document.getElementById('stat-elev').textContent = _computedElevGain ?? '—';
+    if (elevs?.length) renderElevChart(elevs);
   } catch (e) {
     console.error('[Rutas] Error calculando ruta:', e);
     showToast('No se pudo calcular la ruta: ' + e.message, 'error');
@@ -2089,6 +2089,26 @@ function showToast(msg, type = 'info') {
 }
 
 // ── Elevación ─────────────────────────────────────────────────────────────────────────
+
+// Núcleo puro: obtiene alturas de Open-Meteo para una polilínea.
+// No toca el DOM ni el estado global — lo usan tanto calcRoute (inline) como fetchElevation (DB).
+async function _fetchElevsForCoords(latLngs) {
+  const n       = Math.min(latLngs.length, 500);
+  const sampled = _sampleByDistance(latLngs, n);
+  const BATCH   = 100;
+  const out     = [];
+  for (let i = 0; i < sampled.length; i += BATCH) {
+    const batch = sampled.slice(i, i + BATCH);
+    const lats  = batch.map(([la]) => la.toFixed(5)).join(',');
+    const lons  = batch.map(([, lo]) => lo.toFixed(5)).join(',');
+    try {
+      const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`);
+      const d = await r.json();
+      if (Array.isArray(d.elevation)) out.push(...d.elevation);
+    } catch { /* lote fallido, continuar */ }
+  }
+  return out;
+}
 
 // Devuelve n puntos equidistantes en longitud de arco a lo largo de la polilínea.
 // Interpolación lineal entre vértices; safe frente a rutas con curvas densas.
