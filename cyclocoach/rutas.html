@@ -2082,23 +2082,20 @@ function showToast(msg, type = 'info') {
   setTimeout(() => t.remove(), 4000);
 }
 
-// ── Elevación (opentopodata, sin API key) ─────────────────────────
+// ── Elevación (Open-Meteo SRTM, sin API key, sin rate-limit) ─────────────────────────
 async function fetchElevation(latLngs) {
-  const step    = Math.max(1, Math.floor(latLngs.length / 80));
-  const sampled = latLngs.filter((_, i) => i % step === 0);
-  const locs    = sampled.map(([la,ln]) => `${la},${ln}`).join('|');
+  const step    = Math.max(1, Math.floor(latLngs.length / 100));
+  const sampled = latLngs.filter((_, i) => i % step === 0).slice(0, 100);
+  const lats    = sampled.map(([la]) => la.toFixed(6)).join(',');
+  const lngs    = sampled.map(([,ln]) => ln.toFixed(6)).join(',');
   try {
-    const res  = await fetch(`https://api.opentopodata.org/v1/srtm30m?locations=${locs}`);
+    const res  = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`);
     const data = await res.json();
-    if (data.status !== 'OK') return;
-    const elevs = data.results.map(r => r.elevation ?? 0);
+    const elevs = data.elevation;
+    if (!elevs?.length) { console.warn('[Rutas] Open-Meteo: sin datos de elevación'); return; }
     document.getElementById('stat-elev').textContent = calcElevGain(elevs);
-    if (elevs.length > 0) {
-      renderElevChart(elevs);
-    } else {
-      console.warn('[Rutas] OpenTopoData devolvió datos de elevación vacíos.');
-    }
-  } catch { /* silencioso */ }
+    renderElevChart(elevs);
+  } catch(e) { console.error('[Rutas] fetchElevation error:', e); }
 }
 
 function renderElevChart(elevs) {
