@@ -1744,11 +1744,14 @@ const API_BASE = window.API_URL;
 
 // ── Estado ───────────────────────────────────────────────────────
 let map, baseOSM, elevChart, cycleOverlayLayer, cycleOverlayOn = false, mapWindControl = null;
-let currentRouteElevs = null; // perfil de elevación de la ruta activa, para compartir
+let currentRouteElevs = null;
 let waypoints = [], waypointMarkers = [];
 let routeLayer = null, routeGeoJSON = null;
 let allRoutes = [], activeFilter = 'all';
 let drawingActive = false, currentRouteType = 'road';
+let _elevFetchId = 0;          // guard anti-stale: se incrementa en cada nueva llamada
+let _pendingElevFetch = null;  // Promise activa (await en saveCurrentRoute)
+let _computedElevGain = null;  // último D+ calculado (no leer del DOM)
 
 // ── Mapa ─────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -2058,10 +2061,13 @@ async function calcRoute(type) {
     document.getElementById('map-stats').classList.add('visible');
 
     if (elevs?.length) {
+      _computedElevGain = elevGain;
+      _pendingElevFetch = null;
       document.getElementById('stat-elev').textContent = elevGain;
       renderElevChart(elevs);
     } else if (latLngs.length > 1) {
-      fetchElevation(latLngs);
+      _computedElevGain = null;
+      _pendingElevFetch = fetchElevation(latLngs);
     }
   } catch (e) {
     console.error('[Rutas] Error calculando ruta:', e);
@@ -2082,26 +2088,31 @@ function showToast(msg, type = 'info') {
   setTimeout(() => t.remove(), 4000);
 }
 
-// ── Elevación (Open-Meteo SRTM 30m, sin API key, sin rate-limit) ──────────────────────
-// 1000 muestras en lotes de 100 en paralelo → ~150m/punto en rutas largas.
-// threshold=1m (SRTM no tiene ruido GPS, con 3m se perdían muchos repechos).
+// ── Elevación (Open-Meteo SRTM 30m) ──────────────────────────────────────────────────
+// Stale-guard: cada llamada captura myId; si llega otra antes de terminar, descarta el resultado.
+// Lotes de 100 en paralelo con .catch(() => []) para que un fallo parcial no aborte todo.
 async function fetchElevation(latLngs) {
+  const myId = ++_elevFetchId;
   const MAX_SAMPLES = 1000, BATCH = 100;
   const step    = Math.max(1, Math.floor(latLngs.length / MAX_SAMPLES));
   const sampled = latLngs.filter((_, i) => i % step === 0).slice(0, MAX_SAMPLES);
-  const batches = [];
+  const promises = [];
   for (let i = 0; i < sampled.length; i += BATCH) {
     const batch = sampled.slice(i, i + BATCH);
     const lats  = batch.map(([la]) => la.toFixed(6)).join(',');
     const lngs  = batch.map(([,ln]) => ln.toFixed(6)).join(',');
-    // .catch(() => []) → un lote fallido no aborta los demás
-    batches.push(fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`)
-      .then(r => r.json()).then(d => d.elevation || []).catch(() => []));
+    promises.push(
+      fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`)
+        .then(r => r.json()).then(d => d.elevation || []).catch(() => [])
+    );
   }
-  const allElevs = (await Promise.all(batches)).flat();
-  if (!allElevs.length) { console.warn('[Rutas] Open-Meteo: sin datos de elevación'); return; }
-  document.getElementById('stat-elev').textContent = calcElevGain(allElevs, 1);
+  const allElevs = (await Promise.all(promises)).flat();
+  if (myId !== _elevFetchId) return null;  // llegó otra llamada más reciente, descartar
+  if (!allElevs.length) { console.warn('[Rutas] Open-Meteo: sin datos'); return null; }
+  _computedElevGain = calcElevGain(allElevs, 1);
+  document.getElementById('stat-elev').textContent = _computedElevGain;
   renderElevChart(allElevs);
+  return _computedElevGain;
 }
 
 function renderElevChart(elevs) {
@@ -2229,6 +2240,9 @@ function undoWaypoint() {
 }
 
 function clearRoute() {
+  _elevFetchId++;           // invalida cualquier fetchElevation en vuelo
+  _pendingElevFetch = null;
+  _computedElevGain = null;
   waypoints = [];
   waypointMarkers.forEach(m => map.removeLayer(m));
   waypointMarkers.length = 0;
@@ -2297,10 +2311,12 @@ function openSaveModal()  { if (!routeGeoJSON) { alert('Traza al menos 2 puntos 
 function closeSaveModal() { document.getElementById('save-modal').style.display = 'none'; }
 
 async function saveCurrentRoute() {
+  // Esperar a que termine fetchElevation si está en curso
+  if (_pendingElevFetch) { try { await _pendingElevFetch; } catch {} }
   const name    = document.getElementById('modal-name').value.trim() || 'Mi Ruta';
   const type    = document.getElementById('modal-type').value;
   const distKm  = parseFloat(document.getElementById('stat-dist').textContent) || null;
-  const elevGain= parseInt(document.getElementById('stat-elev').textContent)   || null;
+  const elevGain= _computedElevGain || null;  // usar variable de módulo, no DOM
   const timeMin = parseTimeMin(document.getElementById('stat-time').textContent);
   const btn = document.getElementById('modal-save-btn');
   btn.disabled = true; btn.textContent = 'Guardando...';
@@ -2480,9 +2496,9 @@ function openRouteOnMap(id) {
   if (routeLayer) map.removeLayer(routeLayer);
   routeLayer = L.polyline(latLngSegments, { color, weight: 4, opacity: 0.9 }).addTo(map);
   map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
+  _computedElevGain = route.elevation_gain_m ? Math.round(route.elevation_gain_m) : null;
   document.getElementById('stat-dist').textContent = route.distance_km?.toFixed(1) ?? '—';
-  document.getElementById('stat-elev').textContent = route.elevation_gain_m ? Math.round(route.elevation_gain_m) : '—';
-  // Para trayectos GPS las notas tienen el tiempo real "GPS · fecha · hh:mm:ss"
+  document.getElementById('stat-elev').textContent = _computedElevGain ?? '—';
   const gpsDur = isGps ? route.notes?.split(' · ')[2] : null;
   if (gpsDur) {
     setTimeStat(route.distance_km ?? 0, route.elevation_gain_m ?? 0, route.type ?? 'road', gpsDur);
@@ -2495,7 +2511,17 @@ function openRouteOnMap(id) {
     closeRoutesPanel();
     setTimeout(() => map.invalidateSize(), 280);
   }
-  fetchElevation(flatLatLngs);
+  // Lanzar fetch y guardar en BD si no había dato (evita recalcular en cada apertura)
+  _pendingElevFetch = fetchElevation(flatLatLngs).then(gain => {
+    if (!gain) return;
+    if (!route.elevation_gain_m) {
+      Auth.apiFetch(`${API_BASE}/routes/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ elevation_gain_m: gain }),
+      }).then(() => { const r = allRoutes.find(r => r.id === id); if (r) r.elevation_gain_m = gain; })
+        .catch(() => {});
+    }
+  });
 }
 
 async function toggleFav(id, fav) {
