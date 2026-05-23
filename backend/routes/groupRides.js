@@ -196,11 +196,13 @@ router.post('/', requireAuth, async (req, res) => {
     if (error) throw error;
 
     // Apuntar automáticamente al creador
-    await supabase.from('group_ride_participants').insert({
-      ride_id: data.id,
-      user_id: req.user.id,
-      status:  'confirmed',
-    }).catch(() => {});
+    try {
+      await supabase.from('group_ride_participants').insert({
+        ride_id: data.id,
+        user_id: req.user.id,
+        status:  'confirmed',
+      });
+    } catch (_) {}
 
     res.status(201).json({ ...data, participant_count: 1, is_joined: true, is_mine: true });
   } catch (e) {
