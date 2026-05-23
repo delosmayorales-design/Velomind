@@ -295,9 +295,31 @@ router.delete('/:id', requireAuth, async (req, res) => {
   }
 });
 
+// ── Helper: verificar que el usuario es participante confirmado ───────────────
+async function assertParticipant(rideId, userId) {
+  // El creador siempre tiene acceso
+  const { data: ride } = await supabase
+    .from('group_rides')
+    .select('creator_id')
+    .eq('id', rideId)
+    .single();
+  if (ride?.creator_id === userId) return true;
+
+  const { data } = await supabase
+    .from('group_ride_participants')
+    .select('status')
+    .eq('ride_id', rideId)
+    .eq('user_id', userId)
+    .single();
+  return data?.status === 'confirmed';
+}
+
 // ─── GET /api/group-rides/:id/comments ───────────────────────────────────────
 router.get('/:id/comments', requireAuth, async (req, res) => {
   try {
+    const ok = await assertParticipant(req.params.id, req.user.id);
+    if (!ok) return res.status(403).json({ error: 'Solo los participantes pueden ver el chat' });
+
     const { data, error } = await supabase
       .from('group_ride_comments')
       .select('id, content, created_at, user_id, users(name, avatar_url)')
@@ -320,6 +342,9 @@ router.get('/:id/comments', requireAuth, async (req, res) => {
 // ─── POST /api/group-rides/:id/comments ──────────────────────────────────────
 router.post('/:id/comments', requireAuth, async (req, res) => {
   try {
+    const ok = await assertParticipant(req.params.id, req.user.id);
+    if (!ok) return res.status(403).json({ error: 'Solo los participantes pueden comentar' });
+
     const content = req.body.content?.trim();
     if (!content) return res.status(400).json({ error: 'Contenido requerido' });
 

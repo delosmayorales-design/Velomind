@@ -664,7 +664,7 @@
       openRide = ride;
       knownCommentIds = new Set(comments.map(c => c.id));
       renderPanel(ride, comments);
-      startCommentPolling(ride.id);
+      if (ride.is_joined || ride.is_mine) startCommentPolling(ride.id);
     } catch(e) {
       body.innerHTML = `<p style="color:var(--text-muted);font-size:13px">Error al cargar los detalles.</p>`;
     }
@@ -734,24 +734,32 @@
       <div class="participant-list">${participantItems || '<p style="font-size:12px;color:var(--text-muted)">Sin participantes aún.</p>'}</div>
 
       <div class="panel-section-title">Chat</div>
-      <div class="comment-list" id="comment-list">
-        ${commentItems || '<p class="comments-empty">Sé el primero en comentar.</p>'}
-      </div>
-      <div class="comment-input-row">
-        <textarea class="comment-input" id="comment-input" placeholder="Escribe un comentario..." rows="1"></textarea>
-        <button class="btn-send" id="btn-send-comment" title="Enviar"><i class="fas fa-paper-plane"></i></button>
-      </div>`;
+      ${(ride.is_joined || ride.is_mine)
+        ? `<div class="comment-list" id="comment-list">
+            ${commentItems || '<p class="comments-empty">Sé el primero en comentar.</p>'}
+          </div>
+          <div class="comment-input-row">
+            <textarea class="comment-input" id="comment-input" placeholder="Escribe un comentario..." rows="1"></textarea>
+            <button class="btn-send" id="btn-send-comment" title="Enviar"><i class="fas fa-paper-plane"></i></button>
+          </div>`
+        : `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;color:var(--text-muted);font-size:13px;">
+            <i class="fas fa-lock" style="display:block;font-size:24px;margin-bottom:8px;opacity:.4"></i>
+            El chat es exclusivo para participantes.<br>Apúntate para acceder.
+          </div>`
+      }`;
 
-    // Auto-resize textarea
-    const textarea = document.getElementById('comment-input');
-    textarea.addEventListener('input', () => {
-      textarea.style.height = 'auto';
-      textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
-    });
-    textarea.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment(ride.id); }
-    });
-    document.getElementById('btn-send-comment').addEventListener('click', () => postComment(ride.id));
+    if (ride.is_joined || ride.is_mine) {
+      // Auto-resize textarea
+      const textarea = document.getElementById('comment-input');
+      textarea.addEventListener('input', () => {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+      });
+      textarea.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment(ride.id); }
+      });
+      document.getElementById('btn-send-comment').addEventListener('click', () => postComment(ride.id));
+    }
 
     // Action bar
     const isFull = ride.max_participants && ride.participant_count >= ride.max_participants && !ride.is_joined;
