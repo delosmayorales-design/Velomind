@@ -19,6 +19,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
   <style>
     /* ── Tabs ─────────────────────────────────────────────────── */
     .rides-tabs { display:flex; gap:4px; margin-bottom:20px; }
@@ -194,7 +195,49 @@
     .comment-time { font-size:10px; color:var(--text-muted); }
     .comment-text { font-size:13px; color:var(--text-secondary); line-height:1.5; word-break:break-word; }
 
-    .comment-input-row { display:flex; gap:8px; align-items:flex-end; }
+    /* ── Emoji picker ─────────────────────────────────────────── */
+    .emoji-trigger {
+      width:36px; height:36px; border-radius:var(--radius-sm); border:1px solid var(--border);
+      background:transparent; font-size:18px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      flex-shrink:0; transition:border-color .18s; line-height:1;
+      min-width:44px; min-height:44px;
+    }
+    .emoji-trigger:hover { border-color:var(--primary); }
+
+    .emoji-picker-wrap {
+      position:absolute; bottom:calc(100% + 8px); right:0;
+      z-index:20; display:none; border-radius:12px; overflow:hidden;
+      box-shadow:0 8px 32px rgba(0,0,0,.5);
+    }
+    .emoji-picker-wrap.open { display:block; }
+
+    emoji-picker {
+      --background:              #13151c;
+      --border-color:            var(--border);
+      --indicator-color:         var(--primary);
+      --input-border-color:      var(--border);
+      --input-font-color:        var(--text-primary);
+      --input-placeholder-color: var(--text-muted);
+      --category-button-active-color: var(--primary);
+      --button-active-background: rgba(255,107,53,.15);
+      --button-hover-background:  rgba(255,255,255,.06);
+      --emoji-size: 1.5rem;
+      width: 320px;
+      height: 340px;
+    }
+    html[data-theme="light"] emoji-picker {
+      --background: #ffffff;
+      --border-color: #e5e7eb;
+      --input-font-color: #111827;
+      --input-placeholder-color: #9ca3af;
+    }
+    @media (max-width: 600px) {
+      emoji-picker { width: min(320px, calc(100vw - 32px)); }
+      .emoji-picker-wrap { right: -8px; }
+    }
+
+    .comment-input-row { display:flex; gap:8px; align-items:flex-end; position:relative; }
     .comment-input {
       flex:1; padding:9px 12px; background:var(--bg-input); border:1px solid var(--border);
       border-radius:var(--radius-sm); color:var(--text-primary); font-size:13px;
@@ -740,7 +783,11 @@
           </div>
           <div class="comment-input-row">
             <textarea class="comment-input" id="comment-input" placeholder="Escribe un comentario..." rows="1"></textarea>
+            <button class="emoji-trigger" id="btn-emoji" type="button" title="Emojis">😊</button>
             <button class="btn-send" id="btn-send-comment" title="Enviar"><i class="fas fa-paper-plane"></i></button>
+            <div class="emoji-picker-wrap" id="emoji-picker-wrap">
+              <emoji-picker class="${document.documentElement.dataset.theme === 'light' ? '' : 'dark'}"></emoji-picker>
+            </div>
           </div>`
         : `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;color:var(--text-muted);font-size:13px;">
             <i class="fas fa-lock" style="display:block;font-size:24px;margin-bottom:8px;opacity:.4"></i>
@@ -759,6 +806,35 @@
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment(ride.id); }
       });
       document.getElementById('btn-send-comment').addEventListener('click', () => postComment(ride.id));
+
+      // ── Emoji picker ──────────────────────────────────────────
+      const emojiBtn   = document.getElementById('btn-emoji');
+      const pickerWrap = document.getElementById('emoji-picker-wrap');
+      const picker     = pickerWrap.querySelector('emoji-picker');
+      const chatInput  = document.getElementById('comment-input');
+
+      emojiBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        pickerWrap.classList.toggle('open');
+      });
+
+      picker.addEventListener('emoji-click', e => {
+        const emoji = e.detail.unicode;
+        const start = chatInput.selectionStart ?? chatInput.value.length;
+        const end   = chatInput.selectionEnd   ?? chatInput.value.length;
+        chatInput.value = chatInput.value.slice(0, start) + emoji + chatInput.value.slice(end);
+        chatInput.selectionStart = chatInput.selectionEnd = start + emoji.length;
+        chatInput.focus();
+        chatInput.dispatchEvent(new Event('input')); // re-trigger auto-resize
+        pickerWrap.classList.remove('open');
+      });
+
+      // Cerrar picker al hacer clic fuera
+      document.addEventListener('click', function closePicker(e) {
+        if (!pickerWrap.contains(e.target) && e.target !== emojiBtn) {
+          pickerWrap.classList.remove('open');
+        }
+      });
     }
 
     // Action bar
