@@ -508,7 +508,9 @@
   let currentTab    = 'proximas';
   let currentUserId = null;
   let ridesCache    = { proximas: null, mine: null };
-  let openRide      = null; // ride currently in panel
+  let openRide        = null;
+  let pollInterval    = null;
+  let knownCommentIds = new Set();
 
   // ── Init ──────────────────────────────────────────────────
   function init() {
@@ -660,7 +662,9 @@
       const ride     = await rideRes.json();
       const comments = await commentsRes.json();
       openRide = ride;
+      knownCommentIds = new Set(comments.map(c => c.id));
       renderPanel(ride, comments);
+      startCommentPolling(ride.id);
     } catch(e) {
       body.innerHTML = `<p style="color:var(--text-muted);font-size:13px">Error al cargar los detalles.</p>`;
     }
@@ -821,6 +825,7 @@
       });
       if (!res.ok) { alert((await res.json()).error || 'Error'); sendBtn.disabled = false; return; }
       const comment = await res.json();
+      knownCommentIds.add(comment.id);
       input.value = '';
       input.style.height = 'auto';
 
@@ -833,9 +838,41 @@
     sendBtn.disabled = false;
   }
 
+  // ── Comment polling (cada 10s mientras el panel está abierto) ──
+  function startCommentPolling(rideId) {
+    stopCommentPolling();
+    pollInterval = setInterval(() => pollComments(rideId), 10000);
+  }
+
+  function stopCommentPolling() {
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+    knownCommentIds.clear();
+  }
+
+  async function pollComments(rideId) {
+    const list = document.getElementById('comment-list');
+    if (!list) { stopCommentPolling(); return; }
+    try {
+      const res      = await fetch(`${API}/group-rides/${rideId}/comments`, { headers: { Authorization: `Bearer ${Auth.getToken()}` } });
+      const comments = await res.json();
+      let added = 0;
+      comments.forEach(c => {
+        if (!knownCommentIds.has(c.id)) {
+          knownCommentIds.add(c.id);
+          const empty = list.querySelector('.comments-empty');
+          if (empty) empty.remove();
+          list.insertAdjacentHTML('beforeend', renderComment(c));
+          added++;
+        }
+      });
+      if (added > 0) list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch(_) {}
+  }
+
   function closePanel() {
     document.getElementById('detail-panel').classList.remove('open');
     document.getElementById('panel-overlay').classList.remove('show');
+    stopCommentPolling();
     openRide = null;
   }
   document.getElementById('panel-overlay').addEventListener('click', closePanel);
