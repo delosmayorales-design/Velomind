@@ -524,32 +524,10 @@
   let ridesCache = { proximas: null, mine: null };
 
   // ── Auth + init ────────────────────────────────────────────
-  async function init() {
-    const token = localStorage.getItem('velomind_token');
-    if (!token) { location.href = 'login.html'; return; }
-
-    try {
-      const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) { location.href = 'login.html'; return; }
-      const user = await res.json();
-      currentUserId = user.id;
-
-      const avatarEl = document.getElementById('athlete-avatar');
-      const nameEl   = document.getElementById('athlete-name');
-      const ftpEl    = document.getElementById('athlete-ftp');
-      if (nameEl) nameEl.textContent = user.name || 'Ciclista';
-      if (ftpEl)  ftpEl.textContent  = user.ftp ? `FTP: ${user.ftp} W` : 'FTP: -- W';
-      if (avatarEl) {
-        if (user.avatar_url) {
-          avatarEl.innerHTML = `<img src="${user.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-        } else {
-          avatarEl.textContent = (user.name || 'C')[0].toUpperCase();
-        }
-      }
-    } catch(e) {
-      location.href = 'login.html'; return;
-    }
-
+  function init() {
+    const user = Auth.getUser();
+    if (!user) return; // auth.js ya redirige a login si no hay sesión
+    currentUserId = user.id;
     loadRides('proximas');
   }
 
@@ -579,7 +557,7 @@
       <div class="skel skel-card"></div>`;
     empty.style.display = 'none';
 
-    const token    = localStorage.getItem('velomind_token');
+    const token    = Auth.getToken();
     const endpoint = tab === 'mis-salidas' ? `${API}/group-rides/mine` : `${API}/group-rides`;
     try {
       const res  = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
@@ -706,7 +684,7 @@
     const joined = btn.dataset.joined === '1';
     btn.disabled = true;
 
-    const token = localStorage.getItem('velomind_token');
+    const token = Auth.getToken();
     const method = joined ? 'DELETE' : 'POST';
     try {
       const res = await fetch(`${API}/group-rides/${ride.id}/join`, {
@@ -732,7 +710,7 @@
   // ── Delete ─────────────────────────────────────────────────
   async function deleteRide(id, card) {
     if (!confirm('¿Eliminar esta salida? No se puede deshacer.')) return;
-    const token = localStorage.getItem('velomind_token');
+    const token = Auth.getToken();
     try {
       await fetch(`${API}/group-rides/${id}`, {
         method: 'DELETE',
@@ -774,7 +752,7 @@
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
 
-    const token = localStorage.getItem('velomind_token');
+    const token = Auth.getToken();
     const body = {
       title:            document.getElementById('f-title').value.trim(),
       description:      document.getElementById('f-description').value.trim() || null,
