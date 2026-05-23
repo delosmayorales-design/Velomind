@@ -178,3 +178,11 @@ CREATE TABLE IF NOT EXISTS group_ride_participants (
   joined_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(ride_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS group_ride_comments (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ride_id    UUID NOT NULL REFERENCES group_rides(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content    TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);

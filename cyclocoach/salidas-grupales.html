@@ -20,345 +20,257 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <style>
-    /* ── Tabs ──────────────────────────────────────────────── */
-    .rides-tabs {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 20px;
-    }
+    /* ── Tabs ─────────────────────────────────────────────────── */
+    .rides-tabs { display:flex; gap:4px; margin-bottom:20px; }
     .rides-tab {
-      padding: 8px 18px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all .18s;
+      padding:8px 18px; border-radius:var(--radius-sm); border:1px solid var(--border);
+      background:transparent; color:var(--text-muted); font-size:13px; font-weight:600;
+      font-family:inherit; cursor:pointer; transition:all .18s;
     }
-    .rides-tab.active {
-      background: rgba(255,107,53,.12);
-      border-color: rgba(255,107,53,.4);
-      color: var(--primary);
-    }
+    .rides-tab.active { background:rgba(255,107,53,.12); border-color:rgba(255,107,53,.4); color:var(--primary); }
 
-    /* ── Ride cards grid ───────────────────────────────────── */
-    .rides-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 14px;
-    }
-    @media (max-width: 600px) {
-      .rides-grid { grid-template-columns: 1fr; }
-    }
+    /* ── Grid ─────────────────────────────────────────────────── */
+    .rides-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; }
+    @media (max-width:600px) { .rides-grid { grid-template-columns:1fr; } }
 
+    /* ── Cards ────────────────────────────────────────────────── */
     .ride-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      transition: border-color .18s, box-shadow .18s;
+      background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius);
+      padding:16px; display:flex; flex-direction:column; gap:10px;
+      transition:border-color .18s,box-shadow .18s; cursor:pointer;
     }
-    .ride-card:hover {
-      border-color: rgba(255,107,53,.35);
-      box-shadow: 0 4px 20px rgba(0,0,0,.15);
-    }
-    .ride-card.is-mine {
-      border-left: 3px solid var(--primary);
-    }
+    .ride-card:hover { border-color:rgba(255,107,53,.35); box-shadow:0 4px 20px rgba(0,0,0,.15); }
+    .ride-card.is-mine { border-left:3px solid var(--primary); }
 
-    .ride-card-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 8px;
-    }
-    .ride-card-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text-primary);
-      line-height: 1.3;
-    }
-    .ride-card-badge {
-      flex-shrink: 0;
-      padding: 3px 8px;
-      border-radius: 20px;
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-    }
-    .badge-road   { background: rgba(59,130,246,.15); color: #60a5fa; }
-    .badge-gravel { background: rgba(245,158,11,.15); color: #fbbf24; }
-    .badge-mtb    { background: rgba(34,197,94,.15); color: #4ade80; }
-    .badge-urban  { background: rgba(168,85,247,.15); color: #c084fc; }
+    .ride-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+    .ride-card-title { font-size:15px; font-weight:700; color:var(--text-primary); line-height:1.3; }
 
-    .ride-card-date {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--primary);
-      font-weight: 600;
-    }
+    .ride-card-badge { flex-shrink:0; padding:3px 8px; border-radius:20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+    .badge-road   { background:rgba(59,130,246,.15); color:#60a5fa; }
+    .badge-gravel { background:rgba(245,158,11,.15); color:#fbbf24; }
+    .badge-mtb    { background:rgba(34,197,94,.15);  color:#4ade80; }
+    .badge-urban  { background:rgba(168,85,247,.15); color:#c084fc; }
 
-    .ride-card-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .ride-meta-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-    .ride-meta-item i { font-size: 10px; }
+    .ride-card-date { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--primary); font-weight:600; }
+    .ride-card-meta { display:flex; flex-wrap:wrap; gap:8px; }
+    .ride-meta-item { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-muted); }
+    .ride-meta-item i { font-size:10px; }
 
     .ride-card-creator {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding-top: 8px;
-      border-top: 1px solid var(--border);
+      display:flex; align-items:center; gap:8px;
+      padding-top:8px; border-top:1px solid var(--border);
     }
     .creator-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: linear-gradient(135deg,var(--primary),#ff9a56);
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      overflow: hidden;
+      width:28px; height:28px; border-radius:50%;
+      background:linear-gradient(135deg,var(--primary),#ff9a56);
+      color:#fff; font-size:11px; font-weight:700;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden;
     }
-    .creator-avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .creator-info { flex: 1; min-width: 0; }
-    .creator-name {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-primary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .creator-label {
-      font-size: 10px;
-      color: var(--text-muted);
-    }
-    .participants-badge {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-secondary);
-    }
+    .creator-avatar img { width:100%; height:100%; object-fit:cover; }
+    .creator-info { flex:1; min-width:0; }
+    .creator-name { font-size:12px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .creator-label { font-size:10px; color:var(--text-muted); }
+    .participants-badge { display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--text-secondary); }
 
-    .ride-card-actions {
-      display: flex;
-      gap: 8px;
-    }
+    .ride-card-actions { display:flex; gap:8px; }
     .btn-join {
-      flex: 1;
-      padding: 8px 12px;
-      border-radius: var(--radius-sm);
-      border: none;
-      background: var(--primary);
-      color: #fff;
-      font-size: 12px;
-      font-weight: 700;
-      font-family: inherit;
-      cursor: pointer;
-      transition: opacity .18s;
+      flex:1; padding:8px 12px; border-radius:var(--radius-sm); border:none;
+      background:var(--primary); color:#fff; font-size:12px; font-weight:700;
+      font-family:inherit; cursor:pointer; transition:opacity .18s;
     }
-    .btn-join:hover { opacity: .85; }
-    .btn-join.joined {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
+    .btn-join:hover { opacity:.85; }
+    .btn-join.joined { background:transparent; border:1px solid var(--border); color:var(--text-muted); }
+    .btn-join.joined:hover { border-color:#f87171; color:#f87171; }
+    .btn-join:disabled { opacity:.5; cursor:not-allowed; }
+    .btn-details {
+      padding:8px 10px; border-radius:var(--radius-sm); border:1px solid var(--border);
+      background:transparent; color:var(--text-muted); font-size:12px;
+      font-family:inherit; cursor:pointer; transition:all .18s;
     }
-    .btn-join.joined:hover { border-color: #f87171; color: #f87171; }
-    .btn-join:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-details:hover { border-color:var(--primary); color:var(--primary); }
 
-    .btn-delete-ride {
-      padding: 8px 10px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 12px;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all .18s;
-    }
-    .btn-delete-ride:hover { border-color: #f87171; color: #f87171; }
+    /* ── Empty ────────────────────────────────────────────────── */
+    .rides-empty { text-align:center; padding:60px 20px; color:var(--text-muted); }
+    .rides-empty i { font-size:48px; margin-bottom:16px; display:block; opacity:.4; }
+    .rides-empty p { font-size:14px; }
 
-    /* ── Empty state ───────────────────────────────────────── */
-    .rides-empty {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--text-muted);
+    /* ── Detail panel ─────────────────────────────────────────── */
+    .detail-panel {
+      position:fixed; right:-560px; top:0; height:100vh; width:540px;
+      background:var(--bg-card); border-left:1px solid var(--border);
+      z-index:200; transition:right .3s ease; overflow-y:auto;
+      -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+      display:flex; flex-direction:column;
     }
-    .rides-empty i {
-      font-size: 48px;
-      margin-bottom: 16px;
-      display: block;
-      opacity: .4;
+    .detail-panel.open { right:0; }
+    @media (max-width:600px) {
+      .detail-panel { width:100vw; right:-100vw; }
     }
-    .rides-empty p { font-size: 14px; }
+    .panel-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:199; }
+    .panel-overlay.show { display:block; }
 
-    /* ── Modal ─────────────────────────────────────────────── */
+    .panel-header {
+      position:sticky; top:0; z-index:2;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:18px 20px 14px; border-bottom:1px solid var(--border);
+      background:var(--bg-card);
+    }
+    .panel-title { font-size:16px; font-weight:700; color:var(--text-primary); flex:1; min-width:0; margin-right:12px; }
+    .panel-close {
+      width:32px; height:32px; border-radius:8px; border:1px solid var(--border);
+      background:transparent; color:var(--text-muted); font-size:16px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .panel-close:hover { color:var(--text-primary); }
+    .panel-body { padding:20px; flex:1; }
+
+    .panel-section-title {
+      font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.8px;
+      color:var(--text-muted); margin:18px 0 10px;
+    }
+    .panel-section-title:first-child { margin-top:0; }
+
+    .panel-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .panel-info-item { background:var(--bg-input); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+    .panel-info-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); margin-bottom:3px; }
+    .panel-info-value { font-size:14px; font-weight:700; color:var(--text-primary); }
+
+    .panel-description { font-size:13px; color:var(--text-secondary); line-height:1.6; }
+
+    /* Participants list */
+    .participant-list { display:flex; flex-direction:column; gap:8px; }
+    .participant-item { display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--bg-input); border-radius:10px; }
+    .participant-avatar {
+      width:34px; height:34px; border-radius:50%; flex-shrink:0;
+      background:linear-gradient(135deg,var(--primary),#ff9a56);
+      color:#fff; font-size:12px; font-weight:700;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+    }
+    .participant-avatar img { width:100%; height:100%; object-fit:cover; }
+    .participant-name { font-size:13px; font-weight:600; color:var(--text-primary); flex:1; }
+    .participant-badge { font-size:10px; color:var(--text-muted); }
+
+    /* Panel action bar */
+    .panel-actions {
+      position:sticky; bottom:0; padding:14px 20px;
+      border-top:1px solid var(--border); background:var(--bg-card);
+      display:flex; gap:8px; flex-shrink:0;
+    }
+    .btn-panel-join {
+      flex:1; padding:10px 14px; border-radius:var(--radius-sm); border:none;
+      background:var(--primary); color:#fff; font-size:13px; font-weight:700;
+      font-family:inherit; cursor:pointer; transition:opacity .18s;
+    }
+    .btn-panel-join:hover { opacity:.85; }
+    .btn-panel-join.joined { background:transparent; border:1px solid var(--border); color:var(--text-muted); }
+    .btn-panel-join.joined:hover { border-color:#f87171; color:#f87171; }
+    .btn-panel-join:disabled { opacity:.5; cursor:not-allowed; }
+    .btn-panel-edit {
+      padding:10px 14px; border-radius:var(--radius-sm); border:1px solid var(--border);
+      background:transparent; color:var(--text-muted); font-size:13px; font-weight:600;
+      font-family:inherit; cursor:pointer; transition:all .18s;
+    }
+    .btn-panel-edit:hover { border-color:var(--primary); color:var(--primary); }
+    .btn-panel-delete {
+      padding:10px 12px; border-radius:var(--radius-sm); border:1px solid var(--border);
+      background:transparent; color:var(--text-muted); font-size:13px;
+      font-family:inherit; cursor:pointer; transition:all .18s;
+    }
+    .btn-panel-delete:hover { border-color:#f87171; color:#f87171; }
+
+    /* ── Comments ─────────────────────────────────────────────── */
+    .comment-list { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+    .comment-item { display:flex; gap:10px; align-items:flex-start; }
+    .comment-avatar {
+      width:30px; height:30px; border-radius:50%; flex-shrink:0;
+      background:linear-gradient(135deg,var(--primary),#ff9a56);
+      color:#fff; font-size:11px; font-weight:700;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+    }
+    .comment-avatar img { width:100%; height:100%; object-fit:cover; }
+    .comment-bubble { flex:1; }
+    .comment-meta { display:flex; align-items:baseline; gap:6px; margin-bottom:3px; }
+    .comment-author { font-size:12px; font-weight:700; color:var(--text-primary); }
+    .comment-time { font-size:10px; color:var(--text-muted); }
+    .comment-text { font-size:13px; color:var(--text-secondary); line-height:1.5; word-break:break-word; }
+
+    .comment-input-row { display:flex; gap:8px; align-items:flex-end; }
+    .comment-input {
+      flex:1; padding:9px 12px; background:var(--bg-input); border:1px solid var(--border);
+      border-radius:var(--radius-sm); color:var(--text-primary); font-size:13px;
+      font-family:inherit; resize:none; min-height:38px; max-height:100px;
+      transition:border-color .15s; overflow:hidden;
+    }
+    .comment-input:focus { outline:none; border-color:var(--primary); }
+    .btn-send {
+      width:36px; height:36px; border-radius:var(--radius-sm); border:none;
+      background:var(--primary); color:#fff; font-size:14px;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:opacity .18s; flex-shrink:0;
+    }
+    .btn-send:hover { opacity:.85; }
+    .btn-send:disabled { opacity:.4; cursor:not-allowed; }
+
+    .comments-empty { font-size:12px; color:var(--text-muted); text-align:center; padding:12px 0; }
+
+    /* ── Modal ────────────────────────────────────────────────── */
     .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.6);
-      z-index: 300;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+      z-index:300; align-items:center; justify-content:center; padding:16px;
     }
-    .modal-overlay.show { display: flex; }
+    .modal-overlay.show { display:flex; }
     .modal-box {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      width: 100%;
-      max-width: 520px;
-      max-height: 92vh;
-      overflow-y: auto;
-      padding: 24px;
+      background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius);
+      width:100%; max-width:520px; max-height:92vh; overflow-y:auto; padding:24px;
     }
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    .modal-title {
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+    .modal-title { font-size:17px; font-weight:700; color:var(--text-primary); }
     .modal-close {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width:32px; height:32px; border-radius:8px; border:1px solid var(--border);
+      background:transparent; color:var(--text-muted); font-size:16px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
     }
-    .modal-close:hover { color: var(--text-primary); }
+    .modal-close:hover { color:var(--text-primary); }
 
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
-
-    .form-group {
-      margin-bottom: 14px;
-    }
-    .form-group label {
-      display: block;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      color: var(--text-muted);
-      margin-bottom: 6px;
-    }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media (max-width:480px) { .form-row { grid-template-columns:1fr; } }
+    .form-group { margin-bottom:14px; }
+    .form-group label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); margin-bottom:6px; }
     .form-group input,
     .form-group select,
     .form-group textarea {
-      width: 100%;
-      padding: 9px 12px;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text-primary);
-      font-size: 13px;
-      font-family: inherit;
-      box-sizing: border-box;
-      transition: border-color .15s;
+      width:100%; padding:9px 12px; background:var(--bg-input); border:1px solid var(--border);
+      border-radius:var(--radius-sm); color:var(--text-primary); font-size:13px;
+      font-family:inherit; box-sizing:border-box; transition:border-color .15s;
     }
     .form-group input:focus,
     .form-group select:focus,
-    .form-group textarea:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-    .form-group textarea { resize: vertical; min-height: 70px; }
+    .form-group textarea:focus { outline:none; border-color:var(--primary); }
+    .form-group textarea { resize:vertical; min-height:70px; }
 
-    .modal-footer {
-      display: flex;
-      gap: 8px;
-      margin-top: 20px;
-    }
+    .modal-footer { display:flex; gap:8px; margin-top:20px; }
     .btn-cancel {
-      flex: 0;
-      padding: 10px 18px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
+      padding:10px 18px; border-radius:var(--radius-sm); border:1px solid var(--border);
+      background:transparent; color:var(--text-muted); font-size:13px; font-weight:600;
+      font-family:inherit; cursor:pointer;
     }
-    .btn-cancel:hover { color: var(--text-primary); }
+    .btn-cancel:hover { color:var(--text-primary); }
     .btn-submit {
-      flex: 1;
-      padding: 10px 18px;
-      border-radius: var(--radius-sm);
-      border: none;
-      background: var(--primary);
-      color: #fff;
-      font-size: 13px;
-      font-weight: 700;
-      font-family: inherit;
-      cursor: pointer;
+      flex:1; padding:10px 18px; border-radius:var(--radius-sm); border:none;
+      background:var(--primary); color:#fff; font-size:13px; font-weight:700;
+      font-family:inherit; cursor:pointer;
     }
-    .btn-submit:hover { opacity: .88; }
-    .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-submit:hover { opacity:.88; }
+    .btn-submit:disabled { opacity:.5; cursor:not-allowed; }
 
-    /* ── Skeleton ──────────────────────────────────────────── */
-    @keyframes skelShimmer {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
+    /* ── Skeleton ─────────────────────────────────────────────── */
+    @keyframes skelShimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
     .skel {
-      border-radius: 8px;
-      background: linear-gradient(90deg, var(--bg-input) 25%, var(--border) 50%, var(--bg-input) 75%);
-      background-size: 200% 100%;
-      animation: skelShimmer 1.4s ease infinite;
+      border-radius:8px;
+      background:linear-gradient(90deg,var(--bg-input) 25%,var(--border) 50%,var(--bg-input) 75%);
+      background-size:200% 100%; animation:skelShimmer 1.4s ease infinite;
     }
-    .skel-card {
-      height: 200px;
-      border-radius: var(--radius);
-    }
+    .skel-card { height:200px; border-radius:var(--radius); }
   </style>
   <script>window.API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : 'https://velomind-backend.onrender.com/api';</script>
   <script src="js/auth.js"></script>
@@ -366,9 +278,7 @@
 <body>
 
 <nav class="sidebar">
-  <div class="sidebar-logo">
-    <img src="logo2.png" alt="VeloMind">
-  </div>
+  <div class="sidebar-logo"><img src="logo2.png" alt="VeloMind"></div>
   <div class="sidebar-nav">
     <div class="nav-section-title">Principal</div>
     <a href="dashboard.html" class="nav-item"><i class="fas fa-home"></i> Inicio</a>
@@ -417,15 +327,12 @@
   </header>
 
   <div class="page-body">
-    <!-- Tabs -->
     <div class="rides-tabs">
       <button class="rides-tab active" data-tab="proximas">Próximas</button>
       <button class="rides-tab" data-tab="mis-salidas">Mis Salidas</button>
     </div>
 
-    <!-- Ride list -->
     <div class="rides-grid" id="rides-grid">
-      <!-- skeleton -->
       <div class="skel skel-card"></div>
       <div class="skel skel-card"></div>
       <div class="skel skel-card"></div>
@@ -441,25 +348,39 @@
   </div>
 </main>
 
-<!-- ── Modal crear salida ───────────────────────────────────────────────── -->
+<!-- ── Panel de detalle ──────────────────────────────────────────────────────── -->
+<div class="panel-overlay" id="panel-overlay"></div>
+<aside class="detail-panel" id="detail-panel">
+  <div class="panel-header">
+    <span class="panel-title" id="panel-title">Cargando...</span>
+    <button class="panel-close" onclick="closePanel()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="panel-body" id="panel-body">
+    <div class="skel" style="height:120px;margin-bottom:12px"></div>
+    <div class="skel" style="height:60px;margin-bottom:12px"></div>
+    <div class="skel" style="height:200px"></div>
+  </div>
+  <div class="panel-actions" id="panel-actions" style="display:none"></div>
+</aside>
+
+<!-- ── Modal crear / editar salida ──────────────────────────────────────────── -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal-box">
     <div class="modal-header">
-      <span class="modal-title">Nueva Salida Grupal</span>
+      <span class="modal-title" id="modal-title">Nueva Salida Grupal</span>
       <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
     </div>
 
     <form id="create-ride-form" autocomplete="off">
+      <input type="hidden" id="f-edit-id">
       <div class="form-group">
         <label>Título *</label>
         <input type="text" id="f-title" placeholder="Ej: Vuelta al embalse" maxlength="80" required>
       </div>
-
       <div class="form-group">
         <label>Descripción</label>
         <textarea id="f-description" placeholder="Detalles del recorrido, nivel requerido..."></textarea>
       </div>
-
       <div class="form-row">
         <div class="form-group">
           <label>Fecha y hora de salida *</label>
@@ -475,12 +396,10 @@
           </select>
         </div>
       </div>
-
       <div class="form-group">
         <label>Punto de encuentro</label>
         <input type="text" id="f-meeting-point" placeholder="Ej: Plaza Mayor, Bar El Cruce...">
       </div>
-
       <div class="form-row">
         <div class="form-group">
           <label>Distancia (km)</label>
@@ -491,7 +410,6 @@
           <input type="number" id="f-elevation" min="0" max="99999" step="1" placeholder="0">
         </div>
       </div>
-
       <div class="form-row">
         <div class="form-group">
           <label>Máx. participantes</label>
@@ -504,7 +422,6 @@
           </label>
         </div>
       </div>
-
       <div class="modal-footer">
         <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
         <button type="submit" class="btn-submit" id="btn-submit-ride">
@@ -519,19 +436,20 @@
   document.documentElement.style.opacity = '1';
 
   const API = window.API_URL;
-  let currentTab = 'proximas';
+  let currentTab    = 'proximas';
   let currentUserId = null;
-  let ridesCache = { proximas: null, mine: null };
+  let ridesCache    = { proximas: null, mine: null };
+  let openRide      = null; // ride currently in panel
 
-  // ── Auth + init ────────────────────────────────────────────
+  // ── Init ──────────────────────────────────────────────────
   function init() {
     const user = Auth.getUser();
-    if (!user) return; // auth.js ya redirige a login si no hay sesión
+    if (!user) return;
     currentUserId = user.id;
     loadRides('proximas');
   }
 
-  // ── Tabs ───────────────────────────────────────────────────
+  // ── Tabs ──────────────────────────────────────────────────
   document.querySelectorAll('.rides-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.rides-tab').forEach(t => t.classList.remove('active'));
@@ -541,28 +459,25 @@
     });
   });
 
-  // ── Load rides ─────────────────────────────────────────────
+  // ── Load rides ────────────────────────────────────────────
   async function loadRides(tab, forceRefresh = false) {
     const grid  = document.getElementById('rides-grid');
     const empty = document.getElementById('rides-empty');
+    const cacheKey = tab === 'proximas' ? 'proximas' : 'mine';
 
-    if (!forceRefresh && ridesCache[tab === 'proximas' ? 'proximas' : 'mine']) {
-      renderRides(ridesCache[tab === 'proximas' ? 'proximas' : 'mine']);
+    if (!forceRefresh && ridesCache[cacheKey]) {
+      renderRides(ridesCache[cacheKey], tab);
       return;
     }
 
-    grid.innerHTML = `
-      <div class="skel skel-card"></div>
-      <div class="skel skel-card"></div>
-      <div class="skel skel-card"></div>`;
+    grid.innerHTML = `<div class="skel skel-card"></div><div class="skel skel-card"></div><div class="skel skel-card"></div>`;
     empty.style.display = 'none';
 
-    const token    = Auth.getToken();
     const endpoint = tab === 'mis-salidas' ? `${API}/group-rides/mine` : `${API}/group-rides`;
     try {
-      const res  = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+      const res  = await fetch(endpoint, { headers: { Authorization: `Bearer ${Auth.getToken()}` } });
       const data = await res.json();
-      ridesCache[tab === 'proximas' ? 'proximas' : 'mine'] = data;
+      ridesCache[cacheKey] = data;
       renderRides(data, tab);
     } catch(e) {
       grid.innerHTML = '';
@@ -571,25 +486,19 @@
     }
   }
 
-  // ── Render ─────────────────────────────────────────────────
+  // ── Render cards ──────────────────────────────────────────
   function renderRides(rides, tab) {
     const grid  = document.getElementById('rides-grid');
     const empty = document.getElementById('rides-empty');
     grid.innerHTML = '';
-
     if (!rides || rides.length === 0) {
       empty.style.display = 'block';
       document.getElementById('rides-empty-msg').textContent =
-        tab === 'mis-salidas'
-          ? 'Aún no tienes salidas creadas ni apuntadas.'
-          : 'No hay salidas públicas próximas. ¡Sé el primero!';
+        tab === 'mis-salidas' ? 'Aún no tienes salidas creadas ni apuntadas.' : 'No hay salidas públicas próximas. ¡Sé el primero!';
       return;
     }
     empty.style.display = 'none';
-
-    rides.forEach(ride => {
-      grid.appendChild(buildCard(ride));
-    });
+    rides.forEach(ride => grid.appendChild(buildCard(ride)));
   }
 
   function buildCard(ride) {
@@ -597,162 +506,336 @@
     card.className = 'ride-card' + (ride.is_mine ? ' is-mine' : '');
     card.dataset.id = ride.id;
 
-    const dt       = new Date(ride.departure_time);
-    const dateStr  = dt.toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
-    const timeStr  = dt.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
-    const initials = (ride.creator_name || 'C')[0].toUpperCase();
-
+    const dt      = new Date(ride.departure_time);
+    const dateStr = dt.toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+    const timeStr = dt.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
     const typeLabels = { road:'Carretera', gravel:'Gravel', mtb:'MTB', urban:'Urbana' };
     const typeCls    = { road:'badge-road', gravel:'badge-gravel', mtb:'badge-mtb', urban:'badge-urban' };
-    const typeLabel  = typeLabels[ride.route_type] || ride.route_type || 'Carretera';
-    const typeBadge  = typeCls[ride.route_type]    || 'badge-road';
-
-    const maxInfo = ride.max_participants
-      ? `${ride.participant_count}/${ride.max_participants}`
-      : ride.participant_count;
-    const isFull = ride.max_participants && ride.participant_count >= ride.max_participants && !ride.is_joined;
-
-    const avatarHtml = ride.creator_avatar
-      ? `<img src="${ride.creator_avatar}" alt="">`
-      : initials;
+    const maxInfo    = ride.max_participants ? `${ride.participant_count}/${ride.max_participants}` : ride.participant_count;
+    const isFull     = ride.max_participants && ride.participant_count >= ride.max_participants && !ride.is_joined;
+    const avatarHtml = ride.creator_avatar ? `<img src="${ride.creator_avatar}" alt="">` : (ride.creator_name || 'C')[0].toUpperCase();
 
     card.innerHTML = `
       <div class="ride-card-top">
         <div class="ride-card-title">${escHtml(ride.title)}</div>
-        <span class="ride-card-badge ${typeBadge}">${typeLabel}</span>
+        <span class="ride-card-badge ${typeCls[ride.route_type] || 'badge-road'}">${typeLabels[ride.route_type] || 'Carretera'}</span>
       </div>
-
-      <div class="ride-card-date">
-        <i class="fas fa-calendar-day"></i>
-        ${dateStr} · ${timeStr}
-      </div>
-
-      ${ride.meeting_point ? `
+      <div class="ride-card-date"><i class="fas fa-calendar-day"></i> ${dateStr} · ${timeStr}</div>
+      ${ride.meeting_point ? `<div class="ride-card-meta"><span class="ride-meta-item"><i class="fas fa-map-marker-alt"></i> ${escHtml(ride.meeting_point)}</span></div>` : ''}
       <div class="ride-card-meta">
-        <span class="ride-meta-item">
-          <i class="fas fa-map-marker-alt"></i> ${escHtml(ride.meeting_point)}
-        </span>
-      </div>` : ''}
-
-      <div class="ride-card-meta">
-        ${ride.distance_km ? `<span class="ride-meta-item"><i class="fas fa-road"></i> ${ride.distance_km} km</span>` : ''}
+        ${ride.distance_km     ? `<span class="ride-meta-item"><i class="fas fa-road"></i> ${ride.distance_km} km</span>` : ''}
         ${ride.elevation_gain_m ? `<span class="ride-meta-item"><i class="fas fa-mountain"></i> ${ride.elevation_gain_m} m</span>` : ''}
-        ${ride.description ? `<span class="ride-meta-item" style="width:100%;display:block;font-size:11px;color:var(--text-secondary);margin-top:2px">${escHtml(ride.description.substring(0,90))}${ride.description.length > 90 ? '…' : ''}</span>` : ''}
       </div>
-
       <div class="ride-card-creator">
         <div class="creator-avatar">${avatarHtml}</div>
         <div class="creator-info">
           <div class="creator-name">${escHtml(ride.creator_name)}</div>
           <div class="creator-label">${ride.is_mine ? 'Organizador (tú)' : 'Organizador'}</div>
         </div>
-        <div class="participants-badge">
-          <i class="fas fa-users"></i> ${maxInfo}
-        </div>
+        <div class="participants-badge"><i class="fas fa-users"></i> ${maxInfo}</div>
       </div>
-
       <div class="ride-card-actions">
-        ${!ride.is_mine ? `
-          <button class="btn-join ${ride.is_joined ? 'joined' : ''} ${isFull ? 'disabled' : ''}"
-            data-id="${ride.id}" data-joined="${ride.is_joined ? '1' : '0'}"
-            ${isFull ? 'disabled title="Salida completa"' : ''}>
-            ${ride.is_joined ? '<i class="fas fa-times"></i> Salir' : (isFull ? 'Completa' : '<i class="fas fa-check"></i> Apuntarme')}
-          </button>
-        ` : ''}
-        ${ride.is_mine ? `
-          <button class="btn-delete-ride" data-id="${ride.id}">
-            <i class="fas fa-trash"></i> Eliminar
-          </button>
-        ` : ''}
-      </div>
-    `;
+        ${!ride.is_mine
+          ? `<button class="btn-join ${ride.is_joined ? 'joined' : ''}" data-id="${ride.id}" data-joined="${ride.is_joined ? '1' : '0'}" ${isFull ? 'disabled title="Salida completa"' : ''}>
+               ${ride.is_joined ? '<i class="fas fa-times"></i> Salir' : (isFull ? 'Completa' : '<i class="fas fa-check"></i> Apuntarme')}
+             </button>`
+          : ''}
+        <button class="btn-details" data-id="${ride.id}"><i class="fas fa-info-circle"></i> Ver</button>
+      </div>`;
 
-    // Join / leave
     const joinBtn = card.querySelector('.btn-join');
-    if (joinBtn) joinBtn.addEventListener('click', () => toggleJoin(ride, card));
+    if (joinBtn) joinBtn.addEventListener('click', e => { e.stopPropagation(); toggleJoin(ride, card); });
 
-    // Delete
-    const delBtn = card.querySelector('.btn-delete-ride');
-    if (delBtn) delBtn.addEventListener('click', () => deleteRide(ride.id, card));
+    const detailBtn = card.querySelector('.btn-details');
+    detailBtn.addEventListener('click', e => { e.stopPropagation(); openPanel(ride.id); });
 
+    card.addEventListener('click', () => openPanel(ride.id));
     return card;
   }
 
-  // ── Join / Leave ───────────────────────────────────────────
+  // ── Join / Leave ──────────────────────────────────────────
   async function toggleJoin(ride, card) {
     const btn    = card.querySelector('.btn-join');
     const joined = btn.dataset.joined === '1';
     btn.disabled = true;
-
-    const token = Auth.getToken();
-    const method = joined ? 'DELETE' : 'POST';
     try {
       const res = await fetch(`${API}/group-rides/${ride.id}/join`, {
-        method,
-        headers: { Authorization: `Bearer ${token}` },
+        method: joined ? 'DELETE' : 'POST',
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
       });
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.error || 'Error al procesar la solicitud.');
-        btn.disabled = false;
-        return;
-      }
-      // Invalidate cache and reload
-      ridesCache.proximas = null;
-      ridesCache.mine     = null;
-      loadRides(currentTab, true);
+      if (!res.ok) { alert((await res.json()).error || 'Error'); btn.disabled = false; return; }
+      invalidateCache(); loadRides(currentTab, true);
+      if (openRide?.id === ride.id) openPanel(ride.id);
+    } catch(e) { alert('Error de red.'); btn.disabled = false; }
+  }
+
+  // ── Detail panel ──────────────────────────────────────────
+  async function openPanel(rideId) {
+    const panel   = document.getElementById('detail-panel');
+    const overlay = document.getElementById('panel-overlay');
+    const body    = document.getElementById('panel-body');
+    const titleEl = document.getElementById('panel-title');
+    const actions = document.getElementById('panel-actions');
+
+    panel.classList.add('open');
+    overlay.classList.add('show');
+    titleEl.textContent = 'Cargando...';
+    body.innerHTML = `<div class="skel" style="height:120px;margin-bottom:12px"></div><div class="skel" style="height:60px;margin-bottom:12px"></div><div class="skel" style="height:200px"></div>`;
+    actions.style.display = 'none';
+
+    try {
+      const [rideRes, commentsRes] = await Promise.all([
+        fetch(`${API}/group-rides/${rideId}`, { headers: { Authorization: `Bearer ${Auth.getToken()}` } }),
+        fetch(`${API}/group-rides/${rideId}/comments`, { headers: { Authorization: `Bearer ${Auth.getToken()}` } }),
+      ]);
+      const ride     = await rideRes.json();
+      const comments = await commentsRes.json();
+      openRide = ride;
+      renderPanel(ride, comments);
     } catch(e) {
-      alert('Error de red.');
-      btn.disabled = false;
+      body.innerHTML = `<p style="color:var(--text-muted);font-size:13px">Error al cargar los detalles.</p>`;
     }
   }
 
-  // ── Delete ─────────────────────────────────────────────────
-  async function deleteRide(id, card) {
+  function renderPanel(ride, comments) {
+    const titleEl = document.getElementById('panel-title');
+    const body    = document.getElementById('panel-body');
+    const actions = document.getElementById('panel-actions');
+
+    titleEl.textContent = ride.title;
+
+    const dt      = new Date(ride.departure_time);
+    const dateStr = dt.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    const timeStr = dt.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+    const typeLabels = { road:'Carretera', gravel:'Gravel', mtb:'MTB', urban:'Urbana' };
+    const typeCls    = { road:'badge-road', gravel:'badge-gravel', mtb:'badge-mtb', urban:'badge-urban' };
+    const maxInfo    = ride.max_participants ? `${ride.participant_count}/${ride.max_participants} plazas` : `${ride.participant_count} participante${ride.participant_count !== 1 ? 's' : ''}`;
+
+    // Info grid
+    let infoHTML = `
+      <div class="panel-info-item">
+        <div class="panel-info-label">Fecha y hora</div>
+        <div class="panel-info-value" style="font-size:12px">${dateStr}<br>${timeStr}</div>
+      </div>
+      <div class="panel-info-item">
+        <div class="panel-info-label">Tipo</div>
+        <div class="panel-info-value"><span class="ride-card-badge ${typeCls[ride.route_type] || 'badge-road'}">${typeLabels[ride.route_type] || 'Carretera'}</span></div>
+      </div>`;
+    if (ride.meeting_point) infoHTML += `
+      <div class="panel-info-item" style="grid-column:1/-1">
+        <div class="panel-info-label">Punto de encuentro</div>
+        <div class="panel-info-value" style="font-size:13px">${escHtml(ride.meeting_point)}</div>
+      </div>`;
+    if (ride.distance_km) infoHTML += `
+      <div class="panel-info-item">
+        <div class="panel-info-label">Distancia</div>
+        <div class="panel-info-value">${ride.distance_km} km</div>
+      </div>`;
+    if (ride.elevation_gain_m) infoHTML += `
+      <div class="panel-info-item">
+        <div class="panel-info-label">Desnivel</div>
+        <div class="panel-info-value">${ride.elevation_gain_m} m</div>
+      </div>`;
+
+    // Participants
+    const participantItems = (ride.participants || []).map(p => {
+      const av = p.avatar ? `<img src="${p.avatar}" alt="">` : (p.name || 'C')[0].toUpperCase();
+      const isOrg = p.user_id === ride.creator_id;
+      return `<div class="participant-item">
+        <div class="participant-avatar">${av}</div>
+        <div class="participant-name">${escHtml(p.name)}</div>
+        ${isOrg ? '<span class="participant-badge" style="color:var(--primary)">Organizador</span>' : ''}
+      </div>`;
+    }).join('');
+
+    // Comments
+    const commentItems = comments.map(c => renderComment(c)).join('');
+
+    body.innerHTML = `
+      ${ride.description ? `<div class="panel-section-title">Descripción</div><div class="panel-description">${escHtml(ride.description)}</div>` : ''}
+
+      <div class="panel-section-title">Información</div>
+      <div class="panel-info-grid">${infoHTML}</div>
+
+      <div class="panel-section-title">Participantes · ${maxInfo}</div>
+      <div class="participant-list">${participantItems || '<p style="font-size:12px;color:var(--text-muted)">Sin participantes aún.</p>'}</div>
+
+      <div class="panel-section-title">Chat</div>
+      <div class="comment-list" id="comment-list">
+        ${commentItems || '<p class="comments-empty">Sé el primero en comentar.</p>'}
+      </div>
+      <div class="comment-input-row">
+        <textarea class="comment-input" id="comment-input" placeholder="Escribe un comentario..." rows="1"></textarea>
+        <button class="btn-send" id="btn-send-comment" title="Enviar"><i class="fas fa-paper-plane"></i></button>
+      </div>`;
+
+    // Auto-resize textarea
+    const textarea = document.getElementById('comment-input');
+    textarea.addEventListener('input', () => {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+    });
+    textarea.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment(ride.id); }
+    });
+    document.getElementById('btn-send-comment').addEventListener('click', () => postComment(ride.id));
+
+    // Action bar
+    const isFull = ride.max_participants && ride.participant_count >= ride.max_participants && !ride.is_joined;
+    actions.style.display = 'flex';
+    actions.innerHTML = '';
+
+    if (!ride.is_mine) {
+      const joinBtn = document.createElement('button');
+      joinBtn.className = `btn-panel-join ${ride.is_joined ? 'joined' : ''}`;
+      joinBtn.disabled  = isFull && !ride.is_joined;
+      joinBtn.innerHTML = ride.is_joined
+        ? '<i class="fas fa-times"></i> Cancelar asistencia'
+        : (isFull ? 'Salida completa' : '<i class="fas fa-check"></i> Apuntarme');
+      joinBtn.addEventListener('click', async () => {
+        joinBtn.disabled = true;
+        try {
+          const res = await fetch(`${API}/group-rides/${ride.id}/join`, {
+            method: ride.is_joined ? 'DELETE' : 'POST',
+            headers: { Authorization: `Bearer ${Auth.getToken()}` },
+          });
+          if (!res.ok) { alert((await res.json()).error || 'Error'); joinBtn.disabled = false; return; }
+          invalidateCache(); loadRides(currentTab, true); openPanel(ride.id);
+        } catch(e) { alert('Error de red.'); joinBtn.disabled = false; }
+      });
+      actions.appendChild(joinBtn);
+    }
+
+    if (ride.is_mine) {
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-panel-edit';
+      editBtn.innerHTML = '<i class="fas fa-pen"></i> Editar';
+      editBtn.addEventListener('click', () => openEditModal(ride));
+      actions.appendChild(editBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-panel-delete';
+      delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+      delBtn.title = 'Eliminar salida';
+      delBtn.addEventListener('click', () => deleteRide(ride.id));
+      actions.appendChild(delBtn);
+    }
+  }
+
+  function renderComment(c) {
+    const av      = c.user_avatar ? `<img src="${c.user_avatar}" alt="">` : (c.user_name || 'C')[0].toUpperCase();
+    const timeAgo = formatTimeAgo(new Date(c.created_at));
+    return `<div class="comment-item">
+      <div class="comment-avatar">${av}</div>
+      <div class="comment-bubble">
+        <div class="comment-meta">
+          <span class="comment-author">${escHtml(c.user_name)}</span>
+          <span class="comment-time">${timeAgo}</span>
+        </div>
+        <div class="comment-text">${escHtml(c.content)}</div>
+      </div>
+    </div>`;
+  }
+
+  async function postComment(rideId) {
+    const input   = document.getElementById('comment-input');
+    const sendBtn = document.getElementById('btn-send-comment');
+    const text    = input.value.trim();
+    if (!text) return;
+
+    sendBtn.disabled = true;
+    try {
+      const res = await fetch(`${API}/group-rides/${rideId}/comments`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${Auth.getToken()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text }),
+      });
+      if (!res.ok) { alert((await res.json()).error || 'Error'); sendBtn.disabled = false; return; }
+      const comment = await res.json();
+      input.value = '';
+      input.style.height = 'auto';
+
+      const list = document.getElementById('comment-list');
+      const empty = list.querySelector('.comments-empty');
+      if (empty) empty.remove();
+      list.insertAdjacentHTML('beforeend', renderComment(comment));
+      list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch(e) { alert('Error de red.'); }
+    sendBtn.disabled = false;
+  }
+
+  function closePanel() {
+    document.getElementById('detail-panel').classList.remove('open');
+    document.getElementById('panel-overlay').classList.remove('show');
+    openRide = null;
+  }
+  document.getElementById('panel-overlay').addEventListener('click', closePanel);
+
+  // ── Delete ────────────────────────────────────────────────
+  async function deleteRide(id) {
     if (!confirm('¿Eliminar esta salida? No se puede deshacer.')) return;
-    const token = Auth.getToken();
     try {
       await fetch(`${API}/group-rides/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
       });
-      ridesCache.proximas = null;
-      ridesCache.mine     = null;
-      loadRides(currentTab, true);
-    } catch(e) {
-      alert('Error al eliminar.');
-    }
+      closePanel(); invalidateCache(); loadRides(currentTab, true);
+    } catch(e) { alert('Error al eliminar.'); }
   }
 
-  // ── Modal ──────────────────────────────────────────────────
+  // ── Modal crear / editar ──────────────────────────────────
   document.getElementById('btn-nueva-salida').addEventListener('click', openModal);
 
   function openModal() {
-    // Default datetime to next hour
+    document.getElementById('modal-title').textContent = 'Nueva Salida Grupal';
+    document.getElementById('btn-submit-ride').innerHTML = '<i class="fas fa-plus"></i> Crear salida';
+    document.getElementById('f-edit-id').value = '';
+    document.getElementById('create-ride-form').reset();
+
     const now = new Date();
     now.setHours(now.getHours() + 1, 0, 0, 0);
     const pad = n => String(n).padStart(2, '0');
-    const local = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
-    document.getElementById('f-departure').value = local;
+    document.getElementById('f-departure').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
+    document.getElementById('modal-overlay').classList.add('show');
+  }
+
+  function openEditModal(ride) {
+    document.getElementById('modal-title').textContent = 'Editar Salida';
+    document.getElementById('btn-submit-ride').innerHTML = '<i class="fas fa-save"></i> Guardar cambios';
+    document.getElementById('f-edit-id').value = ride.id;
+
+    document.getElementById('f-title').value        = ride.title || '';
+    document.getElementById('f-description').value  = ride.description || '';
+    document.getElementById('f-meeting-point').value = ride.meeting_point || '';
+    document.getElementById('f-distance').value     = ride.distance_km || '';
+    document.getElementById('f-elevation').value    = ride.elevation_gain_m || '';
+    document.getElementById('f-max-participants').value = ride.max_participants || '';
+    document.getElementById('f-route-type').value   = ride.route_type || 'road';
+    document.getElementById('f-is-public').checked  = ride.is_public !== false;
+
+    const dt  = new Date(ride.departure_time);
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('f-departure').value = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+
     document.getElementById('modal-overlay').classList.add('show');
   }
 
   function closeModal() {
     document.getElementById('modal-overlay').classList.remove('show');
     document.getElementById('create-ride-form').reset();
+    document.getElementById('f-edit-id').value = '';
   }
-
   document.getElementById('modal-overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   });
 
   document.getElementById('create-ride-form').addEventListener('submit', async e => {
     e.preventDefault();
-    const btn = document.getElementById('btn-submit-ride');
+    const btn    = document.getElementById('btn-submit-ride');
+    const editId = document.getElementById('f-edit-id').value;
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
 
-    const token = Auth.getToken();
     const body = {
       title:            document.getElementById('f-title').value.trim(),
       description:      document.getElementById('f-description').value.trim() || null,
@@ -766,41 +849,44 @@
     };
 
     try {
-      const res = await fetch(`${API}/group-rides`, {
-        method: 'POST',
-        headers: {
-          Authorization:  `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
+      const isEdit = !!editId;
+      const res = await fetch(`${API}/group-rides${isEdit ? '/' + editId : ''}`, {
+        method:  isEdit ? 'PATCH' : 'POST',
+        headers: { Authorization: `Bearer ${Auth.getToken()}`, 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.error || 'Error al crear la salida.');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-plus"></i> Crear salida';
-        return;
-      }
+      if (!res.ok) { alert((await res.json()).error || 'Error'); btn.disabled = false; btn.innerHTML = isEdit ? '<i class="fas fa-save"></i> Guardar cambios' : '<i class="fas fa-plus"></i> Crear salida'; return; }
+
       closeModal();
-      ridesCache.proximas = null;
-      ridesCache.mine     = null;
-      // Switch to "mis salidas" to show the new one
-      document.querySelectorAll('.rides-tab').forEach(t => {
-        t.classList.toggle('active', t.dataset.tab === 'mis-salidas');
-      });
-      currentTab = 'mis-salidas';
-      loadRides('mis-salidas', true);
-    } catch(err) {
-      alert('Error de red.');
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-plus"></i> Crear salida';
-    }
+      invalidateCache();
+
+      if (isEdit) {
+        loadRides(currentTab, true);
+        openPanel(editId);
+      } else {
+        document.querySelectorAll('.rides-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'mis-salidas'));
+        currentTab = 'mis-salidas';
+        loadRides('mis-salidas', true);
+      }
+    } catch(err) { alert('Error de red.'); }
+
+    btn.disabled = false;
+    btn.innerHTML = editId ? '<i class="fas fa-save"></i> Guardar cambios' : '<i class="fas fa-plus"></i> Crear salida';
   });
 
-  // ── Util ───────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────
+  function invalidateCache() { ridesCache.proximas = null; ridesCache.mine = null; }
+
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function formatTimeAgo(date) {
+    const diff = Math.floor((Date.now() - date) / 1000);
+    if (diff < 60)   return 'ahora';
+    if (diff < 3600) return `hace ${Math.floor(diff/60)} min`;
+    if (diff < 86400) return `hace ${Math.floor(diff/3600)} h`;
+    return date.toLocaleDateString('es-ES', { day:'numeric', month:'short' });
   }
 
   init();
