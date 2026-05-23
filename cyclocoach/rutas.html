@@ -1932,6 +1932,15 @@ function setTimeStat(distKm, elevGainM, type, gpsTime = null) {
   if (expTime && expTime !== '—') document.getElementById('stat-time').textContent = expTime;
 }
 
+// Azimut en grados (0 = Norte, 90 = Este) desde el punto 1 al punto 2
+function _bearing(lat1, lon1, lat2, lon2) {
+  const r = Math.PI / 180;
+  const φ1 = lat1 * r, φ2 = lat2 * r, Δλ = (lon2 - lon1) * r;
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return Math.round((Math.atan2(y, x) * 180 / Math.PI + 360) % 360);
+}
+
 // BRouter — perfil MTB real: usa tags OSM mtb:scale, evita carreteras asfaltadas
 async function routeBRouter(type) {
   const profile = type === 'mtb' ? 'mtb' : type === 'gravel' ? 'trekking' : 'fastbike';
@@ -1967,7 +1976,14 @@ async function routeValhalla(type) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      locations: waypoints.map(w => ({ lat: w.lat, lon: w.lng, type: 'break' })),
+      locations: waypoints.map((w, i) => {
+        const loc = { lat: w.lat, lon: w.lng, type: 'break' };
+        if (i < waypoints.length - 1) {
+          loc.heading = _bearing(w.lat, w.lng, waypoints[i+1].lat, waypoints[i+1].lng);
+          loc.heading_tolerance = 45;
+        }
+        return loc;
+      }),
       costing,
       costing_options: opts,
       directions_options: { units: 'km' },
@@ -1994,10 +2010,15 @@ async function routeValhalla(type) {
 // Road usa perfil 'driving' (coches) → garantiza solo carreteras asfaltadas
 // Gravel/MTB usan 'cycling' → acepta cualquier superficie ciclable
 async function routeOSRM(type) {
-  const coords  = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
-  const profile = type === 'road' ? 'driving' : 'cycling';
+  const coords   = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
+  const profile  = type === 'road' ? 'driving' : 'cycling';
+  const bearings = waypoints.map((w, i) =>
+    i < waypoints.length - 1
+      ? `${_bearing(w.lat, w.lng, waypoints[i+1].lat, waypoints[i+1].lng)},45`
+      : ''
+  ).join(';');
   const res    = await fetch(
-    `https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson`
+    `https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson&bearings=${bearings}`
   );
   if (!res.ok) throw new Error('OSRM HTTP ' + res.status);
   const data  = await res.json();
