@@ -2094,15 +2094,14 @@ async function fetchElevation(latLngs) {
     const batch = sampled.slice(i, i + BATCH);
     const lats  = batch.map(([la]) => la.toFixed(6)).join(',');
     const lngs  = batch.map(([,ln]) => ln.toFixed(6)).join(',');
+    // .catch(() => []) → un lote fallido no aborta los demás
     batches.push(fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`)
-      .then(r => r.json()).then(d => d.elevation || []));
+      .then(r => r.json()).then(d => d.elevation || []).catch(() => []));
   }
-  try {
-    const allElevs = (await Promise.all(batches)).flat();
-    if (!allElevs.length) { console.warn('[Rutas] Open-Meteo: sin datos de elevación'); return; }
-    document.getElementById('stat-elev').textContent = calcElevGain(allElevs, 1);
-    renderElevChart(allElevs);
-  } catch(e) { console.error('[Rutas] fetchElevation error:', e); }
+  const allElevs = (await Promise.all(batches)).flat();
+  if (!allElevs.length) { console.warn('[Rutas] Open-Meteo: sin datos de elevación'); return; }
+  document.getElementById('stat-elev').textContent = calcElevGain(allElevs, 1);
+  renderElevChart(allElevs);
 }
 
 function renderElevChart(elevs) {
