@@ -2095,19 +2095,37 @@ function showToast(msg, type = 'info') {
 async function _fetchElevsForCoords(latLngs) {
   const n       = Math.min(latLngs.length, 500);
   const sampled = _sampleByDistance(latLngs, n);
+  if (!sampled.length) return [];
   const BATCH   = 100;
-  const out     = [];
-  for (let i = 0; i < sampled.length; i += BATCH) {
+
+  // Intento 1: Open-Meteo (sin auth, 10 000 req/día por IP)
+  let meteoOk = true;
+  const out1 = [];
+  for (let i = 0; i < sampled.length && meteoOk; i += BATCH) {
     const batch = sampled.slice(i, i + BATCH);
     const lats  = batch.map(([la]) => la.toFixed(5)).join(',');
     const lons  = batch.map(([, lo]) => lo.toFixed(5)).join(',');
     try {
       const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`);
       const d = await r.json();
-      if (Array.isArray(d.elevation)) out.push(...d.elevation);
-    } catch { /* lote fallido, continuar */ }
+      if (Array.isArray(d.elevation)) out1.push(...d.elevation);
+      else meteoOk = false; // rate-limit u otro error de API
+    } catch { meteoOk = false; }
   }
-  return out;
+  if (meteoOk && out1.length) return out1;
+
+  // Fallback: Open-Elevation POST (SRTM 90 m, sin límite diario conocido)
+  try {
+    const locs = sampled.map(([la, lo]) => ({ latitude: +la.toFixed(5), longitude: +lo.toFixed(5) }));
+    const r = await fetch('https://api.open-elevation.com/api/v1/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ locations: locs }),
+    });
+    const d = await r.json();
+    if (Array.isArray(d.results)) return d.results.map(p => p.elevation);
+  } catch(e) { console.error('[Elev] Open-Elevation fallback:', e); }
+  return [];
 }
 
 // Devuelve n puntos equidistantes en longitud de arco a lo largo de la polilínea.
