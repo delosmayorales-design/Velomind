@@ -271,6 +271,75 @@
       background-size:200% 100%; animation:skelShimmer 1.4s ease infinite;
     }
     .skel-card { height:200px; border-radius:var(--radius); }
+
+    /* ── Responsive mobile ────────────────────────────────────── */
+
+    /* Elimina el retraso de 300ms en tap para todos los botones */
+    button, a { touch-action: manipulation; }
+
+    /* Touch targets mínimos 44px (Apple HIG / Material) */
+    .btn-join, .btn-details, .btn-panel-join, .btn-panel-edit,
+    .btn-panel-delete, .btn-send, .btn-submit, .btn-cancel,
+    .rides-tab { min-height: 44px; }
+    .btn-send { min-width: 44px; }
+
+    @media (max-width: 600px) {
+      /* Panel ocupa toda la pantalla en móvil */
+      .detail-panel {
+        width: 100vw;
+        right: -100vw;
+        height: 100dvh;       /* dvh evita que Safari móvil corte el contenido */
+        height: 100vh;        /* fallback para browsers sin dvh */
+      }
+      .detail-panel.open { right: 0; }
+
+      /* Espacio bajo el body del panel para la barra de acciones sticky */
+      .panel-body { padding-bottom: 90px; }
+
+      /* Barra de acciones: respeta el área segura del iPhone (home indicator) */
+      .panel-actions {
+        padding-bottom: max(14px, env(safe-area-inset-bottom));
+      }
+
+      /* Modal como sheet que sube desde abajo */
+      .modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+      }
+      .modal-box {
+        border-radius: var(--radius) var(--radius) 0 0;
+        max-height: 92dvh;
+        max-height: 92vh;
+        padding: 20px 16px;
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+        width: 100%;
+        max-width: 100%;
+      }
+
+      /* Evitar iOS zoom en inputs (requiere font-size >= 16px) */
+      .form-group input,
+      .form-group select,
+      .form-group textarea,
+      .comment-input { font-size: 16px !important; }
+
+      /* Botones de acción en tarjeta: altura mínima táctil */
+      .ride-card-actions { gap: 10px; }
+      .btn-join, .btn-details { padding: 10px 12px; }
+
+      /* Fila de comentario: área táctil suficiente */
+      .comment-input-row { gap: 10px; }
+      .comment-input { min-height: 44px; padding: 12px; }
+
+      /* Panel info grid: 1 columna en pantallas muy estrechas */
+      .panel-info-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 360px) {
+      /* Pantallas muy pequeñas (Android gama baja) */
+      .ride-card { padding: 12px; }
+      .ride-card-title { font-size: 14px; }
+      .panel-body { padding: 14px; padding-bottom: 90px; }
+    }
   </style>
   <script>window.API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : 'https://velomind-backend.onrender.com/api';</script>
   <script src="js/auth.js"></script>
