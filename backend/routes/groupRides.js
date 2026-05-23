@@ -330,13 +330,46 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
       .single();
     if (error) throw error;
 
-    res.status(201).json({
+    const response = {
       id:          data.id,
       content:     data.content,
       created_at:  data.created_at,
       user_id:     data.user_id,
       user_name:   data.users?.name || 'Ciclista',
       user_avatar: data.users?.avatar_url || null,
+    };
+    res.status(201).json(response);
+
+    // Notificar a todos los participantes confirmados (excepto quien comentó)
+    setImmediate(async () => {
+      try {
+        const { data: ride } = await supabase
+          .from('group_rides')
+          .select('title')
+          .eq('id', req.params.id)
+          .single();
+
+        const { data: participants } = await supabase
+          .from('group_ride_participants')
+          .select('user_id')
+          .eq('ride_id', req.params.id)
+          .eq('status', 'confirmed')
+          .neq('user_id', req.user.id);
+
+        const authorName = response.user_name;
+        const preview    = content.length > 60 ? content.substring(0, 60) + '…' : content;
+
+        await Promise.allSettled(
+          (participants || []).map(p =>
+            sendPushToUser(p.user_id, {
+              title: `💬 ${ride?.title || 'Salida grupal'}`,
+              body:  `${authorName}: ${preview}`,
+              tag:   `comment-${req.params.id}`,
+              url:   '/cyclocoach/salidas-grupales.html',
+            })
+          )
+        );
+      } catch (_) {}
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
