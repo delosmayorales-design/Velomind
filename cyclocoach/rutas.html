@@ -2509,16 +2509,24 @@ async function shareWhatsApp(id) {
   if (!r) return;
 
   const typeLabel = { road: '🚴 Road', gravel: '🪨 Gravel', mtb: '🏔️ MTB' }[r.type] || r.type;
-  const dist = r.distance_km       ? `📏 ${r.distance_km} km`                          : '';
-  const elev = r.elevation_gain_m  ? `⛰️ ${Math.round(r.elevation_gain_m)} m D+`       : '';
-  const time = r.estimated_minutes ? `⏱️ ~${formatTime(r.estimated_minutes)}`           : '';
-  const msg  =
-    `🚵 *${r.name}* · ${typeLabel}\n` +
-    `${[dist, elev, time].filter(Boolean).join('   ')}\n\n` +
-    `_Ruta creada con VeloMind_ 💪`;
 
-  // Cargar ruta en el mapa
+  // Cargar ruta en el mapa (dispara fetchElevation async — los delays de imagen dan tiempo a que acabe)
   openRouteOnMap(id);
+
+  // Lee el desnivel del DOM (fetchElevation lo actualiza antes de que termine la espera de tiles)
+  function getElevVal() {
+    const domVal = parseInt(document.getElementById('stat-elev').textContent);
+    return domVal > 0 ? domVal : (r.elevation_gain_m ? Math.round(r.elevation_gain_m) : 0);
+  }
+  function buildMsg() {
+    const elevVal = getElevVal();
+    const dist = r.distance_km       ? `📏 ${r.distance_km} km`               : '';
+    const elev = elevVal             ? `⛰️ ${elevVal} m D+`                   : '';
+    const time = r.estimated_minutes ? `⏱️ ~${formatTime(r.estimated_minutes)}` : '';
+    return `🚵 *${r.name}* · ${typeLabel}\n` +
+           `${[dist, elev, time].filter(Boolean).join('   ')}\n\n` +
+           `_Ruta creada con VeloMind_ 💪`;
+  }
 
   if (typeof leafletImage !== 'undefined' && navigator.canShare) {
     // Show loading indicator
@@ -2631,11 +2639,12 @@ async function shareWhatsApp(id) {
         ctx.fillText(Math.round(minE) + ' m', 4, mapH + pad + chartH);
 
         // Desnivel ganado (D+)
-        if (r.elevation_gain_m) {
+        const elevVal = getElevVal();
+        if (elevVal) {
           ctx.textBaseline = 'top';
           ctx.fillStyle = '#FF6B35';
           ctx.font = `bold ${Math.max(12, Math.round(w / 48))}px sans-serif`;
-          const label = '⛰ D+ ' + Math.round(r.elevation_gain_m) + ' m';
+          const label = '⛰ D+ ' + elevVal + ' m';
           ctx.fillText(label, w - ctx.measureText(label).width - 8, mapH + 6);
         }
       }
@@ -2644,9 +2653,9 @@ async function shareWhatsApp(id) {
         try {
           const file = new File([blob], 'ruta.png', { type: 'image/png' });
           if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], text: msg });
+            await navigator.share({ files: [file], text: buildMsg() });
           } else {
-            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+            window.open(`https://wa.me/?text=${encodeURIComponent(buildMsg())}`, '_blank');
           }
           res();
         } catch(e) { rej(e); }
@@ -2661,7 +2670,7 @@ async function shareWhatsApp(id) {
     }
   }
 
-  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  window.open(`https://wa.me/?text=${encodeURIComponent(buildMsg())}`, '_blank');
 }
 
 function exportGPX(id) {
