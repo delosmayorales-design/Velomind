@@ -2088,57 +2088,68 @@ function showToast(msg, type = 'info') {
   setTimeout(() => t.remove(), 4000);
 }
 
-// Muestrea n puntos a intervalos de distancia uniforme a lo largo de la ruta.
-// Evita el sesgo por índice: en rutas de montaña el GeoJSON tiene cientos de puntos
-// apretados en cada curva y pocos en las rectas donde ocurre el desnivel real.
-function _sampleByDistance(latLngs, n) {
-  if (latLngs.length <= n) return latLngs;
-  const cum = [0];
-  for (let i = 1; i < latLngs.length; i++) {
-    const [a1, o1] = latLngs[i - 1], [a2, o2] = latLngs[i];
-    const da = (a2 - a1) * Math.PI / 180, dlo = (o2 - o1) * Math.PI / 180;
-    const h = Math.sin(da/2)**2 + Math.cos(a1*Math.PI/180)*Math.cos(a2*Math.PI/180)*Math.sin(dlo/2)**2;
-    cum.push(cum[i - 1] + 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)));
+// ── Elevación ─────────────────────────────────────────────────────────────────────────
+
+// Devuelve n puntos equidistantes en longitud de arco a lo largo de la polilínea.
+// Interpolación lineal entre vértices; safe frente a rutas con curvas densas.
+function _sampleByDistance(pts, n) {
+  if (!pts || pts.length === 0) return [];
+  if (pts.length <= n) return pts;
+  // acumular distancias proporcionales (no necesitamos metros exactos, sólo ratios)
+  const arc = [0];
+  const R2D = Math.PI / 180;
+  for (let i = 1; i < pts.length; i++) {
+    const [la1, lo1] = pts[i - 1], [la2, lo2] = pts[i];
+    const dlat = (la2 - la1) * R2D, dlon = (lo2 - lo1) * R2D;
+    const a = Math.sin(dlat / 2) ** 2 +
+              Math.cos(la1 * R2D) * Math.cos(la2 * R2D) * Math.sin(dlon / 2) ** 2;
+    arc.push(arc[i - 1] + 2 * Math.asin(Math.min(1, Math.sqrt(a))));
   }
-  const total = cum[cum.length - 1], interval = total / (n - 1);
-  const out = [latLngs[0]];
-  let target = interval, j = 1;
-  while (out.length < n - 1 && j < latLngs.length) {
-    while (j < latLngs.length - 1 && cum[j] < target) j++;
-    const seg = cum[j] - cum[j - 1];
-    const t = seg > 0 ? (target - cum[j - 1]) / seg : 0;
-    const [a1, o1] = latLngs[j - 1], [a2, o2] = latLngs[j];
-    out.push([a1 + t * (a2 - a1), o1 + t * (o2 - o1)]);
-    target += interval;
+  const L = arc[arc.length - 1];
+  if (L === 0) return pts.slice(0, n); // ruta sin longitud
+  const out = [];
+  let seg = 0; // índice del segmento actual
+  for (let k = 0; k < n; k++) {
+    const d = (k / (n - 1)) * L;
+    while (seg < arc.length - 2 && arc[seg + 1] < d) seg++;
+    const span = arc[seg + 1] - arc[seg];
+    const f = span > 0 ? Math.min(1, (d - arc[seg]) / span) : 0;
+    const [la1, lo1] = pts[seg], [la2, lo2] = pts[seg + 1];
+    out.push([la1 + f * (la2 - la1), lo1 + f * (lo2 - lo1)]);
   }
-  out.push(latLngs[latLngs.length - 1]);
   return out;
 }
 
-// ── Elevación (Open-Meteo SRTM 90m) ──────────────────────────────────────────────────
-// Stale-guard: cada llamada captura myId; si llega otra antes de terminar, descarta resultado.
-// Lotes de 100 en paralelo con .catch(() => []) para que un fallo parcial no aborte todo.
+// Consulta Open-Meteo en lotes SECUENCIALES de 100 puntos.
+// Secuencial evita rate-limit; stale-guard descarta resultados de fetchs anteriores.
 async function fetchElevation(latLngs) {
   const myId = ++_elevFetchId;
-  const MAX_SAMPLES = 1000, BATCH = 100;
-  const sampled = _sampleByDistance(latLngs, Math.min(latLngs.length, MAX_SAMPLES));
-  const promises = [];
-  for (let i = 0; i < sampled.length; i += BATCH) {
-    const batch = sampled.slice(i, i + BATCH);
-    const lats  = batch.map(([la]) => la.toFixed(6)).join(',');
-    const lngs  = batch.map(([,ln]) => ln.toFixed(6)).join(',');
-    promises.push(
-      fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`)
-        .then(r => r.json()).then(d => d.elevation || []).catch(() => [])
-    );
+  try {
+    const n       = Math.min(latLngs.length, 500); // 5 lotes máx
+    const sampled = _sampleByDistance(latLngs, n);
+    const BATCH   = 100;
+    const allElevs = [];
+    for (let i = 0; i < sampled.length; i += BATCH) {
+      if (myId !== _elevFetchId) return null; // cancelado por nueva llamada
+      const batch = sampled.slice(i, i + BATCH);
+      const lats  = batch.map(([la]) => la.toFixed(5)).join(',');
+      const lons  = batch.map(([, lo]) => lo.toFixed(5)).join(',');
+      try {
+        const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`);
+        const d = await r.json();
+        if (Array.isArray(d.elevation)) allElevs.push(...d.elevation);
+      } catch { /* lote fallido: continuar con los demás */ }
+    }
+    if (myId !== _elevFetchId) return null;
+    if (!allElevs.length) return null;
+    _computedElevGain = calcElevGain(allElevs, 1);
+    document.getElementById('stat-elev').textContent = _computedElevGain;
+    renderElevChart(allElevs);
+    return _computedElevGain;
+  } catch (e) {
+    console.error('[Elev] fetchElevation:', e);
+    return null;
   }
-  const allElevs = (await Promise.all(promises)).flat();
-  if (myId !== _elevFetchId) return null;  // llegó otra llamada más reciente, descartar
-  if (!allElevs.length) { console.warn('[Rutas] Open-Meteo: sin datos'); return null; }
-  _computedElevGain = calcElevGain(allElevs, 1);
-  document.getElementById('stat-elev').textContent = _computedElevGain;
-  renderElevChart(allElevs);
-  return _computedElevGain;
 }
 
 function renderElevChart(elevs) {
