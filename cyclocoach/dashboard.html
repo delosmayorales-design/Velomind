@@ -1004,8 +1004,8 @@ function sessFA(type) {
 
 /* Icono FA para el hero-deco según estado */
 const STATE_FA = {
-  fresh:   'fa-dumbbell',
-  optimal: 'fa-dumbbell',
+  fresh:   'fa-fire',
+  optimal: 'fa-bicycle',
   loaded:  'fa-battery-half',
   rest:    'fa-bed',
   no_data: 'fa-bicycle',
@@ -1033,7 +1033,7 @@ function renderHero(athlete, metrics, plan) {
     else                state = 'loaded';   // Fatigado / sobrecarga
 
     const tsbSign = tsb >= 0 ? '+' : '';
-    chips.push(`💪 CTL ${ctl.toFixed(0)}`);
+    chips.push(`🚴 CTL ${ctl.toFixed(0)}`);
     chips.push(`⚡ ATL ${atl.toFixed(0)}`);
     chips.push(
       tsb > 20  ? `🚀 Forma óptima (TSB ${tsbSign}${tsb.toFixed(0)})` :
@@ -1069,7 +1069,7 @@ function renderHero(athlete, metrics, plan) {
 
   const heroEl = document.getElementById('coach-hero');
   heroEl.className = `coach-hero ${state}`;
-  document.getElementById('hero-deco').innerHTML = `<i class="fas ${STATE_FA[state] || 'fa-dumbbell'}"></i>`;
+  document.getElementById('hero-deco').innerHTML = `<i class="fas ${STATE_FA[state] || 'fa-bicycle'}"></i>`;
   document.getElementById('hero-eyebrow').innerHTML = `${greet} &nbsp;·&nbsp; ${stateLabel}`;
   document.getElementById('hero-greeting').textContent = `${firstName}, ${
     state === 'fresh'   ? 'estás listo para dar el 100%' :
