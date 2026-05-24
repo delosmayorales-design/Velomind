@@ -1001,16 +1001,21 @@
             <span id="plan-summary-inline">Cargando objetivos...</span>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <div id="week-dates" style="font-size:13px;color:var(--text-muted)"></div>
-          <button onclick="toggleNextWeekSummary()" id="btn-next-week" style="
-            display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
-            background:rgba(196,239,68,.08);border:1px solid rgba(196,239,68,.25);
-            color:var(--primary);border-radius:8px;font-size:11px;font-weight:700;
-            cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap
-          "><i class="fas fa-forward"></i> Próxima semana</button>
-        </div>
       </div>
+
+      <!-- Navegador de semana — visible y claro en móvil y escritorio -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border);gap:8px">
+        <div id="week-dates" style="font-size:13px;color:var(--text-muted);font-weight:500"></div>
+        <button onclick="toggleNextWeekSummary()" id="btn-next-week" style="
+          display:inline-flex;align-items:center;gap:6px;
+          padding:8px 14px;border-radius:10px;
+          background:rgba(196,239,68,.10);border:1px solid rgba(196,239,68,.30);
+          color:var(--primary);font-size:13px;font-weight:700;
+          cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;
+          flex-shrink:0;
+        ">Semana siguiente <i class="fas fa-chevron-right" style="font-size:11px"></i></button>
+      </div>
+
       <div id="missed-check-banner" style="display:none;padding:0 0 12px 0"></div>
       <div id="weekly-plan" class="session-cards-grid">
         <div style="text-align:center;padding:40px;color:var(--text-muted)">
@@ -3732,10 +3737,13 @@ function toggleNextWeekSummary() {
   if (panel.style.display === 'none') {
     _renderNextWeekSummary();
     panel.style.display = 'block';
-    btn.innerHTML = '<i class="fas fa-times"></i> Cerrar';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    btn.innerHTML = '<i class="fas fa-chevron-left" style="font-size:11px"></i> Semana actual';
+    btn.style.background = 'rgba(196,239,68,.18)';
   } else {
     panel.style.display = 'none';
-    btn.innerHTML = '<i class="fas fa-forward"></i> Próxima semana';
+    btn.innerHTML = 'Semana siguiente <i class="fas fa-chevron-right" style="font-size:11px"></i>';
+    btn.style.background = 'rgba(196,239,68,.10)';
   }
 }
 
