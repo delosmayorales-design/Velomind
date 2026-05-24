@@ -3750,11 +3750,16 @@ function toggleNextWeekSummary() {
 function _renderNextWeekSummary() {
   const athlete = AppState.athlete || getDefaultAthlete();
 
-  // Simular semana siguiente: evento 7 días más cercano
+  // Simular semana siguiente: calcular días reales hasta el próximo lunes
+  // (no siempre 7, ya que hoy puede ser domingo = 1 día hasta el lunes)
   const nextAthlete = Object.assign({}, athlete);
   if (athlete.event_date) {
-    const d = new Date(athlete.event_date);
-    d.setDate(d.getDate() - 7);
+    const _today = new Date(); _today.setHours(0, 0, 0, 0);
+    const _nextMon = new Date(_today);
+    _nextMon.setDate(_today.getDate() - (_today.getDay() || 7) + 1 + 7);
+    const _daysToNextMonday = Math.floor((_nextMon - _today) / 86400000);
+    const d = new Date(athlete.event_date + 'T00:00:00');
+    d.setDate(d.getDate() - _daysToNextMonday);
     nextAthlete.event_date = d.toISOString().split('T')[0];
   }
 
