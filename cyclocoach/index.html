@@ -423,6 +423,21 @@
           <div class="goal-name">Gran Fondo</div>
           <div class="goal-desc">150+ km, Marmotte…</div>
         </div>
+        <div class="goal-opt" data-val="carrera_corta" onclick="selectGoal(this)">
+          <div class="goal-icon">🏁</div>
+          <div class="goal-name">Carrera &lt;2h</div>
+          <div class="goal-desc">Criterium, XCO…</div>
+        </div>
+        <div class="goal-opt" data-val="carrera_larga" onclick="selectGoal(this)">
+          <div class="goal-icon">🚩</div>
+          <div class="goal-name">Carrera &gt;2h</div>
+          <div class="goal-desc">Ruta, maratón MTB…</div>
+        </div>
+        <div class="goal-opt" data-val="ultra" onclick="selectGoal(this)">
+          <div class="goal-icon">🏔️</div>
+          <div class="goal-name">Ultra</div>
+          <div class="goal-desc">200km+, multi-etapa</div>
+        </div>
         <div class="goal-opt" data-val="perdida_peso" onclick="selectGoal(this)">
           <div class="goal-icon">⚖️</div>
           <div class="goal-name">Perder peso</div>
@@ -678,7 +693,7 @@ function autoLthr() {
 function renderSummary() {
   const ftp = data.ftp || 0;
   const wkg = ftp && data.weight ? (ftp/data.weight).toFixed(2) : '--';
-  const goalNames = {resistencia:'Resistencia',ftp:'Subir FTP',vo2max:'VO₂ Max',sprint:'Sprints',gran_fondo:'Gran Fondo',perdida_peso:'Perder peso'};
+  const goalNames = {resistencia:'Resistencia',ftp:'Subir FTP',vo2max:'VO₂ Max',sprint:'Sprints',gran_fondo:'Gran Fondo',carrera_corta:'Carrera <2h',carrera_larga:'Carrera >2h',ultra:'Ultra',perdida_peso:'Perder peso'};
 
   const aiText = document.getElementById('ai-insight-text');
   const aiIcon = document.getElementById('ai-insight-icon');
