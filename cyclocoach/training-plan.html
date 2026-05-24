@@ -953,21 +953,29 @@
               <input type="number" id="adj-initial-ctl" class="params-input" placeholder="0" min="0" max="200" title="Tu CTL de partida (TrainingPeaks, Garmin…). 0 = empezar desde cero.">
             </div>
             <div class="params-field" style="grid-column:1/-1">
-              <label style="margin-bottom:7px;display:block">Eventos / Carreras objetivo</label>
-              <div id="adj-events-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:7px"></div>
-              <div id="adj-add-event-form" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:9px;flex-wrap:wrap;gap:6px;align-items:flex-end;margin-bottom:6px">
-                <input type="text" id="adj-new-ev-name" class="params-input" placeholder="Nombre del evento" style="flex:1;min-width:120px">
-                <input type="date" id="adj-new-ev-date" class="params-input" style="width:135px">
-                <select id="adj-new-ev-priority" class="params-input params-select" style="width:88px">
-                  <option value="A">A — Principal</option>
-                  <option value="B" selected>B — Secundario</option>
-                  <option value="C">C — Menor</option>
-                </select>
-                <button class="params-apply-btn" style="margin:0;padding:5px 12px;font-size:11px" onclick="addAdjEvent()"><i class="fas fa-check"></i> Añadir</button>
+              <!-- Acordeón eventos -->
+              <div id="adj-events-accordion" onclick="toggleEventsAccordion()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;user-select:none">
+                <i class="fas fa-calendar-alt" style="color:var(--primary);font-size:12px;flex-shrink:0"></i>
+                <span style="font-size:12px;font-weight:600;color:var(--text-primary);flex:1">Eventos / Carreras objetivo</span>
+                <span id="adj-events-summary" style="font-size:11px;color:var(--text-muted)">Sin eventos</span>
+                <i id="adj-events-chev" class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);transition:transform .2s"></i>
               </div>
-              <button id="adj-add-ev-btn" onclick="toggleAddEventForm()" style="background:rgba(158,214,43,.12);border:1px solid rgba(158,214,43,.3);border-radius:7px;padding:5px 13px;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;width:auto">
-                <i class="fas fa-plus"></i> Añadir evento
-              </button>
+              <div id="adj-events-body" style="display:none;padding-top:8px;display:none">
+                <div id="adj-events-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:7px"></div>
+                <div id="adj-add-event-form" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:9px;flex-wrap:wrap;gap:6px;align-items:flex-end;margin-bottom:6px">
+                  <input type="text" id="adj-new-ev-name" class="params-input" placeholder="Nombre del evento" style="flex:1;min-width:120px">
+                  <input type="date" id="adj-new-ev-date" class="params-input" style="width:135px">
+                  <select id="adj-new-ev-priority" class="params-input params-select" style="width:88px">
+                    <option value="A">A — Principal</option>
+                    <option value="B" selected>B — Secundario</option>
+                    <option value="C">C — Menor</option>
+                  </select>
+                  <button class="params-apply-btn" style="margin:0;padding:5px 12px;font-size:11px" onclick="addAdjEvent()"><i class="fas fa-check"></i> Añadir</button>
+                </div>
+                <button id="adj-add-ev-btn" onclick="toggleAddEventForm()" style="background:rgba(158,214,43,.12);border:1px solid rgba(158,214,43,.3);border-radius:7px;padding:5px 13px;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;width:auto">
+                  <i class="fas fa-plus"></i> Añadir evento
+                </button>
+              </div>
             </div>
             <button class="params-apply-btn top-card-update-btn" onclick="applyAdjustments()">
               <i class="fas fa-sync-alt"></i> Actualizar
@@ -3721,9 +3729,33 @@ function _sanitizePlanSessions(plan) {
 // ── Gestor de eventos múltiples ──────────────────────────────────
 let _adjEvents = [];
 
+function _updateEventsSummary() {
+  const el = document.getElementById('adj-events-summary');
+  if (!el) return;
+  if (!_adjEvents.length) { el.textContent = 'Sin eventos'; return; }
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = _adjEvents.filter(e => e.date && new Date(e.date + 'T00:00:00') >= today)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (!upcoming.length) { el.textContent = `${_adjEvents.length} evento${_adjEvents.length>1?'s':''}`; return; }
+  const next = upcoming[0];
+  const days = Math.floor((new Date(next.date + 'T00:00:00') - today) / 86400000);
+  const pShort = { A: 'A', B: 'B', C: 'C' };
+  el.textContent = `${_adjEvents.length} evento${_adjEvents.length>1?'s':''} · próximo ${pShort[next.priority]||''}: ${days}d`;
+}
+
+function toggleEventsAccordion(forceOpen) {
+  const body = document.getElementById('adj-events-body');
+  const chev = document.getElementById('adj-events-chev');
+  if (!body) return;
+  const open = forceOpen !== undefined ? forceOpen : body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  if (chev) chev.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
 function renderAdjEventsList() {
   const container = document.getElementById('adj-events-list');
   if (!container) return;
+  _updateEventsSummary();
   if (!_adjEvents.length) {
     container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:2px 0">Sin eventos — añade carreras para periodizar el plan</div>';
     return;
@@ -3733,7 +3765,7 @@ function renderAdjEventsList() {
   const today = new Date(); today.setHours(0,0,0,0);
   container.innerHTML = [..._adjEvents]
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((ev, i) => {
+    .map((ev) => {
       const d = new Date(ev.date + 'T00:00:00');
       const daysAway = Math.floor((d - today) / 86400000);
       const daysFmt = daysAway < 0 ? 'pasado' : daysAway === 0 ? 'hoy' : `en ${daysAway}d`;
@@ -3778,6 +3810,7 @@ function addAdjEvent() {
   document.getElementById('adj-new-ev-date').value = '';
   renderAdjEventsList();
   toggleAddEventForm();
+  toggleEventsAccordion(true);
 }
 
 function removeAdjEvent(idx) {
