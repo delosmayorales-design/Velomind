@@ -361,6 +361,11 @@
           <option value="avanzado">Avanzado — 4+ años, compites</option>
         </select>
       </div>
+      <div class="form-group">
+        <label class="form-label">CTL de partida <span style="color:var(--text-muted);font-weight:400">(opcional)</span></label>
+        <input type="number" id="ob-initial-ctl" class="form-input" placeholder="0" min="0" max="200" inputmode="numeric">
+        <div class="form-hint">Si ya entrenas con datos (TrainingPeaks, Garmin…), introduce tu CTL actual para que el PMC arranque correcto. Déjalo en 0 si empiezas desde cero.</div>
+      </div>
       <div class="btn-row">
         <button class="btn btn-back" onclick="backStep(2)">Volver</button>
         <button class="btn btn-primary" onclick="goStep(2)">Continuar</button>
@@ -570,6 +575,8 @@ function collectData(step) {
     data.max_hr = parseInt(document.getElementById('ob-maxhr').value) || (220 - data.age);
     data.lthr   = parseInt(document.getElementById('ob-lthr').value) || Math.round(data.max_hr * 0.88);
     data.experience = document.getElementById('ob-experience').value;
+    const rawCTL = parseInt(document.getElementById('ob-initial-ctl').value);
+    data.initial_ctl = (!isNaN(rawCTL) && rawCTL > 0) ? rawCTL : 0;
   }
   if (step===3) {
     data.weekly_hours  = parseFloat(document.getElementById('ob-hours').value) || 8;
@@ -738,7 +745,7 @@ async function saveAndGo() {
           name:data.name, age:data.age, sex:data.sex, weight:data.weight, height:data.height,
           ftp:data.ftp, max_hr:data.max_hr, lthr:data.lthr, experience:data.experience,
           goal:data.goal, weekly_hours:data.weekly_hours, days_per_week:data.days_per_week,
-          event_date:data.event_date||'',
+          event_date:data.event_date||'', initial_ctl:data.initial_ctl||0,
         }),
         data.weight ? BackendSync.saveWeight({
           date:new Date().toISOString().substring(0,10),

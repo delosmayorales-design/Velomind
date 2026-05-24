@@ -55,9 +55,10 @@ const recalculatePMC = async (userId) => {
   try {
     console.log(`[PMC] Recalculando para usuario: ${userId}...`);
     
-    // 1. Obtener FTP para cálculos de TSS si faltan
-    const { data: user } = await supabase.from('users').select('ftp').eq('id', userId).single();
+    // 1. Obtener FTP e initial_ctl del usuario
+    const { data: user } = await supabase.from('users').select('ftp, initial_ctl').eq('id', userId).single();
     const ftp = user?.ftp || 200;
+    const seedCTL = Math.max(0, parseInt(user?.initial_ctl) || 0);
 
     // 2. Obtener todas las actividades ordenadas (incluir campos de potencia para estimación TSS)
     const { data: activities } = await supabase
@@ -89,7 +90,8 @@ const recalculatePMC = async (userId) => {
     const startDate = new Date(dates[0]);
     const endDate = new Date();
     
-    let ctl = 0, atl = 0;
+    // Si el usuario declaró un CTL de partida, usarlo como semilla (evita cold-start)
+    let ctl = seedCTL, atl = seedCTL;
     const pmcRows = [];
 
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {

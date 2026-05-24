@@ -937,6 +937,10 @@
               <label>Peso (kg)</label>
               <input type="number" id="adj-weight" class="params-input" placeholder="70">
             </div>
+            <div class="params-field">
+              <label>CTL inicial</label>
+              <input type="number" id="adj-initial-ctl" class="params-input" placeholder="0" min="0" max="200" title="Tu CTL de partida (TrainingPeaks, Garmin…). 0 = empezar desde cero.">
+            </div>
             <div class="params-field" style="grid-column:span 2">
               <label>Fecha evento / carrera</label>
               <input type="date" id="adj-event" class="params-input" style="height:28px;width:100%">
@@ -1488,6 +1492,7 @@ function fillAdjustmentForm() {
   if (document.getElementById('adj-event')) document.getElementById('adj-event').value = a.event_date || '';
   if (document.getElementById('adj-ftp')) document.getElementById('adj-ftp').value = a.ftp || '';
   if (document.getElementById('adj-weight')) document.getElementById('adj-weight').value = a.weight || '';
+  if (document.getElementById('adj-initial-ctl')) document.getElementById('adj-initial-ctl').value = a.initial_ctl || '';
 }
 
 function renderWeekDates() {
@@ -3675,21 +3680,24 @@ async function applyAdjustments() {
   const hoursVal  = document.getElementById('adj-hours')?.value?.trim();
   const ftpVal    = document.getElementById('adj-ftp')?.value?.trim();
   const weightVal = document.getElementById('adj-weight')?.value?.trim();
+  const ctlVal    = document.getElementById('adj-initial-ctl')?.value?.trim();
   const goalEl    = document.getElementById('adj-goal');
   const event     = document.getElementById('adj-event')?.value || '';
 
-  const hours  = hoursVal  ? parseFloat(hoursVal)  : null;
-  const ftp    = ftpVal    ? parseFloat(ftpVal)    : null;
-  const weight = weightVal ? parseFloat(weightVal) : null;
+  const hours      = hoursVal  ? parseFloat(hoursVal)  : null;
+  const ftp        = ftpVal    ? parseFloat(ftpVal)    : null;
+  const weight     = weightVal ? parseFloat(weightVal) : null;
+  const initialCTL = ctlVal    ? parseInt(ctlVal)      : null;
   const goal   = window.GoalUtils
     ? window.GoalUtils.normalize(goalEl?.value || 'resistencia')
     : (goalEl?.value || 'resistencia');
 
   if (AppState.athlete) {
     const updates = {};
-    if (hours  !== null && !isNaN(hours)  && hours  > 0)   updates.weekly_hours = hours;
-    if (ftp    !== null && !isNaN(ftp)    && ftp    >= 50)  updates.ftp = ftp;
-    if (weight !== null && !isNaN(weight) && weight > 0)   updates.weight = weight;
+    if (hours      !== null && !isNaN(hours)      && hours      > 0)   updates.weekly_hours = hours;
+    if (ftp        !== null && !isNaN(ftp)        && ftp        >= 50)  updates.ftp = ftp;
+    if (weight     !== null && !isNaN(weight)     && weight     > 0)   updates.weight = weight;
+    if (initialCTL !== null && !isNaN(initialCTL) && initialCTL >= 0)  updates.initial_ctl = initialCTL;
     if (goal)  updates.goal = goal;
     updates.event_date = event || null;
     AppState.saveAthlete(updates);
