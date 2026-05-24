@@ -375,6 +375,17 @@
 
       /* Panel info grid: 1 columna en pantallas muy estrechas */
       .panel-info-grid { grid-template-columns: 1fr; }
+
+      /* Botón cerrar del panel: área táctil mínima iOS/Android */
+      .panel-close {
+        width: 44px; height: 44px; font-size: 20px;
+        color: var(--text-primary);
+        background: rgba(255,255,255,.08);
+        border-color: rgba(255,255,255,.18);
+      }
+
+      /* Botón "Cerrar" en barra de acciones — sólo visible en móvil */
+      .btn-panel-back-mobile { display: flex !important; }
     }
 
     @media (max-width: 360px) {
@@ -693,6 +704,10 @@
 
     panel.classList.add('open');
     overlay.classList.add('show');
+    // Soporte botón Atrás Android: pushState sólo si el panel no estaba ya abierto
+    if (window.innerWidth <= 600 && !history.state?.veloPanel) {
+      history.pushState({ veloPanel: true }, '');
+    }
     titleEl.textContent = 'Cargando...';
     body.innerHTML = `<div class="skel" style="height:120px;margin-bottom:12px"></div><div class="skel" style="height:60px;margin-bottom:12px"></div><div class="skel" style="height:200px"></div>`;
     actions.style.display = 'none';
@@ -877,6 +892,14 @@
       delBtn.addEventListener('click', () => deleteRide(ride.id));
       actions.appendChild(delBtn);
     }
+
+    // Botón "Cerrar" siempre visible en móvil (en la barra inferior, junto a las demás acciones)
+    const backBtn = document.createElement('button');
+    backBtn.className = 'btn-panel-edit btn-panel-back-mobile';
+    backBtn.style.cssText = 'display:none; margin-left:auto;';
+    backBtn.innerHTML = '<i class="fas fa-times"></i> Cerrar';
+    backBtn.addEventListener('click', closePanel);
+    actions.appendChild(backBtn);
   }
 
   function renderComment(c) {
@@ -960,6 +983,13 @@
     openRide = null;
   }
   document.getElementById('panel-overlay').addEventListener('click', closePanel);
+
+  // Botón físico Atrás de Android: cierra el panel si está abierto
+  window.addEventListener('popstate', () => {
+    if (document.getElementById('detail-panel').classList.contains('open')) {
+      closePanel();
+    }
+  });
 
   // ── Delete ────────────────────────────────────────────────
   async function deleteRide(id) {
