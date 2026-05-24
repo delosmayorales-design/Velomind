@@ -69,7 +69,7 @@ router.get('/', requireAuth, async (req, res) => {
 router.get('/mine', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
-    const cutoff = new Date(Date.now() - 86400000).toISOString();
+    const cutoff = new Date(Date.now() - 7 * 86400000).toISOString(); // mostrar hasta 7 días después de finalizada
 
     const { data: created, error: e1 } = await supabase
       .from('group_rides')

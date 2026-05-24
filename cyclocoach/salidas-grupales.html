@@ -51,6 +51,8 @@
     .badge-gravel { background:rgba(245,158,11,.15); color:#fbbf24; }
     .badge-mtb    { background:rgba(34,197,94,.15);  color:#4ade80; }
     .badge-urban  { background:rgba(168,85,247,.15); color:#c084fc; }
+    .ride-badge-past { background:rgba(100,116,139,.15); color:#94a3b8; }
+    .ride-past { opacity:.75; }
 
     .ride-card-date { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--primary); font-weight:600; }
     .ride-card-meta { display:flex; flex-wrap:wrap; gap:8px; }
@@ -628,7 +630,8 @@
 
   function buildCard(ride) {
     const card = document.createElement('div');
-    card.className = 'ride-card' + (ride.is_mine ? ' is-mine' : '');
+    const isPast = new Date(ride.departure_time) < new Date();
+    card.className = 'ride-card' + (ride.is_mine ? ' is-mine' : '') + (isPast ? ' ride-past' : '');
     card.dataset.id = ride.id;
 
     const dt      = new Date(ride.departure_time);
@@ -643,7 +646,9 @@
     card.innerHTML = `
       <div class="ride-card-top">
         <div class="ride-card-title">${escHtml(ride.title)}</div>
-        <span class="ride-card-badge ${typeCls[ride.route_type] || 'badge-road'}">${typeLabels[ride.route_type] || 'Carretera'}</span>
+        ${isPast
+          ? `<span class="ride-card-badge ride-badge-past"><i class="fas fa-flag-checkered"></i> Finalizada</span>`
+          : `<span class="ride-card-badge ${typeCls[ride.route_type] || 'badge-road'}">${typeLabels[ride.route_type] || 'Carretera'}</span>`}
       </div>
       <div class="ride-card-date"><i class="fas fa-calendar-day"></i> ${dateStr} · ${timeStr}</div>
       ${ride.meeting_point ? `<div class="ride-card-meta"><span class="ride-meta-item"><i class="fas fa-map-marker-alt"></i> ${escHtml(ride.meeting_point)}</span></div>` : ''}
@@ -660,7 +665,7 @@
         <div class="participants-badge"><i class="fas fa-users"></i> ${maxInfo}</div>
       </div>
       <div class="ride-card-actions">
-        ${!ride.is_mine
+        ${!isPast && !ride.is_mine
           ? `<button class="btn-join ${ride.is_joined ? 'joined' : ''}" data-id="${ride.id}" data-joined="${ride.is_joined ? '1' : '0'}" ${isFull ? 'disabled title="Salida completa"' : ''}>
                ${ride.is_joined ? '<i class="fas fa-times"></i> Salir' : (isFull ? 'Completa' : '<i class="fas fa-check"></i> Apuntarme')}
              </button>`
@@ -853,44 +858,58 @@
     }
 
     // Action bar
-    const isFull = ride.max_participants && ride.participant_count >= ride.max_participants && !ride.is_joined;
-    actions.style.display = 'flex';
-    actions.innerHTML = '';
+    const isPast  = new Date(ride.departure_time) < new Date();
+    const isFull  = ride.max_participants && ride.participant_count >= ride.max_participants && !ride.is_joined;
 
-    if (!ride.is_mine) {
-      const joinBtn = document.createElement('button');
-      joinBtn.className = `btn-panel-join ${ride.is_joined ? 'joined' : ''}`;
-      joinBtn.disabled  = isFull && !ride.is_joined;
-      joinBtn.innerHTML = ride.is_joined
-        ? '<i class="fas fa-times"></i> Cancelar asistencia'
-        : (isFull ? 'Salida completa' : '<i class="fas fa-check"></i> Apuntarme');
-      joinBtn.addEventListener('click', async () => {
-        joinBtn.disabled = true;
-        try {
-          const res = await fetch(`${API}/group-rides/${ride.id}/join`, {
-            method: ride.is_joined ? 'DELETE' : 'POST',
-            headers: { Authorization: `Bearer ${Auth.getToken()}` },
-          });
-          if (!res.ok) { alert((await res.json()).error || 'Error'); joinBtn.disabled = false; return; }
-          invalidateCache(); loadRides(currentTab, true); openPanel(ride.id);
-        } catch(e) { alert('Error de red.'); joinBtn.disabled = false; }
-      });
-      actions.appendChild(joinBtn);
-    }
+    if (isPast) {
+      // Salida finalizada: banner informativo, sin acciones de edición ni apuntarse
+      actions.style.display = 'flex';
+      actions.innerHTML = `
+        <div style="width:100%;padding:10px 14px;border-radius:var(--radius-sm);
+             background:rgba(100,116,139,.12);border:1px solid rgba(100,116,139,.25);
+             display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted)">
+          <i class="fas fa-flag-checkered" style="color:#64748b;font-size:15px;flex-shrink:0"></i>
+          <span>Esta salida ya ha finalizado. El chat sigue disponible.</span>
+        </div>`;
+    } else {
+      actions.style.display = 'flex';
+      actions.innerHTML = '';
 
-    if (ride.is_mine) {
-      const editBtn = document.createElement('button');
-      editBtn.className = 'btn-panel-edit';
-      editBtn.innerHTML = '<i class="fas fa-pen"></i> Editar';
-      editBtn.addEventListener('click', () => openEditModal(ride));
-      actions.appendChild(editBtn);
+      if (!ride.is_mine) {
+        const joinBtn = document.createElement('button');
+        joinBtn.className = `btn-panel-join ${ride.is_joined ? 'joined' : ''}`;
+        joinBtn.disabled  = isFull && !ride.is_joined;
+        joinBtn.innerHTML = ride.is_joined
+          ? '<i class="fas fa-times"></i> Cancelar asistencia'
+          : (isFull ? 'Salida completa' : '<i class="fas fa-check"></i> Apuntarme');
+        joinBtn.addEventListener('click', async () => {
+          joinBtn.disabled = true;
+          try {
+            const res = await fetch(`${API}/group-rides/${ride.id}/join`, {
+              method: ride.is_joined ? 'DELETE' : 'POST',
+              headers: { Authorization: `Bearer ${Auth.getToken()}` },
+            });
+            if (!res.ok) { alert((await res.json()).error || 'Error'); joinBtn.disabled = false; return; }
+            invalidateCache(); loadRides(currentTab, true); openPanel(ride.id);
+          } catch(e) { alert('Error de red.'); joinBtn.disabled = false; }
+        });
+        actions.appendChild(joinBtn);
+      }
 
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn-panel-delete';
-      delBtn.innerHTML = '<i class="fas fa-trash"></i>';
-      delBtn.title = 'Eliminar salida';
-      delBtn.addEventListener('click', () => deleteRide(ride.id));
-      actions.appendChild(delBtn);
+      if (ride.is_mine) {
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn-panel-edit';
+        editBtn.innerHTML = '<i class="fas fa-pen"></i> Editar';
+        editBtn.addEventListener('click', () => openEditModal(ride));
+        actions.appendChild(editBtn);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-panel-delete';
+        delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        delBtn.title = 'Eliminar salida';
+        delBtn.addEventListener('click', () => deleteRide(ride.id));
+        actions.appendChild(delBtn);
+      }
     }
 
     // Botón "Cerrar" siempre visible en móvil (en la barra inferior, junto a las demás acciones)
