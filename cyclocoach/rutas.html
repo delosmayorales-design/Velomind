@@ -249,7 +249,18 @@
     }
     .draw-toolbar.visible { display: flex; }
     .dt-types   { display: flex; gap: 5px; }
-    .dt-actions { display: flex; gap: 5px; }
+    .dt-actions { display: flex; gap: 5px; align-items: center; }
+    .dt-wp-count {
+      font-size: 11px; font-weight: 700;
+      color: var(--primary, #ff6b35);
+      background: rgba(255,107,53,0.12);
+      border: 1px solid rgba(255,107,53,0.3);
+      border-radius: 8px;
+      padding: 4px 9px;
+      white-space: nowrap;
+      cursor: default;
+      margin-right: 2px;
+    }
     .dt-sep { width: 1px; background: rgba(255,255,255,0.10); margin: 0 2px; }
     .dt-btn {
       padding: 8px 14px;
@@ -650,6 +661,14 @@
     body.timeline-open .draw-toolbar,
     body.timeline-open .wind-card {
       bottom: 110px;
+    }
+
+    /* Desplazar toolbar hacia arriba cuando el perfil de elevación está visible */
+    body.elev-open .draw-toolbar {
+      bottom: 152px;
+    }
+    body.elev-open.timeline-open .draw-toolbar {
+      bottom: 242px;
     }
 
     /* ── GPS Tracking HUD ──────────────────────────────────────── */
@@ -1123,6 +1142,14 @@
       body.timeline-open .wind-card {
         bottom: calc(166px + env(safe-area-inset-bottom, 0px)) !important;
       }
+
+      /* Perfil de elevación abierto en móvil */
+      body.elev-open .draw-toolbar {
+        bottom: calc(204px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+      body.elev-open.timeline-open .draw-toolbar {
+        bottom: calc(296px + env(safe-area-inset-bottom, 0px)) !important;
+      }
     }
 
   </style>
@@ -1312,6 +1339,7 @@
           <button class="dt-btn dt-type"         id="dt-type-mtb"    onclick="setDrawType('mtb')"    title="MTB">🏔 MTB</button>
         </div>
         <div class="dt-actions">
+          <span id="dt-wp-count" class="dt-wp-count" title="Clic derecho sobre un punto para eliminarlo · Arrastra para moverlo">0 puntos</span>
           <button class="dt-btn" onclick="undoWaypoint()"><i class="fas fa-undo"></i> Deshacer</button>
           <button class="dt-btn del" onclick="clearRoute()"><i class="fas fa-trash"></i> Limpiar</button>
           <button class="dt-btn save" onclick="openSaveModal()"><i class="fas fa-save"></i> Guardar ruta</button>
@@ -1406,7 +1434,7 @@
       <div class="elev-panel" id="elev-panel">
         <div class="elev-hdr">
           <span class="elev-ttl"><i class="fas fa-mountain"></i> Perfil de elevación</span>
-          <button class="elev-close" onclick="document.getElementById('elev-panel').classList.remove('visible')">×</button>
+          <button class="elev-close" onclick="document.getElementById('elev-panel').classList.remove('visible');document.body.classList.remove('elev-open')">×</button>
         </div>
         <canvas id="elev-chart" style="flex:1;min-height:0"></canvas>
       </div>
@@ -1753,6 +1781,8 @@ let drawingActive = false, currentRouteType = 'road';
 let _elevFetchId = 0;          // guard anti-stale: se incrementa en cada nueva llamada
 let _pendingElevFetch = null;  // Promise activa (await en saveCurrentRoute)
 let _computedElevGain = null;  // último D+ calculado (no leer del DOM)
+let _previewLine = null;       // línea fantasma cursor → último waypoint
+let _lastWaypointTs = 0;       // debounce: evita doble-tap accidental
 
 // ── Mapa ─────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -1771,6 +1801,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   map.on('click', onMapClick);
   map.on('moveend', _onMapMoveEnd);
+  map.on('mousemove', _updatePreviewLine);
+  map.on('mouseout',  _clearPreviewLine);
 
   // Crear canvas overlay para flechas de viento (screen-space, encima de todas las capas)
   const _wac = document.createElement('canvas');
@@ -2215,6 +2247,7 @@ async function fetchElevation(latLngs) {
 function renderElevChart(elevs) {
   currentRouteElevs = elevs;
   document.getElementById('elev-panel').classList.add('visible');
+  document.body.classList.add('elev-open');
   // Notificar a Leaflet que el contenedor cambió de tamaño
   setTimeout(() => map && map.invalidateSize(), 50);
   const ctx = document.getElementById('elev-chart').getContext('2d');
@@ -2266,6 +2299,7 @@ function createWaypointMarker(lat, lng) {
     waypoints.splice(idx, 1);
     waypointMarkers.splice(idx, 1);
     map.removeLayer(marker);
+    _syncWpCount();
     if (waypoints.length >= 2) calcRoute(currentRouteType);
     else if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
   });
@@ -2311,6 +2345,34 @@ function setDrawType(type) {
   if (waypoints.length >= 2) calcRoute(type);
 }
 
+function _syncWpCount() {
+  const el = document.getElementById('dt-wp-count');
+  if (!el) return;
+  const n = waypoints.length;
+  el.textContent = n === 0 ? '0 puntos' : n === 1 ? '1 punto' : `${n} puntos`;
+  el.style.color = n > 0 ? 'var(--primary, #ff6b35)' : '#6b7280';
+  el.style.background = n > 0 ? 'rgba(255,107,53,0.12)' : 'rgba(255,255,255,0.05)';
+  el.style.borderColor = n > 0 ? 'rgba(255,107,53,0.3)' : 'rgba(255,255,255,0.1)';
+}
+
+function _clearPreviewLine() {
+  if (_previewLine) { map.removeLayer(_previewLine); _previewLine = null; }
+}
+
+function _updatePreviewLine(e) {
+  if (!drawingActive || !waypoints.length) { _clearPreviewLine(); return; }
+  const last = waypoints[waypoints.length - 1];
+  const coords = [[last.lat, last.lng], [e.latlng.lat, e.latlng.lng]];
+  if (_previewLine) {
+    _previewLine.setLatLngs(coords);
+  } else {
+    _previewLine = L.polyline(coords, {
+      color: '#ff6b35', weight: 2, opacity: 0.45,
+      dashArray: '7, 9', interactive: false,
+    }).addTo(map);
+  }
+}
+
 async function onMapClick(e) {
   // Si el drawer de tiempo está abierto, el clic carga el tiempo en ese punto
   if (_wdOpen) {
@@ -2321,9 +2383,15 @@ async function onMapClick(e) {
   if (!drawingActive) return;
   // Ignorar el tap que cierra el panel lateral en móvil
   if (Date.now() - (window._panelCloseTs || 0) < 500) return;
+  // Debounce: evita que un doble-tap accidental añada dos puntos seguidos
+  const now = Date.now();
+  if (now - _lastWaypointTs < 500) return;
+  _lastWaypointTs = now;
   const { lat, lng } = e.latlng;
+  _clearPreviewLine();
   waypoints.push({ lat, lng });
   waypointMarkers.push(createWaypointMarker(lat, lng));
+  _syncWpCount();
   if (waypoints.length >= 2) await calcRoute(currentRouteType);
 }
 
@@ -2332,6 +2400,7 @@ function undoWaypoint() {
   waypoints.pop();
   const m = waypointMarkers.pop();
   if (m) map.removeLayer(m);
+  _syncWpCount();
   if (waypoints.length >= 2) calcRoute(currentRouteType);
   else if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
 }
@@ -2348,6 +2417,9 @@ function clearRoute() {
   ['stat-dist','stat-elev','stat-time','stat-t-slow','stat-t-mid','stat-t-fast'].forEach((id, i) =>
     document.getElementById(id).textContent = i === 0 ? '0.0' : '—');
   document.getElementById('elev-panel').classList.remove('visible');
+  document.body.classList.remove('elev-open');
+  _clearPreviewLine();
+  _syncWpCount();
 }
 
 // ── Importar GPX ─────────────────────────────────────────────────
