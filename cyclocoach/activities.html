@@ -1064,6 +1064,7 @@ function showActivityDetail(actId) {
     <!-- ACCIONES -->
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${sid ? `<a href="https://www.strava.com/activities/${sid}" target="_blank" class="btn" style="flex:1;background:rgba(252,76,2,0.1);color:#FC4C02;border:1px solid rgba(252,76,2,0.3);text-decoration:none;font-size:12px;padding:8px 14px;text-align:center"><i class="fab fa-strava"></i> Ver en Strava</a>` : ''}
+      <button data-panel-correct class="btn" style="flex:1;background:rgba(245,158,11,0.1);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);font-size:12px"><i class="fas fa-sliders-h"></i> Corregir picos</button>
       <button data-panel-delete class="btn" style="flex:1;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:12px"><i class="fas fa-trash"></i> Eliminar</button>
     </div>
   `; } catch(err) {
@@ -1072,6 +1073,9 @@ function showActivityDetail(actId) {
 
   const panelDelBtn = document.querySelector('[data-panel-delete]');
   if (panelDelBtn) panelDelBtn.onclick = function() { confirmDelete(act.id); };
+
+  const panelCorrectBtn = document.querySelector('[data-panel-correct]');
+  if (panelCorrectBtn) panelCorrectBtn.onclick = function() { openCorrectModal(act); };
 
   document.getElementById('detail-panel').scrollTop = 0;
   document.getElementById('detail-panel').classList.add('open');
@@ -1156,7 +1160,7 @@ async function fetchAndRenderStreams(sid, ftp, act) {
     // Guardar datos originales para el selector de intervalos
     _sOrig = s; _sFTP = ftp; _selA = null; _selB = null;
 
-    const npCalculated = renderStreamCharts(s, ftp);
+    const npCalculated = renderStreamCharts(s, ftp, act);
 
     // Auto-actualizar NP en DB si difiere del guardado (estilo Garmin)
     const storedNP = act.np || 0;
@@ -1209,10 +1213,16 @@ async function fetchAndRenderStreams(sid, ftp, act) {
   }
 }
 
-function renderStreamCharts(s, ftp) {
+function renderStreamCharts(s, ftp, act) {
   let calculatedNP = null;
   const MAX_PTS = 900;
   _sOrigN = Math.min(MAX_PTS, s.time.length);
+
+  // Aplicar caps si el usuario los ha definido
+  const powerCap = act?.power_cap || null;
+  const hrCap    = act?.hr_cap    || null;
+  if (powerCap && s.watts)     s = { ...s, watts:     s.watts.map(w => Math.min(w, powerCap)) };
+  if (hrCap    && s.heartrate) s = { ...s, heartrate: s.heartrate.map(h => Math.min(h, hrCap)) };
   const tickC = '#64748b', gridC = 'rgba(255,255,255,0.04)';
 
   const commonOpts = (yLabel, yCallback) => ({
@@ -1277,7 +1287,8 @@ function renderStreamCharts(s, ftp) {
     document.getElementById('stats-watts').innerHTML =
       `<span style="color:var(--text-muted)">Media</span> ${avgW}W &nbsp;
        <span style="color:#9ED62B">NP</span> ${npW}W &nbsp;
-       <span style="color:#ef4444">Máx</span> ${maxW}W`;
+       <span style="color:#ef4444">Máx</span> ${maxW}W` +
+      (powerCap ? ` &nbsp;<span style="color:#f59e0b;font-size:10px"><i class="fas fa-sliders-h"></i> cap ${powerCap}W</span>` : '');
 
     chartInsts.streamWatts = new Chart(wattsCanvas, {
       type: 'line',
@@ -1314,7 +1325,8 @@ function renderStreamCharts(s, ftp) {
     const [, hrDs] = dsampleAll([s.time, s.heartrate], MAX_PTS);
     const maxHR = Math.max(...s.heartrate), avgHR = Math.round(s.heartrate.reduce((a,b)=>a+b,0)/s.heartrate.length);
     document.getElementById('stats-hr').innerHTML =
-      `<span style="color:var(--text-muted)">Media</span> ${avgHR} &nbsp;<span style="color:#ef4444">Máx</span> ${maxHR} bpm`;
+      `<span style="color:var(--text-muted)">Media</span> ${avgHR} &nbsp;<span style="color:#ef4444">Máx</span> ${maxHR} bpm` +
+      (hrCap ? ` &nbsp;<span style="color:#f59e0b;font-size:10px"><i class="fas fa-sliders-h"></i> cap ${hrCap}bpm</span>` : '');
 
     chartInsts.streamHR = new Chart(hrCanvas, {
       type: 'line',
@@ -1790,6 +1802,126 @@ async function syncFromProvider(provider) {
       : '<i class="fas fa-sync-alt" style="color:#FC4C02"></i> Importar desde Strava';
   }, 3000);
 }
+
+/* ── CORRECCIÓN DE PICOS ──────────────────────────────────────── */
+let _correctAct = null;
+
+function openCorrectModal(act) {
+  _correctAct = act;
+  document.getElementById('correct-np').value        = act.np        || '';
+  document.getElementById('correct-power-cap').value = act.power_cap || '';
+  document.getElementById('correct-hr-cap').value    = act.hr_cap    || '';
+  document.getElementById('correct-modal').style.display = 'flex';
+}
+
+function closeCorrectModal() {
+  document.getElementById('correct-modal').style.display = 'none';
+}
+
+async function saveCorrections() {
+  if (!_correctAct) return;
+  const npVal    = document.getElementById('correct-np').value.trim();
+  const capPVal  = document.getElementById('correct-power-cap').value.trim();
+  const capHRVal = document.getElementById('correct-hr-cap').value.trim();
+
+  const body = {};
+  if (npVal)    body.np        = parseFloat(npVal);
+  if (capPVal)  body.power_cap = parseInt(capPVal);
+  if (capHRVal) body.hr_cap    = parseInt(capHRVal);
+  if (!Object.keys(body).length) { closeCorrectModal(); return; }
+
+  const btn = document.getElementById('correct-save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+  try {
+    const session = JSON.parse(localStorage.getItem('velomind_user') || '{}');
+    const r = await fetch(`/api/activities/${_correctAct.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const updated = await r.json();
+
+    // Actualizar actividad en memoria
+    Object.assign(_correctAct, updated);
+    const idx = allActivities.findIndex(a => a.id === _correctAct.id);
+    if (idx !== -1) Object.assign(allActivities[idx], updated);
+
+    closeCorrectModal();
+
+    // Re-renderizar streams con los nuevos caps
+    if (_sOrig) {
+      Object.values(chartInsts).forEach(c => { try { c.destroy(); } catch {} });
+      chartInsts = {};
+      renderStreamCharts(_sOrig, _sFTP, _correctAct);
+    }
+
+    // Actualizar stats en el panel si cambió el NP/TSS
+    if (updated.np || updated.tss) {
+      const npEl  = document.getElementById('stat-np');
+      const tssEl = document.getElementById('stat-tss');
+      const ifEl  = document.getElementById('stat-if');
+      if (npEl  && updated.np)       npEl.textContent  = updated.np + ' W';
+      if (tssEl && updated.tss)      tssEl.textContent = Math.round(updated.tss);
+      if (ifEl  && updated.if_value) ifEl.textContent  = updated.if_value.toFixed(2);
+    }
+  } catch(e) {
+    alert('Error al guardar: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Guardar';
+  }
+}
 </script>
+
+<!-- Modal corrección de picos -->
+<div id="correct-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg-card,#1a1d26);border:1px solid var(--border,rgba(255,255,255,0.08));border-radius:20px;padding:28px;width:100%;max-width:380px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700">
+        <i class="fas fa-sliders-h" style="color:#f59e0b;margin-right:8px"></i>Corregir picos erróneos
+      </div>
+      <button onclick="closeCorrectModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px"><i class="fas fa-times"></i></button>
+    </div>
+
+    <p style="font-size:12px;color:var(--text-muted,#6b7280);margin-bottom:18px;line-height:1.5">
+      Establece el valor real máximo para eliminar picos del sensor. El gráfico se actualizará y el TSS se recalculará si corriges la NP.
+    </p>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-secondary,#9ca3af);display:block;margin-bottom:6px">
+          <i class="fas fa-bolt" style="color:#9ED62B;margin-right:4px"></i>NP corregida (W)
+          <span style="font-weight:400;color:var(--text-muted)"> — recalcula TSS e IF</span>
+        </label>
+        <input id="correct-np" type="number" min="50" max="600" placeholder="Dejar vacío para no cambiar"
+          style="width:100%;background:var(--bg-input,#0e1117);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:14px;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-secondary,#9ca3af);display:block;margin-bottom:6px">
+          <i class="fas fa-tachometer-alt" style="color:#9ED62B;margin-right:4px"></i>Potencia máxima real (W)
+          <span style="font-weight:400;color:var(--text-muted)"> — filtra el gráfico</span>
+        </label>
+        <input id="correct-power-cap" type="number" min="50" max="3000" placeholder="Ej: 900"
+          style="width:100%;background:var(--bg-input,#0e1117);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:14px;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-secondary,#9ca3af);display:block;margin-bottom:6px">
+          <i class="fas fa-heartbeat" style="color:#ef4444;margin-right:4px"></i>FC máxima real (bpm)
+          <span style="font-weight:400;color:var(--text-muted)"> — filtra el gráfico</span>
+        </label>
+        <input id="correct-hr-cap" type="number" min="60" max="250" placeholder="Ej: 185"
+          style="width:100%;background:var(--bg-input,#0e1117);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:14px;box-sizing:border-box">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:22px">
+      <button onclick="closeCorrectModal()" style="flex:1;padding:11px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;font-size:13px">Cancelar</button>
+      <button id="correct-save-btn" onclick="saveCorrections()" style="flex:2;padding:11px;border-radius:10px;border:none;background:#f59e0b;color:#0a0e1a;font-weight:700;cursor:pointer;font-size:13px">Guardar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

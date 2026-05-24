@@ -89,38 +89,50 @@ router.post('/', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Actualizar campos calculados (np, tss, if_value) de una actividad existente
-router.patch('/:id', updateNP);
-router.post('/:id/update-np', updateNP);
-async function updateNP(req, res) {
+// Actualizar campos calculados y correcciones de picos de una actividad existente
+router.patch('/:id', correctActivity);
+router.post('/:id/update-np', correctActivity);
+async function correctActivity(req, res) {
   try {
     const uid = req.user.id;
     const { id } = req.params;
-    const { np } = req.body;
-    if (!np || isNaN(np)) return res.status(400).json({ error: 'np requerido' });
+    const { np, power_cap, hr_cap } = req.body;
 
-    const { data: user } = await supabase.from('users').select('ftp').eq('id', uid).single();
-    const ftp = Math.max(1, user?.ftp || 200);
+    if (!np && power_cap === undefined && hr_cap === undefined)
+      return res.status(400).json({ error: 'Se requiere al menos np, power_cap o hr_cap' });
 
     const { data: act } = await supabase.from('activities')
-      .select('duration, avg_power')
+      .select('duration, avg_power, np')
       .eq('id', id).eq('user_id', uid).single();
     if (!act) return res.status(404).json({ error: 'No encontrada' });
 
-    const npNum   = Math.round(Number(np));
-    const ifValue = calcIF(npNum, ftp);
-    const tss     = act.duration ? calcTSS(npNum, act.duration, ftp) : 0;
+    const updates = {};
+
+    if (np && !isNaN(np)) {
+      const { data: user } = await supabase.from('users').select('ftp').eq('id', uid).single();
+      const ftp = Math.max(1, user?.ftp || 200);
+      const npNum = Math.round(Number(np));
+      updates.np       = npNum;
+      updates.if_value = calcIF(npNum, ftp);
+      updates.tss      = act.duration ? calcTSS(npNum, act.duration, ftp) : 0;
+    }
+
+    if (power_cap !== undefined)
+      updates.power_cap = power_cap === null ? null : Math.max(1, Math.round(Number(power_cap)));
+    if (hr_cap !== undefined)
+      updates.hr_cap = hr_cap === null ? null : Math.max(1, Math.round(Number(hr_cap)));
 
     const { error } = await supabase.from('activities')
-      .update({ np: npNum, if_value: ifValue, tss })
-      .eq('id', id).eq('user_id', uid);
+      .update(updates).eq('id', id).eq('user_id', uid);
     if (error) throw error;
 
-    setImmediate(async () => {
-      try { await recalculatePMC(uid); } catch {}
-    });
+    if (updates.tss !== undefined) {
+      setImmediate(async () => {
+        try { await recalculatePMC(uid); } catch {}
+      });
+    }
 
-    res.json({ np: npNum, if_value: ifValue, tss });
+    res.json({ ...updates });
   } catch (e) { res.status(500).json({ error: e.message }); }
 }
 
