@@ -3381,6 +3381,17 @@ function showSessionDetail(idx, showAlt = false) {
           <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">IF</div>
         </div>
       </div>
+      ${(() => {
+        const lthr = AppState.athlete?.lthr || (AppState.athlete?.max_hr ? Math.round(AppState.athlete.max_hr * 0.88) : 0);
+        if (!lthr || !ifVal) return '';
+        const hr = Utils.hrTargetFromIF(lthr, ifVal);
+        if (!hr) return '';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;margin-bottom:16px">
+          <i class="fas fa-heartbeat" style="color:#ef4444;font-size:14px"></i>
+          <span style="font-size:13px;font-weight:600;color:var(--text-primary)">FC objetivo: ${hr.bpmMin}–${hr.bpmMax} bpm</span>
+          <span style="font-size:11px;color:#ef4444;font-weight:700;margin-left:2px">${hr.zone}</span>
+        </div>`;
+      })()}
       ${currentIntervals?.length ? `
       <div style="margin-bottom:20px">
         <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:12px">
