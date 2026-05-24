@@ -1806,9 +1806,25 @@ const FileParser = {
     const avgHR = hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
     const maxHR = hrs.length ? Math.max(...hrs) : null;
     const avgCad = cads.length ? Math.round(cads.reduce((a, b) => a + b, 0) / cads.length) : null;
-    const avgSpeed = durationSec > 0 && distance > 0
-      ? Math.round((distance / durationSec) * 3.6 * 10) / 10
-      : null;
+    // Intentar leer AvgSpeed de las extensiones de los laps (valor de Garmin = tiempo en movimiento)
+    const laps = Array.from(doc.querySelectorAll('Lap'));
+    let avgSpeed = null;
+    if (laps.length) {
+      let totalWeight = 0, weightedSpeed = 0;
+      for (const lap of laps) {
+        const lapTime = parseFloat(lap.querySelector('TotalTimeSeconds')?.textContent || 0);
+        const lapSpeedNode = lap.getElementsByTagNameNS('*', 'AvgSpeed')[0];
+        const lapSpeed = lapSpeedNode ? parseFloat(lapSpeedNode.textContent) : NaN;
+        if (!isNaN(lapSpeed) && lapTime > 0) {
+          weightedSpeed += lapSpeed * lapTime;
+          totalWeight += lapTime;
+        }
+      }
+      if (totalWeight > 0) avgSpeed = Math.round((weightedSpeed / totalWeight) * 3.6 * 10) / 10;
+    }
+    // Fallback: distancia / tiempo total transcurrido
+    if (avgSpeed === null && durationSec > 0 && distance > 0)
+      avgSpeed = Math.round((distance / durationSec) * 3.6 * 10) / 10;
 
     return {
       id: 'tcx_' + Date.now(),
