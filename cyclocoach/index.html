@@ -162,6 +162,11 @@
       /* Botones de modo FTP: columna en pantallas estrechas */
       .ftp-mode-btns{flex-direction:column!important;}
       .ftp-mode-btns button{width:100%!important;}
+      /* Tarjetas de objetivo más compactas (tenemos 9) */
+      .goal-opt{padding:9px 7px;}
+      .goal-icon{font-size:17px;margin-bottom:3px;}
+      .goal-name{font-size:12px;}
+      .goal-desc{font-size:10px;}
     }
     @media(max-width:420px){
       .form-row{grid-template-columns:1fr;}
@@ -471,9 +476,9 @@
       </div>
       <div class="form-group">
         <label class="form-label">Evento objetivo principal (opcional)</label>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="text" id="ob-event-name" class="form-input" placeholder="Nombre de la carrera" style="flex:1">
-          <input type="date" id="ob-event" class="form-input" style="width:145px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="ob-event-name" class="form-input" placeholder="Nombre de la carrera" style="flex:1;min-width:140px">
+          <input type="date" id="ob-event" class="form-input" style="width:145px;min-width:145px">
         </div>
         <div class="form-hint">El plan se periodiza hacia esta fecha. Puedes añadir más eventos (B, C) desde la pantalla de plan.</div>
       </div>
