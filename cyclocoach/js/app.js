@@ -1638,7 +1638,7 @@ const FileParser = {
           duration,
           distance,
           avg_power:   avgPower  || null,
-          max_power:   eff.max_power ? Math.round(Number(eff.max_power)) : null,
+          max_power:   eff.max_power ? Math.round(Number(eff.max_power)) : (powers.length ? Math.max(...powers) : null),
           np:          eff.normalized_power
             ? Math.round(Number(eff.normalized_power))
             : (() => {
@@ -1648,7 +1648,7 @@ const FileParser = {
                 return FileParser._calcNP(pts) || null;
               })(),
           avg_hr:      avgHR     || null,
-          max_hr:      eff.max_heart_rate ? Math.round(Number(eff.max_heart_rate)) : null,
+          max_hr:      eff.max_heart_rate ? Math.round(Number(eff.max_heart_rate)) : (hrs.length ? Math.max(...hrs) : null),
           avg_cadence: avgCad    || null,
           avg_speed:   avgSpeed  || null,
           elevation:   elevation || null,
@@ -1769,7 +1769,7 @@ const FileParser = {
       const time = new Date(tp.querySelector('Time')?.textContent || 0);
       const pwrNode = tp.querySelector('Watts') || tp.getElementsByTagNameNS('*', 'Watts')[0];
       const power = pwrNode ? parseFloat(pwrNode.textContent) : null;
-      const hr = parseFloat(tp.querySelector('Value')?.textContent || 0);
+      const hr = parseFloat(tp.querySelector('HeartRateBpm > Value')?.textContent || 0);
       const cadNode = tp.querySelector('Cadence') || tp.getElementsByTagNameNS('*', 'RunCadence')[0]
                    || tp.getElementsByTagNameNS('*', 'Cadence')[0];
       const cad = cadNode ? parseFloat(cadNode.textContent) : null;
