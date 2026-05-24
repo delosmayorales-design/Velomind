@@ -2009,14 +2009,7 @@ async function routeValhalla(type) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      locations: waypoints.map((w, i) => {
-        const loc = { lat: w.lat, lon: w.lng, type: 'break' };
-        if (i < waypoints.length - 1) {
-          loc.heading = _bearing(w.lat, w.lng, waypoints[i+1].lat, waypoints[i+1].lng);
-          loc.heading_tolerance = 45;
-        }
-        return loc;
-      }),
+      locations: waypoints.map(w => ({ lat: w.lat, lon: w.lng, type: 'break' })),
       costing,
       costing_options: opts,
       directions_options: { units: 'km' },
@@ -2043,15 +2036,10 @@ async function routeValhalla(type) {
 // Road usa perfil 'driving' (coches) → garantiza solo carreteras asfaltadas
 // Gravel/MTB usan 'cycling' → acepta cualquier superficie ciclable
 async function routeOSRM(type) {
-  const coords   = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
-  const profile  = type === 'road' ? 'driving' : 'cycling';
-  const bearings = waypoints.map((w, i) =>
-    i < waypoints.length - 1
-      ? `${_bearing(w.lat, w.lng, waypoints[i+1].lat, waypoints[i+1].lng)},45`
-      : ''
-  ).join(';');
-  const res    = await fetch(
-    `https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson&bearings=${bearings}`
+  const coords  = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
+  const profile = type === 'road' ? 'driving' : 'cycling';
+  const res     = await fetch(
+    `https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson`
   );
   if (!res.ok) throw new Error('OSRM HTTP ' + res.status);
   const data  = await res.json();
