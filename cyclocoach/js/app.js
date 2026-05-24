@@ -165,11 +165,11 @@ const PMC = {
    * estén bien calentados. El parámetro `days` filtra solo la ventana
    * de salida (cuántos días devuelve), no el arranque del cálculo.
    */
-  compute(activities, days = 120) {
+  compute(activities, days = 120, seedCTL = 0) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const result = [];
-    let ctl = 0, atl = 0;
+    let ctl = Math.max(0, seedCTL), atl = Math.max(0, seedCTL);
 
     // Mapa fecha -> TSS total del día
     const tssMap = {};
@@ -230,7 +230,7 @@ const AppState = {
     this.athlete    = this._loadAthlete();
     this.activities = this._loadActivities();
     this.weightLog  = this._loadWeightLog();
-    this.pmcData    = PMC.compute(this.activities, 120);
+    this.pmcData    = PMC.compute(this.activities, 120, this.athlete?.initial_ctl || 0);
   },
 
   _loadAthlete() {
@@ -253,14 +253,14 @@ const AppState = {
       this.activities.push(activity);
       this.activities.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
       localStorage.setItem('velomind_activities', JSON.stringify(this.activities));
-      this.pmcData = PMC.compute(this.activities, 120);
+      this.pmcData = PMC.compute(this.activities, 120, this.athlete?.initial_ctl || 0);
     }
   },
 
   removeActivity(id) {
     this.activities = this.activities.filter(a => a.id !== id);
     localStorage.setItem('velomind_activities', JSON.stringify(this.activities));
-    this.pmcData = PMC.compute(this.activities, 120);
+    this.pmcData = PMC.compute(this.activities, 120, this.athlete?.initial_ctl || 0);
   },
 
   saveWeightEntry(entry) {
@@ -319,7 +319,7 @@ const TrainingPlanGenerator = {
     const cyclingActs = (activities || []).filter(a => !a.type || _CYCLING.includes(a.type));
     const pmcArr = (AppState.pmcData && AppState.pmcData.length >= 7)
       ? AppState.pmcData
-      : PMC.compute(cyclingActs, 120);
+      : PMC.compute(cyclingActs, 120, AppState.athlete?.initial_ctl || 0);
     const current = pmcArr.length ? pmcArr[pmcArr.length - 1] : { ctl: 30, atl: 30, tsb: 0 };
     const { ctl, atl, tsb } = current;
     console.log('[Plan] inputs:', { hours, exp, ftp, ctl: Math.round(ctl), atl: Math.round(atl), tsb: Math.round(tsb), cyclingActsCount: cyclingActs.length, totalActsCount: (activities||[]).length, weekly_hours: athlete.weekly_hours });

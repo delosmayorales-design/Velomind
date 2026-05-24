@@ -3750,7 +3750,17 @@ async function applyAdjustments() {
     if (goal)  updates.goal = goal;
     updates.event_date = event || null;
     AppState.saveAthlete(updates);
-    if (typeof BackendSync !== 'undefined') BackendSync.saveProfile(updates).catch(() => {});
+    if (typeof BackendSync !== 'undefined') {
+      BackendSync.saveProfile(updates).then(async () => {
+        // Si cambió el CTL inicial, recargar PMC del backend (se recalcula en el servidor)
+        if (updates.initial_ctl !== undefined && typeof BackendSync.loadPMC === 'function') {
+          await new Promise(r => setTimeout(r, 1200));
+          await BackendSync.loadPMC(120);
+          generatePlan();
+          renderAthleteSidebar();
+        }
+      }).catch(() => {});
+    }
   } else {
     AppState.athlete = {
       ftp:          (ftp    !== null && ftp    >= 50) ? ftp    : 200,

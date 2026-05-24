@@ -144,7 +144,7 @@ function isLegacyDemoActivity(a) {
     });
 
     // Recalcular PMC
-    AppState.pmcData = PMC.compute(AppState.activities, 120);
+    AppState.pmcData = PMC.compute(AppState.activities, 120, AppState.athlete?.initial_ctl || 0);
 
     return activities;
 
@@ -156,7 +156,7 @@ function isLegacyDemoActivity(a) {
     if (removed > 0) {
       AppState.activities = cleaned;
       localStorage.setItem('velomind_activities', JSON.stringify(cleaned));
-      AppState.pmcData = PMC.compute(cleaned, 120);
+      AppState.pmcData = PMC.compute(cleaned, 120, AppState.athlete?.initial_ctl || 0);
     }
 
     return AppState.activities;
