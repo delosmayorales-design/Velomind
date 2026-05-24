@@ -5,6 +5,7 @@ const multer  = require('multer');
 const sgMail = require('@sendgrid/mail');
 const supabase = require('../db'); // Ahora db es el cliente de Supabase
 const { requireAuth, signToken } = require('../middleware/auth');
+const { recalculatePMC } = require('../services/pmc');
 const router  = express.Router();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -124,6 +125,13 @@ router.put('/profile', requireAuth, async (req, res) => {
 
   const { error } = await supabase.from('users').update(updates).eq('id', req.user.id);
   if (error) return res.status(500).json({ error: error.message });
+
+  // Si cambió el CTL inicial, recalcular PMC en background para que el cambio se vea al instante
+  if (updates.initial_ctl !== undefined) {
+    setImmediate(async () => {
+      try { await recalculatePMC(req.user.id); } catch {}
+    });
+  }
 
   const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
   res.json({ message: 'Perfil actualizado', user: safeUser(user) });
