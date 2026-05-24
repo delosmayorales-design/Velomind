@@ -437,7 +437,15 @@ function isLegacyDemoActivity(a) {
     try {
       const data = await apiFetch('/garage');
       if (data.garage && Array.isArray(data.garage.bikes)) {
-        // Solo reemplazar localStorage si el backend devolvió datos válidos
+        // Cachear fotos individualmente antes de guardar el JSON del garaje.
+        // Esto evita que el JSON sea demasiado grande (cuota de localStorage) y
+        // que las fotos se pierdan si el setItem del garaje falla.
+        data.garage.bikes.forEach(bike => {
+          if (bike.photo_url) {
+            try { localStorage.setItem('velomind_bike_photo_' + bike.id, bike.photo_url); } catch {}
+            bike.photo_url = null; // no duplicar en el JSON del garaje
+          }
+        });
         localStorage.removeItem('velomind_garage');
         localStorage.removeItem('velomind_garage_history');
         localStorage.setItem('velomind_garage', JSON.stringify(data.garage));
