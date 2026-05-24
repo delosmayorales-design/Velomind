@@ -938,10 +938,18 @@
               <input type="number" id="adj-weight" class="params-input" placeholder="70">
             </div>
             <div class="params-field">
+              <label>FC máx (bpm)</label>
+              <input type="number" id="adj-max-hr" class="params-input" placeholder="185" min="100" max="220">
+            </div>
+            <div class="params-field">
+              <label>FC Umbral (bpm)</label>
+              <input type="number" id="adj-lthr" class="params-input" placeholder="165" min="100" max="210">
+            </div>
+            <div class="params-field">
               <label>CTL inicial</label>
               <input type="number" id="adj-initial-ctl" class="params-input" placeholder="0" min="0" max="200" title="Tu CTL de partida (TrainingPeaks, Garmin…). 0 = empezar desde cero.">
             </div>
-            <div class="params-field" style="grid-column:span 2">
+            <div class="params-field">
               <label>Fecha evento / carrera</label>
               <input type="date" id="adj-event" class="params-input" style="height:28px;width:100%">
             </div>
@@ -1498,6 +1506,8 @@ function fillAdjustmentForm() {
   if (document.getElementById('adj-ftp')) document.getElementById('adj-ftp').value = a.ftp || '';
   if (document.getElementById('adj-weight')) document.getElementById('adj-weight').value = a.weight || '';
   if (document.getElementById('adj-initial-ctl')) document.getElementById('adj-initial-ctl').value = a.initial_ctl || '';
+  if (document.getElementById('adj-max-hr')) document.getElementById('adj-max-hr').value = a.max_hr || '';
+  if (document.getElementById('adj-lthr')) document.getElementById('adj-lthr').value = a.lthr || '';
 }
 
 function renderWeekDates() {
@@ -3714,6 +3724,8 @@ async function applyAdjustments() {
   const ftpVal    = document.getElementById('adj-ftp')?.value?.trim();
   const weightVal = document.getElementById('adj-weight')?.value?.trim();
   const ctlVal    = document.getElementById('adj-initial-ctl')?.value?.trim();
+  const maxHRVal  = document.getElementById('adj-max-hr')?.value?.trim();
+  const lthrVal   = document.getElementById('adj-lthr')?.value?.trim();
   const goalEl    = document.getElementById('adj-goal');
   const event     = document.getElementById('adj-event')?.value || '';
 
@@ -3721,16 +3733,20 @@ async function applyAdjustments() {
   const ftp        = ftpVal    ? parseFloat(ftpVal)    : null;
   const weight     = weightVal ? parseFloat(weightVal) : null;
   const initialCTL = ctlVal    ? parseInt(ctlVal)      : null;
+  const maxHR      = maxHRVal  ? parseInt(maxHRVal)    : null;
+  const lthr       = lthrVal   ? parseInt(lthrVal)     : null;
   const goal   = window.GoalUtils
     ? window.GoalUtils.normalize(goalEl?.value || 'resistencia')
     : (goalEl?.value || 'resistencia');
 
   if (AppState.athlete) {
     const updates = {};
-    if (hours      !== null && !isNaN(hours)      && hours      > 0)   updates.weekly_hours = hours;
+    if (hours      !== null && !isNaN(hours)      && hours      > 0)    updates.weekly_hours = hours;
     if (ftp        !== null && !isNaN(ftp)        && ftp        >= 50)  updates.ftp = ftp;
-    if (weight     !== null && !isNaN(weight)     && weight     > 0)   updates.weight = weight;
+    if (weight     !== null && !isNaN(weight)     && weight     > 0)    updates.weight = weight;
     if (initialCTL !== null && !isNaN(initialCTL) && initialCTL >= 0)  updates.initial_ctl = initialCTL;
+    if (maxHR      !== null && !isNaN(maxHR)      && maxHR      >= 100) updates.max_hr = maxHR;
+    if (lthr       !== null && !isNaN(lthr)        && lthr       >= 100) updates.lthr = lthr;
     if (goal)  updates.goal = goal;
     updates.event_date = event || null;
     AppState.saveAthlete(updates);
