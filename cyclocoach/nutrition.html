@@ -559,6 +559,7 @@ function generateWeeklyNutrition() {
       avg_power: sess.targetWatts || Math.round(ftp * (sess.ifTarget || 0.70)),
       if_value:  sess.ifTarget || 0.70,
       tss,
+      type: sess.type || 'endurance',
     };
     return NutritionPlanner.generate(athlete, activity);
   });
@@ -753,13 +754,14 @@ function renderSupplements(supplements) {
   if (!container) return;
   container.innerHTML = (supplements||[]).map(s => `
     <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:8px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <strong style="font-size:14px;color:var(--text-primary)"><i class="fas fa-pills" style="color:var(--accent-green)"></i> ${s.name}</strong>
-        <span style="font-size:11px;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:12px;color:var(--text-secondary);text-align:right">${s.dose}</span>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <strong style="font-size:13px;color:var(--text-primary)"><i class="fas fa-pills" style="color:var(--accent-green);margin-right:5px"></i>${s.name}</strong>
+        <span style="font-size:11px;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:12px;color:var(--text-secondary);white-space:nowrap;flex-shrink:0">${s.dose}</span>
       </div>
+      ${s.timing ? `<div style="font-size:11px;font-weight:600;color:var(--accent-green);display:flex;align-items:center;gap:5px"><i class="fas fa-clock" style="font-size:10px"></i>${s.timing}</div>` : ''}
       <div style="font-size:12px;color:var(--text-muted);line-height:1.5;flex:1">${s.note}</div>
-      <button onclick="window.open('https://www.google.com/search?tbm=shop&q=${encodeURIComponent(s.name + ' ciclismo comprar oferta')}', '_blank')" 
-        class="btn btn-ghost btn-sm" style="margin-top:8px;font-size:11px;padding:6px;width:100%;border-color:rgba(158,214,43,0.3);color:var(--primary)">
+      <button onclick="window.open('https://www.google.com/search?tbm=shop&q=${encodeURIComponent(s.name + ' ciclismo comprar oferta')}', '_blank')"
+        class="btn btn-ghost btn-sm" style="margin-top:4px;font-size:11px;padding:6px;width:100%;border-color:rgba(158,214,43,0.3);color:var(--primary)">
         <i class="fas fa-shopping-cart"></i> Ver mejores precios
       </button>
     </div>

@@ -2523,7 +2523,7 @@ const NutritionPlanner = {
       hydration_ml,
       workoutNutrition,
       tips: this._tips(goal, trainingDay),
-      supplements: this._supplements(goal),
+      supplements: this._supplements(goal, activity, trainingDay),
     };
   },
 
@@ -2571,30 +2571,71 @@ const NutritionPlanner = {
     return base;
   },
 
-  _supplements(goal) {
-    const base = [
-      { name: 'Maltodextrina + Fructosa (Ratio 1:0.8)', dose: 'Intra-entreno', note: 'La mezcla óptima para absorber hasta 90-120g de carbohidratos por hora sin problemas gástricos.' },
-      { name: 'Electrolitos (Sodio/Magnesio)', dose: '500-1000mg/h', note: 'Vital para prevenir calambres y mantener la hidratación en días calurosos o salidas largas.' },
-      { name: 'Proteína Whey Isolate', dose: '25-30g post', note: 'Rápida absorción para maximizar la síntesis proteica muscular en la ventana anabólica.' }
-    ];
-    
-    const extras = {
-      sprint: [
-        { name: 'Creatina Monohidrato', dose: '3-5g/día', note: 'Aumenta las reservas de fosfocreatina. Mejora significativamente la potencia máxima en sprints cortos.' },
-        { name: 'Cafeína', dose: '3-6mg/kg', note: 'Mejora el reclutamiento de unidades motoras y reduce la percepción de fatiga.' }
-      ],
-      vo2max: [
-        { name: 'Zumo de Remolacha (Nitratos)', dose: '400mg pre', note: 'Tomar 2h antes. Mejora la eficiencia del oxígeno y el flujo sanguíneo en esfuerzos al límite.' },
-        { name: 'Beta-Alanina', dose: '3-6g/día', note: 'Actúa como buffer del ácido láctico. Ayuda a sostener esfuerzos en Z5-Z6 durante más tiempo.' }
-      ],
-      ftp: [
-        { name: 'Beta-Alanina', dose: '3-6g/día', note: 'Retrasa la quemazón muscular, permitiendo empujar los vatios de umbral más tiempo.' }
-      ],
-      gran_fondo: [
-        { name: 'BCAAs / Aminoácidos', dose: '5g intra', note: 'Reduce la fatiga del sistema nervioso central en pruebas de más de 4 horas.' }
-      ]
-    };
-    return [...base, ...(extras[goal] || [])];
+  _supplements(goal, activity = null, trainingDay = false) {
+    const sessType = activity?.type || null;
+    const durationMin = activity ? Math.round((Number(activity.duration) || 0) / 60) : 0;
+
+    // ── Día de descanso / recuperación ──────────────────────────
+    if (!trainingDay || sessType === 'recovery') {
+      return [
+        { name: 'Magnesio (bisglicinato)', dose: '300-400mg', timing: 'Antes de dormir', note: 'Mejora la calidad del sueño y acelera la recuperación muscular. Especialmente importante tras días de carga alta.' },
+        { name: 'Proteína Caseína', dose: '25-30g', timing: 'Antes de dormir', note: 'Digestión lenta que mantiene el suministro de aminoácidos durante las 7-8h de sueño. Maximiza la síntesis proteica nocturna.' },
+        { name: 'Colágeno + Vitamina C', dose: '10-15g + 50mg vit C', timing: '30min antes de movilidad', note: 'La vitamina C activa la síntesis de colágeno. Mejora la recuperación de tendones, ligamentos y cartílagos.' },
+        { name: 'Omega-3 (EPA/DHA)', dose: '2-3g', timing: 'Con comida', note: 'Antiinflamatorio natural. Reduce el DOMS y mejora la sensibilidad a la insulina en los días de recuperación.' },
+      ];
+    }
+
+    // ── Bloques comunes de entrenamiento ────────────────────────
+    const ELECTROLITOS = { name: 'Electrolitos (Sodio + Magnesio)', dose: '500-1000mg/h', timing: 'Durante', note: 'Esencial para mantener la contracción muscular y prevenir calambres. Imprescindible si sudas mucho o hace calor.' };
+    const WHEY         = { name: 'Proteína Whey Isolate', dose: '25-30g', timing: '15-30min post', note: 'Ventana anabólica: la whey isolate se absorbe en ~30min. Combina con 40-60g de carbohidratos para maximizar la recuperación.' };
+    const MALTO        = { name: 'Maltodextrina + Fructosa (1:0.8)', dose: '60-90g/h', timing: 'Durante (cada 30min)', note: 'La mezcla óptima para transportar carbohidratos por dos vías distintas. Permite hasta 90g/h sin problemas gástricos.' };
+    const CAFEINA      = { name: 'Cafeína', dose: '3-5mg/kg', timing: '45-60min antes', note: 'Reduce la percepción de esfuerzo y mejora la potencia pico. Evitar si hay sensibilidad o es por la tarde (afecta al sueño).' };
+    const BETAALANINA  = { name: 'Beta-Alanina', dose: '3-6g/día', timing: 'Con comida (carga diaria)', note: 'Buffer del lactato. Retrasa la acidificación muscular en esfuerzos de 1-4 min. Tomar a diario; el efecto es acumulativo.' };
+    const NITRATOS     = { name: 'Zumo de Remolacha (Nitratos)', dose: '400-500mg', timing: '2-3h antes', note: 'Mejora la eficiencia del oxígeno y reduce el coste energético del pedaleo. Efecto más marcado en altitud.' };
+    const CREATINA     = { name: 'Creatina Monohidrato', dose: '3-5g/día', timing: 'Con comida (carga diaria)', note: 'Aumenta las reservas de fosfocreatina. Mejora la potencia máxima en esfuerzos de 5-15s y la recuperación entre series.' };
+    const BCAAS        = { name: 'BCAAs / EAAs', dose: '5-10g', timing: 'Intra (desde hora 2)', note: 'Reduce la fatiga central del SNC en salidas largas y protege el músculo cuando el glucógeno baja. Útil a partir de 3-4h.' };
+
+    // ── Lógica por tipo de sesión ────────────────────────────────
+    let result = [];
+
+    if (sessType === 'z2' || sessType === 'endurance') {
+      result = durationMin >= 90
+        ? [MALTO, ELECTROLITOS, WHEY]
+        : [ELECTROLITOS, WHEY];
+      if (durationMin >= 180) result.push(BCAAS);
+
+    } else if (sessType === 'long') {
+      result = [MALTO, ELECTROLITOS, BCAAS, WHEY];
+
+    } else if (sessType === 'threshold' || sessType === 'tempo') {
+      result = [CAFEINA, BETAALANINA, MALTO, ELECTROLITOS, WHEY];
+
+    } else if (sessType === 'vo2max') {
+      result = [NITRATOS, CAFEINA, BETAALANINA, ELECTROLITOS, WHEY];
+
+    } else if (sessType === 'sprint' || sessType === 'strength') {
+      result = [CREATINA, CAFEINA, MALTO, ELECTROLITOS, WHEY];
+
+    } else if (sessType === 'race') {
+      result = [CAFEINA, NITRATOS, MALTO, ELECTROLITOS, BCAAS, WHEY];
+
+    } else {
+      // fallback: sesión genérica
+      result = [ELECTROLITOS, MALTO, WHEY];
+    }
+
+    // ── Extras por objetivo (complementan lo anterior) ──────────
+    const goalExtras = {
+      sprint:       [CREATINA].filter(s => !result.includes(s)),
+      vo2max:       [NITRATOS, BETAALANINA].filter(s => !result.includes(s)),
+      ftp:          [BETAALANINA].filter(s => !result.includes(s)),
+      gran_fondo:   [BCAAS].filter(s => !result.includes(s)),
+      carrera_corta:[CREATINA, CAFEINA].filter(s => !result.includes(s)),
+      carrera_larga:[BCAAS, NITRATOS].filter(s => !result.includes(s)),
+      ultra:        [BCAAS].filter(s => !result.includes(s)),
+    }[goal] || [];
+
+    return [...result, ...goalExtras];
   }
 };
 
