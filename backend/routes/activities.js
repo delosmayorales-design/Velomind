@@ -102,7 +102,7 @@ async function correctActivity(req, res) {
       return res.status(400).json({ error: 'Se requiere al menos np, power_cap o hr_cap' });
 
     const { data: act } = await supabase.from('activities')
-      .select('duration, avg_power, np')
+      .select('duration, avg_power, np, max_hr, max_power')
       .eq('id', id).eq('user_id', uid).single();
     if (!act) return res.status(404).json({ error: 'No encontrada' });
 
@@ -117,10 +117,18 @@ async function correctActivity(req, res) {
       updates.tss      = act.duration ? calcTSS(npNum, act.duration, ftp) : 0;
     }
 
-    if (power_cap !== undefined)
+    if (power_cap !== undefined) {
       updates.power_cap = power_cap === null ? null : Math.max(1, Math.round(Number(power_cap)));
-    if (hr_cap !== undefined)
+      // Actualizar max_power al valor corregido si es menor que el original
+      if (updates.power_cap !== null && act.max_power && updates.power_cap < act.max_power)
+        updates.max_power = updates.power_cap;
+    }
+    if (hr_cap !== undefined) {
       updates.hr_cap = hr_cap === null ? null : Math.max(1, Math.round(Number(hr_cap)));
+      // Actualizar max_hr al valor corregido si es menor que el original
+      if (updates.hr_cap !== null && act.max_hr && updates.hr_cap < act.max_hr)
+        updates.max_hr = updates.hr_cap;
+    }
 
     const { error } = await supabase.from('activities')
       .update(updates).eq('id', id).eq('user_id', uid);

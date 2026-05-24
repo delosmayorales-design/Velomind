@@ -945,7 +945,7 @@ function showActivityDetail(actId) {
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#ef4444;margin-bottom:6px">Fisiología</div>
       <div class="metric-grid">
         <div class="detail-metric-mini"><div class="label">FC Media</div><div class="value" style="color:#ef4444;font-size:14px">${act.avg_hr ? act.avg_hr+' <span style="font-size:9px">bpm</span>' : '--'}</div></div>
-        <div class="detail-metric-mini"><div class="label">FC Máx</div><div class="value" style="color:#ef4444;font-size:14px">${act.max_hr ? act.max_hr+' <span style="font-size:9px">bpm</span>' : '--'}</div></div>
+        <div class="detail-metric-mini"><div class="label">FC Máx</div><div class="value" id="panel-max-hr" style="color:#ef4444;font-size:14px">${act.max_hr ? (act.hr_cap && act.hr_cap < act.max_hr ? act.hr_cap : act.max_hr)+' <span style="font-size:9px">bpm</span>' : '--'}</div></div>
         <div class="detail-metric-mini"><div class="label">Cadencia</div><div class="value" style="color:var(--text-primary);font-size:14px">${act.avg_cadence ? act.avg_cadence+' <span style="font-size:9px">rpm</span>' : '--'}</div></div>
         <div class="detail-metric-mini"><div class="label">Calorías</div><div class="value" style="color:var(--text-primary);font-size:14px">${estimatedCal(act) ? Math.round(estimatedCal(act))+' <span style="font-size:9px">kcal</span>' : '--'}</div></div>
       </div>
@@ -1834,7 +1834,8 @@ async function saveCorrections() {
   const capHRVal = document.getElementById('correct-hr-cap').value.trim();
 
   const body = {};
-  if (npVal)    body.np        = parseFloat(npVal);
+  // Solo enviar NP si el usuario lo cambió respecto al valor guardado
+  if (npVal && parseFloat(npVal) !== (_correctAct.np || 0)) body.np = parseFloat(npVal);
   if (capPVal)  body.power_cap = parseInt(capPVal);
   if (capHRVal) body.hr_cap    = parseInt(capHRVal);
   if (!Object.keys(body).length) { closeCorrectModal(); return; }
@@ -1859,22 +1860,38 @@ async function saveCorrections() {
 
     closeCorrectModal();
 
-    // Re-renderizar streams con los nuevos caps
+    // Actualizar FC Máx en el panel (refleja el cap si es menor que el máx original)
+    const maxHrEl = document.getElementById('panel-max-hr');
+    if (maxHrEl && _correctAct.max_hr) {
+      const displayMax = (_correctAct.hr_cap && _correctAct.hr_cap < _correctAct.max_hr)
+        ? _correctAct.hr_cap : _correctAct.max_hr;
+      maxHrEl.innerHTML = displayMax + ' <span style="font-size:9px">bpm</span>';
+    }
+
+    // Re-renderizar streams con los nuevos caps (solo si hay datos de stream cargados)
     if (_sOrig) {
       Object.values(chartInsts).forEach(c => { try { c.destroy(); } catch {} });
       chartInsts = {};
-      renderStreamCharts(_sOrig, _sFTP, _correctAct);
+      const newNP = renderStreamCharts(_sOrig, _sFTP, _correctAct);
+
+      // Si cambiamos power_cap, auto-guardar la NP recalculada desde los streams capados
+      if (updated.power_cap !== undefined && newNP && newNP !== _correctAct.np) {
+        try {
+          const npRes = await fetch(`${window.API_URL}/activities/${_correctAct.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
+            body: JSON.stringify({ np: newNP })
+          });
+          if (npRes.ok) {
+            const npData = await npRes.json();
+            Object.assign(_correctAct, npData);
+            const actIdx = allActivities.findIndex(a => a.id === _correctAct.id);
+            if (actIdx !== -1) Object.assign(allActivities[actIdx], npData);
+          }
+        } catch (_) {}
+      }
     }
 
-    // Actualizar stats en el panel si cambió el NP/TSS
-    if (updated.np || updated.tss) {
-      const npEl  = document.getElementById('stat-np');
-      const tssEl = document.getElementById('stat-tss');
-      const ifEl  = document.getElementById('stat-if');
-      if (npEl  && updated.np)       npEl.textContent  = updated.np + ' W';
-      if (tssEl && updated.tss)      tssEl.textContent = Math.round(updated.tss);
-      if (ifEl  && updated.if_value) ifEl.textContent  = updated.if_value.toFixed(2);
-    }
   } catch(e) {
     alert('Error al guardar: ' + e.message);
   } finally {
