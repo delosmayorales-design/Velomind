@@ -616,6 +616,15 @@ function saveActivity(activity) {
     activity.tss = Math.round((activity.duration * activity.np * IF) / (ftp * 3600) * 100);
     activity.if_value = Math.round(IF * 100) / 100;
   }
+  // Fallback hrTSS: sin potenciómetro pero con FC media y LTHR configurado
+  if ((!activity.tss || activity.tss === 0) && activity.avg_hr && activity.duration) {
+    const lthr = AppState.athlete?.lthr
+      || (AppState.athlete?.max_hr ? Math.round(AppState.athlete.max_hr * 0.88) : null);
+    if (lthr) {
+      activity.tss = Utils.calcHRTSS(activity.duration, activity.avg_hr, lthr);
+      activity.if_value = Math.round((activity.avg_hr / lthr) * 100) / 100;
+    }
+  }
   if (!activity.id) activity.id = 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
   AppState.saveActivity(activity);
   AppState.pmcData = window.PMC.compute(AppState.activities, 120);

@@ -106,6 +106,25 @@ const Utils = {
     return Math.round((np / ftp) * 100) / 100;
   },
 
+  /** hrTSS para actividades sin potenciómetro (fórmula Bannister simplificada) */
+  calcHRTSS(durationSec, avgHR, lthr) {
+    if (!avgHR || !lthr || !durationSec) return 0;
+    const IF_hr = avgHR / lthr;
+    return Math.round((durationSec / 3600) * IF_hr * IF_hr * 100);
+  },
+
+  /** Rango de FC objetivo para una sesión planificada a partir del IF y el LTHR.
+   *  Aproximación fisiológica: HR%LTHR ≈ 0.44 + 0.57 × IF (calibrado Z1-Z5) */
+  hrTargetFromIF(lthr, ifTarget) {
+    if (!lthr || !ifTarget) return null;
+    const center = lthr * (0.44 + 0.57 * ifTarget);
+    const bpmMin = Math.round(center * 0.96);
+    const bpmMax = Math.round(center * 1.04);
+    const pct = center / lthr;
+    const zone = pct < 0.81 ? 'Z1' : pct < 0.90 ? 'Z2' : pct < 0.94 ? 'Z3' : pct < 1.00 ? 'Z4' : 'Z5';
+    return { bpmMin, bpmMax, zone };
+  },
+
   /** Parsea fecha ISO o yyyy-mm-dd */
   parseDate(str) {
     if (!str) return null;
