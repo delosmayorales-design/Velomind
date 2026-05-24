@@ -470,9 +470,12 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Evento objetivo (opcional)</label>
-        <input type="date" id="ob-event" class="form-input">
-        <div class="form-hint">El plan se periodiza hacia esta fecha automáticamente</div>
+        <label class="form-label">Evento objetivo principal (opcional)</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="ob-event-name" class="form-input" placeholder="Nombre de la carrera" style="flex:1">
+          <input type="date" id="ob-event" class="form-input" style="width:145px">
+        </div>
+        <div class="form-hint">El plan se periodiza hacia esta fecha. Puedes añadir más eventos (B, C) desde la pantalla de plan.</div>
       </div>
       <div class="btn-row">
         <button class="btn btn-back" onclick="backStep(3)">Volver</button>
@@ -613,7 +616,12 @@ function collectData(step) {
   if (step===3) {
     data.weekly_hours  = parseFloat(document.getElementById('ob-hours').value) || 8;
     data.days_per_week = parseInt(document.getElementById('ob-days').value) || 5;
-    data.event_date    = document.getElementById('ob-event').value || '';
+    const obEventDate = document.getElementById('ob-event').value || '';
+    const obEventName = document.getElementById('ob-event-name')?.value?.trim() || 'Evento principal';
+    data.event_date    = obEventDate;
+    data.target_events = obEventDate
+      ? JSON.stringify([{ id: `ev_${Date.now()}`, name: obEventName, date: obEventDate, priority: 'A' }])
+      : JSON.stringify([]);
   }
 }
 
@@ -778,6 +786,7 @@ async function saveAndGo() {
           ftp:data.ftp, max_hr:data.max_hr, lthr:data.lthr, experience:data.experience,
           goal:data.goal, weekly_hours:data.weekly_hours, days_per_week:data.days_per_week,
           event_date:data.event_date||'', initial_ctl:data.initial_ctl||0,
+          target_events:data.target_events||'[]',
         }),
         data.weight ? BackendSync.saveWeight({
           date:new Date().toISOString().substring(0,10),
@@ -861,7 +870,15 @@ let _isEditing = false;
     // weekly_hours puede ser float (8.0) → convertir a entero para que el select haga match
     if (a.weekly_hours) set('ob-hours', parseInt(a.weekly_hours));
     set('ob-days',a.days_per_week);
-    set('ob-event',a.event_date);
+    set('ob-event', a.event_date);
+    // Prellenar nombre del evento A si existe
+    if (a.target_events) {
+      try {
+        const evs = typeof a.target_events === 'string' ? JSON.parse(a.target_events) : a.target_events;
+        const aEv = Array.isArray(evs) && evs.find(e => e.priority === 'A');
+        if (aEv && aEv.name && aEv.name !== 'Evento principal') set('ob-event-name', aEv.name);
+      } catch {}
+    }
     if (a.goal) {
       data.goal = a.goal;
       document.querySelectorAll('.goal-opt').forEach(o=>o.classList.toggle('selected',o.dataset.val===a.goal));

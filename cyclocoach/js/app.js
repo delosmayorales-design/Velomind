@@ -327,8 +327,12 @@ const TrainingPlanGenerator = {
     const { ctl, atl, tsb } = current;
     console.log('[Plan] inputs:', { hours, exp, ftp, ctl: Math.round(ctl), atl: Math.round(atl), tsb: Math.round(tsb), cyclingActsCount: cyclingActs.length, totalActsCount: (activities||[]).length, weekly_hours: athlete.weekly_hours });
 
+    // ── Eventos múltiples ──
+    const events = this._parseEvents(athlete);
+    const primaryEventDate = this._getPrimaryEventDate(events);
+
     // ── Fase unificada (combina fecha de evento + ramp rate CTL) ──
-    const effectivePhase = this._detectPhase(athlete.event_date, pmcArr, tsb);
+    const effectivePhase = this._detectPhase(primaryEventDate, pmcArr, tsb);
 
     // ── Adherencia real: compara TSS completado vs esperado en últimas 4 semanas ──
     const adherence = this._calculateAdherence(cyclingActs, hours);
@@ -354,7 +358,7 @@ const TrainingPlanGenerator = {
     }
 
     // ── Macrociclo: contexto de posición hacia el evento ──
-    const macrocycle = this._getMacrocycleContext(athlete.event_date, ctl, ftp, weight);
+    const macrocycle = this._getMacrocycleContext(primaryEventDate, ctl, ftp, weight);
 
     // Si el macrociclo recomienda una carga específica, usarla como referencia
     if (macrocycle.weeklyTSSTarget && effectivePhase !== 'recovery' && tsb > -20) {
@@ -401,11 +405,27 @@ const TrainingPlanGenerator = {
         text: `Has completado el ${Math.round(adherence * 100)}% de la carga esperada en las últimas 4 semanas. El plan se ha reducido para hacerlo más alcanzable. Cuando la consistencia mejore, la carga aumentará automáticamente.` };
     }
 
+    // Reducir TSS ligeramente si hay un evento B la semana próxima (7-14 días)
+    const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+    const nextBEvent = events.find(e => {
+      if (e.priority !== 'B' || !e.date) return false;
+      const d = new Date(e.date + 'T00:00:00');
+      const days = Math.floor((d - today0) / 86400000);
+      return days >= 7 && days <= 14;
+    });
+    if (nextBEvent) targetTSS = Math.round(targetTSS * 0.85);
+
     const advice = this._getAdvice(tsb, ctl, effectivePhase);
-    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle);
+    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle, events);
 
     // Tasa de progresión: ΔCTLsemana ≈ (carga_diaria - CTL) × (1 - e^(-7/42)) ≈ × 0.154
     const rampRate = Math.round((targetTSS / 7 - ctl) * 0.154 * 10) / 10;
+
+    const today1 = new Date(); today1.setHours(0, 0, 0, 0);
+    const upcomingEvents = events
+      .filter(e => e.date && new Date(e.date + 'T00:00:00') >= today1)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 6);
 
     return {
       phase: effectivePhase,
@@ -419,7 +439,92 @@ const TrainingPlanGenerator = {
       cycleInfo,
       macrocycle,
       adherence: Math.round(adherence * 100),
+      upcomingEvents,
     };
+  },
+
+  // ── Eventos múltiples ────────────────────────────────────────────
+  _parseEvents(athlete) {
+    let events = [];
+    if (athlete.target_events) {
+      try {
+        events = typeof athlete.target_events === 'string'
+          ? JSON.parse(athlete.target_events)
+          : athlete.target_events;
+        if (!Array.isArray(events)) events = [];
+      } catch { events = []; }
+    }
+    // Backward compat: legacy event_date → A event si no hay ninguno A configurado
+    if (!events.some(e => e.priority === 'A') && athlete.event_date) {
+      events = [{ id: '_legacy', name: 'Evento principal', date: athlete.event_date, priority: 'A' }, ...events];
+    }
+    return events.filter(e => e.date);
+  },
+
+  _getPrimaryEventDate(events) {
+    return events.find(e => e.priority === 'A')?.date || null;
+  },
+
+  // Inyecta marcadores de carrera B/C en el array de sesiones de la semana actual
+  _injectEventMarkers(sessions, events) {
+    if (!events || !events.length) return sessions;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const result = sessions.map(s => ({ ...s }));
+
+    for (const ev of events) {
+      if (ev.priority === 'A' || !ev.date) continue;
+      const evDate = new Date(ev.date + 'T00:00:00');
+      const dayIndex = Math.floor((evDate - monday) / 86400000);
+      if (dayIndex < 0 || dayIndex > 6) continue;
+
+      if (ev.priority === 'B') {
+        result[dayIndex] = {
+          ...result[dayIndex], day: DAYS[dayIndex],
+          type: 'race', name: `🏁 ${ev.name || 'Carrera B'}`,
+          description: 'Evento B. Calienta bien y ejecuta según sensaciones. No salgas al límite en el inicio.',
+          isRaceB: true, isRest: false, durationMin: result[dayIndex].durationMin || 120, targetTSS: null,
+        };
+        // 1-2 días antes → activación
+        for (let pre = 1; pre <= 2; pre++) {
+          const idx = dayIndex - pre;
+          if (idx >= 0 && result[idx] && !result[idx].isRest) {
+            result[idx] = {
+              ...result[idx],
+              name: pre === 1 ? 'Activación pre-carrera' : 'Rodada suave (pre-carrera)',
+              description: `Sesión ligera previa a ${ev.name || 'la carrera B'}. Volumen reducido, 4-6 aceleraciones cortas a ritmo carrera (10-15 s).`,
+              type: 'z2',
+              durationMin: Math.round((result[idx].durationMin || 60) * (pre === 1 ? 0.55 : 0.65)),
+              targetTSS: null, isPreRaceB: true,
+            };
+          }
+        }
+        // 1-2 días después → recuperación
+        for (let post = 1; post <= 2; post++) {
+          const idx = dayIndex + post;
+          if (idx <= 6 && result[idx] && !result[idx].isRest) {
+            result[idx] = {
+              ...result[idx],
+              name: 'Recuperación post-carrera',
+              description: `Recuperación activa tras ${ev.name || 'la carrera B'}. Rodada muy suave Z1, hidratación y nutrición prioritarias.`,
+              type: 'recovery',
+              durationMin: Math.min(55, result[idx].durationMin || 45),
+              targetTSS: null, isPostRaceB: true,
+            };
+          }
+        }
+      } else if (ev.priority === 'C') {
+        result[dayIndex] = {
+          ...result[dayIndex], day: DAYS[dayIndex],
+          name: `🏁 ${ev.name || 'Carrera C'} (+entreno)`,
+          description: 'Evento C. Participa a ritmo controlado como entrenamiento de calidad; no altera el plan.',
+          isRaceC: true, targetTSS: null,
+        };
+      }
+    }
+    return result;
   },
 
   // ── Detección de fase unificada ──────────────────────────────────
@@ -612,7 +717,7 @@ const TrainingPlanGenerator = {
     return parts.join(' + ');
   },
 
-  _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week = 5, userSegments = null, weekInCycle = 1) {
+  _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week = 5, userSegments = null, weekInCycle = 1, events = []) {
     // Cargar segmentos configurados por el usuario (o usar los por defecto hardcoded como fallback)
     if (userSegments && Array.isArray(userSegments) && userSegments.length > 0) {
       this._activeSegments = userSegments.map(s => ({
@@ -832,7 +937,7 @@ const TrainingPlanGenerator = {
       }
     }
 
-    return sessions;
+    return this._injectEventMarkers(sessions, events);
   },
 
   /* ── Plantillas semanales según goal/phase ── */

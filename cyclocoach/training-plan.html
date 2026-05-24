@@ -952,9 +952,22 @@
               <label>CTL inicial</label>
               <input type="number" id="adj-initial-ctl" class="params-input" placeholder="0" min="0" max="200" title="Tu CTL de partida (TrainingPeaks, Garmin…). 0 = empezar desde cero.">
             </div>
-            <div class="params-field">
-              <label>Fecha evento / carrera</label>
-              <input type="date" id="adj-event" class="params-input" style="height:28px;width:100%">
+            <div class="params-field" style="grid-column:1/-1">
+              <label style="margin-bottom:7px;display:block">Eventos / Carreras objetivo</label>
+              <div id="adj-events-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:7px"></div>
+              <div id="adj-add-event-form" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:9px;flex-wrap:wrap;gap:6px;align-items:flex-end;margin-bottom:6px">
+                <input type="text" id="adj-new-ev-name" class="params-input" placeholder="Nombre del evento" style="flex:1;min-width:120px">
+                <input type="date" id="adj-new-ev-date" class="params-input" style="width:135px">
+                <select id="adj-new-ev-priority" class="params-input params-select" style="width:88px">
+                  <option value="A">A — Principal</option>
+                  <option value="B" selected>B — Secundario</option>
+                  <option value="C">C — Menor</option>
+                </select>
+                <button class="params-apply-btn" style="margin:0;padding:5px 12px;font-size:11px" onclick="addAdjEvent()"><i class="fas fa-check"></i> Añadir</button>
+              </div>
+              <button id="adj-add-ev-btn" onclick="toggleAddEventForm()" style="background:rgba(158,214,43,.12);border:1px solid rgba(158,214,43,.3);border-radius:7px;padding:5px 13px;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;width:auto">
+                <i class="fas fa-plus"></i> Añadir evento
+              </button>
             </div>
             <button class="params-apply-btn top-card-update-btn" onclick="applyAdjustments()">
               <i class="fas fa-sync-alt"></i> Actualizar
@@ -1001,6 +1014,7 @@
     <!-- PLAN SEMANAL -->
     <div id="coach-alerts-section" class="hidden" style="margin-bottom:12px"></div>
     <div id="event-phase-banner" style="display:none;margin-bottom:12px"></div>
+    <div id="events-list-banner" style="display:none;margin-bottom:12px"></div>
     <div id="ramp-rate-bar" style="display:none;margin-bottom:16px;padding:8px 14px;background:var(--bg-input);border-radius:8px;font-size:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"></div>
     <div id="recalc-summary" style="display:none;margin-bottom:20px"></div>
 
@@ -1505,7 +1519,16 @@ function fillAdjustmentForm() {
   if (!a) return;
   if (document.getElementById('adj-hours')) document.getElementById('adj-hours').value = a.weekly_hours || 8;
   if (document.getElementById('adj-goal')) document.getElementById('adj-goal').value = window.GoalUtils ? window.GoalUtils.normalize(a.goal || 'resistencia') : (a.goal || 'resistencia');
-  if (document.getElementById('adj-event')) document.getElementById('adj-event').value = a.event_date || '';
+  // Cargar lista de eventos
+  try {
+    _adjEvents = a.target_events
+      ? (typeof a.target_events === 'string' ? JSON.parse(a.target_events) : a.target_events) || []
+      : [];
+  } catch { _adjEvents = []; }
+  if (!_adjEvents.some(e => e.priority === 'A') && a.event_date) {
+    _adjEvents = [{ id: '_legacy', name: 'Evento principal', date: a.event_date, priority: 'A' }, ..._adjEvents];
+  }
+  renderAdjEventsList();
   if (document.getElementById('adj-ftp')) document.getElementById('adj-ftp').value = a.ftp || '';
   if (document.getElementById('adj-weight')) document.getElementById('adj-weight').value = a.weight || '';
   if (document.getElementById('adj-initial-ctl')) document.getElementById('adj-initial-ctl').value = a.initial_ctl || '';
@@ -1751,6 +1774,37 @@ function renderPlan(plan, athlete) {
     `${_weekCtx} · <strong style="color:var(--primary)">${plan.targetTSS} TSS</strong> · ${athlete.weekly_hours || 8}h · ${phaseLabel(plan.phase)}`;
 
   renderRecalcSummary(plan);
+
+  // ── Lista de próximos eventos ─────────────────────────────────
+  const evListBanner = document.getElementById('events-list-banner');
+  if (evListBanner && plan.upcomingEvents && plan.upcomingEvents.length > 0) {
+    const _pColors = { A: '#9ED62B', B: '#FFC800', C: '#64a0ff' };
+    const _pLabel  = { A: 'A', B: 'B', C: 'C' };
+    const _todayEv = new Date(); _todayEv.setHours(0, 0, 0, 0);
+    evListBanner.style.display = 'block';
+    evListBanner.innerHTML = `
+      <div style="background:rgba(158,214,43,.06);border:1px solid rgba(158,214,43,.2);border-radius:12px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:10px;letter-spacing:.5px">📅 PRÓXIMOS EVENTOS</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          ${plan.upcomingEvents.map(ev => {
+            const d = new Date(ev.date + 'T00:00:00');
+            const days = Math.floor((d - _todayEv) / 86400000);
+            const dateFmt = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+            const daysFmt = days === 0 ? '¡Hoy!' : days === 1 ? 'Mañana' : `${days}d`;
+            const c = _pColors[ev.priority] || '#9CA3AF';
+            const badge = `<span style="font-size:10px;font-weight:800;color:${c};background:${c}22;border-radius:4px;padding:2px 6px;margin-right:6px">${_pLabel[ev.priority]||ev.priority}</span>`;
+            return `<div style="display:flex;align-items:center;gap:8px">
+              ${badge}
+              <div style="flex:1;font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.name || 'Evento'}</div>
+              <div style="font-size:11px;color:var(--text-muted);white-space:nowrap">${dateFmt}</div>
+              <div style="font-size:11px;font-weight:700;color:${c};white-space:nowrap;min-width:40px;text-align:right">${daysFmt}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  } else if (evListBanner) {
+    evListBanner.style.display = 'none';
+  }
 
   // ── Banner fase race/peak por fecha de evento ────────────────
   const eventBanner = document.getElementById('event-phase-banner');
@@ -3664,6 +3718,73 @@ function _sanitizePlanSessions(plan) {
   });
 }
 
+// ── Gestor de eventos múltiples ──────────────────────────────────
+let _adjEvents = [];
+
+function renderAdjEventsList() {
+  const container = document.getElementById('adj-events-list');
+  if (!container) return;
+  if (!_adjEvents.length) {
+    container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:2px 0">Sin eventos — añade carreras para periodizar el plan</div>';
+    return;
+  }
+  const pColors = { A: '#9ED62B', B: '#FFC800', C: '#64a0ff' };
+  const pLabel  = { A: 'A · Principal', B: 'B · Secundario', C: 'C · Menor' };
+  const today = new Date(); today.setHours(0,0,0,0);
+  container.innerHTML = [..._adjEvents]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((ev, i) => {
+      const d = new Date(ev.date + 'T00:00:00');
+      const daysAway = Math.floor((d - today) / 86400000);
+      const daysFmt = daysAway < 0 ? 'pasado' : daysAway === 0 ? 'hoy' : `en ${daysAway}d`;
+      const dateFmt = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+      const color = pColors[ev.priority] || '#9CA3AF';
+      const origIdx = _adjEvents.indexOf(ev);
+      return `<div style="display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:7px 10px">
+        <span style="font-size:10px;font-weight:800;color:${color};background:${color}22;border-radius:4px;padding:2px 7px;white-space:nowrap">${pLabel[ev.priority]||ev.priority}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.name || 'Sin nombre'}</div>
+          <div style="font-size:10px;color:var(--text-muted)">${dateFmt} · ${daysFmt}</div>
+        </div>
+        <button onclick="removeAdjEvent(${origIdx})" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:2px 8px;color:#ef4444;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">✕</button>
+      </div>`;
+    }).join('');
+}
+
+function toggleAddEventForm() {
+  const form = document.getElementById('adj-add-event-form');
+  if (!form) return;
+  const visible = form.style.display === 'flex';
+  form.style.display = visible ? 'none' : 'flex';
+  document.getElementById('adj-add-ev-btn').innerHTML = visible
+    ? '<i class="fas fa-plus"></i> Añadir evento'
+    : '<i class="fas fa-times"></i> Cancelar';
+}
+
+function addAdjEvent() {
+  const name = document.getElementById('adj-new-ev-name')?.value.trim();
+  const date = document.getElementById('adj-new-ev-date')?.value;
+  const priority = document.getElementById('adj-new-ev-priority')?.value || 'B';
+  if (!date) { showToast('Selecciona una fecha', '#EF4444'); return; }
+  // Solo puede haber un evento A
+  if (priority === 'A' && _adjEvents.some(e => e.priority === 'A' && e.id !== '_legacy')) {
+    _adjEvents = _adjEvents.filter(e => e.priority !== 'A' || e.id === '_legacy');
+    _adjEvents = _adjEvents.map(e => e.id === '_legacy' ? { ...e, date, name: name || e.name, priority: 'A' } : e);
+    if (!_adjEvents.some(e => e.priority === 'A')) _adjEvents.unshift({ id: `ev_${Date.now()}`, name: name || 'Evento principal', date, priority: 'A' });
+  } else {
+    _adjEvents.push({ id: `ev_${Date.now()}`, name: name || 'Evento', date, priority });
+  }
+  document.getElementById('adj-new-ev-name').value = '';
+  document.getElementById('adj-new-ev-date').value = '';
+  renderAdjEventsList();
+  toggleAddEventForm();
+}
+
+function removeAdjEvent(idx) {
+  _adjEvents.splice(idx, 1);
+  renderAdjEventsList();
+}
+
 function clearEventDate() {
   if (!AppState.athlete) return;
   AppState.saveAthlete({ event_date: null });
@@ -3730,7 +3851,6 @@ async function applyAdjustments() {
   const maxHRVal  = document.getElementById('adj-max-hr')?.value?.trim();
   const lthrVal   = document.getElementById('adj-lthr')?.value?.trim();
   const goalEl    = document.getElementById('adj-goal');
-  const event     = document.getElementById('adj-event')?.value || '';
 
   const hours      = hoursVal  ? parseFloat(hoursVal)  : null;
   const ftp        = ftpVal    ? parseFloat(ftpVal)    : null;
@@ -3751,7 +3871,10 @@ async function applyAdjustments() {
     if (maxHR      !== null && !isNaN(maxHR)      && maxHR      >= 100) updates.max_hr = maxHR;
     if (lthr       !== null && !isNaN(lthr)        && lthr       >= 100) updates.lthr = lthr;
     if (goal)  updates.goal = goal;
-    updates.event_date = event || null;
+    // Guardar eventos múltiples y sincronizar event_date con el evento A
+    const aEvent = (_adjEvents || []).find(e => e.priority === 'A');
+    updates.event_date = aEvent?.date || null;
+    updates.target_events = JSON.stringify(_adjEvents || []);
     AppState.saveAthlete(updates);
     if (typeof BackendSync !== 'undefined') {
       BackendSync.saveProfile(updates).then(async () => {
