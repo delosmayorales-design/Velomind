@@ -136,8 +136,20 @@
     .mobile-step-dot{width:22px;height:22px;border-radius:50%;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;}
 
     @media(max-width:800px){
+      /* Body: altura dinámica para iOS Safari (descuenta la barra del navegador) */
+      body{flex-direction:column;min-height:100dvh;overflow-x:hidden;}
       .left-panel{display:none;}
-      .right-panel{padding:20px 16px 32px;align-items:flex-start;}
+      /* Right panel: scroll vertical propio, sin centrado vertical */
+      .right-panel{
+        flex:1;
+        align-items:flex-start;
+        justify-content:flex-start;
+        padding:20px 16px max(32px, env(safe-area-inset-bottom));
+        overflow-y:auto;
+        -webkit-overflow-scrolling:touch;
+        min-height:0;         /* necesario para que overflow-y funcione en iOS */
+        width:100%;
+      }
       .form-wrap{max-width:100%;}
       .mobile-steps{display:flex;}
       .goal-grid{grid-template-columns:1fr 1fr;}
@@ -145,6 +157,11 @@
       .btn-row{flex-direction:column-reverse;gap:8px;}
       .btn-row .btn{width:100%;justify-content:center;}
       .summary-grid{grid-template-columns:repeat(2,1fr)!important;}
+    }
+    @media(max-width:480px){
+      /* Botones de modo FTP: columna en pantallas estrechas */
+      .ftp-mode-btns{flex-direction:column!important;}
+      .ftp-mode-btns button{width:100%!important;}
     }
     @media(max-width:420px){
       .form-row{grid-template-columns:1fr;}
@@ -293,7 +310,7 @@
       </div>
 
       <!-- Opciones FTP -->
-      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <div class="ftp-mode-btns" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
         <button type="button" onclick="ftpMode('know')"  id="ftp-btn-know"  style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--primary);background:var(--primary);color:#0a0e1a;font-weight:700;font-size:13px;cursor:pointer">Ya sé mi FTP</button>
         <button type="button" onclick="ftpMode('est')"   id="ftp-btn-est"   style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--text);font-weight:600;font-size:13px;cursor:pointer">Estimarlo por peso</button>
         <button type="button" onclick="ftpMode('ramp')"  id="ftp-btn-ramp"  style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--text);font-weight:600;font-size:13px;cursor:pointer">Hacer el test ahora</button>
