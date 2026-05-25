@@ -2183,8 +2183,8 @@ function renderPlan(plan, athlete) {
               <div class="session-meta" style="align-items:center; width:100%; flex-wrap:wrap;">
               ${tssVal > 0 ? `<span class="meta-tag meta-tag-tss"><i class="fas fa-star" style="color:${color}"></i> TSS ${tssVal}</span>` : ''}
               ${durMin > 0 ? `<span class="meta-tag"><i class="fas fa-clock"></i> ${durMin} min</span>` : ''}
-              ${ifVal > 0 ? `<span class="meta-tag meta-tag-if"><i class="fas fa-bolt" style="color:var(--primary)"></i> IF ${ifVal.toFixed(2)}</span>` : ''}
-              ${_cardWatts > 0 ? `<span class="meta-tag"><i class="fas fa-tachometer-alt"></i> ~${_cardWatts}W</span>` : ''}
+              ${(!sess.isGym && ifVal > 0) ? `<span class="meta-tag meta-tag-if"><i class="fas fa-bolt" style="color:var(--primary)"></i> IF ${ifVal.toFixed(2)}</span>` : ''}
+              ${(!sess.isGym && _cardWatts > 0) ? `<span class="meta-tag"><i class="fas fa-tachometer-alt"></i> ~${_cardWatts}W</span>` : ''}
               ${(() => {
                 const lthr = AppState.athlete?.lthr || (AppState.athlete?.max_hr ? Math.round(AppState.athlete.max_hr * 0.88) : 0);
                 if (!lthr || !ifVal) return '';
