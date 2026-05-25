@@ -1423,8 +1423,17 @@ const WX = {
   99:{l:'Tormenta',           i:'fa-cloud-bolt',           c:'#6D28D9'},
 };
 
-function getClothing(temp, wind, precip, code) {
+function getClothing(temp, wind, precip, code, sess) {
   const isRain = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
+
+  // Sesión de gimnasio: ropa de sala, no de bici
+  if (sess?.isGym) {
+    const items = ['👕 Camiseta técnica transpirable', '🩳 Pantalón corto o mallas de entrenamiento', '👟 Zapatillas de gimnasio'];
+    if (temp < 12) items.push('🧥 Sudadera para el desplazamiento');
+    if (isRain)    items.push('🌂 Impermeable ligero para llegar al gym');
+    return items;
+  }
+
   const wc = temp - (wind > 20 ? (wind-20)*0.3 : 0);
   const items = [];
   if      (wc < 5)  items.push('🧥 Maillot térmico + camiseta interior');
@@ -1444,6 +1453,17 @@ function getClothing(temp, wind, precip, code) {
 }
 
 function getRouteRec(code, wind, precip, temp, sess) {
+  // Sesión de gimnasio: no hay ruta, hay destino
+  if (sess?.isGym) {
+    const isRain = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
+    const isHot  = temp > 28;
+    if (isRain)
+      return { icon:'🏋️', type:'Gimnasio — interior', color:'#F97316', msg:'Lluvia hoy — el gym es el plan perfecto. Sin excusas para entrenar fuerza bajo techo.' };
+    if (isHot)
+      return { icon:'🏋️', type:'Gimnasio — climatizado', color:'#F97316', msg:`${temp}°C fuera. El gym climatizado es la mejor opción para el trabajo de fuerza de hoy.` };
+    return { icon:'🏋️', type:'Gimnasio', color:'#F97316', msg:'Sesión de fuerza y movilidad. Calienta bien antes de cargar y termina con 10 min de estiramientos.' };
+  }
+
   const isRain   = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
   const isHeavy  = [65,82,95,96,99].includes(code) || precip > 2;
   const isFog    = [45,48].includes(code);
@@ -1621,7 +1641,8 @@ function _renderWeather(el, data) {
   const wx     = WX[code] || { l:'Variable', i:'fa-cloud-sun', c:'#93C5FD' };
   const sess   = dashPlan?.sessions?.[todayIdx];
   const rec    = getRouteRec(code, wind, prec, temp, sess);
-  const clothes = getClothing(temp, wind, prec, code);
+  const clothes = getClothing(temp, wind, prec, code, sess);
+  const isGymDay = !!sess?.isGym;
   el.innerHTML = `
     <div class="wx-main">
       <div class="wx-icon" style="background:${wx.c}18;color:${wx.c}">
@@ -1637,12 +1658,12 @@ function _renderWeather(el, data) {
       <div class="wx-stat"><i class="fas fa-tint" style="color:#38bdf8"></i> ${prec.toFixed(1)} mm</div>
     </div>
     <div class="rec-box" style="border-color:${rec.color}35;background:${rec.color}0a;margin-bottom:10px">
-      <div class="rec-box-label" style="color:${rec.color}">Ruta recomendada</div>
+      <div class="rec-box-label" style="color:${rec.color}">${isGymDay ? 'Sesión de hoy' : 'Ruta recomendada'}</div>
       <div class="rec-box-title">${rec.icon} ${rec.type}</div>
       <div class="rec-box-desc">${rec.msg}</div>
     </div>
     <div class="clothes-box">
-      <div class="clothes-label">Ropa para hoy</div>
+      <div class="clothes-label">${isGymDay ? 'Ropa de gimnasio' : 'Ropa para hoy'}</div>
       <div class="clothes-items">
         ${clothes.map(i => `<div class="clothes-item">${i}</div>`).join('')}
       </div>
