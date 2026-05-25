@@ -19,6 +19,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
     .activity-detail-panel { position: fixed; right: -560px; top: 0; height: 100vh; width: 540px; background: var(--bg-card); border-left: 1px solid var(--border); z-index: 200; transition: right 0.3s ease; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 24px; }
     .activity-detail-panel.open { right: 0; }
@@ -65,6 +66,24 @@
     /* section eyebrow */
     .section-eyebrow { font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px; }
     .section-eyebrow-badge { font-size:8px;font-weight:600;text-transform:none;letter-spacing:0; }
+    /* ── Route thumbnails en la lista ───────────────────── */
+    .route-mini-thumb { margin-bottom: 4px; line-height: 0; }
+    .route-mini-thumb svg { width: 100%; height: 22px; display: block; }
+    @media (max-width: 480px) { .route-mini-thumb svg { height: 18px; } }
+
+    /* ── Mini-mapa Leaflet en panel de detalle ───────────── */
+    #strava-mini-map-wrap { margin-bottom: 16px; }
+    #strava-mini-map {
+      height: 200px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    #strava-mini-map .leaflet-control-attribution { display: none; }
+    @media (max-width: 480px) {
+      #strava-mini-map { height: 160px; border-radius: 10px; }
+    }
+
     .activities-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .activities-table { min-width: 980px; }
     .activities-table th,
@@ -289,6 +308,7 @@
   <div id="panel-content"></div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="js/app.js?v=103"></script>
 <script src="js/backend-sync.js?v=103"></script>
@@ -296,6 +316,73 @@
 var allActivities = [];
 let chartInsts = {};
 let trainingPlan   = null;
+let _stravaMapInst = null;
+window._polylineCache = {};
+
+// ── Decodifica polilínea codificada de Google/Strava ─────
+function decodePolyline(encoded) {
+  const pts = [];
+  let i = 0, lat = 0, lng = 0;
+  while (i < encoded.length) {
+    let b, shift = 0, result = 0;
+    do { b = encoded.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+    shift = 0; result = 0;
+    do { b = encoded.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+    pts.push([lat / 1e5, lng / 1e5]);
+  }
+  return pts;
+}
+
+// ── Genera SVG miniatura de ruta para la lista ───────────
+function makePolylineSvg(polyline, color = '#FC4C02') {
+  if (!polyline) return '';
+  try {
+    const pts = decodePolyline(polyline);
+    if (pts.length < 2) return '';
+    const lats = pts.map(p => p[0]), lngs = pts.map(p => p[1]);
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    const W = 200, H = 22, pad = 3;
+    const lR = maxLat - minLat || 0.001, gR = maxLng - minLng || 0.001;
+    const toX = g => pad + ((g - minLng) / gR) * (W - 2 * pad);
+    const toY = l => H - pad - ((l - minLat) / lR) * (H - 2 * pad);
+    const step = pts.length > 200 ? Math.floor(pts.length / 200) : 1;
+    const sp = pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
+    const d = sp.map((p, i) => `${i ? 'L' : 'M'}${toX(p[1]).toFixed(1)},${toY(p[0]).toFixed(1)}`).join('');
+    const sx = toX(pts[0][1]).toFixed(1), sy = toY(pts[0][0]).toFixed(1);
+    const ex = toX(pts[pts.length-1][1]).toFixed(1), ey = toY(pts[pts.length-1][0]).toFixed(1);
+    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+      <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+      <circle cx="${sx}" cy="${sy}" r="2.5" fill="#10b981"/>
+      <circle cx="${ex}" cy="${ey}" r="2.5" fill="#ef4444"/>
+    </svg>`;
+  } catch { return ''; }
+}
+
+// ── Carga caché de polilíneas (localStorage + servidor) ──
+async function loadPolylineCache() {
+  // Carga instantánea desde localStorage
+  try {
+    const raw = localStorage.getItem('velomind_polylines');
+    if (raw) window._polylineCache = JSON.parse(raw);
+  } catch {}
+
+  // Refresca desde el servidor si hace más de 60 min
+  const ts = parseInt(localStorage.getItem('velomind_polylines_ts') || '0', 10);
+  if (Date.now() - ts < 3600000) return;
+
+  try {
+    const r = await fetch(`${window.API_URL}/providers/strava/polylines`, { headers: Auth.getHeaders() });
+    if (!r.ok) return;
+    const data = await r.json();
+    window._polylineCache = data;
+    localStorage.setItem('velomind_polylines', JSON.stringify(data));
+    localStorage.setItem('velomind_polylines_ts', Date.now().toString());
+    filterActivities(); // re-renderiza con nuevos thumbnails
+  } catch {}
+}
 
 // ── Selección de intervalo en streams ──
 let _selA = null, _selB = null;
@@ -410,6 +497,7 @@ function _showIntervalStats() {
 
 async function initActivities() {
   await AppState.init();
+  if (localStorage.getItem('velomind_strava_connected') === '1') loadPolylineCache();
   renderAthleteSidebar();
   await loadActivities();
   // Cargar plan de entrenamiento para comparar con actividades
@@ -542,8 +630,12 @@ function renderActivities(activities) {
     const tssColor = (a.tss > 100) ? 'var(--accent-red)' : (a.tss > 60) ? 'var(--primary)' : 'var(--accent-yellow)';
     const sid = a.strava_id || (a.id?.toString().startsWith('strava_') ? a.id.toString().replace('strava_', '') : null);
     const id = esc(a.id);
+    const polyline = sid ? (window._polylineCache?.[String(sid)] || null) : null;
+    const svgThumb = polyline ? makePolylineSvg(polyline) : '';
     return '<tr data-act-id="' + id + '">'
-      + '<td class="activity-name-cell"><div class="activity-name-main"><div class="value-bold activity-name-title" title="' + esc(a.name || 'Entrenamiento') + '">' + esc(a.name || 'Entrenamiento') + '</div>'
+      + '<td class="activity-name-cell">'
+      + (svgThumb ? '<div class="route-mini-thumb">' + svgThumb + '</div>' : '')
+      + '<div class="activity-name-main"><div class="value-bold activity-name-title" title="' + esc(a.name || 'Entrenamiento') + '">' + esc(a.name || 'Entrenamiento') + '</div>'
       + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.75"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '')
       + '</div><div class="activity-badges"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + '">' + esc(zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue">' + esc(a.source || 'CSV') + '</span></div></td>'
       + '<td style="white-space:nowrap">' + Utils.formatDate(a.date) + '</td>'
@@ -852,6 +944,9 @@ function generateCoachComment(act, pmcSnap, allActs) {
 function showActivityDetail(actId) {
   const act = allActivities.find(a => String(a.id) === String(actId));
   if (!act) return;
+  if (_stravaMapInst) { _stravaMapInst.remove(); _stravaMapInst = null; }
+  Object.values(chartInsts).forEach(c => { try { c.destroy(); } catch {} });
+  chartInsts = {};
   const ftp = AppState.athlete?.ftp || 200;
   const weight = AppState.athlete?.weight || 70;
   const lthr = AppState.athlete?.lthr || AppState.athlete?.threshold_hr || 175;
@@ -908,6 +1003,16 @@ function showActivityDetail(actId) {
     <div style="background:linear-gradient(135deg,rgba(158,214,43,0.08),rgba(158,214,43,0.03));border:1px solid rgba(158,214,43,0.22);border-radius:12px;padding:14px 16px;margin-bottom:16px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#9ED62B;margin-bottom:8px"><i class="fas fa-comment-dots" style="margin-right:5px"></i>Nota del entrenador</div>
       <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin:0">${coachComment}</p>
+    </div>` : ''}
+
+    ${sid ? `
+    <!-- ── MINI-MAPA GPS ── -->
+    <div id="strava-mini-map-wrap" style="display:none;margin-bottom:16px">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#FC4C02;margin-bottom:8px;display:flex;align-items:center;gap:5px">
+        <i class="fas fa-route"></i> Recorrido GPS
+        <span id="map-badge" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)"></span>
+      </div>
+      <div id="strava-mini-map"></div>
     </div>` : ''}
 
     <!-- GRUPO 1: ACTIVIDAD -->
@@ -1170,6 +1275,40 @@ async function fetchAndRenderStreams(sid, ftp, act) {
     _sOrig = s; _sFTP = ftp; _selA = null; _selB = null;
 
     const npCalculated = renderStreamCharts(s, ftp, act);
+
+    // ── Mini-mapa GPS ─────────────────────────────────────
+    if (s.latlng?.length >= 2) {
+      const mapWrap = document.getElementById('strava-mini-map-wrap');
+      const mapEl   = document.getElementById('strava-mini-map');
+      if (mapWrap && mapEl) {
+        mapWrap.style.display = '';
+        if (_stravaMapInst) { _stravaMapInst.remove(); _stravaMapInst = null; }
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        _stravaMapInst = L.map(mapEl, {
+          zoomControl: true,
+          attributionControl: false,
+          scrollWheelZoom: false,
+          tap: false
+        });
+        L.tileLayer(
+          isDark
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+          { maxZoom: 19 }
+        ).addTo(_stravaMapInst);
+
+        const track = L.polyline(s.latlng, { color: '#FC4C02', weight: 3.5, opacity: 0.9 });
+        track.addTo(_stravaMapInst);
+        _stravaMapInst.fitBounds(track.getBounds(), { padding: [20, 20] });
+
+        // Marcadores inicio / fin
+        L.circleMarker(s.latlng[0], { radius: 6, color: '#fff', weight: 2, fillColor: '#10b981', fillOpacity: 1 }).addTo(_stravaMapInst);
+        L.circleMarker(s.latlng[s.latlng.length - 1], { radius: 6, color: '#fff', weight: 2, fillColor: '#ef4444', fillOpacity: 1 }).addTo(_stravaMapInst);
+
+        const mapBadge = document.getElementById('map-badge');
+        if (mapBadge) mapBadge.textContent = `· ${s.latlng.length.toLocaleString()} puntos`;
+      }
+    }
 
     // Auto-actualizar NP en DB si difiere del guardado (estilo Garmin)
     const storedNP = act.np || 0;
@@ -1701,6 +1840,7 @@ function closePanel() {
   Object.values(chartInsts).forEach(c => { try { c.destroy(); } catch {} });
   chartInsts = {};
   _selA = null; _selB = null; _sOrig = null;
+  if (_stravaMapInst) { _stravaMapInst.remove(); _stravaMapInst = null; }
   document.getElementById('detail-panel').classList.remove('open');
   document.getElementById('panel-overlay').classList.remove('show');
   document.body.style.overflow = '';

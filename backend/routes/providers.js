@@ -530,7 +530,7 @@ router.get('/strava/streams/:activityId', requireAuth, async (req, res) => {
   }
 
   try {
-    const keys = 'time,watts,heartrate,velocity_smooth,altitude,cadence,grade_smooth';
+    const keys = 'time,watts,heartrate,velocity_smooth,altitude,cadence,grade_smooth,latlng';
     const r = await fetch(
       `https://www.strava.com/api/v3/activities/${activityId}/streams?keys=${keys}&key_by_type=true`,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -554,6 +554,76 @@ router.get('/strava/streams/:activityId', requireAuth, async (req, res) => {
     res.json(streams);
   } catch (e) {
     console.error('[Streams] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── POLYLINES (thumbnails mini-mapa) ───────────────────
+const _polylinesCache = new Map(); // uid → { ts, data }
+
+router.get('/strava/polylines', requireAuth, async (req, res) => {
+  const uid = req.user.id;
+
+  const cached = _polylinesCache.get(uid);
+  if (cached && Date.now() - cached.ts < 15 * 60 * 1000) {
+    return res.json(cached.data);
+  }
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('strava_token, strava_refresh, strava_expires_at')
+    .eq('id', uid)
+    .single();
+
+  if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
+
+  let token = user.strava_token;
+  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
+  if (user.strava_refresh && isExpired) {
+    try {
+      const re = await fetch('https://www.strava.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: STRAVA_ID, client_secret: STRAVA_SECRET,
+          grant_type: 'refresh_token', refresh_token: user.strava_refresh
+        }),
+      });
+      const d = await re.json();
+      if (re.ok && d.access_token) {
+        token = d.access_token;
+        await supabase.from('users').update({
+          strava_token: d.access_token, strava_refresh: d.refresh_token,
+          strava_expires_at: d.expires_at
+        }).eq('id', uid);
+      }
+    } catch (e) { console.warn('[Polylines] Token refresh error:', e.message); }
+  }
+
+  try {
+    const oneYearAgo = Math.floor(Date.now() / 1000) - 365 * 24 * 3600;
+    const result = {};
+    let page = 1, hasMore = true;
+
+    while (hasMore && page <= 10) {
+      const r = await fetch(
+        `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=200&page=${page}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!r.ok || r.status === 429) break;
+      const acts = await r.json();
+      if (!Array.isArray(acts) || acts.length === 0) { hasMore = false; break; }
+      for (const a of acts) {
+        if (a.map?.summary_polyline) result[String(a.id)] = a.map.summary_polyline;
+      }
+      if (acts.length < 200) hasMore = false;
+      else { page++; await new Promise(r => setTimeout(r, 100)); }
+    }
+
+    _polylinesCache.set(uid, { ts: Date.now(), data: result });
+    res.json(result);
+  } catch (e) {
+    console.error('[Polylines]', e.message);
     res.status(500).json({ error: e.message });
   }
 });
