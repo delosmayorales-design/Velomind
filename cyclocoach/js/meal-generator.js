@@ -506,6 +506,16 @@ const LocalMenuGenerator = (() => {
     return { preWorkout, duringWorkout, postWorkout };
   }
 
+  // ── Barajar array (Fisher-Yates) ──────────────────────────────
+  function shuffled(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
   // ── Generador principal ────────────────────────────────────────
   function generate({ calories, carbs, protein, fat, preferences, dislikes, sessionType, tss, sessionTime, durationMin, weight, phase }) {
     const pref    = preferences || 'normal';
@@ -558,12 +568,12 @@ const LocalMenuGenerator = (() => {
     const poolN = filterPool(CENAS,     pref, dislikes);
     const poolS = filterPool(SNACKS,    pref, dislikes);
 
-    // Fallback si filtro deja pool vacío
+    // Fallback si filtro deja pool vacío, luego barajar para variedad en cada generación
     const safePool = (p, full) => p.length >= 3 ? p : full;
-    const pD = safePool(poolD, DESAYUNOS);
-    const pC = safePool(poolC, COMIDAS);
-    const pN = safePool(poolN, CENAS);
-    const pS = safePool(poolS, SNACKS);
+    const pD = shuffled(safePool(poolD, DESAYUNOS));
+    const pC = shuffled(safePool(poolC, COMIDAS));
+    const pN = shuffled(safePool(poolN, CENAS));
+    const pS = shuffled(safePool(poolS, SNACKS));
 
     // Generar 3 menús con combos diferentes
     const menus = [0, 1, 2].map(i => {
