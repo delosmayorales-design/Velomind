@@ -318,6 +318,8 @@ let chartInsts = {};
 let trainingPlan   = null;
 let _stravaMapInst = null;
 window._polylineCache = {};
+let _currentStreamLatLng  = null;
+let _currentStreamAltitude = null;
 
 // ── Decodifica polilínea codificada de Google/Strava ─────
 function decodePolyline(encoded) {
@@ -1013,6 +1015,33 @@ function showActivityDetail(actId) {
         <span id="map-badge" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)"></span>
       </div>
       <div id="strava-mini-map"></div>
+
+      <!-- Guardar como ruta -->
+      <div id="save-route-section" style="display:none;margin-top:8px">
+        <button onclick="toggleSaveRouteForm()" style="width:100%;padding:8px;background:transparent;border:1px dashed var(--border);border-radius:9px;color:var(--text-muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .18s"
+          onmouseenter="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'"
+          onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
+          <i class="fas fa-map-pin"></i> Guardar como ruta
+        </button>
+        <div id="save-route-form" style="display:none;margin-top:8px;padding:12px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px">
+          <div style="margin-bottom:8px">
+            <label style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Nombre</label>
+            <input type="text" id="srf-name" class="form-input form-input--sm" placeholder="Mi ruta">
+          </div>
+          <div style="margin-bottom:10px">
+            <label style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Tipo</label>
+            <select id="srf-type" class="form-select form-input--sm">
+              <option value="road">🚴 Road</option>
+              <option value="gravel">🪨 Gravel</option>
+              <option value="mtb">🏔 MTB</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="document.getElementById('save-route-form').style.display='none'" class="btn btn-ghost btn-sm" style="flex:1">Cancelar</button>
+            <button onclick="saveActivityAsRoute()" class="btn btn-primary btn-sm" style="flex:1" id="srf-save-btn"><i class="fas fa-save"></i> Guardar</button>
+          </div>
+        </div>
+      </div>
     </div>` : ''}
 
     <!-- GRUPO 1: ACTIVIDAD -->
@@ -1307,6 +1336,16 @@ async function fetchAndRenderStreams(sid, ftp, act) {
 
         const mapBadge = document.getElementById('map-badge');
         if (mapBadge) mapBadge.textContent = `· ${s.latlng.length.toLocaleString()} puntos`;
+
+        // Guardar datos GPS para el botón "Guardar como ruta"
+        _currentStreamLatLng   = s.latlng;
+        _currentStreamAltitude = s.altitude || null;
+        const saveSection = document.getElementById('save-route-section');
+        if (saveSection) {
+          saveSection.style.display = '';
+          const srfName = document.getElementById('srf-name');
+          if (srfName) srfName.value = act.name || '';
+        }
       }
     }
 
@@ -1836,11 +1875,81 @@ function renderDetailCharts(act, ftp) {
 
 }
 
+// ── Guardar ruta GPS desde actividad ────────────────────────────
+function toggleSaveRouteForm() {
+  const form = document.getElementById('save-route-form');
+  if (form) form.style.display = form.style.display === 'none' ? '' : 'none';
+}
+
+async function saveActivityAsRoute() {
+  if (!_currentStreamLatLng?.length) return;
+  const btn  = document.getElementById('srf-save-btn');
+  const name = (document.getElementById('srf-name')?.value.trim()) || 'Ruta desde actividad';
+  const type = document.getElementById('srf-type')?.value || 'road';
+
+  // GeoJSON: coordenadas [lng, lat, alt?]
+  const coordinates = _currentStreamLatLng.map(([lat, lng], i) => {
+    const c = [lng, lat];
+    if (_currentStreamAltitude?.[i] != null) c.push(_currentStreamAltitude[i]);
+    return c;
+  });
+  const geojson = { type: 'Feature', geometry: { type: 'LineString', coordinates }, properties: { name } };
+
+  // Distancia Haversine
+  function hvKm([la1, lo1], [la2, lo2]) {
+    const R = 6371, dLa = (la2-la1)*Math.PI/180, dLo = (lo2-lo1)*Math.PI/180;
+    const a = Math.sin(dLa/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+  let distKm = 0;
+  for (let i = 1; i < _currentStreamLatLng.length; i++) distKm += hvKm(_currentStreamLatLng[i-1], _currentStreamLatLng[i]);
+
+  // Desnivel positivo
+  let elevGain = 0;
+  if (_currentStreamAltitude) {
+    for (let i = 1; i < _currentStreamAltitude.length; i++) {
+      const d = _currentStreamAltitude[i] - _currentStreamAltitude[i-1];
+      if (d > 0) elevGain += d;
+    }
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+  try {
+    const r = await fetch(`${window.API_URL}/routes`, {
+      method: 'POST',
+      headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name, type, geojson,
+        distance_km:      Math.round(distKm * 10) / 10,
+        elevation_gain_m: elevGain ? Math.round(elevGain) : null,
+        notes: 'GPS · importada desde actividad Strava'
+      })
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Error');
+    btn.innerHTML = '<i class="fas fa-check"></i> ¡Guardada!';
+    btn.style.cssText = 'background:rgba(16,185,129,0.15);color:#10b981;border-color:rgba(16,185,129,0.4)';
+    showToast(`Ruta "${name}" guardada en Rutas`, 'success');
+    setTimeout(() => {
+      const f = document.getElementById('save-route-form');
+      if (f) f.style.display = 'none';
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
+      btn.style.cssText = '';
+    }, 2200);
+  } catch(e) {
+    showToast('Error al guardar la ruta: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
+  }
+}
+
 function closePanel() {
   Object.values(chartInsts).forEach(c => { try { c.destroy(); } catch {} });
   chartInsts = {};
   _selA = null; _selB = null; _sOrig = null;
   if (_stravaMapInst) { _stravaMapInst.remove(); _stravaMapInst = null; }
+  _currentStreamLatLng = null; _currentStreamAltitude = null;
   document.getElementById('detail-panel').classList.remove('open');
   document.getElementById('panel-overlay').classList.remove('show');
   document.body.style.overflow = '';
