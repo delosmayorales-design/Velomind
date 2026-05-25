@@ -1566,6 +1566,8 @@ function fillAdjustmentForm() {
     _adjEvents = [{ id: '_legacy', name: 'Evento principal', date: a.event_date, priority: 'A' }, ..._adjEvents];
   }
   renderAdjEventsList();
+  // Auto-expandir el acordeón si hay eventos, para que el usuario vea qué fechas están guardadas
+  if (_adjEvents.length > 0) toggleEventsAccordion(true);
   if (document.getElementById('adj-ftp')) document.getElementById('adj-ftp').value = a.ftp || '';
   if (document.getElementById('adj-weight')) document.getElementById('adj-weight').value = a.weight || '';
   if (document.getElementById('adj-initial-ctl')) document.getElementById('adj-initial-ctl').value = a.initial_ctl || '';
@@ -3839,10 +3841,12 @@ function _updateEventsSummary() {
   const upcoming = _adjEvents.filter(e => e.date && new Date(e.date + 'T00:00:00') >= today)
     .sort((a, b) => a.date.localeCompare(b.date));
   if (!upcoming.length) { el.textContent = `${_adjEvents.length} evento${_adjEvents.length>1?'s':''}`; return; }
-  const next = upcoming[0];
-  const days = Math.floor((new Date(next.date + 'T00:00:00') - today) / 86400000);
-  const pShort = { A: 'A', B: 'B', C: 'C' };
-  el.textContent = `${_adjEvents.length} evento${_adjEvents.length>1?'s':''} · próximo ${pShort[next.priority]||''}: ${days}d`;
+  // Mostrar la fecha exacta del evento A principal (o el más próximo si no hay A)
+  const aEvent = upcoming.find(e => e.priority === 'A') || upcoming[0];
+  const days = Math.floor((new Date(aEvent.date + 'T00:00:00') - today) / 86400000);
+  const dateFmt = new Date(aEvent.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  const color = aEvent.priority === 'A' ? '#9ED62B' : '#FFC800';
+  el.innerHTML = `<span style="color:${color};font-weight:700">🏁 ${dateFmt}</span><span style="color:var(--text-muted)"> · en ${days}d</span>`;
 }
 
 function toggleEventsAccordion(forceOpen) {
