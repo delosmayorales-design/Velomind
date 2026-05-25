@@ -2619,9 +2619,9 @@ function renderRouteList() {
           onclick="event.stopPropagation();exportGPX('${r.id}')">
           <i class="fas fa-file-export"></i> GPX
         </button>
-        <button class="ri-btn" title="Compartir por WhatsApp" style="color:#25D366"
-          onclick="event.stopPropagation();shareWhatsApp('${r.id}')">
-          <i class="fab fa-whatsapp"></i> Compartir
+        <button class="ri-btn" title="Compartir imagen"
+          onclick="event.stopPropagation();shareCard('${r.id}')">
+          <i class="fas fa-share-alt"></i> Compartir
         </button>
         <button class="ri-btn del" title="Eliminar"
           onclick="event.stopPropagation();deleteRoute('${r.id}')">
@@ -2693,173 +2693,202 @@ async function deleteRoute(id) {
   await loadRoutes();
 }
 
-async function shareWhatsApp(id) {
+async function shareCard(id) {
   const r = allRoutes.find(r => r.id === id);
   if (!r) return;
+  const btn  = event?.target?.closest?.('.ri-btn');
+  const orig = btn?.innerHTML;
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
 
-  const typeLabel = { road: '🚴 Road', gravel: '🪨 Gravel', mtb: '🏔️ MTB' }[r.type] || r.type;
+  try {
+    const W = 1080, H = 1080;
+    const cvs = document.createElement('canvas');
+    cvs.width = W; cvs.height = H;
+    const ctx = cvs.getContext('2d');
+    const color = routeColor(r);
+    const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif";
 
-  // Cargar ruta en el mapa (dispara fetchElevation async — los delays de imagen dan tiempo a que acabe)
-  openRouteOnMap(id);
+    // ── Fondo degradado ──────────────────────────────────────────
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#0d0e1a');
+    bg.addColorStop(0.6, '#111218');
+    bg.addColorStop(1, '#0a0b10');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
 
-  // Lee el desnivel del DOM (fetchElevation lo actualiza antes de que termine la espera de tiles)
-  function getElevVal() {
-    const domVal = parseInt(document.getElementById('stat-elev').textContent);
-    return domVal > 0 ? domVal : (r.elevation_gain_m ? Math.round(r.elevation_gain_m) : 0);
-  }
-  function buildMsg() {
-    const elevVal = getElevVal();
-    const dist = r.distance_km       ? `📏 ${r.distance_km} km`               : '';
-    const elev = elevVal             ? `⛰️ ${elevVal} m D+`                   : '';
-    const time = r.estimated_minutes ? `⏱️ ~${formatTime(r.estimated_minutes)}` : '';
-    return `🚵 *${r.name}* · ${typeLabel}\n` +
-           `${[dist, elev, time].filter(Boolean).join('   ')}\n\n` +
-           `_Ruta creada con VeloMind_ 💪`;
-  }
+    // Cuadrícula de puntos
+    ctx.fillStyle = 'rgba(255,255,255,0.025)';
+    for (let x = 54; x < W; x += 54)
+      for (let y = 54; y < H; y += 54) {
+        ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
 
-  if (typeof leafletImage !== 'undefined' && navigator.canShare) {
-    // Show loading indicator
-    const shareBtn = event.target.closest('.ri-btn');
-    const originalContent = shareBtn.innerHTML;
-    shareBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    shareBtn.disabled = true;
-    try {
-      // Esperar fin de animación fitBounds
-      await new Promise(res => {
-        const t = setTimeout(res, 1500);
-        map.once('moveend', () => { clearTimeout(t); res(); });
+    // Línea de acento superior
+    const topLine = ctx.createLinearGradient(0, 0, W, 0);
+    topLine.addColorStop(0, 'transparent');
+    topLine.addColorStop(0.25, color);
+    topLine.addColorStop(0.75, color);
+    topLine.addColorStop(1, 'transparent');
+    ctx.strokeStyle = topLine; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0, 3); ctx.lineTo(W, 3); ctx.stroke();
+
+    // ── Cabecera ─────────────────────────────────────────────────
+    ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+    ctx.font = `bold 42px ${font}`;
+    ctx.fillStyle = color;
+    ctx.fillText('Velo', 52, 50);
+    const veloW = ctx.measureText('Velo').width;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('Mind', 52 + veloW, 50);
+
+    // Badge tipo
+    const typeLabel = { road: 'ROAD', gravel: 'GRAVEL', mtb: 'MTB' }[r.type] || r.type.toUpperCase();
+    ctx.textAlign = 'right'; ctx.font = `bold 22px ${font}`; ctx.fillStyle = color + 'cc';
+    ctx.fillText(typeLabel, W - 52, 60);
+
+    // Nombre de la ruta
+    ctx.textAlign = 'left'; ctx.font = `600 46px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    let name = r.name || 'Ruta';
+    while (ctx.measureText(name).width > W - 100 && name.length > 4) name = name.slice(0, -1);
+    if (name !== r.name) name += '…';
+    ctx.fillText(name, 52, 114);
+
+    // ── Dibujo de la ruta ────────────────────────────────────────
+    const mapX = 52, mapY = 200, mapW = W - 104, mapH = 560;
+    const segments = routeCoordSegments(r.geojson);
+
+    if (segments.length) {
+      const allPts = segments.flat();
+      const lons = allPts.map(([ln]) => ln);
+      const lats = allPts.map(([, la]) => la);
+      const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+      const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+      const lonSpan = maxLon - minLon || 0.001;
+      const latSpan = maxLat - minLat || 0.001;
+      const pad = 70;
+      const scale = Math.min((mapW - pad * 2) / lonSpan, (mapH - pad * 2) / latSpan);
+      const drawnW = lonSpan * scale, drawnH = latSpan * scale;
+      const ox = mapX + (mapW - drawnW) / 2;
+      const oy = mapY + (mapH + drawnH) / 2;
+
+      const project = ([lon, lat]) => ({
+        x: ox + (lon - minLon) * scale,
+        y: oy - (lat - minLat) * scale,
       });
 
-      // Zoom máximo 12 para que aparezcan nombres de pueblos
-      if (map.getZoom() > 13) {
-        map.setZoom(12);
-        await new Promise(res => {
-          const t = setTimeout(res, 800);
-          map.once('zoomend', () => { clearTimeout(t); res(); });
-        });
-      }
-
-      // Esperar carga de tiles
-      await new Promise(res => setTimeout(res, 2000));
-
-      // leaflet-image captura los tiles directamente (sin CSS transforms → sin desplazamiento)
-      const tilesCanvas = await new Promise((res, rej) =>
-        leafletImage(map, (err, c) => err ? rej(err) : res(c))
-      );
-
-      // Dibujar la ruta encima del canvas de tiles
-      const elevs    = currentRouteElevs;
-      const profileH = elevs?.length ? Math.round(tilesCanvas.height * 0.28) : 0;
-
-      const out = document.createElement('canvas');
-      out.width  = tilesCanvas.width;
-      out.height = tilesCanvas.height + profileH;
-      const ctx  = out.getContext('2d');
-      ctx.drawImage(tilesCanvas, 0, 0);
-
-      const shareSegments = routeCoordSegments(routeGeoJSON);
-      if (shareSegments.length) {
-        const typeColors = { road: '#FF6B35', gravel: '#F59E0B', mtb: '#10B981' };
-        ctx.strokeStyle = typeColors[r.type] || '#FF6B35';
-        ctx.lineWidth   = 5;
-        ctx.lineJoin    = 'round';
-        ctx.lineCap     = 'round';
-        shareSegments.forEach(seg => {
+      const drawSegs = lw => {
+        ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        segments.forEach(seg => {
+          const step = Math.max(1, Math.floor(seg.length / 600));
+          const s = seg.filter((_, i) => i % step === 0);
+          if (s[s.length - 1] !== seg[seg.length - 1]) s.push(seg[seg.length - 1]);
           ctx.beginPath();
-          seg.forEach(([lon, lat], i) => {
-            const pt = map.latLngToContainerPoint(L.latLng(lat, lon));
-            i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
-          });
+          s.forEach((pt, i) => { const { x, y } = project(pt); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
           ctx.stroke();
         });
-      }
+      };
 
-      // Perfil de elevación debajo del mapa
-      if (elevs?.length && profileH > 0) {
-        const mapH = tilesCanvas.height;
-        const w = out.width, h = profileH;
-        const pad = 28, chartW = w - pad * 2, chartH = h - pad - 10;
-        const minE = Math.min(...elevs), maxE = Math.max(...elevs);
-        const range = (maxE - minE) || 1;
+      // Halo exterior
+      ctx.shadowColor = color; ctx.shadowBlur = 30;
+      ctx.strokeStyle = color + '40'; drawSegs(20);
+      // Halo medio
+      ctx.shadowBlur = 14;
+      ctx.strokeStyle = color + '80'; drawSegs(10);
+      // Trazo principal
+      ctx.shadowBlur = 6;
+      ctx.strokeStyle = color; drawSegs(5);
+      ctx.shadowBlur = 0;
 
-        // Fondo
-        ctx.fillStyle = 'rgba(10,11,15,0.94)';
-        ctx.fillRect(0, mapH, w, h);
+      // Punto de inicio (verde)
+      const sp = project(segments[0][0]);
+      ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 18;
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath(); ctx.arc(sp.x, sp.y, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0; ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(sp.x, sp.y, 5.5, 0, Math.PI * 2); ctx.fill();
 
-        // Línea separadora
-        ctx.strokeStyle = 'rgba(255,107,53,0.35)';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(0, mapH); ctx.lineTo(w, mapH); ctx.stroke();
-
-        // Gradiente de relleno
-        const grad = ctx.createLinearGradient(0, mapH + pad, 0, mapH + pad + chartH);
-        grad.addColorStop(0, 'rgba(255,107,53,0.55)');
-        grad.addColorStop(1, 'rgba(255,107,53,0.04)');
-
-        // Ruta del perfil
-        const pts = elevs.map((e, i) => ({
-          x: pad + (i / (elevs.length - 1)) * chartW,
-          y: pad + (1 - (e - minE) / range) * chartH,
-        }));
-
-        // Relleno
-        ctx.beginPath();
-        pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, mapH + p.y) : ctx.lineTo(p.x, mapH + p.y));
-        ctx.lineTo(pad + chartW, mapH + pad + chartH);
-        ctx.lineTo(pad, mapH + pad + chartH);
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.fill();
-
-        // Línea del perfil
-        ctx.beginPath();
-        pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, mapH + p.y) : ctx.lineTo(p.x, mapH + p.y));
-        ctx.strokeStyle = '#FF6B35';
-        ctx.lineWidth = 2.5;
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-
-        // Etiquetas de altitud
-        ctx.fillStyle = '#9CA3AF';
-        ctx.font = `bold ${Math.max(11, Math.round(w / 55))}px sans-serif`;
-        ctx.textBaseline = 'top';
-        ctx.fillText(Math.round(maxE) + ' m', 4, mapH + pad + 2);
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(Math.round(minE) + ' m', 4, mapH + pad + chartH);
-
-        // Desnivel ganado (D+)
-        const elevVal = getElevVal();
-        if (elevVal) {
-          ctx.textBaseline = 'top';
-          ctx.fillStyle = '#FF6B35';
-          ctx.font = `bold ${Math.max(12, Math.round(w / 48))}px sans-serif`;
-          const label = '⛰ D+ ' + elevVal + ' m';
-          ctx.fillText(label, w - ctx.measureText(label).width - 8, mapH + 6);
-        }
-      }
-
-      await new Promise((res, rej) => out.toBlob(async blob => {
-        try {
-          const file = new File([blob], 'ruta.png', { type: 'image/png' });
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], text: buildMsg() });
-          } else {
-            window.open(`https://wa.me/?text=${encodeURIComponent(buildMsg())}`, '_blank');
-          }
-          res();
-        } catch(e) { rej(e); }
-      }, 'image/png'));
-      return;
-    } catch(e) {
-      console.error('Error sharing image:', e);
-      showToast('No se pudo generar la imagen para compartir. Compartiendo solo texto.', 'warning');
-    } finally {
-      shareBtn.innerHTML = originalContent;
-      shareBtn.disabled = false;
+      // Punto de fin (rojo)
+      const ls = segments[segments.length - 1];
+      const ep = project(ls[ls.length - 1]);
+      ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 18;
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath(); ctx.arc(ep.x, ep.y, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0; ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(ep.x, ep.y, 5.5, 0, Math.PI * 2); ctx.fill();
     }
-  }
 
-  window.open(`https://wa.me/?text=${encodeURIComponent(buildMsg())}`, '_blank');
+    // ── Área de stats ────────────────────────────────────────────
+    const statsY = 810;
+
+    // Degradado oscuro sobre la zona inferior
+    const darkFade = ctx.createLinearGradient(0, statsY - 80, 0, H);
+    darkFade.addColorStop(0, 'rgba(10,11,15,0)');
+    darkFade.addColorStop(0.4, 'rgba(10,11,15,0.88)');
+    darkFade.addColorStop(1, 'rgba(10,11,15,0.97)');
+    ctx.fillStyle = darkFade; ctx.fillRect(0, statsY - 80, W, H - statsY + 80);
+
+    // Separador de color
+    ctx.strokeStyle = color + '55'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(52, statsY); ctx.lineTo(W - 52, statsY); ctx.stroke();
+
+    // Datos
+    const elevVal = r.elevation_gain_m ? Math.round(r.elevation_gain_m) : null;
+    const speedVal = (r.distance_km && r.estimated_minutes)
+      ? (r.distance_km / (r.estimated_minutes / 60)).toFixed(1) : null;
+    const stats = [
+      r.distance_km       ? { v: r.distance_km + ' km',          l: 'Distancia' } : null,
+      elevVal             ? { v: elevVal + ' m',                  l: 'Desnivel D+' } : null,
+      r.estimated_minutes ? { v: formatTime(r.estimated_minutes), l: 'Tiempo' }     : null,
+      speedVal            ? { v: speedVal + ' km/h',              l: 'Vel. media' } : null,
+    ].filter(Boolean);
+
+    if (stats.length) {
+      const colW = (W - 104) / stats.length;
+      stats.forEach((s, i) => {
+        const cx = 52 + colW * i + colW / 2;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.font = `bold 64px ${font}`; ctx.fillStyle = '#ffffff';
+        ctx.fillText(s.v, cx, statsY + 44);
+        ctx.font = `26px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.42)';
+        ctx.fillText(s.l, cx, statsY + 124);
+      });
+    }
+
+    // ── Pie de página ────────────────────────────────────────────
+    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    ctx.font = `22px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillText('velomind.app', W - 52, H - 42);
+
+    // Línea de acento inferior
+    const botLine = ctx.createLinearGradient(0, 0, W, 0);
+    botLine.addColorStop(0, 'transparent');
+    botLine.addColorStop(0.25, color + '55');
+    botLine.addColorStop(0.75, color + '55');
+    botLine.addColorStop(1, 'transparent');
+    ctx.strokeStyle = botLine; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, H - 3); ctx.lineTo(W, H - 3); ctx.stroke();
+
+    // ── Compartir ─────────────────────────────────────────────────
+    const blob = await new Promise(res => cvs.toBlob(res, 'image/png'));
+    const file = new File([blob], 'ruta-velomind.png', { type: 'image/png' });
+
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: r.name,
+        text: `${r.name}${r.distance_km ? ' · ' + r.distance_km + ' km' : ''}${elevVal ? ' · ' + elevVal + ' m D+' : ''} — VeloMind`,
+      });
+    } else {
+      const url = URL.createObjectURL(blob);
+      Object.assign(document.createElement('a'), { href: url, download: 'ruta-velomind.png' }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast('Imagen descargada. Compártela desde tu galería.', 'info');
+    }
+  } catch (e) {
+    if (e?.name !== 'AbortError') showToast('Error al generar imagen', 'error');
+  } finally {
+    if (btn) { btn.innerHTML = orig; btn.disabled = false; }
+  }
 }
 
 function exportGPX(id) {
