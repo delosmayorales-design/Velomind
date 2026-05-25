@@ -3840,8 +3840,8 @@ function removeAdjEvent(idx) {
 
 function clearEventDate() {
   if (!AppState.athlete) return;
-  AppState.saveAthlete({ event_date: null });
-  if (typeof BackendSync !== 'undefined') BackendSync.saveProfile({ event_date: null }).catch(() => {});
+  AppState.saveAthlete({ event_date: null, target_events: null });
+  if (typeof BackendSync !== 'undefined') BackendSync.saveProfile({ event_date: null, target_events: null }).catch(() => {});
   const adjEvt = document.getElementById('adj-event');
   if (adjEvt) adjEvt.value = '';
   localStorage.removeItem('cyclocoach_plan_snapshot');
@@ -3924,6 +3924,14 @@ async function applyAdjustments() {
     if (maxHR      !== null && !isNaN(maxHR)      && maxHR      >= 100) updates.max_hr = maxHR;
     if (lthr       !== null && !isNaN(lthr)        && lthr       >= 100) updates.lthr = lthr;
     if (goal)  updates.goal = goal;
+    // Deduplicar eventos A: si hay varios (bug legacy), quedarse con el no-legacy más futuro
+    const _allA = (_adjEvents || []).filter(e => e.priority === 'A');
+    if (_allA.length > 1) {
+      const _nonLegA = _allA.filter(e => e.id !== '_legacy');
+      const _bestA   = (_nonLegA.length ? _nonLegA : _allA)
+        .reduce((best, e) => e.date > best.date ? e : best);
+      _adjEvents = [_bestA, ...(_adjEvents || []).filter(e => e.priority !== 'A')];
+    }
     // Guardar eventos múltiples y sincronizar event_date con el evento A
     const aEvent = (_adjEvents || []).find(e => e.priority === 'A');
     updates.event_date = aEvent?.date || null;

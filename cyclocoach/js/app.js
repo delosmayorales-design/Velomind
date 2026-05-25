@@ -465,7 +465,12 @@ const TrainingPlanGenerator = {
   },
 
   _getPrimaryEventDate(events) {
-    return events.find(e => e.priority === 'A')?.date || null;
+    const aEvents = events.filter(e => e.priority === 'A' && e.date);
+    if (!aEvents.length) return null;
+    // Preferir eventos no-legacy; entre varios, tomar la fecha más futura
+    const nonLegacy = aEvents.filter(e => e.id !== '_legacy');
+    const candidates = nonLegacy.length ? nonLegacy : aEvents;
+    return candidates.reduce((best, e) => e.date > best.date ? e : best).date;
   },
 
   // Inyecta marcadores de carrera B/C en el array de sesiones de la semana actual
