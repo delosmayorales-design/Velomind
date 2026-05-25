@@ -2115,7 +2115,9 @@ function renderPlan(plan, athlete) {
 
     const isPastOrToday = i <= todayIdx;
     const objective     = SESSION_OBJECTIVES[sess.type] || 'Entrenamiento';
-    const wkSummary     = buildWorkoutSummary(sess.description, durMin, _cardMainIv);
+    const wkSummary     = sess.isGym
+      ? '🦵 Tren inferior · 💪 Tren superior · 🧘 Core'
+      : buildWorkoutSummary(sess.description, durMin, _cardMainIv);
 
     // Banner de adaptación automática (visible cuando la sesión fue ajustada)
     const adaptBanner = sess._adapted && sess.advice ? `
@@ -2135,7 +2137,7 @@ function renderPlan(plan, athlete) {
       </div>` : '');
 
     const _garminConn = localStorage.getItem('velomind_garmin_connected') === '1';
-    const actionButtons = !sess.isRest ? `
+    const actionButtons = (!sess.isRest && !sess.isGym) ? `
       <div class="sess-actions">
         <div class="sess-export-section">
           <span class="sess-export-lbl"><i class="fas fa-download"></i> Exportar:</span>
@@ -3458,10 +3460,41 @@ function showSessionDetail(idx, showAlt = false) {
         <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
         <span style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">Gimnasio — Fuerza y movilidad</span>
       </div>
-      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px">${sess.description}</p>
-      <div class="alert alert-info">
-        <i class="fas fa-info-circle"></i>
-        <div>Carga estimada: ~${sess.tss || 45} TSS · ${sess.durationMin || 60} min. La fatiga de sala complementa el ciclismo sin añadir estrés cardiovascular excesivo.</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <span style="background:rgba(249,115,22,.12);color:#F97316;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px"><i class="fas fa-clock"></i> ${sess.durationMin || 60} min</span>
+        <span style="background:rgba(249,115,22,.12);color:#F97316;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px"><i class="fas fa-star"></i> ~${sess.tss || 45} TSS</span>
+        <span style="background:rgba(249,115,22,.12);color:#F97316;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px">RPE 7-8 · 3-4 series × 8-12 reps</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#F97316;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🦵 Tren inferior</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
+            <div style="display:flex;justify-content:space-between"><span>Sentadilla</span><span style="color:var(--text-muted);font-weight:600">3 × 10 reps</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Peso muerto rumano</span><span style="color:var(--text-muted);font-weight:600">3 × 10 reps</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Prensa de piernas</span><span style="color:var(--text-muted);font-weight:600">3 × 12 reps</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Estocadas</span><span style="color:var(--text-muted);font-weight:600">3 × 10 reps/lado</span></div>
+          </div>
+        </div>
+        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#F97316;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">💪 Tren superior</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
+            <div style="display:flex;justify-content:space-between"><span>Remo (barra o mancuerna)</span><span style="color:var(--text-muted);font-weight:600">3 × 10 reps</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Press de hombro</span><span style="color:var(--text-muted);font-weight:600">3 × 10 reps</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Dominadas / Jalón</span><span style="color:var(--text-muted);font-weight:600">3 × 8-10 reps</span></div>
+          </div>
+        </div>
+        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#F97316;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🧘 Core</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
+            <div style="display:flex;justify-content:space-between"><span>Plancha frontal</span><span style="color:var(--text-muted);font-weight:600">3 × 30-45 s</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Crunch bicicleta</span><span style="color:var(--text-muted);font-weight:600">3 × 15 reps</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Puente de glúteo</span><span style="color:var(--text-muted);font-weight:600">3 × 12 reps</span></div>
+          </div>
+        </div>
+        <div style="background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.2);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#F97316;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🧴 Movilidad final — 10 min</div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">Psoas · Isquiotibiales · Gemelos · Movilidad de cadera y tobillo. Clave para recuperar la posición en bici.</div>
+        </div>
       </div>`;
   } else {
     const typeColors = { recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D', threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899', gym: '#F97316' };
