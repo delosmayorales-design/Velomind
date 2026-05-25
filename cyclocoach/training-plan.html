@@ -3258,9 +3258,34 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
   const phases = ['Base 1', 'Base 2', 'Base 3', 'Build 1', 'Build 2', 'Build 3', 'Build 4', 'Peak 1', 'Peak 2', 'Peak 3', 'Rec.', 'Carrera'];
   // Multiplicadores de carga semanal: el taper (Peak/Carrera) baja la carga para que la FORMA suba
   const phaseMultipliers = [0.85, 0.92, 0.78, 1.05, 1.12, 0.85, 1.18, 0.85, 0.65, 0.50, 0.35, 0.28];
-  const phaseIndexMap = { base: 1, build: 4, peak: 8, recovery: 10, race: 11 };
-  const currentIdx = phaseIndexMap[currentPhase] ?? 0;
   const raceIdx = phases.length - 1; // índice de "Carrera"
+
+  // Calcular currentIdx desde la fecha real del evento para que el gráfico sea preciso
+  const _chartAthlete = AppState?.athlete || {};
+  let _chartEvDate = null;
+  if (_chartAthlete.target_events) {
+    try {
+      const _evts = typeof _chartAthlete.target_events === 'string'
+        ? JSON.parse(_chartAthlete.target_events) : _chartAthlete.target_events;
+      const _aEvts = (Array.isArray(_evts) ? _evts : []).filter(e => e.priority === 'A' && e.date);
+      if (_aEvts.length) {
+        const _nonLeg = _aEvts.filter(e => e.id !== '_legacy');
+        const _cands = _nonLeg.length ? _nonLeg : _aEvts;
+        _chartEvDate = _cands.reduce((b, e) => e.date > b.date ? e : b).date;
+      }
+    } catch {}
+  }
+  if (!_chartEvDate) _chartEvDate = _chartAthlete.event_date;
+
+  let currentIdx;
+  if (_chartEvDate) {
+    const _msToEvent = new Date(_chartEvDate + 'T00:00:00') - new Date();
+    const _weeksToEvent = Math.max(0, Math.ceil(_msToEvent / (7 * 24 * 3600 * 1000)));
+    currentIdx = Math.max(0, Math.min(raceIdx - 1, raceIdx - _weeksToEvent));
+  } else {
+    const phaseIndexMap = { base: 1, build: 4, peak: 8, recovery: 10, race: 11 };
+    currentIdx = phaseIndexMap[currentPhase] ?? 0;
+  }
 
   const base = weeklyTSS;
   const tssData = phaseMultipliers.map(m => Math.round(base * m));
