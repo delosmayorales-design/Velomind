@@ -1893,7 +1893,7 @@ async function saveActivityAsRoute() {
     if (_currentStreamAltitude?.[i] != null) c.push(_currentStreamAltitude[i]);
     return c;
   });
-  const geojson = { type: 'Feature', geometry: { type: 'LineString', coordinates }, properties: { name } };
+  const geojson = { type: 'LineString', coordinates };
 
   // Distancia Haversine
   function hvKm([la1, lo1], [la2, lo2]) {
