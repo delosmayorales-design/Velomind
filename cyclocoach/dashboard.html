@@ -1623,7 +1623,15 @@ function _metNorwayToOpenMeteo(ts) {
   };
 }
 
+let _lastWxData = null;
+
+function refreshWeatherCard() {
+  const el = document.getElementById('wx-content');
+  if (el && _lastWxData) _renderWeather(el, _lastWxData);
+}
+
 function _renderWeather(el, data) {
+  _lastWxData = data;
   const c     = data.current;
   if (data.daily?.weather_code?.[1] !== undefined) {
     wxTomorrow = {
@@ -1952,6 +1960,7 @@ async function loadPlan() {
       renderToday(dashPlan, AppState.athlete);
       renderWeek(dashPlan);
       renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
+      refreshWeatherCard();
     }
   } catch {}
   try {
@@ -1964,6 +1973,7 @@ async function loadPlan() {
       renderToday(dashPlan, AppState.athlete);
       renderWeek(dashPlan);
       renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
+      refreshWeatherCard();
     }
   } catch {}
 }
