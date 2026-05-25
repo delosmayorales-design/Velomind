@@ -114,7 +114,7 @@ router.post('/avatar', requireAuth, avatarUpload.single('avatar'), async (req, r
 // Perfil PUT
 router.put('/profile', requireAuth, async (req, res) => {
   const allowed = ['name','age','sex','weight','height','ftp','max_hr','lthr',
-                   'experience','goal','weekly_hours','days_per_week','event_date','initial_ctl','target_events'];
+                   'experience','goal','weekly_hours','days_per_week','event_date','initial_ctl','target_events','gym_days'];
   const updates = {};
   for (const k of allowed) {
     if (req.body[k] !== undefined) updates[k] = req.body[k];

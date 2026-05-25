@@ -973,6 +973,14 @@
               <label>CTL inicial</label>
               <input type="number" id="adj-initial-ctl" class="params-input" placeholder="0" min="0" max="200" title="Tu CTL de partida (TrainingPeaks, Garmin…). 0 = empezar desde cero.">
             </div>
+            <div class="params-field">
+              <label>Días de gimnasio</label>
+              <select id="adj-gym-days" class="params-input params-select" title="El plan reservará esos días para fuerza en sala, sustituyendo sesiones de recuperación o Z2.">
+                <option value="0">Sin gimnasio</option>
+                <option value="1">1 día / semana</option>
+                <option value="2">2 días / semana</option>
+              </select>
+            </div>
             <div class="params-field" style="grid-column:1/-1">
               <!-- Acordeón eventos -->
               <div id="adj-events-accordion" onclick="toggleEventsAccordion()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;user-select:none">
@@ -1563,6 +1571,7 @@ function fillAdjustmentForm() {
   if (document.getElementById('adj-initial-ctl')) document.getElementById('adj-initial-ctl').value = a.initial_ctl || '';
   if (document.getElementById('adj-max-hr')) document.getElementById('adj-max-hr').value = a.max_hr || '';
   if (document.getElementById('adj-lthr')) document.getElementById('adj-lthr').value = a.lthr || '';
+  if (document.getElementById('adj-gym-days')) document.getElementById('adj-gym-days').value = a.gym_days || 0;
 }
 
 function renderWeekDates() {
@@ -1678,6 +1687,7 @@ const SESSION_OBJECTIVES = {
   long:      'Resistencia de base',
   race:      'Rendimiento en competición',
   strength:  'Fuerza sobre el pedal',
+  gym:       'Fuerza y movilidad',
 };
 
 function _parseWattsRange(str) {
@@ -2015,7 +2025,7 @@ function renderPlan(plan, athlete) {
 
     const typeColors = {
       recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D',
-      threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899'
+      threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899', gym: '#F97316'
     };
     const sessionStructureTitle = 'Estructura detallada de la sesión';
     const color  = typeColors[sess.type] || 'var(--text-secondary)';
@@ -2130,11 +2140,11 @@ function renderPlan(plan, athlete) {
         <div class="sess-export-section">
           <span class="sess-export-lbl"><i class="fas fa-download"></i> Exportar:</span>
           <div class="sess-export-formats">
-            <button class="sess-fmt-btn" onclick="exportSessionToFIT(${i})" title="Archivo .fit nativo Garmin con alertas de nutrición">FIT</button>
+            ${sess.isGym ? '' : `<button class="sess-fmt-btn" onclick="exportSessionToFIT(${i})" title="Archivo .fit nativo Garmin con alertas de nutrición">FIT</button>
             <button class="sess-fmt-btn" onclick="exportSessionToGarmin(${i})">TCX</button>
             <button class="sess-fmt-btn" onclick="exportSessionToZwift(${i})">ZWO</button>
             <button class="sess-fmt-btn" onclick="exportSessionToERG(${i})">ERG</button>
-            <button class="sess-fmt-btn" onclick="exportSessionToGPX(${i})">GPX</button>
+            <button class="sess-fmt-btn" onclick="exportSessionToGPX(${i})">GPX</button>`}
             ${_garminConn ? `<button class="sess-fmt-btn sess-fmt-btn--garmin" onclick="pushSessionToGarmin(${i})" title="Enviar al reloj Garmin (incluye alertas de hidratación y nutrición)"><i class="fas fa-watch"></i> Garmin</button>` : ''}
           </div>
           <button class="sess-export-toggle" onclick="toggleSessExport(this)">
@@ -3440,8 +3450,21 @@ function showSessionDetail(idx, showAlt = false) {
           <div>El descanso es cuando el cuerpo se adapta y mejora. Aprovecha para estirar, hacer movilidad o simplemente descansar.</div>
         </div>
       </div>`;
+  } else if (sess.isGym) {
+    const color = '#F97316';
+    document.getElementById('modal-title').textContent = `🏋️ ${sess.name || 'Gimnasio'}`;
+    document.getElementById('modal-content').innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">Gimnasio — Fuerza y movilidad</span>
+      </div>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px">${sess.description}</p>
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <div>Carga estimada: ~${sess.tss || 45} TSS · ${sess.durationMin || 60} min. La fatiga de sala complementa el ciclismo sin añadir estrés cardiovascular excesivo.</div>
+      </div>`;
   } else {
-    const typeColors = { recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D', threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899' };
+    const typeColors = { recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D', threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899', gym: '#F97316' };
     const color = typeColors[sess.type] || 'var(--text-secondary)';
     document.getElementById('modal-title').textContent = `${sess.emoji} ${sess.name || 'Sesión'}`;
     const _ma = Object.assign({}, AppState.athlete || {weight:70,height:175,age:30,ftp:200,goal:'resistencia',experience:'intermedio'});
@@ -3921,6 +3944,8 @@ async function applyAdjustments() {
     if (ftp        !== null && !isNaN(ftp)        && ftp        >= 50)  updates.ftp = ftp;
     if (weight     !== null && !isNaN(weight)     && weight     > 0)    updates.weight = weight;
     if (initialCTL !== null && !isNaN(initialCTL) && initialCTL >= 0)  updates.initial_ctl = initialCTL;
+    const gymDaysVal = parseInt(document.getElementById('adj-gym-days')?.value) || 0;
+    updates.gym_days = gymDaysVal;
     if (maxHR      !== null && !isNaN(maxHR)      && maxHR      >= 100) updates.max_hr = maxHR;
     if (lthr       !== null && !isNaN(lthr)        && lthr       >= 100) updates.lthr = lthr;
     if (goal)  updates.goal = goal;
@@ -4043,7 +4068,7 @@ function _renderNextWeekSummary() {
     + ' – ' + nextSunday.toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' });
 
   const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  const TYPE_ICON = { recovery:'😴', endurance:'🚴', long:'🏔️', tempo:'📈', threshold:'⚡', sweet_spot:'🎯', vo2max:'🔥', sprint:'💥', strength:'💪' };
+  const TYPE_ICON = { recovery:'😴', endurance:'🚴', long:'🏔️', tempo:'📈', threshold:'⚡', sweet_spot:'🎯', vo2max:'🔥', sprint:'💥', strength:'💪', gym:'🏋️' };
   const PHASE_LABEL = { base:'Base', build:'Build', peak:'Peak', recovery:'Recuperación', race:'Carrera' };
   const PHASE_COLOR = { base:'#00D4FF', build:'#FF6B35', peak:'#FFC800', recovery:'#00C882', race:'#EC4899' };
   const phaseLabel = PHASE_LABEL[nextPlan.phase] || nextPlan.phase || '';

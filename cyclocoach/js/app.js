@@ -28,6 +28,7 @@ const WORKOUT_TYPES = {
   long:      { label: 'Fondón Z1-Z2',        color: '#00D4FF', emoji: '🚴' },
   race:      { label: 'Activación Carrera',  color: '#EC4899', emoji: '🏁' },
   strength:  { label: 'Fuerza (Baja cadencia)',color:'#A855F7',emoji: '💪' },
+  gym:       { label: 'Gimnasio / Fuerza',     color:'#F97316',emoji: '🏋️' },
 };
 
 /* Normalización de objetivos entre pantallas y motor */
@@ -419,7 +420,11 @@ const TrainingPlanGenerator = {
     if (nextBEvent) targetTSS = Math.round(targetTSS * 0.85);
 
     const advice = this._getAdvice(tsb, ctl, effectivePhase);
-    const sessions = this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle, events);
+    const gymDays = Math.max(0, Math.min(3, parseInt(athlete.gym_days) || 0));
+    const sessions = this._injectGymSessions(
+      this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle, events),
+      gymDays
+    );
 
     // Tasa de progresión: ΔCTLsemana ≈ (carga_diaria - CTL) × (1 - e^(-7/42)) ≈ × 0.154
     const rampRate = Math.round((targetTSS / 7 - ctl) * 0.154 * 10) / 10;
@@ -532,6 +537,33 @@ const TrainingPlanGenerator = {
         };
       }
     }
+    return result;
+  },
+
+  // Inyecta días de gimnasio reemplazando los slots de menor prioridad
+  _injectGymSessions(sessions, gymDays) {
+    if (!gymDays || gymDays <= 0) return sessions;
+    const result = sessions.map(s => ({ ...s }));
+    // Preferencia de día: martes y jueves primero (no pisan fondo del fin de semana)
+    const DAY_SCORE = { 'Martes':0, 'Jueves':1, 'Miércoles':2, 'Lunes':3, 'Viernes':4, 'Sábado':5, 'Domingo':6 };
+    const typeScore = s => s.isRest ? 0 : ({ recovery:1, endurance:2 }[s.type] ?? 99);
+    const candidates = result
+      .map((s, i) => ({ i, ts: typeScore(s), ds: DAY_SCORE[s.day] ?? 6 }))
+      .filter(c => c.ts < 99)
+      .sort((a, b) => a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
+      .slice(0, gymDays);
+    for (const { i } of candidates) {
+      result[i] = {
+        day: result[i].day, type: 'gym', emoji: '🏋️',
+        name: 'Gimnasio — Fuerza y movilidad',
+        description: 'Sesión de fuerza en sala: tren inferior (sentadilla, peso muerto, prensa), tren superior (press, dominadas/remo) y core. 3-4 series × 8-12 reps a RPE 7-8. Finaliza con 10 min de estiramientos y movilidad de cadera.',
+        isGym: true, isRest: false, tss: 45, durationMin: 60, tssShare: 0, ifTarget: null, intervals: null,
+      };
+    }
+    // Renormalizar tssShare entre las sesiones ciclistas restantes
+    const total = result.reduce((s, r) => s + (r.tssShare || 0), 0);
+    if (total > 0 && Math.abs(total - 1) > 0.01)
+      result.forEach(s => { if (s.tssShare) s.tssShare = s.tssShare / total; });
     return result;
   },
 
