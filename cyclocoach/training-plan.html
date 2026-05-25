@@ -3819,11 +3819,10 @@ function addAdjEvent() {
   const date = document.getElementById('adj-new-ev-date')?.value;
   const priority = document.getElementById('adj-new-ev-priority')?.value || 'B';
   if (!date) { showToast('Selecciona una fecha', '#EF4444'); return; }
-  // Solo puede haber un evento A
-  if (priority === 'A' && _adjEvents.some(e => e.priority === 'A' && e.id !== '_legacy')) {
-    _adjEvents = _adjEvents.filter(e => e.priority !== 'A' || e.id === '_legacy');
-    _adjEvents = _adjEvents.map(e => e.id === '_legacy' ? { ...e, date, name: name || e.name, priority: 'A' } : e);
-    if (!_adjEvents.some(e => e.priority === 'A')) _adjEvents.unshift({ id: `ev_${Date.now()}`, name: name || 'Evento principal', date, priority: 'A' });
+  // Solo puede haber un evento A — eliminar todos los A existentes (incluido legacy) antes de añadir el nuevo
+  if (priority === 'A') {
+    _adjEvents = _adjEvents.filter(e => e.priority !== 'A');
+    _adjEvents.unshift({ id: `ev_${Date.now()}`, name: name || 'Evento principal', date, priority: 'A' });
   } else {
     _adjEvents.push({ id: `ev_${Date.now()}`, name: name || 'Evento', date, priority });
   }
@@ -3933,9 +3932,8 @@ async function applyAdjustments() {
     if (typeof BackendSync !== 'undefined') {
       BackendSync.saveProfile(updates).then(async () => {
         // Si cambió el CTL inicial, recargar PMC del backend (se recalcula en el servidor)
-        if (updates.initial_ctl !== undefined && typeof BackendSync.loadPMC === 'function') {
-          await new Promise(r => setTimeout(r, 1200));
-          await BackendSync.loadPMC(120);
+        if (updates.initial_ctl !== undefined) {
+          await BackendSync.loadActivities();
           generatePlan();
           renderAthleteSidebar();
         }
@@ -3987,14 +3985,33 @@ function _renderNextWeekSummary() {
   // Simular semana siguiente: calcular días reales hasta el próximo lunes
   // (no siempre 7, ya que hoy puede ser domingo = 1 día hasta el lunes)
   const nextAthlete = Object.assign({}, athlete);
-  if (athlete.event_date) {
+  {
     const _today = new Date(); _today.setHours(0, 0, 0, 0);
     const _nextMon = new Date(_today);
     _nextMon.setDate(_today.getDate() - (_today.getDay() || 7) + 1 + 7);
     const _daysToNextMonday = Math.floor((_nextMon - _today) / 86400000);
-    const d = new Date(athlete.event_date + 'T00:00:00');
-    d.setDate(d.getDate() - _daysToNextMonday);
-    nextAthlete.event_date = d.toISOString().split('T')[0];
+
+    if (athlete.event_date) {
+      const d = new Date(athlete.event_date + 'T00:00:00');
+      d.setDate(d.getDate() - _daysToNextMonday);
+      nextAthlete.event_date = d.toISOString().split('T')[0];
+    }
+
+    // Desplazar también target_events para que _parseEvents use las mismas fechas
+    if (athlete.target_events) {
+      try {
+        const evts = typeof athlete.target_events === 'string'
+          ? JSON.parse(athlete.target_events)
+          : athlete.target_events;
+        const shifted = (Array.isArray(evts) ? evts : []).map(ev => {
+          if (!ev.date) return ev;
+          const ed = new Date(ev.date + 'T00:00:00');
+          ed.setDate(ed.getDate() - _daysToNextMonday);
+          return { ...ev, date: ed.toISOString().split('T')[0] };
+        });
+        nextAthlete.target_events = JSON.stringify(shifted);
+      } catch { /* mantener target_events original */ }
+    }
   }
 
   // Avanzar el ciclo 3:1 en +1 posición respecto a la semana actual:

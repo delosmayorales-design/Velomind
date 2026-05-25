@@ -249,6 +249,9 @@ const AppState = {
   saveAthlete(data) {
     this.athlete = { ...this.athlete, ...data };
     localStorage.setItem('velomind_athlete', JSON.stringify(this.athlete));
+    if ('initial_ctl' in data || 'ftp' in data) {
+      this.pmcData = PMC.compute(this.activities, 120, this.athlete?.initial_ctl || 0);
+    }
   },
 
   saveActivity(activity) {
