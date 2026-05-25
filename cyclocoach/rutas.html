@@ -2701,140 +2701,188 @@ async function shareCard(id) {
   if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
 
   try {
-    const W = 1080, H = 1080;
-    const cvs = document.createElement('canvas');
-    cvs.width = W; cvs.height = H;
-    const ctx = cvs.getContext('2d');
     const color = routeColor(r);
-    const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif";
+    const LIME  = '#9ED62B';
+    const font  = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif";
 
-    // ── Fondo degradado ──────────────────────────────────────────
-    const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#0d0e1a');
-    bg.addColorStop(0.6, '#111218');
-    bg.addColorStop(1, '#0a0b10');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-
-    // Cuadrícula de puntos
-    ctx.fillStyle = 'rgba(255,255,255,0.025)';
-    for (let x = 54; x < W; x += 54)
-      for (let y = 54; y < H; y += 54) {
-        ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI * 2); ctx.fill();
-      }
-
-    // Línea de acento superior
-    const topLine = ctx.createLinearGradient(0, 0, W, 0);
-    topLine.addColorStop(0, 'transparent');
-    topLine.addColorStop(0.25, color);
-    topLine.addColorStop(0.75, color);
-    topLine.addColorStop(1, 'transparent');
-    ctx.strokeStyle = topLine; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(0, 3); ctx.lineTo(W, 3); ctx.stroke();
-
-    // ── Cabecera ─────────────────────────────────────────────────
-    ctx.textBaseline = 'top'; ctx.textAlign = 'left';
-    ctx.font = `bold 42px ${font}`;
-    ctx.fillStyle = color;
-    ctx.fillText('Velo', 52, 50);
-    const veloW = ctx.measureText('Velo').width;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('Mind', 52 + veloW, 50);
-
-    // Badge tipo
-    const typeLabel = { road: 'ROAD', gravel: 'GRAVEL', mtb: 'MTB' }[r.type] || r.type.toUpperCase();
-    ctx.textAlign = 'right'; ctx.font = `bold 22px ${font}`; ctx.fillStyle = color + 'cc';
-    ctx.fillText(typeLabel, W - 52, 60);
-
-    // Nombre de la ruta
-    ctx.textAlign = 'left'; ctx.font = `600 46px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    let name = r.name || 'Ruta';
-    while (ctx.measureText(name).width > W - 100 && name.length > 4) name = name.slice(0, -1);
-    if (name !== r.name) name += '…';
-    ctx.fillText(name, 52, 114);
-
-    // ── Dibujo de la ruta ────────────────────────────────────────
-    const mapX = 52, mapY = 200, mapW = W - 104, mapH = 560;
-    const segments = routeCoordSegments(r.geojson);
-
-    if (segments.length) {
-      const allPts = segments.flat();
-      const lons = allPts.map(([ln]) => ln);
-      const lats = allPts.map(([, la]) => la);
-      const minLon = Math.min(...lons), maxLon = Math.max(...lons);
-      const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-      const lonSpan = maxLon - minLon || 0.001;
-      const latSpan = maxLat - minLat || 0.001;
-      const pad = 70;
-      const scale = Math.min((mapW - pad * 2) / lonSpan, (mapH - pad * 2) / latSpan);
-      const drawnW = lonSpan * scale, drawnH = latSpan * scale;
-      const ox = mapX + (mapW - drawnW) / 2;
-      const oy = mapY + (mapH + drawnH) / 2;
-
-      const project = ([lon, lat]) => ({
-        x: ox + (lon - minLon) * scale,
-        y: oy - (lat - minLat) * scale,
-      });
-
-      const drawSegs = lw => {
-        ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-        segments.forEach(seg => {
-          const step = Math.max(1, Math.floor(seg.length / 600));
-          const s = seg.filter((_, i) => i % step === 0);
-          if (s[s.length - 1] !== seg[seg.length - 1]) s.push(seg[seg.length - 1]);
-          ctx.beginPath();
-          s.forEach((pt, i) => { const { x, y } = project(pt); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
-          ctx.stroke();
-        });
-      };
-
-      // Halo exterior
-      ctx.shadowColor = color; ctx.shadowBlur = 30;
-      ctx.strokeStyle = color + '40'; drawSegs(20);
-      // Halo medio
-      ctx.shadowBlur = 14;
-      ctx.strokeStyle = color + '80'; drawSegs(10);
-      // Trazo principal
-      ctx.shadowBlur = 6;
-      ctx.strokeStyle = color; drawSegs(5);
-      ctx.shadowBlur = 0;
-
-      // Punto de inicio (verde)
-      const sp = project(segments[0][0]);
-      ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 18;
-      ctx.fillStyle = '#22c55e';
-      ctx.beginPath(); ctx.arc(sp.x, sp.y, 14, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0; ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(sp.x, sp.y, 5.5, 0, Math.PI * 2); ctx.fill();
-
-      // Punto de fin (rojo)
-      const ls = segments[segments.length - 1];
-      const ep = project(ls[ls.length - 1]);
-      ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 18;
-      ctx.fillStyle = '#ef4444';
-      ctx.beginPath(); ctx.arc(ep.x, ep.y, 14, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0; ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(ep.x, ep.y, 5.5, 0, Math.PI * 2); ctx.fill();
+    // Cargar la ruta en el mapa y esperar que se estabilice
+    openRouteOnMap(id);
+    await new Promise(res => {
+      const t = setTimeout(res, 1800);
+      map.once('moveend', () => { clearTimeout(t); setTimeout(res, 500); });
+    });
+    if (map.getZoom() > 13) {
+      map.setZoom(12);
+      await new Promise(res => { const t = setTimeout(res, 700); map.once('zoomend', () => { clearTimeout(t); res(); }); });
     }
+    await new Promise(res => setTimeout(res, 2000)); // tiles
 
-    // ── Área de stats ────────────────────────────────────────────
-    const statsY = 810;
+    // Captura del mapa con leafletImage
+    const tilesCanvas = await new Promise((res, rej) =>
+      leafletImage(map, (err, c) => err ? rej(err) : res(c))
+    );
 
-    // Degradado oscuro sobre la zona inferior
-    const darkFade = ctx.createLinearGradient(0, statsY - 80, 0, H);
-    darkFade.addColorStop(0, 'rgba(10,11,15,0)');
-    darkFade.addColorStop(0.4, 'rgba(10,11,15,0.88)');
-    darkFade.addColorStop(1, 'rgba(10,11,15,0.97)');
-    ctx.fillStyle = darkFade; ctx.fillRect(0, statsY - 80, W, H - statsY + 80);
-
-    // Separador de color
-    ctx.strokeStyle = color + '55'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(52, statsY); ctx.lineTo(W - 52, statsY); ctx.stroke();
-
-    // Datos
+    const mW = tilesCanvas.width;
+    const mH = tilesCanvas.height;
+    const elevs   = currentRouteElevs;
     const elevVal = r.elevation_gain_m ? Math.round(r.elevation_gain_m) : null;
     const speedVal = (r.distance_km && r.estimated_minutes)
       ? (r.distance_km / (r.estimated_minutes / 60)).toFixed(1) : null;
+
+    // Dimensiones del canvas de salida
+    const PAD    = Math.round(mW * 0.038);
+    const headH  = Math.round(mW * 0.115);
+    const profH  = elevs?.length ? Math.round(mW * 0.21) : 0;
+    const statH  = Math.round(mW * 0.21);
+    const footH  = Math.round(mW * 0.065);
+    const W = mW;
+    const H = headH + mH + profH + statH + footH;
+
+    const cvs = document.createElement('canvas');
+    cvs.width = W; cvs.height = H;
+    const ctx = cvs.getContext('2d');
+
+    // ── Fondo global ─────────────────────────────────────────────
+    ctx.fillStyle = '#0a0b10';
+    ctx.fillRect(0, 0, W, H);
+
+    // ── Cabecera ─────────────────────────────────────────────────
+    ctx.fillStyle = '#111218';
+    ctx.fillRect(0, 0, W, headH);
+
+    // Línea lime superior
+    ctx.fillStyle = LIME;
+    ctx.fillRect(0, 0, W, 4);
+
+    // Logo VeloMind
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    const logoSize = Math.round(mW * 0.048);
+    ctx.font = `bold ${logoSize}px ${font}`;
+    ctx.fillStyle = LIME;
+    ctx.fillText('Velo', PAD, headH / 2);
+    const vW = ctx.measureText('Velo').width;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('Mind', PAD + vW, headH / 2);
+
+    // Nombre de la ruta (derecha)
+    const nameSize = Math.round(mW * 0.034);
+    ctx.font = `500 ${nameSize}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.textAlign = 'right';
+    let rname = r.name || 'Ruta';
+    while (ctx.measureText(rname).width > W * 0.52 && rname.length > 4) rname = rname.slice(0, -1);
+    if (rname !== r.name) rname += '…';
+    ctx.fillText(rname, W - PAD, headH / 2);
+
+    // ── Mapa ─────────────────────────────────────────────────────
+    const mY = headH;
+    ctx.drawImage(tilesCanvas, 0, mY);
+
+    // Vignette semitransparente sobre el mapa
+    const vig = ctx.createRadialGradient(W / 2, mY + mH / 2, mH * 0.1, W / 2, mY + mH / 2, mH * 0.75);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.fillStyle = vig; ctx.fillRect(0, mY, W, mH);
+
+    // Degradado oscuro en bordes superior/inferior del mapa
+    const fadeTop = ctx.createLinearGradient(0, mY, 0, mY + mH * 0.18);
+    fadeTop.addColorStop(0, 'rgba(10,11,16,0.7)'); fadeTop.addColorStop(1, 'rgba(10,11,16,0)');
+    ctx.fillStyle = fadeTop; ctx.fillRect(0, mY, W, mH * 0.18);
+
+    const fadeBot = ctx.createLinearGradient(0, mY + mH * 0.75, 0, mY + mH);
+    fadeBot.addColorStop(0, 'rgba(10,11,16,0)'); fadeBot.addColorStop(1, 'rgba(10,11,16,0.82)');
+    ctx.fillStyle = fadeBot; ctx.fillRect(0, mY + mH * 0.75, W, mH * 0.25);
+
+    // Ruta dibujada encima del mapa
+    const shareSegs = routeCoordSegments(routeGeoJSON);
+    if (shareSegs.length) {
+      const drawRoute = (lw, style) => {
+        ctx.lineWidth = lw; ctx.strokeStyle = style;
+        ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        shareSegs.forEach(seg => {
+          ctx.beginPath();
+          seg.forEach(([lon, lat], i) => {
+            const pt = map.latLngToContainerPoint(L.latLng(lat, lon));
+            i === 0 ? ctx.moveTo(pt.x, mY + pt.y) : ctx.lineTo(pt.x, mY + pt.y);
+          });
+          ctx.stroke();
+        });
+      };
+      ctx.shadowColor = color; ctx.shadowBlur = 18;
+      drawRoute(14, color + '50');
+      ctx.shadowBlur = 7;
+      drawRoute(6, color);
+      ctx.shadowBlur = 0;
+
+      // Puntos inicio/fin
+      const drawDot = ([lon, lat], fill) => {
+        const pt = map.latLngToContainerPoint(L.latLng(lat, lon));
+        ctx.shadowColor = fill; ctx.shadowBlur = 14;
+        ctx.fillStyle = fill;
+        ctx.beginPath(); ctx.arc(pt.x, mY + pt.y, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0; ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(pt.x, mY + pt.y, 4, 0, Math.PI * 2); ctx.fill();
+      };
+      drawDot(shareSegs[0][0], '#22c55e');
+      const ls = shareSegs[shareSegs.length - 1];
+      drawDot(ls[ls.length - 1], '#ef4444');
+    }
+
+    // ── Perfil de elevación ──────────────────────────────────────
+    let nextY = mY + mH;
+    if (elevs?.length && profH > 0) {
+      ctx.fillStyle = 'rgba(10,11,15,0.97)';
+      ctx.fillRect(0, nextY, W, profH);
+
+      // Separador lime
+      ctx.strokeStyle = LIME + '40'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, nextY); ctx.lineTo(W, nextY); ctx.stroke();
+
+      const pp = PAD, chartW = W - pp * 2, chartH = profH - pp - 8;
+      const minE = Math.min(...elevs), maxE = Math.max(...elevs), range = (maxE - minE) || 1;
+      const pts = elevs.map((e, i) => ({
+        x: pp + (i / (elevs.length - 1)) * chartW,
+        y: nextY + pp + (1 - (e - minE) / range) * chartH,
+      }));
+
+      // Relleno gradiente
+      const gr = ctx.createLinearGradient(0, nextY + pp, 0, nextY + pp + chartH);
+      gr.addColorStop(0, color + '55'); gr.addColorStop(1, color + '08');
+      ctx.beginPath();
+      pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      ctx.lineTo(pp + chartW, nextY + pp + chartH);
+      ctx.lineTo(pp, nextY + pp + chartH);
+      ctx.closePath(); ctx.fillStyle = gr; ctx.fill();
+
+      // Línea del perfil
+      ctx.beginPath();
+      pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+
+      // Etiquetas alt
+      const fs = Math.max(11, Math.round(W / 62));
+      ctx.font = `${fs}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+      ctx.fillText(Math.round(maxE) + ' m', pp + 4, nextY + pp + 2);
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(Math.round(minE) + ' m', pp + 4, nextY + pp + chartH - 2);
+
+      // D+ en LIME
+      if (elevVal) {
+        ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+        ctx.fillStyle = LIME; ctx.font = `bold ${fs}px ${font}`;
+        ctx.fillText('D+ ' + elevVal + ' m', W - pp, nextY + 6);
+      }
+      nextY += profH;
+    }
+
+    // ── Stats ────────────────────────────────────────────────────
+    ctx.fillStyle = '#0d0e1a';
+    ctx.fillRect(0, nextY, W, statH);
+
+    // Separador del color de la ruta
+    ctx.strokeStyle = color + '50'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W * 0.06, nextY); ctx.lineTo(W * 0.94, nextY); ctx.stroke();
+
     const stats = [
       r.distance_km       ? { v: r.distance_km + ' km',          l: 'Distancia' } : null,
       elevVal             ? { v: elevVal + ' m',                  l: 'Desnivel D+' } : null,
@@ -2843,30 +2891,31 @@ async function shareCard(id) {
     ].filter(Boolean);
 
     if (stats.length) {
-      const colW = (W - 104) / stats.length;
+      const colW = W / stats.length;
+      const mid  = nextY + statH / 2;
+      const vSize = Math.round(W * 0.054);
+      const lSize = Math.round(W * 0.024);
       stats.forEach((s, i) => {
-        const cx = 52 + colW * i + colW / 2;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.font = `bold 64px ${font}`; ctx.fillStyle = '#ffffff';
-        ctx.fillText(s.v, cx, statsY + 44);
-        ctx.font = `26px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.42)';
-        ctx.fillText(s.l, cx, statsY + 124);
+        const cx = colW * i + colW / 2;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = `bold ${vSize}px ${font}`; ctx.fillStyle = '#ffffff';
+        ctx.fillText(s.v, cx, mid - Math.round(W * 0.015));
+        ctx.font = `${lSize}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.38)';
+        ctx.fillText(s.l, cx, mid + Math.round(W * 0.028));
       });
     }
+    nextY += statH;
 
-    // ── Pie de página ────────────────────────────────────────────
-    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
-    ctx.font = `22px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillText('velomind.app', W - 52, H - 42);
+    // ── Pie ──────────────────────────────────────────────────────
+    ctx.fillStyle = '#080910';
+    ctx.fillRect(0, nextY, W, footH);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.font = `${Math.round(W * 0.022)}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillText('velomind.app', W - PAD, nextY + footH / 2);
 
-    // Línea de acento inferior
-    const botLine = ctx.createLinearGradient(0, 0, W, 0);
-    botLine.addColorStop(0, 'transparent');
-    botLine.addColorStop(0.25, color + '55');
-    botLine.addColorStop(0.75, color + '55');
-    botLine.addColorStop(1, 'transparent');
-    ctx.strokeStyle = botLine; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, H - 3); ctx.lineTo(W, H - 3); ctx.stroke();
+    // Línea lime inferior
+    ctx.fillStyle = LIME;
+    ctx.fillRect(0, H - 3, W, 3);
 
     // ── Compartir ─────────────────────────────────────────────────
     const blob = await new Promise(res => cvs.toBlob(res, 'image/png'));
@@ -2885,7 +2934,7 @@ async function shareCard(id) {
       showToast('Imagen descargada. Compártela desde tu galería.', 'info');
     }
   } catch (e) {
-    if (e?.name !== 'AbortError') showToast('Error al generar imagen', 'error');
+    if (e?.name !== 'AbortError') { console.error('shareCard:', e); showToast('Error al generar imagen', 'error'); }
   } finally {
     if (btn) { btn.innerHTML = orig; btn.disabled = false; }
   }
