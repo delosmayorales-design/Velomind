@@ -2701,11 +2701,12 @@ async function shareCard(id) {
   if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
 
   try {
-    const color = routeColor(r);
-    const LIME  = '#9ED62B';
-    const font  = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif";
+    const color   = routeColor(r);
+    const LIME    = '#9ED62B';
+    const LIME_DK = '#6FA01A';
+    const font    = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif";
 
-    // Cargar la ruta en el mapa y esperar que se estabilice
+    // ── Cargar ruta y esperar mapa ────────────────────────────────
     openRouteOnMap(id);
     await new Promise(res => {
       const t = setTimeout(res, 1800);
@@ -2715,207 +2716,192 @@ async function shareCard(id) {
       map.setZoom(12);
       await new Promise(res => { const t = setTimeout(res, 700); map.once('zoomend', () => { clearTimeout(t); res(); }); });
     }
-    await new Promise(res => setTimeout(res, 2000)); // tiles
+    await new Promise(res => setTimeout(res, 2000));
 
-    // Captura del mapa con leafletImage
     const tilesCanvas = await new Promise((res, rej) =>
       leafletImage(map, (err, c) => err ? rej(err) : res(c))
     );
 
     const mW = tilesCanvas.width;
     const mH = tilesCanvas.height;
-    const elevs   = currentRouteElevs;
-    const elevVal = r.elevation_gain_m ? Math.round(r.elevation_gain_m) : null;
+    const elevVal  = r.elevation_gain_m ? Math.round(r.elevation_gain_m) : null;
     const speedVal = (r.distance_km && r.estimated_minutes)
       ? (r.distance_km / (r.estimated_minutes / 60)).toFixed(1) : null;
 
-    // Dimensiones del canvas de salida
-    const PAD    = Math.round(mW * 0.038);
-    const headH  = Math.round(mW * 0.115);
-    const profH  = elevs?.length ? Math.round(mW * 0.21) : 0;
-    const statH  = Math.round(mW * 0.21);
-    const footH  = Math.round(mW * 0.065);
-    const W = mW;
-    const H = headH + mH + profH + statH + footH;
+    // ── Canvas: mapa (55%) + stats (45%) ─────────────────────────
+    const statsH = Math.round(mH * 0.82);
+    const W = mW, H = mH + statsH;
 
     const cvs = document.createElement('canvas');
     cvs.width = W; cvs.height = H;
     const ctx = cvs.getContext('2d');
+    const P = Math.round(W * 0.06); // padding
 
-    // ── Fondo global ─────────────────────────────────────────────
-    ctx.fillStyle = '#0a0b10';
-    ctx.fillRect(0, 0, W, H);
+    // Fondo oscuro base
+    ctx.fillStyle = '#08090f'; ctx.fillRect(0, 0, W, H);
 
-    // ── Cabecera ─────────────────────────────────────────────────
-    ctx.fillStyle = '#111218';
-    ctx.fillRect(0, 0, W, headH);
+    // ── MAPA a sangre ─────────────────────────────────────────────
+    ctx.drawImage(tilesCanvas, 0, 0);
 
-    // Línea lime superior
-    ctx.fillStyle = LIME;
-    ctx.fillRect(0, 0, W, 4);
+    // Vignette radial
+    const vig = ctx.createRadialGradient(W/2, mH/2, mH*0.08, W/2, mH/2, mH*0.72);
+    vig.addColorStop(0, 'rgba(0,0,0,0.05)'); vig.addColorStop(1, 'rgba(0,0,0,0.5)');
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, W, mH);
 
-    // Logo VeloMind
-    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-    const logoSize = Math.round(mW * 0.048);
-    ctx.font = `bold ${logoSize}px ${font}`;
-    ctx.fillStyle = LIME;
-    ctx.fillText('Velo', PAD, headH / 2);
-    const vW = ctx.measureText('Velo').width;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('Mind', PAD + vW, headH / 2);
+    // Fade en bordes: arriba y abajo del mapa
+    const fadeT = ctx.createLinearGradient(0, 0, 0, mH * 0.22);
+    fadeT.addColorStop(0, 'rgba(8,9,15,0.82)'); fadeT.addColorStop(1, 'rgba(8,9,15,0)');
+    ctx.fillStyle = fadeT; ctx.fillRect(0, 0, W, mH * 0.22);
 
-    // Nombre de la ruta (derecha)
-    const nameSize = Math.round(mW * 0.034);
-    ctx.font = `500 ${nameSize}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.textAlign = 'right';
-    let rname = r.name || 'Ruta';
-    while (ctx.measureText(rname).width > W * 0.52 && rname.length > 4) rname = rname.slice(0, -1);
-    if (rname !== r.name) rname += '…';
-    ctx.fillText(rname, W - PAD, headH / 2);
+    const fadeB = ctx.createLinearGradient(0, mH * 0.6, 0, mH);
+    fadeB.addColorStop(0, 'rgba(8,9,15,0)'); fadeB.addColorStop(1, 'rgba(8,9,15,1)');
+    ctx.fillStyle = fadeB; ctx.fillRect(0, mH * 0.6, W, mH * 0.4);
 
-    // ── Mapa ─────────────────────────────────────────────────────
-    const mY = headH;
-    ctx.drawImage(tilesCanvas, 0, mY);
-
-    // Vignette semitransparente sobre el mapa
-    const vig = ctx.createRadialGradient(W / 2, mY + mH / 2, mH * 0.1, W / 2, mY + mH / 2, mH * 0.75);
-    vig.addColorStop(0, 'rgba(0,0,0,0)');
-    vig.addColorStop(1, 'rgba(0,0,0,0.45)');
-    ctx.fillStyle = vig; ctx.fillRect(0, mY, W, mH);
-
-    // Degradado oscuro en bordes superior/inferior del mapa
-    const fadeTop = ctx.createLinearGradient(0, mY, 0, mY + mH * 0.18);
-    fadeTop.addColorStop(0, 'rgba(10,11,16,0.7)'); fadeTop.addColorStop(1, 'rgba(10,11,16,0)');
-    ctx.fillStyle = fadeTop; ctx.fillRect(0, mY, W, mH * 0.18);
-
-    const fadeBot = ctx.createLinearGradient(0, mY + mH * 0.75, 0, mY + mH);
-    fadeBot.addColorStop(0, 'rgba(10,11,16,0)'); fadeBot.addColorStop(1, 'rgba(10,11,16,0.82)');
-    ctx.fillStyle = fadeBot; ctx.fillRect(0, mY + mH * 0.75, W, mH * 0.25);
-
-    // Ruta dibujada encima del mapa
+    // ── Ruta sobre el mapa ────────────────────────────────────────
     const shareSegs = routeCoordSegments(routeGeoJSON);
     if (shareSegs.length) {
-      const drawRoute = (lw, style) => {
+      const drawR = (lw, style) => {
         ctx.lineWidth = lw; ctx.strokeStyle = style;
         ctx.lineJoin = 'round'; ctx.lineCap = 'round';
         shareSegs.forEach(seg => {
           ctx.beginPath();
           seg.forEach(([lon, lat], i) => {
             const pt = map.latLngToContainerPoint(L.latLng(lat, lon));
-            i === 0 ? ctx.moveTo(pt.x, mY + pt.y) : ctx.lineTo(pt.x, mY + pt.y);
+            i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
           });
           ctx.stroke();
         });
       };
-      ctx.shadowColor = color; ctx.shadowBlur = 18;
-      drawRoute(14, color + '50');
-      ctx.shadowBlur = 7;
-      drawRoute(6, color);
+      ctx.shadowColor = color; ctx.shadowBlur = 24; drawR(18, color + '45');
+      ctx.shadowBlur = 10;                           drawR(7,  color);
       ctx.shadowBlur = 0;
 
-      // Puntos inicio/fin
-      const drawDot = ([lon, lat], fill) => {
+      const dot = ([lon, lat], fill) => {
         const pt = map.latLngToContainerPoint(L.latLng(lat, lon));
-        ctx.shadowColor = fill; ctx.shadowBlur = 14;
-        ctx.fillStyle = fill;
-        ctx.beginPath(); ctx.arc(pt.x, mY + pt.y, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowColor = fill; ctx.shadowBlur = 18;
+        ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(pt.x, pt.y, 11, 0, Math.PI*2); ctx.fill();
         ctx.shadowBlur = 0; ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(pt.x, mY + pt.y, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI*2); ctx.fill();
       };
-      drawDot(shareSegs[0][0], '#22c55e');
-      const ls = shareSegs[shareSegs.length - 1];
-      drawDot(ls[ls.length - 1], '#ef4444');
+      dot(shareSegs[0][0], '#22c55e');
+      const ls = shareSegs[shareSegs.length-1];
+      dot(ls[ls.length-1], '#ef4444');
     }
 
-    // ── Perfil de elevación ──────────────────────────────────────
-    let nextY = mY + mH;
-    if (elevs?.length && profH > 0) {
-      ctx.fillStyle = 'rgba(10,11,15,0.97)';
-      ctx.fillRect(0, nextY, W, profH);
+    // ── VELOMIND watermark enorme ─────────────────────────────────
+    ctx.save();
+    ctx.translate(W / 2, mH * 0.52);
+    ctx.rotate(-9 * Math.PI / 180);
+    ctx.font = `900 ${Math.round(W * 0.245)}px ${font}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(158,214,43,0.07)';
+    ctx.fillText('VELOMIND', 0, 0);
+    ctx.restore();
 
-      // Separador lime
-      ctx.strokeStyle = LIME + '40'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(0, nextY); ctx.lineTo(W, nextY); ctx.stroke();
+    // ── Logo pequeño arriba izquierda ─────────────────────────────
+    const lsz = Math.round(W * 0.052);
+    ctx.font = `bold ${lsz}px ${font}`; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+    ctx.fillStyle = LIME; ctx.fillText('Velo', P, P);
+    const vW2 = ctx.measureText('Velo').width;
+    ctx.fillStyle = '#ffffff'; ctx.fillText('Mind', P + vW2, P);
 
-      const pp = PAD, chartW = W - pp * 2, chartH = profH - pp - 8;
-      const minE = Math.min(...elevs), maxE = Math.max(...elevs), range = (maxE - minE) || 1;
-      const pts = elevs.map((e, i) => ({
-        x: pp + (i / (elevs.length - 1)) * chartW,
-        y: nextY + pp + (1 - (e - minE) / range) * chartH,
-      }));
+    // Nombre de la ruta — arriba derecha
+    const nsz = Math.round(W * 0.031);
+    ctx.font = `500 ${nsz}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.62)';
+    ctx.textAlign = 'right';
+    let rname = r.name || 'Ruta';
+    while (ctx.measureText(rname).width > W * 0.5 && rname.length > 4) rname = rname.slice(0, -1);
+    if (rname !== r.name) rname += '…';
+    ctx.fillText(rname, W - P, P + (lsz - nsz) / 2);
 
-      // Relleno gradiente
-      const gr = ctx.createLinearGradient(0, nextY + pp, 0, nextY + pp + chartH);
-      gr.addColorStop(0, color + '55'); gr.addColorStop(1, color + '08');
-      ctx.beginPath();
-      pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-      ctx.lineTo(pp + chartW, nextY + pp + chartH);
-      ctx.lineTo(pp, nextY + pp + chartH);
-      ctx.closePath(); ctx.fillStyle = gr; ctx.fill();
+    // Tipo de ruta pequeño debajo del nombre
+    const typeLabel = { road: 'ROAD', gravel: 'GRAVEL', mtb: 'MTB' }[r.type] || r.type.toUpperCase();
+    ctx.font = `bold ${Math.round(W * 0.022)}px ${font}`; ctx.fillStyle = LIME + 'aa';
+    ctx.fillText(typeLabel, W - P, P + lsz + 4);
 
-      // Línea del perfil
-      ctx.beginPath();
-      pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-      ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+    // ── ÁREA DE STATS (dark, abajo) ───────────────────────────────
+    const sY = mH;
 
-      // Etiquetas alt
-      const fs = Math.max(11, Math.round(W / 62));
-      ctx.font = `${fs}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      ctx.textBaseline = 'top'; ctx.textAlign = 'left';
-      ctx.fillText(Math.round(maxE) + ' m', pp + 4, nextY + pp + 2);
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(Math.round(minE) + ' m', pp + 4, nextY + pp + chartH - 2);
+    // Fondo degradado stats
+    const sgr = ctx.createLinearGradient(0, sY, 0, H);
+    sgr.addColorStop(0, '#0d0e1a'); sgr.addColorStop(1, '#06070c');
+    ctx.fillStyle = sgr; ctx.fillRect(0, sY, W, statsH);
 
-      // D+ en LIME
-      if (elevVal) {
-        ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-        ctx.fillStyle = LIME; ctx.font = `bold ${fs}px ${font}`;
-        ctx.fillText('D+ ' + elevVal + ' m', W - pp, nextY + 6);
-      }
-      nextY += profH;
-    }
+    // Línea lime divisoria tenue
+    ctx.strokeStyle = LIME + '28'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W*0.04, sY); ctx.lineTo(W*0.96, sY); ctx.stroke();
 
-    // ── Stats ────────────────────────────────────────────────────
-    ctx.fillStyle = '#0d0e1a';
-    ctx.fillRect(0, nextY, W, statH);
-
-    // Separador del color de la ruta
-    ctx.strokeStyle = color + '50'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(W * 0.06, nextY); ctx.lineTo(W * 0.94, nextY); ctx.stroke();
-
+    // Stats: cuadrícula 2 × 2
     const stats = [
-      r.distance_km       ? { v: r.distance_km + ' km',          l: 'Distancia' } : null,
-      elevVal             ? { v: elevVal + ' m',                  l: 'Desnivel D+' } : null,
-      r.estimated_minutes ? { v: formatTime(r.estimated_minutes), l: 'Tiempo' }     : null,
-      speedVal            ? { v: speedVal + ' km/h',              l: 'Vel. media' } : null,
+      r.distance_km       ? { v: r.distance_km + '',              u: 'km',    l: 'DISTANCIA'  } : null,
+      elevVal             ? { v: elevVal + '',                     u: 'm',     l: 'DESNIVEL D+' } : null,
+      r.estimated_minutes ? { v: formatTime(r.estimated_minutes),  u: '',      l: 'TIEMPO'     } : null,
+      speedVal            ? { v: speedVal + '',                    u: 'km/h',  l: 'VEL. MEDIA' } : null,
     ].filter(Boolean);
 
     if (stats.length) {
-      const colW = W / stats.length;
-      const mid  = nextY + statH / 2;
-      const vSize = Math.round(W * 0.054);
-      const lSize = Math.round(W * 0.024);
+      const cols = Math.min(stats.length, 2);
+      const rows = Math.ceil(stats.length / cols);
+      const cellW = W / cols;
+      const cellH = (statsH * 0.88) / rows;
+      const vSz = Math.round(W * 0.115); // número enorme
+      const uSz = Math.round(W * 0.052); // unidad
+      const lSz = Math.round(W * 0.026); // etiqueta
+      const limeCol = LIME;
+
       stats.forEach((s, i) => {
-        const cx = colW * i + colW / 2;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.font = `bold ${vSize}px ${font}`; ctx.fillStyle = '#ffffff';
-        ctx.fillText(s.v, cx, mid - Math.round(W * 0.015));
-        ctx.font = `${lSize}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.38)';
-        ctx.fillText(s.l, cx, mid + Math.round(W * 0.028));
+        const col = i % cols, row = Math.floor(i / cols);
+        const cx  = cellW * col + cellW / 2;
+        const cy  = sY + cellH * row + cellH / 2;
+
+        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+
+        // Número (blanco, enorme)
+        ctx.font = `800 ${vSz}px ${font}`; ctx.fillStyle = '#ffffff';
+        const vText = s.v;
+        const uText = s.u ? ' ' + s.u : '';
+        const vW3 = ctx.measureText(vText).width;
+
+        // Unidad en lime, misma línea de base
+        ctx.font = `800 ${vSz}px ${font}`; ctx.fillStyle = '#ffffff';
+        ctx.fillText(vText, cx - (s.u ? ctx.measureText(uText).width * 0.4 : 0), cy);
+        if (s.u) {
+          ctx.font = `700 ${uSz}px ${font}`; ctx.fillStyle = limeCol;
+          ctx.textBaseline = 'alphabetic';
+          ctx.fillText(s.u, cx + vW3 * 0.5 - (s.u ? ctx.measureText(uText).width * 0.4 : 0) + Math.round(W*0.012), cy - Math.round(vSz * 0.1));
+        }
+
+        // Etiqueta debajo en gris tenue
+        ctx.font = `${lSz}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.textBaseline = 'top'; ctx.textAlign = 'center';
+        ctx.fillText(s.l, cx, cy + Math.round(vSz * 0.12));
+
+        // Separador vertical entre columnas (solo col 0 si hay 2)
+        if (cols === 2 && col === 0) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(cellW, sY + cellH * row + cellH * 0.12);
+          ctx.lineTo(cellW, sY + cellH * row + cellH * 0.88);
+          ctx.stroke();
+        }
+        // Separador horizontal entre filas
+        if (rows === 2 && row === 0) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(W * 0.06, sY + cellH);
+          ctx.lineTo(W * 0.94, sY + cellH);
+          ctx.stroke();
+        }
       });
     }
-    nextY += statH;
 
-    // ── Pie ──────────────────────────────────────────────────────
-    ctx.fillStyle = '#080910';
-    ctx.fillRect(0, nextY, W, footH);
-    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-    ctx.font = `${Math.round(W * 0.022)}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillText('velomind.app', W - PAD, nextY + footH / 2);
+    // Footer velomind.app centrado
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.font = `${Math.round(W * 0.021)}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    ctx.fillText('velomind.app', W / 2, H - Math.round(W * 0.022));
 
-    // Línea lime inferior
-    ctx.fillStyle = LIME;
-    ctx.fillRect(0, H - 3, W, 3);
+    // Línea lime en la base
+    ctx.fillStyle = LIME; ctx.fillRect(0, H - 3, W, 3);
 
     // ── Compartir ─────────────────────────────────────────────────
     const blob = await new Promise(res => cvs.toBlob(res, 'image/png'));
