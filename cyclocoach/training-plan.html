@@ -806,6 +806,14 @@
 
       /* Banner próximos eventos — permitir wrap en fechas */
       #events-list-banner .ev-row { flex-wrap: wrap; }
+
+      /* Plan Semanal — resumen inline no desborda */
+      #plan-summary-inline { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+
+      /* Botón semana siguiente — texto corto en móvil */
+      .nw-btn-label::after { content: 'Sig. semana'; }
+      .nw-btn-label { font-size: 0; }
+      #btn-next-week { padding: 6px 10px; font-size: 11px; }
     }
 
     @media (max-width: 380px) {
@@ -1066,16 +1074,16 @@
       </div>
 
       <!-- Navegador de semana — visible y claro en móvil y escritorio -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border);gap:8px">
-        <div id="week-dates" style="font-size:13px;color:var(--text-muted);font-weight:500"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border);gap:8px;min-width:0">
+        <div id="week-dates" style="font-size:13px;color:var(--text-muted);font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
         <button onclick="toggleNextWeekSummary()" id="btn-next-week" style="
-          display:inline-flex;align-items:center;gap:6px;
-          padding:8px 14px;border-radius:10px;
+          display:inline-flex;align-items:center;gap:5px;
+          padding:6px 12px;border-radius:10px;
           background:rgba(196,239,68,.10);border:1px solid rgba(196,239,68,.30);
-          color:var(--primary);font-size:13px;font-weight:700;
+          color:var(--primary);font-size:12px;font-weight:700;
           cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;
           flex-shrink:0;
-        ">Semana siguiente <i class="fas fa-chevron-right" style="font-size:11px"></i></button>
+        "><span class="nw-btn-label">Semana siguiente</span><i class="fas fa-chevron-right" style="font-size:10px"></i></button>
       </div>
 
       <div id="missed-check-banner" style="display:none;padding:0 0 12px 0"></div>
