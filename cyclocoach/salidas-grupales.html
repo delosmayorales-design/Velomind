@@ -109,6 +109,9 @@
     @media (max-width:600px) {
       .detail-panel { width:100vw; right:-100vw; }
     }
+
+    /* Botón ← Volver — solo visible en móvil */
+    .panel-back-mobile { display:none; }
     .panel-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:199; }
     .panel-overlay.show { display:block; }
 
@@ -378,16 +381,27 @@
       /* Panel info grid: 1 columna en pantallas muy estrechas */
       .panel-info-grid { grid-template-columns: 1fr; }
 
-      /* Botón cerrar del panel: área táctil mínima iOS/Android */
-      .panel-close {
-        width: 44px; height: 44px; font-size: 20px;
-        color: var(--text-primary);
-        background: rgba(255,255,255,.08);
-        border-color: rgba(255,255,255,.18);
+      /* En móvil: header del panel ajustado para el botón ← Volver */
+      .panel-header { padding: 10px 12px 10px 4px; gap: 4px; }
+      .panel-title { font-size: 14px; }
+
+      /* En móvil: ocultar × y mostrar ← Volver en su lugar */
+      .panel-close { display: none; }
+      .panel-back-mobile {
+        display: flex; align-items: center; gap: 6px;
+        padding: 8px 12px; border-radius: var(--radius-sm);
+        border: none; background: transparent;
+        color: var(--text-primary); font-size: 15px; font-weight: 700;
+        font-family: inherit; cursor: pointer; flex-shrink: 0;
+        min-height: 44px; -webkit-tap-highlight-color: transparent;
       }
+      .panel-back-mobile:active { opacity: .65; }
 
       /* Botón "Cerrar" en barra de acciones — sólo visible en móvil */
       .btn-panel-back-mobile { display: flex !important; }
+
+      /* Espacio extra en panel-body para que no quede nada tapado por el bottom-nav */
+      .panel-body { padding-bottom: 140px; }
     }
 
     @media (max-width: 360px) {
@@ -477,6 +491,7 @@
 <div class="panel-overlay" id="panel-overlay"></div>
 <aside class="detail-panel" id="detail-panel">
   <div class="panel-header">
+    <button class="panel-back-mobile" onclick="closePanel()"><i class="fas fa-arrow-left"></i> Volver</button>
     <span class="panel-title" id="panel-title">Cargando...</span>
     <button class="panel-close" onclick="closePanel()"><i class="fas fa-times"></i></button>
   </div>
