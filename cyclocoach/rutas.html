@@ -2701,6 +2701,10 @@ async function shareCard(id) {
   if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
 
   try {
+      // Forzar centrado del mapa en la ruta antes de tomar la captura
+      openRouteOnMap(id);
+      await new Promise(res => setTimeout(res, 600)); // Esperar a que carguen los "tiles" del mapa
+
     const LIME = '#D6FF00';
     const BG   = '#08080e';
     const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif";
@@ -2734,45 +2738,51 @@ async function shareCard(id) {
     cvs.width = W; cvs.height = H;
     const ctx = cvs.getContext('2d');
 
-    // ── FONDO (Tono oscuro) ────────────────────────────────────────────
+    // ── FONDO DEFAULT (En caso de que el mapa falle) ────────────────────
     ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = 'rgba(214,255,0,0.028)'; ctx.lineWidth = 1;
-    for (let x = 0; x <= W; x += 54) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-    for (let y = 0; y <= H; y += 54) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
     // ── RUTA EN TODO EL FONDO ──────────────────────────────────
     const shareSegs = routeCoordSegments(geom);
     if (shareSegs.length) {
-      const allPts = shareSegs.flat();
-      let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
-      allPts.forEach(([lon, lat]) => {
-        if (lon < minLon) minLon = lon; if (lon > maxLon) maxLon = lon;
-        if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+      // Ocultar la ruta normal temporalmente para sacar una "foto" limpia del mapa
+      const hadRoute = routeLayer && map.hasLayer(routeLayer);
+      if (hadRoute) map.removeLayer(routeLayer);
+      const visibleMarkers = waypointMarkers.filter(m => map.hasLayer(m));
+      visibleMarkers.forEach(m => map.removeLayer(m));
+
+      await new Promise(r => setTimeout(r, 50)); // Pausa de renderizado
+
+      // Capturar mapa real
+      const mapCvs = await new Promise(resolve => {
+        leafletImage(map, (err, canvas) => resolve(canvas || document.createElement('canvas')));
       });
 
-      const mapPad  = Math.round(W * 0.15);
-      const drawW   = W - mapPad * 2;
-      const drawH   = H - mapPad * 2;
-      const lonSpan = (maxLon - minLon) || 0.001;
-      const latSpan = (maxLat - minLat) || 0.001;
-      const latCorr = Math.cos((minLat + maxLat) / 2 * Math.PI / 180);
-      const aspRoute  = (lonSpan / latCorr) / latSpan;
-      const aspCanvas = drawW / drawH;
-      let scale, startX, startY;
-      if (aspRoute > aspCanvas) {
-        scale  = drawW / (lonSpan / latCorr);
-        startX = mapPad;
-        startY = mapPad + (drawH - latSpan * scale) / 2;
-      } else {
-        scale  = drawH / latSpan;
-        startY = mapPad;
-        startX = mapPad + (drawW - lonSpan / latCorr * scale) / 2;
+      // Restaurar capas originales de la app
+      if (hadRoute) routeLayer.addTo(map);
+      visibleMarkers.forEach(m => map.addLayer(m));
+
+      // Dibujar mapa capturado centrado en 1080x1080
+      const scaleMap = Math.max(W / mapCvs.width, H / mapCvs.height);
+      const drawW = mapCvs.width * scaleMap;
+      const drawH = mapCvs.height * scaleMap;
+      const drawX = (W - drawW) / 2;
+      const drawY = (H - drawH) / 2;
+      if (mapCvs.width > 0) ctx.drawImage(mapCvs, drawX, drawY, drawW, drawH);
+
+      // Oscurecer ligeramente para que destaque el neón y las letras
+      ctx.fillStyle = 'rgba(8, 8, 14, 0.65)';
+      ctx.fillRect(0, 0, W, H);
+
+      // Proyección PERFECTA al mapa real (Usa la lente de Leaflet)
+      const toP = ([lon, lat]) => {
+        const p = map.latLngToContainerPoint([lat, lon]);
+        return {
+          x: drawX + p.x * scaleMap,
+          y: drawY + p.y * scaleMap
+        };
       }
-      const toP = ([lon, lat]) => ({
-        x: startX + (lon - minLon) / latCorr * scale,
-        y: startY + (maxLat - lat) * scale,
-      });
 
+      const allPts = shareSegs.flat();
       // Puntos simplificados
       const step = Math.max(1, Math.floor(allPts.length / 700));
       const pts  = allPts.filter((_, i) => i % step === 0);
