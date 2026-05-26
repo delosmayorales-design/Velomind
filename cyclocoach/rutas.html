@@ -2710,9 +2710,16 @@ async function shareCard(id) {
     const speedVal = (r.distance_km && r.estimated_minutes)
       ? (r.distance_km / (r.estimated_minutes / 60)).toFixed(1) : null;
 
-    const flatCoords = routeCoordSegments(routeGeoJSON).flat();
+    // Usar la geometría propia de la ruta (no el global routeGeoJSON)
+    let geom = r.geojson;
+    if (typeof geom === 'string') { try { geom = JSON.parse(geom); } catch(_) {} }
+    if (geom?.type === 'Feature') geom = geom.geometry;
+
+    const flatCoords = routeCoordSegments(geom).flat();
     const hasAlt  = flatCoords.length > 0 && flatCoords[0].length >= 3 && flatCoords[0][2] != null;
-    const rawElevs = hasAlt ? flatCoords.map(c => c[2]) : (currentRouteElevs || null);
+    // Usar elevaciones de coordenadas 3D; si no, usar las del perfil cargado (si es la ruta activa)
+    const rawElevs = hasAlt ? flatCoords.map(c => c[2])
+      : (String(r.id) === String(allRoutes.find(x => x.id === r.id)?.id) && currentRouteElevs?.length > 1 ? currentRouteElevs : null);
     const elevs = rawElevs?.length > 1 ? (() => {
       const step = Math.max(1, Math.floor(rawElevs.length / 350));
       const s = rawElevs.filter((_, i) => i % step === 0);
@@ -2731,10 +2738,10 @@ async function shareCard(id) {
     // ── Zonas ─────────────────────────────────────────────────────
     const headerH = 108;
     const titleH  = 148;
-    const mapH    = 460;
-    const metrH   = 162;
-    const bstatH  = 130;
-    const footH   = H - headerH - titleH - mapH - metrH - bstatH; // ~72
+    const mapH    = 530;
+    const metrH   = 100;
+    const bstatH  = 230;
+    const footH   = H - headerH - titleH - mapH - metrH - bstatH; // ~64
     const titleY  = headerH;
     const mapY    = titleY + titleH;
     const metrY   = mapY + mapH;
@@ -2807,7 +2814,7 @@ async function shareCard(id) {
     // ── MAPA OSCURO: proyección directa desde GeoJSON + glow neón ──
     ctx.fillStyle = '#090912'; ctx.fillRect(0, mapY, W, mapH);
 
-    const shareSegs = routeCoordSegments(routeGeoJSON);
+    const shareSegs = routeCoordSegments(geom);
     if (shareSegs.length) {
       const allPts = shareSegs.flat();
       let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
@@ -2887,10 +2894,8 @@ async function shareCard(id) {
     ctx.fillStyle = 'rgba(214,255,0,0.10)'; ctx.fillRect(0, metrY, W, 1);
 
     const stats = [
-      speedVal            ? { val: speedVal,                        unit: 'km/h', label: 'VELOCIDAD MEDIA'  } : null,
-      r.estimated_minutes ? { val: formatTime(r.estimated_minutes), unit: '',     label: 'TIEMPO ESTIMADO'  } : null,
-      r.distance_km       ? { val: r.distance_km + '',              unit: 'km',   label: 'DISTANCIA'        } : null,
-      elevVal             ? { val: elevVal + '',                    unit: 'm',    label: 'DESNIVEL +'       } : null,
+      speedVal            ? { val: speedVal,                        unit: 'km/h', label: 'VELOCIDAD MEDIA' } : null,
+      r.estimated_minutes ? { val: formatTime(r.estimated_minutes), unit: '',     label: 'TIEMPO ESTIMADO' } : null,
     ].filter(Boolean);
 
     if (stats.length) {
@@ -3040,7 +3045,6 @@ async function shareCard(id) {
       const url = URL.createObjectURL(blob);
       Object.assign(document.createElement('a'), { href: url, download: 'ruta-velomind.png' }).click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-      showToast('Imagen descargada. Compártela desde tu galería.', 'info');
     }
   } catch (e) {
     if (e?.name !== 'AbortError') { console.error('shareCard:', e); showToast('Error al generar imagen', 'error'); }
