@@ -2845,14 +2845,23 @@ async function shareCard(id) {
     const vW2 = ctx.measureText('Velo').width;
     ctx.fillStyle = '#fff'; ctx.fillText('Mind', P + vW2, P);
 
-    // Nombre de la ruta arriba derecha
+    // Nombre de la ruta arriba derecha — primera palabra en lima, resto en blanco (como el logo)
     let rname = r.name || 'Ruta';
     const nsz = Math.round(W * 0.031);
-    ctx.font = `500 ${nsz}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    ctx.textAlign = 'right';
+    ctx.font = `700 ${nsz}px ${font}`; ctx.textAlign = 'right';
     while (ctx.measureText(rname).width > W * 0.48 && rname.length > 4) rname = rname.slice(0, -1);
     if (rname !== r.name) rname += '…';
-    ctx.fillText(rname, W - P, P + (lsz - nsz) / 2);
+    const nameY = P + (lsz - nsz) / 2;
+    const spaceIdx = rname.indexOf(' ');
+    if (spaceIdx === -1) {
+      ctx.fillStyle = LIME; ctx.fillText(rname, W - P, nameY);
+    } else {
+      const part1 = rname.slice(0, spaceIdx);
+      const part2 = rname.slice(spaceIdx); // incluye el espacio inicial
+      const w2 = ctx.measureText(part2).width;
+      ctx.fillStyle = '#fff'; ctx.fillText(part2, W - P, nameY);
+      ctx.fillStyle = LIME; ctx.fillText(part1, W - P - w2, nameY);
+    }
     ctx.font = `bold ${Math.round(W * 0.022)}px ${font}`; ctx.fillStyle = LIME + 'aa';
     ctx.fillText(({ road:'ROAD', gravel:'GRAVEL', mtb:'MTB' }[r.type] || r.type.toUpperCase()), W - P, P + lsz + 4);
 
