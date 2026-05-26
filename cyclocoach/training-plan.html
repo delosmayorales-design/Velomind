@@ -3579,7 +3579,16 @@ function showSessionDetail(idx, showAlt = false) {
           <span style="font-size:11px;color:#ef4444;font-weight:700;margin-left:2px">${hr.zone}</span>
         </div>`;
       })()}
-      ${currentIntervals?.length ? `
+      ${currentIntervals?.length ? (() => {
+        const _ivIfFromWatts = (wattsStr, labelStr) => {
+          if (/m[áa]x/i.test(String(wattsStr))) return 1.5;
+          const wn = (String(wattsStr || '').match(/\d+/g) || []).map(Number).filter(n => isFinite(n));
+          if (wn.length >= 2) return Math.max(0.2, (wn[0] + wn[1]) / 2 / ftp);
+          if (wn.length === 1) return Math.max(0.2, wn[0] / ftp);
+          if (/recuper|descanso/i.test(String(labelStr))) return 0.4;
+          return 0.35;
+        };
+        return `
       <div style="margin-bottom:20px">
         <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:12px">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px">
@@ -3622,16 +3631,7 @@ function showSessionDetail(idx, showAlt = false) {
               const durationText = String(iv.dur || '').replace(',', '.');
               const durationMatch = durationText.match(/(\d+(?:\.\d+)?)/);
               const durationMin = durationMatch ? parseFloat(durationMatch[1]) : 1;
-              const wattsText = String(iv.watts || '');
-              const wattsNums = (wattsText.match(/\d+/g) || []).map(n => parseInt(n, 10)).filter(n => Number.isFinite(n));
-              let intensity = 0.35;
-              if (wattsNums.length >= 2) {
-                intensity = Math.max(0.2, Math.min(1.1, (((wattsNums[0] + wattsNums[1]) / 2) / ftp)));
-              } else if (wattsNums.length === 1) {
-                intensity = Math.max(0.2, Math.min(1.1, wattsNums[0] / ftp));
-              } else if (String(iv.label || '').toLowerCase().includes('recuper')) {
-                intensity = 0.4;
-              }
+              const intensity = _ivIfFromWatts(iv.watts, iv.label);
               const h = Math.round(16 + intensity * 54);
               const flexWeight = Math.max(0.5, durationMin);
               const op = (0.45 + Math.min(0.5, intensity * 0.35)).toFixed(2);
@@ -3652,13 +3652,10 @@ function showSessionDetail(idx, showAlt = false) {
           ` : ''}
         </div>
         ${currentIntervals.map((iv, ivIdx) => {
-          const _wNums = (String(iv.watts || '').match(/\d+/g) || []).map(Number).filter(n => Number.isFinite(n));
-          let _ivIF = 0.35;
-          if (_wNums.length >= 2) _ivIF = Math.max(0.2, Math.min(1.1, (_wNums[0] + _wNums[1]) / 2 / ftp));
-          else if (_wNums.length === 1) _ivIF = Math.max(0.2, Math.min(1.1, _wNums[0] / ftp));
-          else if (/recuper|descanso/i.test(iv.label)) _ivIF = 0.4;
+          const _ivIF = _ivIfFromWatts(iv.watts, iv.label);
           const _ivLTHR = AppState.athlete?.lthr || (AppState.athlete?.max_hr ? Math.round(AppState.athlete.max_hr * 0.88) : 0);
           const _ivHR = _ivLTHR ? Utils.hrTargetFromIF(_ivLTHR, _ivIF) : null;
+          const _ivZC = _ivHR ? ({ Z1:'#6B7280', Z2:'#3B82F6', Z3:'#10B981', Z4:'#F59E0B', Z5:'#EF4444' }[_ivHR.zone] || '#ef4444') : null;
           return `
           <div class="interval-block" style="border-left-color:${color};margin-bottom:8px">
             <div class="interval-title">${ivIdx + 1}. ${iv.label}</div>
@@ -3666,12 +3663,12 @@ function showSessionDetail(idx, showAlt = false) {
             <div class="interval-meta">
               <span>⏱ ${iv.dur}</span>
               ${iv.watts ? `<span>⚡ ${iv.watts}</span>` : ''}
-              ${_ivHR ? `<span style="color:#ef4444">❤️ ${_ivHR.bpmMin}–${_ivHR.bpmMax} bpm</span>` : ''}
+              ${_ivHR ? `<span style="color:${_ivZC};font-weight:600">❤ ${_ivHR.bpmMin}–${_ivHR.bpmMax} bpm <span style="font-size:10px">${_ivHR.zone}</span></span>` : ''}
               ${iv.rpm ? `<span>🔄 ${iv.rpm}</span>` : ''}
             </div>
           </div>`;
         }).join('')}
-      </div>` : ''}
+      </div>`; })() : ''}
       <div class="alert alert-info">
         <i class="fas fa-lightbulb"></i>
         <div><strong>Consejo:</strong> ${getSessionTip(sess.type)}</div>
@@ -5090,9 +5087,25 @@ function adaptToRoller(idx) {
   const _rollerChartHtml = _rollerExpanded.length
     ? `<div style="display:flex;align-items:flex-end;gap:2px;height:60px;padding:0 4px;background:rgba(99,102,241,.06);border-radius:8px;overflow:hidden">${_rollerChartBars}</div>`
     : '';
+  const _rollerLTHR = AppState.athlete?.lthr || (AppState.athlete?.max_hr ? Math.round(AppState.athlete.max_hr * 0.88) : 0);
+  const _zoneColor  = { Z1:'#6B7280', Z2:'#3B82F6', Z3:'#10B981', Z4:'#F59E0B', Z5:'#EF4444' };
+  const _ivIfFromWatts = (wattsStr, labelStr) => {
+    if (/m[áa]x/i.test(String(wattsStr))) return 1.5;
+    const wn = (String(wattsStr || '').match(/\d+/g) || []).map(Number).filter(n => isFinite(n));
+    if (wn.length >= 2) return Math.max(0.2, (wn[0] + wn[1]) / 2 / ftp);
+    if (wn.length === 1) return Math.max(0.2, wn[0] / ftp);
+    if (/recuper|descanso/i.test(String(labelStr))) return 0.4;
+    return 0.35;
+  };
   const _rollerIvListHtml = (_rollerIvs || []).length
     ? `<div style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto">${
-        (_rollerIvs || []).map((iv, _i) => `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(99,102,241,.06);border-left:3px solid rgba(99,102,241,.5);border-radius:0 6px 6px 0"><span style="font-size:11px;font-weight:700;color:#818cf8;min-width:16px">${_i + 1}.</span><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${iv.label}</div><div style="display:flex;gap:10px;margin-top:2px;font-size:11px;color:var(--text-muted)"><span>⏱ ${iv.dur}</span>${iv.watts ? `<span>⚡ ${iv.watts}</span>` : ''}${iv.rpm ? `<span>🔄 ${iv.rpm}</span>` : ''}</div></div></div>`).join('')
+        (_rollerIvs || []).map((iv, _i) => {
+          const _if = _ivIfFromWatts(iv.watts, iv.label);
+          const _hr = _rollerLTHR ? Utils.hrTargetFromIF(_rollerLTHR, _if) : null;
+          const _zc = _hr ? (_zoneColor[_hr.zone] || '#ef4444') : null;
+          const _hrHtml = _hr ? `<span style="color:${_zc};font-weight:700">❤ ${_hr.bpmMin}–${_hr.bpmMax} bpm <span style="font-size:10px;opacity:0.85">${_hr.zone}</span></span>` : '';
+          return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(99,102,241,.06);border-left:3px solid rgba(99,102,241,.5);border-radius:0 6px 6px 0"><span style="font-size:11px;font-weight:700;color:#818cf8;min-width:16px">${_i + 1}.</span><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${iv.label}</div><div style="display:flex;gap:10px;margin-top:2px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>⏱ ${iv.dur}</span>${iv.watts ? `<span>⚡ ${iv.watts}</span>` : ''}${iv.rpm ? `<span>🔄 ${iv.rpm}</span>` : ''}${_hrHtml}</div></div></div>`;
+        }).join('')
       }</div>`
     : '';
 
