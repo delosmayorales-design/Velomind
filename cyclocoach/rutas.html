@@ -2750,50 +2750,75 @@ async function shareCard(id) {
       ? (r.distance_km / (r.estimated_minutes / 60)).toFixed(1) : null;
 
     // ── Dimensiones del canvas ────────────────────────────────────
-    const P      = Math.round(mW * 0.055);
-    const profH  = elevs?.length > 1 ? Math.round(mH * 0.28) : 0;
-    const statsH = Math.round(mH * 0.78);
-    const W = mW, H = mH + profH + statsH;
+    const P = Math.round(mW * 0.055);
+    const W = mW;
+    const H = Math.round(W * 1.38);
 
     const cvs = document.createElement('canvas');
     cvs.width = W; cvs.height = H;
     const ctx = cvs.getContext('2d');
 
+    // Zonas verticales
+    const headerH = Math.round(H * 0.09);
+    const titleH  = Math.round(H * 0.17);
+    const midH    = Math.round(H * 0.40);
+    const bstatH  = Math.round(H * 0.24);
+    const titleY  = headerH;
+    const midY    = titleY + titleH;
+    const bstatY  = midY + midH;
+    const footY   = bstatY + bstatH;
+    const footH   = H - footY;
+
+    // Columnas en zona media
+    const statsColW = Math.round(W * 0.48);
+    const mapColW   = W - statsColW;
+
+    // Fondo
     ctx.fillStyle = '#08090f'; ctx.fillRect(0, 0, W, H);
 
-    // ── MAPA ─────────────────────────────────────────────────────
-    ctx.drawImage(tilesCanvas, 0, 0);
+    // ── MAPA (columna derecha de la zona media) ───────────────────
+    const mapScl = midH / mH;
+    const mapOX  = statsColW + (mapColW - mW * mapScl) / 2;
 
-    const vig = ctx.createRadialGradient(W/2, mH/2, mH*0.06, W/2, mH/2, mH*0.7);
-    vig.addColorStop(0, 'rgba(0,0,0,0.04)'); vig.addColorStop(1, 'rgba(0,0,0,0.48)');
-    ctx.fillStyle = vig; ctx.fillRect(0, 0, W, mH);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(statsColW, midY, mapColW, midH); ctx.clip();
 
-    const fadeT = ctx.createLinearGradient(0, 0, 0, mH * 0.22);
-    fadeT.addColorStop(0, 'rgba(8,9,15,0.88)'); fadeT.addColorStop(1, 'rgba(8,9,15,0)');
-    ctx.fillStyle = fadeT; ctx.fillRect(0, 0, W, mH * 0.22);
+    ctx.drawImage(tilesCanvas, mapOX, midY, mW * mapScl, mH * mapScl);
 
-    const fadeB = ctx.createLinearGradient(0, mH * 0.62, 0, mH);
-    fadeB.addColorStop(0, 'rgba(8,9,15,0)'); fadeB.addColorStop(1, 'rgba(8,9,15,1)');
-    ctx.fillStyle = fadeB; ctx.fillRect(0, mH * 0.62, W, mH * 0.38);
+    // Vignette
+    const vig = ctx.createRadialGradient(
+      statsColW + mapColW / 2, midY + midH / 2, midH * 0.06,
+      statsColW + mapColW / 2, midY + midH / 2, midH * 0.72
+    );
+    vig.addColorStop(0, 'rgba(0,0,0,0.04)'); vig.addColorStop(1, 'rgba(0,0,0,0.52)');
+    ctx.fillStyle = vig; ctx.fillRect(statsColW, midY, mapColW, midH);
 
-    // ── RUTA coloreada por pendiente ──────────────────────────────
+    // Fade izquierdo (fusión con panel de stats)
+    const fadeL = ctx.createLinearGradient(statsColW, 0, statsColW + mapColW * 0.28, 0);
+    fadeL.addColorStop(0, 'rgba(8,9,15,1)'); fadeL.addColorStop(1, 'rgba(8,9,15,0)');
+    ctx.fillStyle = fadeL; ctx.fillRect(statsColW, midY, mapColW * 0.28, midH);
+
+    // ── RUTA coloreada por pendiente (en el mapa escalado) ────────
+    const toC = p => ({ x: mapOX + p.x * mapScl, y: midY + p.y * mapScl });
     const shareSegs = routeCoordSegments(routeGeoJSON);
+
     if (shareSegs.length) {
-      // Casing blanco (da profundidad y legibilidad sobre cualquier tile)
       ctx.shadowColor = 'rgba(255,255,255,0.25)'; ctx.shadowBlur = 18;
-      ctx.lineWidth = 15; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.lineWidth = Math.round(15 * mapScl); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
       ctx.strokeStyle = 'rgba(255,255,255,0.15)';
       shareSegs.forEach(seg => {
         const step = Math.max(1, Math.floor(seg.length / 500));
         const s = seg.filter((_, i) => i % step === 0);
         ctx.beginPath();
-        s.forEach(([lon, lat], i) => { const p = map.latLngToContainerPoint(L.latLng(lat, lon)); i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
+        s.forEach(([lon, lat], i) => {
+          const p = toC(map.latLngToContainerPoint(L.latLng(lat, lon)));
+          i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+        });
         ctx.stroke();
       });
       ctx.shadowBlur = 0;
 
-      // Trazo coloreado por pendiente (segmento a segmento)
-      ctx.lineWidth = 6; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.lineWidth = Math.round(6 * mapScl); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
       shareSegs.forEach(seg => {
         const step = Math.max(1, Math.floor(seg.length / 500));
         const s = seg.filter((_, i) => i % step === 0);
@@ -2807,201 +2832,217 @@ async function shareCard(id) {
             const d  = Math.sqrt(dx*dx + dy*dy);
             if (d > 0.5) slope = (a2 - a1) / d * 100;
           }
-          const p1 = map.latLngToContainerPoint(L.latLng(la1, lo1));
-          const p2 = map.latLngToContainerPoint(L.latLng(la2, lo2));
+          const p1 = toC(map.latLngToContainerPoint(L.latLng(la1, lo1)));
+          const p2 = toC(map.latLngToContainerPoint(L.latLng(la2, lo2)));
           ctx.strokeStyle = hasAlt ? slopeCol(slope) : LIME;
           ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
         }
       });
 
-      // Dots inicio/fin
       const dot = ([lon, lat], fill) => {
-        const p = map.latLngToContainerPoint(L.latLng(lat, lon));
-        ctx.shadowColor = fill; ctx.shadowBlur = 22;
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p.x, p.y, 13, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = fill;   ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0; ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
+        const p = toC(map.latLngToContainerPoint(L.latLng(lat, lon)));
+        const dr = Math.max(4, Math.round(13 * mapScl));
+        ctx.shadowColor = fill; ctx.shadowBlur = Math.round(22 * mapScl);
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p.x, p.y, dr, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = fill;   ctx.beginPath(); ctx.arc(p.x, p.y, dr * 0.77, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p.x, p.y, dr * 0.31, 0, Math.PI*2); ctx.fill();
       };
       dot(shareSegs[0][0], '#22c55e');
       const ls = shareSegs[shareSegs.length-1];
       dot(ls[ls.length-1], '#ef4444');
     }
-
-    // ── VELOMIND watermark ────────────────────────────────────────
-    ctx.save();
-    ctx.translate(W / 2, mH * 0.5);
-    ctx.rotate(-8 * Math.PI / 180);
-    ctx.font = `900 ${Math.round(W * 0.26)}px ${font}`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(158,214,43,0.065)';
-    ctx.fillText('VELOMIND', 0, 0);
     ctx.restore();
 
-    // ── Logo arriba izquierda ─────────────────────────────────────
-    const lsz = Math.round(W * 0.054);
-    ctx.font = `bold ${lsz}px ${font}`; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
-    ctx.fillStyle = LIME; ctx.fillText('Velo', P, P);
+    // ── HEADER ─────────────────────────────────────────────────────
+    // Logo VeloMind (izquierda)
+    const lsz = Math.round(W * 0.062);
+    ctx.font = `bold ${lsz}px ${font}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    ctx.fillStyle = LIME; ctx.fillText('Velo', P, headerH * 0.50);
     const vW2 = ctx.measureText('Velo').width;
-    ctx.fillStyle = '#fff'; ctx.fillText('Mind', P + vW2, P);
+    ctx.fillStyle = '#fff'; ctx.fillText('Mind', P + vW2, headerH * 0.50);
 
-    // Nombre de la ruta arriba derecha — primera palabra en lima, resto en blanco (como el logo)
-    let rname = r.name || 'Ruta';
-    const nsz = Math.round(W * 0.031);
-    ctx.font = `700 ${nsz}px ${font}`; ctx.textAlign = 'right';
-    while (ctx.measureText(rname).width > W * 0.48 && rname.length > 4) rname = rname.slice(0, -1);
-    if (rname !== r.name) rname += '…';
-    const nameY = P + (lsz - nsz) / 2;
-    const spaceIdx = rname.indexOf(' ');
+    // Tag ROAD/GRAVEL/MTB (bajo el logo)
+    const tagFsz = Math.round(W * 0.024);
+    ctx.font = `bold ${tagFsz}px ${font}`; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = LIME;
+    ctx.fillText(({ road:'ROAD', gravel:'GRAVEL', mtb:'MTB' }[r.type] || r.type.toUpperCase()), P, headerH * 0.50 + lsz * 0.58);
+
+    // Badge VM (rojo, esquina superior derecha)
+    const badgeSz = Math.round(W * 0.095);
+    const bx = W - P - badgeSz, by2 = (headerH - badgeSz) / 2;
+    const br = Math.round(badgeSz * 0.18);
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath();
+    ctx.moveTo(bx + br, by2);
+    ctx.lineTo(bx + badgeSz - br, by2); ctx.quadraticCurveTo(bx + badgeSz, by2, bx + badgeSz, by2 + br);
+    ctx.lineTo(bx + badgeSz, by2 + badgeSz - br); ctx.quadraticCurveTo(bx + badgeSz, by2 + badgeSz, bx + badgeSz - br, by2 + badgeSz);
+    ctx.lineTo(bx + br, by2 + badgeSz); ctx.quadraticCurveTo(bx, by2 + badgeSz, bx, by2 + badgeSz - br);
+    ctx.lineTo(bx, by2 + br); ctx.quadraticCurveTo(bx, by2, bx + br, by2);
+    ctx.closePath(); ctx.fill();
+    ctx.font = `900 ${Math.round(badgeSz * 0.48)}px ${font}`;
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('VM', bx + badgeSz / 2, by2 + badgeSz / 2);
+
+    ctx.fillStyle = LIME + '33'; ctx.fillRect(0, headerH - 1, W, 1);
+
+    // ── TÍTULO: nombre de ruta enorme (lima + blanco) ─────────────
+    let rname = (r.name || 'Ruta').toUpperCase();
+    let nameFsz = Math.round(W * 0.135);
+    ctx.font = `900 ${nameFsz}px ${font}`; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    while (ctx.measureText(rname).width > W - P * 2 && nameFsz > 16) {
+      nameFsz = Math.round(nameFsz * 0.94);
+      ctx.font = `900 ${nameFsz}px ${font}`;
+    }
+    const nameBaseY = titleY + Math.round(titleH * 0.70);
+    const spaceIdx  = rname.indexOf(' ');
     if (spaceIdx === -1) {
-      ctx.fillStyle = LIME; ctx.fillText(rname, W - P, nameY);
+      ctx.fillStyle = LIME; ctx.fillText(rname, P, nameBaseY);
     } else {
-      const part1 = rname.slice(0, spaceIdx);
-      const part2 = rname.slice(spaceIdx); // incluye el espacio inicial
-      const w2 = ctx.measureText(part2).width;
-      ctx.fillStyle = '#fff'; ctx.fillText(part2, W - P, nameY);
-      ctx.fillStyle = LIME; ctx.fillText(part1, W - P - w2, nameY);
-    }
-    ctx.font = `bold ${Math.round(W * 0.022)}px ${font}`; ctx.fillStyle = LIME + 'aa';
-    ctx.fillText(({ road:'ROAD', gravel:'GRAVEL', mtb:'MTB' }[r.type] || r.type.toUpperCase()), W - P, P + lsz + 4);
-
-    // ── PERFIL DE ELEVACIÓN ───────────────────────────────────────
-    let nextY = mH;
-    if (elevs?.length > 1) {
-      ctx.fillStyle = '#0c0d15'; ctx.fillRect(0, nextY, W, profH);
-
-      const pp = P, cW = W - pp * 2;
-      const cY0 = nextY + Math.round(profH * 0.28);
-      const cH  = profH - Math.round(profH * 0.34);
-      const minE = Math.min(...elevs), maxE = Math.max(...elevs), range = (maxE - minE) || 1;
-      const n = elevs.length;
-      const pts = elevs.map((e, i) => ({
-        x: pp + (i / (n-1)) * cW,
-        y: cY0 + (1 - (e - minE) / range) * cH,
-      }));
-
-      // Relleno coloreado por tramo (subida=cálido, bajada=frío)
-      for (let i = 1; i < n; i++) {
-        const dE = elevs[i] - elevs[i-1];
-        const pct = dE / (range / n) * 3; // pendiente relativa aproximada
-        const sc = slopeCol(pct);
-        const gr = ctx.createLinearGradient(0, Math.min(pts[i-1].y, pts[i].y), 0, cY0 + cH);
-        gr.addColorStop(0, sc + '70'); gr.addColorStop(1, sc + '0a');
-        ctx.fillStyle = gr;
-        ctx.beginPath();
-        ctx.moveTo(pts[i-1].x, pts[i-1].y); ctx.lineTo(pts[i].x, pts[i].y);
-        ctx.lineTo(pts[i].x, cY0 + cH); ctx.lineTo(pts[i-1].x, cY0 + cH);
-        ctx.closePath(); ctx.fill();
-      }
-
-      // Línea del perfil coloreada
-      ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-      for (let i = 1; i < n; i++) {
-        const dE = elevs[i] - elevs[i-1];
-        ctx.strokeStyle = slopeCol(dE / (range / n) * 3);
-        ctx.beginPath(); ctx.moveTo(pts[i-1].x, pts[i-1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
-      }
-
-      // Etiquetas
-      const fs = Math.max(11, Math.round(W / 62));
-      ctx.font = `${fs}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.textBaseline = 'top'; ctx.textAlign = 'left';
-      ctx.fillText(Math.round(maxE) + ' m', pp, cY0 + 2);
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(Math.round(minE) + ' m', pp, cY0 + cH);
-      if (elevVal) {
-        ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-        ctx.font = `bold ${fs}px ${font}`; ctx.fillStyle = LIME;
-        ctx.fillText('D+ ' + elevVal + ' m', W - pp, cY0 + 2);
-      }
-
-      // Leyenda de colores (pequeña, en la esquina inferior derecha)
-      const legend = [
-        { c: '#ef4444', l: '>8%' }, { c: '#facc15', l: '>2%' },
-        { c: LIME, l: 'plano' }, { c: '#22d3ee', l: 'baj.' },
-      ];
-      let lx = W - pp;
-      const dotSz = Math.round(W * 0.007), legFsz = Math.round(W * 0.017);
-      ctx.font = `${legFsz}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      [...legend].reverse().forEach(({ c, l }) => {
-        const tw = ctx.measureText(l).width;
-        lx -= tw; ctx.textBaseline = 'bottom'; ctx.textAlign = 'left';
-        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillText(l, lx, nextY + profH - 4);
-        lx -= dotSz * 2 + 6;
-        ctx.fillStyle = c; ctx.beginPath(); ctx.arc(lx + dotSz, nextY + profH - 4 - legFsz/2, dotSz, 0, Math.PI*2); ctx.fill();
-        lx -= 10;
-      });
-
-      nextY += profH;
+      const np1 = rname.slice(0, spaceIdx);
+      const np2 = ' ' + rname.slice(spaceIdx + 1);
+      ctx.fillStyle = LIME; ctx.fillText(np1, P, nameBaseY);
+      ctx.fillStyle = '#fff'; ctx.fillText(np2, P + ctx.measureText(np1).width, nameBaseY);
     }
 
-    // ── STATS 2 × 2 ──────────────────────────────────────────────
-    ctx.fillStyle = '#0b0c14'; ctx.fillRect(0, nextY, W, statsH);
-    ctx.fillStyle = LIME + '22'; ctx.fillRect(0, nextY, W, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, midY, W, 1);
 
-    const stats = [
-      r.distance_km       ? { v: r.distance_km + '',             u: 'km',   l: 'DISTANCIA'   } : null,
-      elevVal             ? { v: elevVal + '',                    u: 'm',    l: 'DESNIVEL D+' } : null,
-      r.estimated_minutes ? { v: formatTime(r.estimated_minutes), u: '',     l: 'TIEMPO'      } : null,
-      speedVal            ? { v: speedVal + '',                   u: 'km/h', l: 'VEL. MEDIA'  } : null,
+    // ── STATS (columna izquierda) ──────────────────────────────────
+    const statsItems = [
+      speedVal            ? { icon: '⚡', label: 'VELOCIDAD MEDIA',     val: speedVal,                        unit: 'km/h' } : null,
+      r.estimated_minutes ? { icon: '⏱', label: 'TIEMPO EN MOVIMIENTO', val: formatTime(r.estimated_minutes), unit: ''     } : null,
+      elevVal             ? { icon: '🔥', label: 'DESNIVEL +',           val: elevVal + '',                    unit: 'm'    } : null,
+      r.distance_km       ? { icon: '📍', label: 'DISTANCIA',            val: r.distance_km + '',              unit: 'km'   } : null,
     ].filter(Boolean);
 
-    if (stats.length) {
-      const cols  = Math.min(stats.length, 2);
-      const rows  = Math.ceil(stats.length / cols);
+    if (statsItems.length) {
+      const statH  = midH / statsItems.length;
+      const iconR  = Math.round(W * 0.036);
+      const iconX  = P + iconR;
+      const textX  = P + iconR * 2 + Math.round(W * 0.022);
+      const valFsz = Math.round(W * 0.052);
+      const lblFsz = Math.round(W * 0.020);
+
+      statsItems.forEach((s, i) => {
+        const sy = midY + statH * i + statH / 2;
+
+        // Círculo del icono
+        ctx.fillStyle = 'rgba(158,214,43,0.12)';
+        ctx.beginPath(); ctx.arc(iconX, sy, iconR, 0, Math.PI*2); ctx.fill();
+        ctx.font = `${Math.round(iconR * 1.1)}px ${font}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(s.icon, iconX, sy);
+
+        // Valor
+        const valBY = sy + Math.round(valFsz * 0.22);
+        ctx.font = `700 ${valFsz}px ${font}`; ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+        ctx.fillText(s.val, textX, valBY);
+        const valW3 = ctx.measureText(s.val).width;
+
+        // Unidad en lima
+        if (s.unit) {
+          const unitFsz = Math.round(valFsz * 0.52);
+          ctx.font = `600 ${unitFsz}px ${font}`; ctx.fillStyle = LIME;
+          ctx.fillText(' ' + s.unit, textX + valW3, valBY - Math.round(unitFsz * 0.06));
+        }
+
+        // Etiqueta
+        ctx.font = `${lblFsz}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.textBaseline = 'top';
+        ctx.fillText(s.label, textX, valBY + Math.round(valFsz * 0.12));
+
+        // Separador
+        if (i < statsItems.length - 1) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(P * 0.6, midY + statH * (i + 1));
+          ctx.lineTo(statsColW - P * 0.6, midY + statH * (i + 1));
+          ctx.stroke();
+        }
+      });
+    }
+
+    // Divisor vertical stats | mapa
+    ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(statsColW, midY, 1, midH);
+
+    // ── STATS GRANDES (fila inferior) ──────────────────────────────
+    ctx.fillStyle = '#0b0c14'; ctx.fillRect(0, bstatY, W, bstatH);
+    ctx.fillStyle = LIME + '33'; ctx.fillRect(0, bstatY, W, 1);
+
+    const bstats = [
+      r.distance_km ? { v: r.distance_km + '', u: 'km', l: 'DISTANCIA'        } : null,
+      elevVal       ? { v: elevVal + '',        u: 'm',  l: 'DESNIVEL POSITIVO' } : null,
+    ].filter(Boolean);
+
+    if (bstats.length) {
+      const cols  = Math.min(bstats.length, 2);
       const cellW = W / cols;
-      const cellH = (statsH * 0.9) / rows;
       const vSz   = Math.round(W * 0.118);
       const uSz   = Math.round(W * 0.045);
       const lSz   = Math.round(W * 0.024);
+      const cy    = bstatY + bstatH * 0.44;
 
-      stats.forEach((s, i) => {
-        const col = i % cols, row = Math.floor(i / cols);
-        const cx  = cellW * col + cellW / 2;
-        const cy  = nextY + cellH * row + cellH / 2;
-
-        // Número enorme
-        ctx.font = `800 ${vSz}px ${font}`; ctx.fillStyle = '#ffffff';
+      bstats.forEach((s, i) => {
+        const cx = cellW * i + cellW / 2;
+        ctx.font = `800 ${vSz}px ${font}`; ctx.fillStyle = '#fff';
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-        const vW3 = ctx.measureText(s.v).width;
+        const vWx = ctx.measureText(s.v).width;
 
         if (s.u) {
-          // Número desplazado a la izquierda, unidad lime a la derecha
-          ctx.font = `800 ${vSz}px ${font}`; ctx.fillStyle = '#ffffff';
-          const uWtmp = ctx.measureText(s.u).width * (uSz / vSz);
-          const totalW = vW3 + uWtmp + Math.round(W * 0.012);
-          ctx.fillText(s.v, cx - totalW / 2 + vW3 / 2, cy);
+          const uWx = ctx.measureText(s.u).width * (uSz / vSz);
+          const totW = vWx + uWx + Math.round(W * 0.012);
+          ctx.fillText(s.v, cx - totW / 2 + vWx / 2, cy);
           ctx.font = `700 ${uSz}px ${font}`; ctx.fillStyle = LIME;
-          ctx.textBaseline = 'alphabetic';
-          ctx.fillText(s.u, cx + totalW / 2 - uWtmp / 2, cy - Math.round(vSz * 0.1));
+          ctx.fillText(s.u, cx + totW / 2 - uWx / 2, cy - Math.round(vSz * 0.1));
         } else {
           ctx.fillText(s.v, cx, cy);
         }
 
-        // Etiqueta
         ctx.font = `${lSz}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.28)';
         ctx.textBaseline = 'top'; ctx.textAlign = 'center';
         ctx.fillText(s.l, cx, cy + Math.round(vSz * 0.1));
 
-        // Separadores
-        if (cols === 2 && col === 0) {
+        if (cols === 2 && i === 0) {
           ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(cellW, nextY + cellH * row + cellH * 0.1);
-          ctx.lineTo(cellW, nextY + cellH * row + cellH * 0.9);
+          ctx.moveTo(cellW, bstatY + bstatH * 0.1);
+          ctx.lineTo(cellW, bstatY + bstatH * 0.9);
           ctx.stroke();
         }
-        if (rows === 2 && row === 0 && col === 0) {
-          ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(W*0.04, nextY + cellH); ctx.lineTo(W*0.96, nextY + cellH); ctx.stroke();
-        }
       });
+
+      // Mini perfil de elevación (bajo el valor de desnivel)
+      if (elevs?.length > 1 && bstats.length === 2) {
+        const profX  = W / 2 + Math.round(W * 0.04);
+        const profW  = W / 2 - Math.round(W * 0.10);
+        const profBY = bstatY + bstatH - Math.round(bstatH * 0.08);
+        const profH2 = Math.round(bstatH * 0.30);
+        const minE2  = Math.min(...elevs), maxE2 = Math.max(...elevs), range2 = (maxE2 - minE2) || 1;
+        const n2     = elevs.length;
+        const gr2    = ctx.createLinearGradient(0, profBY - profH2, 0, profBY);
+        gr2.addColorStop(0, LIME + '88'); gr2.addColorStop(1, LIME + '11');
+        ctx.fillStyle = gr2;
+        ctx.beginPath();
+        ctx.moveTo(profX, profBY);
+        elevs.forEach((e, i) => {
+          const x = profX + (i / (n2 - 1)) * profW;
+          const y = profBY - ((e - minE2) / range2) * profH2;
+          i === 0 ? ctx.lineTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.lineTo(profX + profW, profBY);
+        ctx.closePath(); ctx.fill();
+      }
     }
 
-    // Footer
-    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    ctx.font = `${Math.round(W * 0.02)}px ${font}`; ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillText('velomind.app', W / 2, H - Math.round(W * 0.018));
+    // ── FOOTER ─────────────────────────────────────────────────────
+    const footFsz = Math.round(W * 0.022);
+    ctx.font = `${footFsz}px ${font}`; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(255,255,255,0.40)'; ctx.textAlign = 'left';
+    ctx.fillText('🚴 VeloMind · Rate with passion', P, footY + footH / 2);
+    ctx.fillStyle = LIME + 'aa'; ctx.textAlign = 'right';
+    ctx.fillText('#VelomindRoad', W - P, footY + footH / 2);
+
     ctx.fillStyle = LIME; ctx.fillRect(0, H - 3, W, 3);
 
     // ── Compartir ─────────────────────────────────────────────────
