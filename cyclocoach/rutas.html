@@ -2703,7 +2703,7 @@ async function shareCard(id) {
   try {
       // Forzar centrado del mapa en la ruta antes de tomar la captura
       openRouteOnMap(id);
-      await new Promise(res => setTimeout(res, 600)); // Esperar a que carguen los "tiles" del mapa
+      await new Promise(res => setTimeout(res, 1500)); // Esperar a que carguen los tiles y elevaciones
 
     const LIME = '#D6FF00';
     const BG   = '#08080e';
@@ -2761,24 +2761,36 @@ async function shareCard(id) {
       if (hadRoute) routeLayer.addTo(map);
       visibleMarkers.forEach(m => map.addLayer(m));
 
-      // Dibujar mapa capturado centrado en 1080x1080
-      const scaleMap = Math.max(W / mapCvs.width, H / mapCvs.height);
-      const drawW = mapCvs.width * scaleMap;
-      const drawH = mapCvs.height * scaleMap;
-      const drawX = (W - drawW) / 2;
-      const drawY = (H - drawH) / 2;
-      if (mapCvs.width > 0) ctx.drawImage(mapCvs, drawX, drawY, drawW, drawH);
+      // Escala basada en el contenedor real del mapa (siempre correcta)
+      const mapEl = map.getContainer();
+      const mW = mapEl.offsetWidth  || 800;
+      const mH = mapEl.offsetHeight || 600;
+      const projScale = Math.max(W / mW, H / mH);
+      const projOffX  = (W - mW * projScale) / 2;
+      const projOffY  = (H - mH * projScale) / 2;
 
-      // Oscurecer ligeramente para que destaque el neón y las letras
+      // Dibujar mapa capturado — verificar CORS antes de tocar el canvas principal
+      if (mapCvs.width > 0) {
+        const scaleMap = Math.max(W / mapCvs.width, H / mapCvs.height);
+        const drawW = mapCvs.width  * scaleMap;
+        const drawH = mapCvs.height * scaleMap;
+        const drawX = (W - drawW) / 2;
+        const drawY = (H - drawH) / 2;
+        let mapOk = false;
+        try { mapCvs.toDataURL(); mapOk = true; } catch (_) { /* tiles bloqueados por CORS — solo fondo + track vectorial */ }
+        if (mapOk) ctx.drawImage(mapCvs, drawX, drawY, drawW, drawH);
+      }
+
+      // Oscurecer siempre para que destaque el neón y las letras
       ctx.fillStyle = 'rgba(8, 8, 14, 0.65)';
       ctx.fillRect(0, 0, W, H);
 
-      // Proyección PERFECTA al mapa real (Usa la lente de Leaflet)
+      // Proyección lat/lon → canvas usando las dimensiones reales del mapa
       const toP = ([lon, lat]) => {
         const p = map.latLngToContainerPoint([lat, lon]);
         return {
-          x: drawX + p.x * scaleMap,
-          y: drawY + p.y * scaleMap
+          x: projOffX + p.x * projScale,
+          y: projOffY + p.y * projScale
         };
       }
 
@@ -2940,7 +2952,7 @@ async function shareCard(id) {
       await navigator.share({
         files: [file],
         title: r.name,
-        text: `${r.name}${r.distance_km ? ' · ' + r.distance_km + ' km' : ''}${elevVal ? ' · ' + elevVal + ' m D+' : ''} — VeloMind`,
+        text: `${r.name} — VeloMind`,
       });
     } else {
       const url = URL.createObjectURL(blob);
