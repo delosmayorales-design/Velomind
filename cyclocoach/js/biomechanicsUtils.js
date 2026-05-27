@@ -271,7 +271,11 @@ const BiomechanicsUtils = (() => {
   }
 
   // ══════════════════════════════════════════════════════════
-  // 9. GENERADOR DE RECOMENDACIONES HOLÍSTICO
+  // 9. VEREDICTO FINAL HOLÍSTICO
+  //    Devuelve: { verdict, summary, adjustments[] }
+  //    Cada ajuste: { priority, icon, action, reason }
+  //    En lugar de ángulo por ángulo → diagnóstico único
+  //    como lo haría un bike fitter profesional.
   // ══════════════════════════════════════════════════════════
   const DISC_LABELS = {
     carretera: 'carretera',
@@ -281,7 +285,7 @@ const BiomechanicsUtils = (() => {
   };
 
   function getRecommendations(evaluatedAngles, mode, discipline = 'carretera') {
-    if (!evaluatedAngles) return [];
+    if (!evaluatedAngles) return { verdict: 'optimal', summary: '', adjustments: [] };
 
     const disc      = discipline || 'carretera';
     const discLabel = DISC_LABELS[disc] || disc;
@@ -291,153 +295,210 @@ const BiomechanicsUtils = (() => {
     const low  = a => a && a.status !== 'ok' && a.delta < 0;
     const bad  = a => a && a.status !== 'ok';
 
-    const explained = new Set();
-    const recs = [];
+    const explained   = new Set();
+    const adjustments = [];
 
     // ── PATRONES COMBINADOS (causa raíz única) ─────────────
 
-    // P1 · KOPS negativo — sillín demasiado retrasado
+    // P1 · KOPS negativo — sillín retrasado
     if (high(hip_angle) && high(elbow_angle)) {
       explained.add('hip_angle'); explained.add('elbow_angle');
-      recs.push({
-        angle: 'Sillín (posición)',
-        text: `Cadera abierta + codos bloqueados → sillín demasiado retrasado (KOPS negativo). ` +
-              `Adelanta el sillín 5–10 mm. Cerrará la cadera y dejará que los codos se flexionen solos sin tocar el alcance.`,
+      adjustments.push({
+        priority: 1, icon: '↔️',
+        action: 'Adelanta el sillín 5–10 mm',
+        reason: disc === 'mtb'
+          ? 'Cadera abierta + codos bloqueados → sillín retrasado (KOPS negativo). Al mover el sillín, ambos ángulos se corrigen a la vez sin tocar el alcance.'
+          : 'La cadera está abierta y los codos se bloquean para alcanzar el manillar — señal clásica de KOPS negativo. Un solo movimiento resuelve los dos síntomas.',
       });
     }
 
-    // P2 · Sillín demasiado adelantado
+    // P2 · Sillín adelantado
     if (low(hip_angle) && low(elbow_angle)) {
       explained.add('hip_angle'); explained.add('elbow_angle');
-      recs.push({
-        angle: 'Sillín (posición)',
-        text: disc === 'triatlon'
-          ? `Cadera muy cerrada + codos encogidos → sillín adelantado o nariz alta. Retrasa 5–10 mm e inclina la nariz.`
-          : `Cadera cerrada + codos encogidos → sillín demasiado adelantado (KOPS positivo). Retrásalo 5–10 mm.`,
+      adjustments.push({
+        priority: 1, icon: '↔️',
+        action: disc === 'triatlon'
+          ? 'Retrasa el sillín 5–10 mm e inclina la nariz hacia abajo'
+          : 'Retrasa el sillín 5–10 mm',
+        reason: 'Cadera muy cerrada + codos encogidos → sillín adelantado (KOPS positivo). Retrasar el sillín abrirá la cadera y dará espacio a los brazos.',
       });
     }
 
-    // P3 · Sillín claramente alto
+    // P3 · Sillín alto
     if (high(knee_extension) && high(ankle_angle)) {
       explained.add('knee_extension'); explained.add('ankle_angle');
-      recs.push({
-        angle: 'Sillín (altura)',
-        text: `Rodilla sobreextendida + pedaleo de punta → sillín demasiado alto. ` +
-              `Bájalo 5–8 mm. Resuelve ambos síntomas a la vez.` +
-              (disc === 'mtb' ? ' Además perderás control en bajadas.' : ''),
+      adjustments.push({
+        priority: 1, icon: '⬇️',
+        action: 'Baja el sillín 5–8 mm',
+        reason: disc === 'mtb'
+          ? 'Rodilla sobreextendida + pedaleo de punta → sillín demasiado alto. También comprometes el control en bajadas técnicas.'
+          : 'Rodilla sobreextendida + pedaleo de punta → sillín demasiado alto. Bajarlo resuelve los dos síntomas a la vez.',
       });
     }
 
-    // P4 · Sillín claramente bajo
+    // P4 · Sillín bajo
     if (low(knee_extension) && low(ankle_angle)) {
       explained.add('knee_extension'); explained.add('ankle_angle');
-      recs.push({
-        angle: 'Sillín (altura)',
-        text: `Rodilla muy flexionada + talón caído → sillín demasiado bajo. Súbelo 5–8 mm. Riesgo de síndrome patelofemoral.`,
+      adjustments.push({
+        priority: 1, icon: '⬆️',
+        action: 'Sube el sillín 5–8 mm',
+        reason: 'Rodilla muy flexionada + talón caído → sillín demasiado bajo. Riesgo de síndrome patelofemoral si no se corrige.',
       });
     }
 
-    // P5 · Codos bloqueados aislado (alcance largo)
-    if (!explained.has('elbow_angle') && high(elbow_angle) && !high(hip_angle)) {
+    // P5 · Codos bloqueados aislados (alcance largo)
+    if (!explained.has('elbow_angle') && high(elbow_angle)) {
       explained.add('elbow_angle');
-      recs.push({
-        angle: 'Codo',
-        text: disc === 'mtb'
-          ? `Codos bloqueados → peligroso en MTB. Acorta la potencia 1 talla o usa manillar con más rise. Ángulo de codo ~150° siempre.`
-          : `Codos bloqueados → alcance excesivo. Acorta la potencia (−10 mm) o adelanta ligeramente el sillín. No subas el manillar: abriría más la cadera.`,
+      adjustments.push({
+        priority: 2, icon: '📏',
+        action: disc === 'mtb'
+          ? 'Acorta la potencia 1 talla o monta manillar con más rise'
+          : 'Acorta la potencia 10 mm (o monta la potencia con ángulo positivo)',
+        reason: disc === 'mtb'
+          ? 'Codos bloqueados en MTB → peligroso en bajadas y terreno técnico. El ángulo de codo debe rondar siempre los 150°.'
+          : 'Los codos están bloqueados porque el alcance es excesivo. Evita subir el manillar como solución: abriría más la cadera.',
       });
     }
 
     // P6 · Cadera abierta aislada (alcance corto)
-    if (!explained.has('hip_angle') && high(hip_angle) && !high(elbow_angle)) {
+    if (!explained.has('hip_angle') && high(hip_angle)) {
       explained.add('hip_angle');
-      recs.push({
-        angle: 'Cadera',
-        text: mode === 'aero'
-          ? `Cadera demasiado abierta para aero. Baja el manillar o alarga la potencia.`
+      adjustments.push({
+        priority: 2, icon: '📏',
+        action: mode === 'aero'
+          ? 'Baja el manillar o alarga la potencia 10 mm'
           : disc === 'mtb'
-          ? `Cadera abierta para XC. Potencia +10 mm o manillar con menos rise.`
-          : `Alcance insuficiente → cadera abierta. Potencia +10 mm o cuadro una talla mayor.`,
+            ? 'Alarga la potencia 10 mm o usa manillar con menos rise'
+            : 'Alarga la potencia 10 mm',
+        reason: mode === 'aero'
+          ? 'La cadera está demasiado abierta para una posición aerodinámica — el alcance es corto.'
+          : 'La cadera está abierta porque el alcance es insuficiente. Alargar la potencia mejora el ángulo sin tocar la altura del sillín.',
       });
     }
 
     // P7 · Cadera cerrada aislada
     if (!explained.has('hip_angle') && low(hip_angle)) {
       explained.add('hip_angle');
-      recs.push({
-        angle: 'Cadera',
-        text: disc === 'triatlon'
-          ? `Cadera muy cerrada → impingement y compresión del psoas. Inclina la nariz del sillín o retrocede los aero bars.`
-          : `Cadera demasiado cerrada. Sube el manillar (espaciadores) o acorta la potencia.`,
+      adjustments.push({
+        priority: 2, icon: '📏',
+        action: disc === 'triatlon'
+          ? 'Inclina la nariz del sillín o retrocede los aero bars'
+          : 'Sube el manillar (añade 1 espaciador) o acorta la potencia 10 mm',
+        reason: disc === 'triatlon'
+          ? 'Cadera muy cerrada → impingement de cadera y compresión del psoas en posición TT.'
+          : 'La cadera está demasiado cerrada. Subir el manillar reduce el alcance efectivo y libera ligeramente la cadera.',
       });
     }
 
     // ── ÁNGULOS RESIDUALES ─────────────────────────────────
 
     if (!explained.has('knee_extension') && bad(knee_extension)) {
-      recs.push({ angle: 'Rodilla', text: knee_extension.delta < 0
-        ? `Rodilla muy flexionada en PMI. Sube el sillín 2–5 mm. Riesgo de síndrome patelofemoral anterior.`
-        : disc === 'mtb'
-          ? `Sobreextensión de rodilla. Baja el sillín 3–5 mm. Compromete también el control en bajadas.`
-          : `Sobreextensión de rodilla. Baja el sillín 2–4 mm. Previene balanceo pélvico y tendinitis aquílea.`,
+      adjustments.push({
+        priority: 2,
+        icon: knee_extension.delta < 0 ? '⬆️' : '⬇️',
+        action: knee_extension.delta < 0
+          ? 'Sube el sillín 2–5 mm'
+          : disc === 'mtb' ? 'Baja el sillín 3–5 mm' : 'Baja el sillín 2–4 mm',
+        reason: knee_extension.delta < 0
+          ? 'Rodilla muy flexionada en el punto muerto inferior → riesgo de síndrome patelofemoral anterior.'
+          : disc === 'mtb'
+            ? 'Sobreextensión de rodilla — también compromete el control en bajadas.'
+            : 'Sobreextensión de rodilla → favorece el balanceo pélvico y la tendinitis aquílea.',
       });
     }
 
     if (!explained.has('ankle_angle') && bad(ankle_angle)) {
-      recs.push({ angle: 'Tobillo', text: ankle_angle.delta > 0
-        ? `Pedaleo de "punta" (talón alto). Revisa las calas: si están muy atrás, adelántalas 2–3 mm. Si no mejora, baja el sillín.`
-        : disc === 'triatlon'
-          ? `Talón muy caído en TT. Calas muy adelantadas lo agravan. Revísalas.`
-          : `Talón muy caído → pérdida de potencia. Adelanta las calas o sube el sillín 2–3 mm.`,
+      adjustments.push({
+        priority: 3, icon: '👟',
+        action: ankle_angle.delta > 0
+          ? 'Adelanta las calas 2–3 mm'
+          : 'Revisa la posición de las calas (posiblemente demasiado adelantadas)',
+        reason: ankle_angle.delta > 0
+          ? 'Pedaleas de punta (tobillo muy alto) → posible tendinitis aquílea. Si tras ajustar las calas persiste, baja el sillín.'
+          : disc === 'triatlon'
+            ? 'Talón muy caído en TT — las calas demasiado adelantadas pueden agravarlo.'
+            : 'Talón muy caído → pérdida de potencia de transmisión. Revisa también la altura del sillín.',
       });
     }
 
     if (!explained.has('elbow_angle') && bad(elbow_angle) && low(elbow_angle)) {
-      recs.push({ angle: 'Codo', text: `Codos excesivamente flexionados → postura encogida. Alarga la potencia (+10 mm) o retrasa el sillín.` });
-    }
-
-    if (bad(trunk_angle)) {
-      recs.push({ angle: 'Tronco', text: trunk_angle.delta > 0
-        ? mode === 'aero'
-          ? `Tronco muy vertical para aero (${discLabel}). Reduce espaciadores o usa potencia de ángulo negativo.`
-          : disc === 'mtb'
-            ? `Tronco muy erguido para XC. Potencia más larga o manillar con menos rise.`
-            : `Tronco más vertical de lo ideal. Comprueba primero el KOPS antes de tocar el manillar.`
-        : disc === 'mtb'
-          ? `Tronco muy horizontal para MTB → pierdes visión y control. Sube el manillar o usa risers más altos.`
-          : disc === 'triatlon'
-            ? `Tronco muy horizontal para TT. Verifica que sea sostenible >30 min. Riesgo de cervicalgias.`
-            : `Tronco muy horizontal → sobrecarga lumbar y cervical. Sube el manillar.`,
+      adjustments.push({
+        priority: 3, icon: '📏',
+        action: 'Alarga la potencia 10 mm o retrasa el sillín',
+        reason: 'Codos excesivamente flexionados → postura encogida que limita la respiración y la eficiencia.',
       });
     }
 
-    // ── HOMBRO ────────────────────────────────────────────
-    if (shoulder_angle && bad(shoulder_angle)) {
-      if (shoulder_angle.delta > 0) {
-        // Ángulo muy abierto = brazo "detrás" del tronco o hombros elevados
-        recs.push({
-          angle: 'Hombro',
-          text: disc === 'mtb'
-            ? `Hombros muy elevados/tensos. Baja el manillar ligeramente o relaja el agarre del manillar. Codos deben absolver impactos, no hombros.`
-            : `Hombros elevados o brazo demasiado vertical respecto al tronco. ` +
-              `Verifica que el manillar no esté demasiado alto. Relaja los trapecios al pedalear.`,
-        });
-      } else {
-        // Ángulo muy cerrado = hombros hundidos, cifosis o alcance excesivo
-        recs.push({
-          angle: 'Hombro',
-          text: disc === 'triatlon'
-            ? `Hombros muy cerrados/hundidos en TT. Asegúrate de que los aero pads soporten el peso del tronco correctamente.`
-            : `Hombros hundidos hacia adelante (cifosis activa). Riesgo de compresión cervical y entumecimiento de manos. ` +
-              `Acorta la potencia o sube el manillar para reducir el alcance.`,
-        });
-      }
+    if (bad(trunk_angle)) {
+      adjustments.push({
+        priority: trunk_angle.status === 'bad' ? 2 : 3,
+        icon: '🎯',
+        action: trunk_angle.delta > 0
+          ? mode === 'aero'
+            ? 'Reduce 1–2 espaciadores o monta potencia de ángulo negativo'
+            : disc === 'mtb'
+              ? 'Alarga la potencia o usa manillar con menos rise'
+              : 'Comprueba primero el KOPS — si está bien, baja el manillar 1 espaciador'
+          : disc === 'mtb'
+            ? 'Sube el manillar o monta risers más altos'
+            : disc === 'triatlon'
+              ? 'Sube ligeramente los aero pads y confirma sostenibilidad >30 min'
+              : 'Sube el manillar (añade 1 espaciador)',
+        reason: trunk_angle.delta > 0
+          ? mode === 'aero'
+            ? `Tronco demasiado vertical para aero (${discLabel}). Perdes potencia aerodinámica.`
+            : disc === 'mtb'
+              ? 'Tronco muy erguido para XC → menos eficiencia y control.'
+              : 'Tronco más vertical de lo óptimo. Asegúrate de que el KOPS sea correcto antes de bajar el manillar.'
+          : disc === 'mtb'
+            ? 'Tronco muy horizontal para MTB → pierdes visibilidad y control en bajadas técnicas.'
+            : disc === 'triatlon'
+              ? 'Tronco muy horizontal. Confirma que sea sostenible más de 30 min — riesgo de cervicalgias.'
+              : 'Tronco muy horizontal → sobrecarga lumbar y cervical.',
+      });
     }
 
-    if (recs.length === 0) {
-      recs.push({ angle: 'General', text: `✅ ¡Posición óptima para ${discLabel} en modo ${mode}! Todos los ángulos articulares están dentro de los márgenes de un bike fitting profesional.` });
+    if (shoulder_angle && bad(shoulder_angle)) {
+      adjustments.push({
+        priority: 3, icon: '🙆',
+        action: shoulder_angle.delta > 0
+          ? disc === 'mtb'
+            ? 'Relaja el agarre — deja que los codos absorban los impactos'
+            : 'Relaja los trapecios y comprueba que el manillar no esté demasiado alto'
+          : disc === 'triatlon'
+            ? 'Ajusta los aero pads para que soporten el peso del tronco correctamente'
+            : 'Acorta la potencia o sube el manillar para reducir el alcance',
+        reason: shoulder_angle.delta > 0
+          ? disc === 'mtb'
+            ? 'Hombros elevados y tensos — los codos deben ser el punto de amortiguación en MTB, no los hombros.'
+            : 'Hombros elevados o brazo demasiado vertical respecto al tronco. Relaja los trapecios al pedalear.'
+          : disc === 'triatlon'
+            ? 'Hombros muy cerrados/hundidos en TT — los aero pads deben soportar correctamente el peso del tronco.'
+            : 'Hombros hundidos hacia adelante (cifosis activa) → riesgo de compresión cervical y entumecimiento de manos.',
+      });
     }
-    return recs;
+
+    // ── CONSTRUIR VEREDICTO ────────────────────────────────
+    adjustments.sort((a, b) => a.priority - b.priority);
+
+    const n = adjustments.length;
+    let verdict, summary;
+
+    if (n === 0) {
+      verdict = 'optimal';
+      summary = `Posición perfecta para ${discLabel} en modo ${mode}. Todos los ángulos articulares están dentro de los márgenes de un bike fitting profesional.`;
+    } else if (n === 1) {
+      verdict = 'good';
+      summary = `Tu posición en ${discLabel} (${mode}) es buena — solo hay 1 ajuste a realizar:`;
+    } else if (n <= 3) {
+      verdict = 'needs_work';
+      summary = `Tu posición en ${discLabel} (${mode}) tiene ${n} ajustes a realizar. Por orden de importancia:`;
+    } else {
+      verdict = 'critical';
+      summary = `Tu posición en ${discLabel} (${mode}) necesita varios ajustes. Por orden de prioridad:`;
+    }
+
+    return { verdict, summary, adjustments };
   }
 
   // ══════════════════════════════════════════════════════════

@@ -280,21 +280,60 @@
     }
 
     /* ── Diagnosis box ───────────────────────────── */
-    .adj-item {
+    /* ── Veredicto final (bike fitter) ── */
+    .verdict-summary {
+      font-size: 13px; color: var(--text-muted); margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .verdict-optimal {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px;
+      background: rgba(34,197,94,.08);
+      border: 1px solid rgba(34,197,94,.25);
+      border-radius: var(--radius-md);
+      font-size: 14px; font-weight: 600; color: #22c55e;
+    }
+    .verdict-list {
+      list-style: none; margin: 0; padding: 0;
+      counter-reset: verdict-counter;
+    }
+    .verdict-item {
+      counter-increment: verdict-counter;
       display: flex; gap: 12px; align-items: flex-start;
-      padding: 12px;
+      padding: 12px 14px;
       background: var(--bg-input);
       border-radius: var(--radius-md);
       border-left: 3px solid var(--primary);
       margin-bottom: 8px;
+      position: relative;
     }
-    .adj-icon {
-      width: 34px; height: 34px; flex-shrink: 0;
-      background: var(--primary-glow);
+    .verdict-item::before {
+      content: counter(verdict-counter);
+      flex-shrink: 0;
+      width: 22px; height: 22px;
+      background: var(--primary);
+      color: #fff;
       border-radius: 50%;
+      font-size: 11px; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
+      margin-top: 1px;
     }
+    .verdict-body { flex: 1; min-width: 0; }
+    .verdict-action {
+      font-size: 13px; font-weight: 700; color: var(--text-primary);
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .verdict-action .v-icon { font-size: 15px; }
+    .verdict-reason {
+      font-size: 12px; color: var(--text-muted);
+      margin-top: 4px; line-height: 1.45;
+    }
+    /* prioridad alta → borde rojo; media → naranja */
+    .verdict-item[data-prio="1"] { border-left-color: #ef4444; }
+    .verdict-item[data-prio="2"] { border-left-color: #facc15; }
+    .verdict-item[data-prio="3"] { border-left-color: var(--primary); }
+
+    /* compat — mantener clase por si algo externo la usa */
     .adj-comp { font-size: 13px; font-weight: 700; color: var(--text-primary); }
     .adj-delta { font-size: 12px; font-weight: 600; color: var(--accent); }
     .adj-reason { font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
@@ -776,7 +815,7 @@
         <div class="card">
           <div class="card-header">
             <div class="card-title">
-               Ajustes Recomendados
+              🎯 Veredicto del Bike Fitter
               <span id="diagBadge" style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:8px"></span>
             </div>
           </div>
@@ -1548,23 +1587,30 @@ function updateAnglesGrid() {
     scoreBadge.innerHTML = `<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:${scoreColor}22;border:1px solid ${scoreColor};color:${scoreColor}">${fitScore}% ${scoreLabel}</span>`;
   }
 
-  // 3. Mostrar recomendaciones dinámicas siempre que haya puntos válidos
-  const recs = BiomechanicsUtils.getRecommendations(result.angles, obj, disc);
+  // 3. Veredicto final tipo bike fitter
+  const verdict = BiomechanicsUtils.getRecommendations(result.angles, obj, disc);
   document.getElementById('diagSection').style.display = '';
   document.getElementById('diagBadge').textContent = editMode ? '(Calculando en Tiempo Real)' : '(Análisis Geométrico)';
-  
-  document.getElementById('diagFlags').innerHTML = result.warnings.map(w => 
+
+  document.getElementById('diagFlags').innerHTML = result.warnings.map(w =>
     `<div class="flag-item"><i class="fas fa-exclamation-triangle" style="color:var(--warning)"></i> ${w}</div>`
   ).join('');
 
-  document.getElementById('diagAdj').innerHTML = recs.map(r => `
-    <div class="adj-item">
-      <div class="adj-icon">💡</div>
-      <div>
-        <div class="adj-comp">${r.angle}</div>
-        <div class="adj-reason" style="color:var(--text-primary)">${r.text}</div>
-      </div>
-    </div>`).join('');
+  const diagAdj = document.getElementById('diagAdj');
+  if (verdict.verdict === 'optimal') {
+    diagAdj.innerHTML = `<div class="verdict-optimal"><span style="font-size:22px">✅</span> Posición perfecta — ningún ajuste necesario para ${disc === 'carretera' ? 'carretera' : disc === 'gravel' ? 'gravel' : disc === 'mtb' ? 'MTB' : 'triatlón/TT'} en modo ${obj}.</div>`;
+  } else {
+    const items = verdict.adjustments.map(a => `
+      <li class="verdict-item" data-prio="${a.priority}">
+        <div class="verdict-body">
+          <div class="verdict-action"><span class="v-icon">${a.icon}</span> ${a.action}</div>
+          <div class="verdict-reason">${a.reason}</div>
+        </div>
+      </li>`).join('');
+    diagAdj.innerHTML = `
+      <div class="verdict-summary">${verdict.summary}</div>
+      <ol class="verdict-list">${items}</ol>`;
+  }
 }
 
 // ─── Edit mode & dragging ───────────────────────────────────
