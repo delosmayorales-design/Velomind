@@ -611,7 +611,7 @@
         <div class="bio-topbar-sep"></div>
 
         <!-- Campos -->
-        <select id="discipline" class="field-select" style="width:auto;min-width:130px" onchange="draw(); updateAIDisciplineWarning();">
+        <select id="discipline" class="field-select" style="width:auto;min-width:130px" onchange="_syncDisciplineFrom('ai'); draw(); updateAIDisciplineWarning();">
           <option value="carretera">Carretera</option>
           <option value="gravel">Gravel</option>
           <option value="mtb">MTB</option>
@@ -758,7 +758,11 @@
 
       <!-- Ángulos articulares -->
       <div class="angles-section" id="anglesSection" style="display:none">
-        <h3>📐 Ángulos Articulares (se actualizan al mover los puntos)</h3>
+        <h3 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          📐 Ángulos Articulares
+          <span id="fitScoreBadge"></span>
+          <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(se actualizan al mover los puntos)</span>
+        </h3>
         <div class="angles-grid" id="anglesGrid"></div>
         <div style="margin-top:14px;display:flex;justify-content:flex-end">
           <button onclick="openSaveSnapshotModal()" style="display:flex;align-items:center;gap:7px;padding:9px 18px;background:var(--primary);color:#111;border:none;border-radius:var(--radius-md);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
@@ -963,11 +967,21 @@
               <div class="field-group"><div class="field-label">Ángulo potencia (°)</div><input type="number" id="m-stem-angle" class="field-input" placeholder="6"></div>
               <div class="field-group">
                 <div class="field-label">Disciplina</div>
-                <select id="m-discipline" class="field-select" onchange="if(document.getElementById('manual-results').style.display !== 'none') calcManual()">
+                <select id="m-discipline" class="field-select" onchange="_syncDisciplineFrom('manual');if(document.getElementById('manual-results').style.display !== 'none') calcManual()">
                   <option value="carretera">Carretera</option>
                   <option value="gravel">Gravel</option>
                   <option value="mtb">MTB</option>
-                  <option value="aero">Aero / TT</option>
+                  <option value="triatlon">Triatlón / TT</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field-group">
+                <div class="field-label">Objetivo</div>
+                <select id="m-objective" class="field-select" onchange="if(document.getElementById('manual-results').style.display !== 'none') calcManual()">
+                  <option value="rendimiento">Rendimiento</option>
+                  <option value="confort">Confort</option>
+                  <option value="aero">Aerodinámica</option>
                 </select>
               </div>
             </div>
@@ -1062,6 +1076,7 @@ let imgR      = null;       // { dx, dy, dw, dh } draw region in canvas px
 let editMode  = false;
 let dragging  = null;       // key name being dragged
 let placingIdx = -1;        // index into POINT_ORDER for sequential placement
+let _lastBioResult = null;  // último resultado de processBiomechanics (se comparte entre draw y grid)
 
 // ─── Zoom / Pan state ───────────────────────────────────────
 let viewZoom = 1.0, viewPanX = 0, viewPanY = 0;
@@ -1207,12 +1222,27 @@ function draw() {
     ctx.globalAlpha = 1;
   });
 
+  // Pre-computar resultado biomecánico para colorear arcos por estado
+  {
+    const _isManual = document.getElementById('tab-manual-content')?.style.display !== 'none';
+    const _obj  = _isManual ? 'rendimiento' : (document.getElementById('objective')?.value  || 'rendimiento');
+    const _disc = _isManual ? 'carretera'   : (document.getElementById('discipline')?.value || 'carretera');
+    _lastBioResult = BiomechanicsUtils.processBiomechanics(pts, _obj, _disc);
+  }
+  // Color según estado: verde=ok · amarillo=warning · rojo=bad
+  const _arcColor = (key, fallback) => {
+    if (!_lastBioResult?.isValid) return fallback;
+    const s = _lastBioResult.angles[key]?.status;
+    return s === 'ok' ? '#22c55e' : s === 'warning' ? '#facc15' : s === 'bad' ? '#ef4444' : fallback;
+  };
+
   // Angle arcs + labels
   const angles = computeAngles();
-  drawAngleArc(pts.hip,      pts.knee,     pts.ankle,    angles.knee,     '#22c55e');
-  drawAngleArc(pts.shoulder, pts.hip,      pts.knee,     angles.hip,      '#FF6B35');
-  drawAngleArc(pts.shoulder, pts.elbow,    pts.wrist,    angles.elbow,    '#38BDF8');
-  drawAngleArc(pts.knee,     pts.ankle,    pts.foot_tip, angles.ankle,    '#facc15');
+  drawAngleArc(pts.hip,      pts.knee,     pts.ankle,    angles.knee,  _arcColor('knee_extension', '#22c55e'));
+  drawAngleArc(pts.shoulder, pts.hip,      pts.knee,     angles.hip,   _arcColor('hip_angle',      '#FF6B35'));
+  drawAngleArc(pts.shoulder, pts.elbow,    pts.wrist,    angles.elbow, _arcColor('elbow_angle',    '#38BDF8'));
+  drawAngleArc(pts.knee,     pts.ankle,    pts.foot_tip, angles.ankle, _arcColor('ankle_angle',    '#facc15'));
+  drawAngleArc(pts.hip,      pts.shoulder, pts.elbow,    angles.shoulder, _arcColor('shoulder_angle','#a78bfa'));
 
   // Trunk angle line
   if (pts.shoulder && pts.hip) {
@@ -1293,6 +1323,8 @@ async function handleVideoFile(file) {
 
   const formData = new FormData();
   formData.append('video', file);
+  formData.append('discipline', document.getElementById('discipline')?.value || 'carretera');
+  formData.append('objective',  document.getElementById('objective')?.value  || 'rendimiento');
 
   // Avanzar pasos visualmente mientras espera el backend (~30-60 s)
   const t2 = setTimeout(() => setVideoStep(2), 4000);
@@ -1457,13 +1489,17 @@ function updateAnglesGrid() {
   const grid = document.getElementById('anglesGrid');
   if (!grid) return;
 
-  // Obtener disciplina y objetivo actual para ajustar rangos dinámicos
+  // Reutilizar resultado ya calculado en draw() o computar si se llama directamente
   const isManualTab = document.getElementById('tab-manual-content').style.display !== 'none';
   const obj  = isManualTab ? 'rendimiento' : document.getElementById('objective').value;
   const disc = isManualTab ? 'carretera'   : document.getElementById('discipline').value;
 
-  // 1. Usar el nuevo motor biomecánico para calcular y validar
-  const result = BiomechanicsUtils.processBiomechanics(pts, obj, disc);
+  if (!_lastBioResult ||
+      _lastBioResult.mode !== obj ||
+      _lastBioResult.discipline !== disc) {
+    _lastBioResult = BiomechanicsUtils.processBiomechanics(pts, obj, disc);
+  }
+  const result = _lastBioResult;
 
   if (!result.isValid) {
     grid.innerHTML = '<div style="grid-column: 1 / -1; padding: 20px; text-align: center; color: var(--text-muted);">Coloca todos los puntos en el visor para calcular los ángulos.</div>';
@@ -1472,11 +1508,12 @@ function updateAnglesGrid() {
   }
 
   const uiMap = [
-    { key: 'knee_extension', label: 'Extensión Rodilla', ref: result.angles.knee_extension },
-    { key: 'hip_angle',      label: 'Ángulo Cadera',     ref: result.angles.hip_angle },
-    { key: 'trunk_angle',    label: 'Ángulo Tronco',     ref: result.angles.trunk_angle },
-    { key: 'elbow_angle',    label: 'Ángulo Codo',       ref: result.angles.elbow_angle },
-    { key: 'ankle_angle',    label: 'Ángulo Tobillo',    ref: result.angles.ankle_angle }
+    { key: 'knee_extension',  label: 'Extensión Rodilla', ref: result.angles.knee_extension },
+    { key: 'hip_angle',       label: 'Ángulo Cadera',     ref: result.angles.hip_angle },
+    { key: 'trunk_angle',     label: 'Ángulo Tronco',     ref: result.angles.trunk_angle },
+    { key: 'elbow_angle',     label: 'Ángulo Codo',       ref: result.angles.elbow_angle },
+    { key: 'ankle_angle',     label: 'Ángulo Tobillo',    ref: result.angles.ankle_angle },
+    { key: 'shoulder_angle',  label: 'Ángulo Hombro',     ref: result.angles.shoulder_angle },
   ];
 
   grid.innerHTML = uiMap.map(item => {
@@ -1502,7 +1539,16 @@ function updateAnglesGrid() {
       </div>`;
   }).join('');
 
-  // 2. Mostrar recomendaciones dinámicas siempre que haya puntos válidos
+  // 2. Fit Score global
+  const fitScore = BiomechanicsUtils.getFitScore(result.angles);
+  const scoreBadge = document.getElementById('fitScoreBadge');
+  if (scoreBadge) {
+    const scoreColor = fitScore >= 85 ? '#22c55e' : fitScore >= 60 ? '#facc15' : '#ef4444';
+    const scoreLabel = fitScore >= 85 ? 'Óptimo' : fitScore >= 60 ? 'Mejorable' : 'Corregir';
+    scoreBadge.innerHTML = `<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:${scoreColor}22;border:1px solid ${scoreColor};color:${scoreColor}">${fitScore}% ${scoreLabel}</span>`;
+  }
+
+  // 3. Mostrar recomendaciones dinámicas siempre que haya puntos válidos
   const recs = BiomechanicsUtils.getRecommendations(result.angles, obj, disc);
   document.getElementById('diagSection').style.display = '';
   document.getElementById('diagBadge').textContent = editMode ? '(Calculando en Tiempo Real)' : '(Análisis Geométrico)';
@@ -1956,6 +2002,9 @@ function calcManual() {
   const drop     = +document.getElementById('m-drop').value;
   const stem     = +document.getElementById('m-stem').value;
   const disc     = document.getElementById('m-discipline').value;
+  const obj      = document.getElementById('m-objective')?.value || 'rendimiento';
+  // Rangos según disciplina × objetivo para comparaciones
+  const bioRanges = BiomechanicsUtils.resolveRanges(disc, obj);
 
   if (!inseam) { alert('Introduce la medida de entrepierna'); return; }
 
@@ -1978,11 +2027,12 @@ function calcManual() {
     const diff   = saddleH - sh_lemond;
     let kneeEst  = Math.round(147 + diff * 0.7);
     kneeEst      = Math.max(115, Math.min(175, kneeEst));
-    const kSt    = kneeEst >= 140 && kneeEst <= 155 ? 'good' : (kneeEst < 130 || kneeEst > 160 ? 'bad' : 'warn');
+    const kr     = bioRanges.knee_extension;
+    const kSt    = kneeEst >= kr.min && kneeEst <= kr.max ? 'good' : (Math.abs(kneeEst - kr.optimal) > 15 ? 'bad' : 'warn');
     rows.push({
       label: 'Ángulo rodilla estimado (PMI)',
       formula: 'Estimación geométrica',
-      rec: '140 – 155°',
+      rec: `${kr.min}–${kr.max}° (${disc} ${obj})`,
       val: kneeEst + '°',
       status: kSt,
       note: diff >= 0 ? `Sillín ${diff}mm por encima de LeMond` : `Sillín ${Math.abs(diff)}mm por debajo de LeMond`,
@@ -2030,15 +2080,14 @@ function calcManual() {
   // ── Ángulo tronco (desnivel + alcance) ─────────────────────
   if (reach && drop !== undefined && drop !== 0) {
     const trunkEst = Math.round(Math.atan2(Math.abs(drop), reach) * 180 / Math.PI);
-    const TRUNK_OPT = { carretera: [40,50], gravel: [45,55], mtb: [55,70], aero: [20,35] };
-    const opt = TRUNK_OPT[disc] || [40,50];
+    const tr = bioRanges.trunk_angle;
     rows.push({
       label: 'Ángulo tronco estimado',
       formula: 'arctan(desnivel / alcance)',
-      rec: `${opt[0]} – ${opt[1]}° (${disc})`,
+      rec: `${tr.min}–${tr.max}° (${disc} ${obj})`,
       val: trunkEst + '°',
-      status: trunkEst >= opt[0] && trunkEst <= opt[1] ? 'good' : 'warn',
-      note: '',
+      status: trunkEst >= tr.min && trunkEst <= tr.max ? 'good' : 'warn',
+      note: trunkEst < tr.min ? 'Tronco más horizontal de lo ideal. Sube el manillar.' : trunkEst > tr.max ? 'Tronco muy erguido para este objetivo. Baja el manillar.' : '',
     });
   }
 
@@ -2055,6 +2104,25 @@ function calcManual() {
       status: srSt,
       note: 'Menor = más agresivo · Mayor = más erguido',
     });
+  }
+
+  // ── Longitud de bielas recomendada (tibia) ────────────────
+  if (tibia) {
+    const crankRec = BiomechanicsUtils.recommendCrankLength(tibia);
+    if (crankRec) {
+      const crankDiff = crank - crankRec.recommended;
+      const crankSt = Math.abs(crankDiff) <= 2.5 ? 'good' : Math.abs(crankDiff) <= 5 ? 'warn' : 'bad';
+      rows.push({
+        label: 'Longitud de bielas recomendada',
+        formula: 'Tibia × 2.16 (BikeFit Institute)',
+        rec: `${crankRec.recommended} mm`,
+        val: crank ? crank + ' mm' : null,
+        status: crank ? crankSt : 'neutral',
+        note: crankDiff > 2.5 ? `Bielas actuales ${crankDiff > 0 ? '+' : ''}${crankDiff}mm respecto al ideal → posible sobreextensión de rodilla`
+            : crankDiff < -2.5 ? `Bielas actuales ${crankDiff}mm respecto al ideal → pueden limitar la potencia`
+            : 'Longitud de bielas correcta para tu anatomía',
+      });
+    }
   }
 
   // ── Fémur / entrepierna ────────────────────────────────────
@@ -2284,7 +2352,7 @@ async function loadMeasurements() {
 let _snapshots  = [];
 let _garageBikes = [];
 
-const SNAP_ANGLE_LABELS  = { knee_extension:'Extensión Rodilla', hip_angle:'Ángulo Cadera', trunk_angle:'Ángulo Tronco', elbow_angle:'Ángulo Codo', ankle_angle:'Ángulo Tobillo' };
+const SNAP_ANGLE_LABELS  = { knee_extension:'Extensión Rodilla', hip_angle:'Ángulo Cadera', trunk_angle:'Ángulo Tronco', elbow_angle:'Ángulo Codo', ankle_angle:'Ángulo Tobillo', shoulder_angle:'Ángulo Hombro' };
 const SNAP_STATUS_COLOR  = { ok:'#22c55e', warning:'#fbbf24', low:'#ef4444', high:'#ef4444', bad:'#ef4444' };
 const SNAP_STATUS_LABEL  = { ok:'Óptimo', warning:'Ajustar', low:'Bajo', high:'Alto', bad:'Corregir' };
 const SNAP_STATUS_CLASS  = { ok:'ok', warning:'warning', low:'bad', high:'bad', bad:'bad' };
@@ -2560,6 +2628,9 @@ function _renderDetailModal(snap) {
     ? `<div style="margin-top:16px;padding:10px 14px;background:var(--bg-input);border-radius:8px;font-size:12px;color:var(--text-secondary);line-height:1.5">${_esc(snap.notes)}</div>`
     : '';
 
+  // Gráfico sparkline de evolución de ángulos (últimos 8 snapshots)
+  const sparkHtml = _buildSparklineChart(_snapshots, snap.id);
+
   const box = document.getElementById('detailModalContent');
   box.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
@@ -2570,6 +2641,7 @@ function _renderDetailModal(snap) {
     ${metaLine ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">${metaLine}</div>` : ''}
     ${compLabel}
     <div>${angleRows}</div>
+    ${sparkHtml}
     ${notesHtml}
     ${hasKeypoints ? `<button onclick="loadSnapshotPoints()" style="margin-top:18px;width:100%;padding:11px;background:var(--primary);color:#111;border:none;border-radius:var(--radius-md);cursor:pointer;font-weight:700;font-size:13px;font-family:inherit"><i class="fas fa-redo"></i> Cargar puntos de este análisis</button>` : ''}
   `;
@@ -2602,6 +2674,110 @@ async function deleteSnapshot(id) {
 function _esc(str) {
   if (!str) return '';
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Sparkline de evolución de ángulos ──────────────────────
+function _buildSparklineChart(snapshots, currentId) {
+  // Tomamos los últimos 8 ordenados de más antiguo a más nuevo
+  const history = [...snapshots].reverse().slice(-8);
+  if (history.length < 2) return '';
+
+  const METRICS = [
+    { key: 'knee_extension', label: 'Rodilla', color: '#22c55e' },
+    { key: 'hip_angle',      label: 'Cadera',  color: '#FF6B35' },
+    { key: 'trunk_angle',    label: 'Tronco',  color: '#38BDF8' },
+    { key: 'elbow_angle',    label: 'Codo',    color: '#a78bfa' },
+    { key: 'ankle_angle',    label: 'Tobillo', color: '#facc15' },
+  ].filter(m => history.some(s => s.angles?.[m.key]?.value != null));
+
+  if (!METRICS.length) return '';
+
+  const W = 280, H = 90, PAD = 8, BOTTOM = 20;
+  const cols = history.length;
+  const colW = (W - PAD * 2) / (cols - 1);
+
+  // Calcular rango global para normalizar
+  let allVals = [];
+  METRICS.forEach(m => history.forEach(s => {
+    const v = s.angles?.[m.key]?.value;
+    if (v != null) allVals.push(v);
+  }));
+  const minV = Math.min(...allVals) - 5;
+  const maxV = Math.max(...allVals) + 5;
+  const range = maxV - minV || 1;
+
+  const toY = v => PAD + (H - PAD - BOTTOM) * (1 - (v - minV) / range);
+  const toX = i => PAD + i * colW;
+
+  let paths = '';
+  let dots  = '';
+  METRICS.forEach(m => {
+    const pts2 = history.map((s, i) => {
+      const v = s.angles?.[m.key]?.value;
+      return v != null ? { x: toX(i), y: toY(v), v, id: s.id, st: s.angles[m.key].status } : null;
+    }).filter(Boolean);
+
+    if (pts2.length < 2) return;
+
+    // Línea
+    const d = pts2.map((p, i) => (i === 0 ? `M` : `L`) + `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    paths += `<path d="${d}" fill="none" stroke="${m.color}" stroke-width="1.5" stroke-opacity="0.7" stroke-linejoin="round"/>`;
+
+    // Puntos — el actual destacado
+    pts2.forEach(p => {
+      const isCurrent = p.id === currentId;
+      const dotColor = p.st === 'ok' ? '#22c55e' : p.st === 'warning' ? '#facc15' : '#ef4444';
+      const r = isCurrent ? 4.5 : 3;
+      dots += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${dotColor}" stroke="${isCurrent ? '#fff' : 'transparent'}" stroke-width="1.5">
+        <title>${m.label}: ${Math.round(p.v)}°</title>
+      </circle>`;
+    });
+  });
+
+  // Etiquetas de fecha en eje X
+  const xLabels = history.map((s, i) => {
+    const d = new Date(s.created_at);
+    const label = `${d.getDate()}/${d.getMonth()+1}`;
+    const isCurrent = s.id === currentId;
+    return `<text x="${toX(i).toFixed(1)}" y="${H - 2}" font-size="8" text-anchor="middle" fill="${isCurrent ? '#C4EF44' : 'rgba(255,255,255,0.35)'}" font-weight="${isCurrent ? '700' : '400'}">${label}</text>`;
+  }).join('');
+
+  // Leyenda
+  const legend = METRICS.map(m =>
+    `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:${m.color}">
+      <svg width="12" height="4"><line x1="0" y1="2" x2="12" y2="2" stroke="${m.color}" stroke-width="2"/></svg>${m.label}
+    </span>`
+  ).join('');
+
+  return `
+    <div style="margin-top:18px;padding:12px 14px;background:var(--bg-input);border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">
+        📈 Evolución de ángulos
+      </div>
+      <svg width="${W}" height="${H}" style="width:100%;max-width:${W}px;overflow:visible">
+        ${paths}${dots}${xLabels}
+      </svg>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">${legend}</div>
+    </div>`;
+}
+
+// ── Sincronización de selectores disciplina (AI ↔ Manual) ──
+let _syncingDisc = false;
+function _syncDisciplineFrom(source) {
+  if (_syncingDisc) return;
+  _syncingDisc = true;
+  try {
+    const aiSel  = document.getElementById('discipline');
+    const manSel = document.getElementById('m-discipline');
+    if (!aiSel || !manSel) return;
+    if (source === 'ai') {
+      manSel.value = aiSel.value;
+    } else {
+      aiSel.value = manSel.value;
+    }
+  } finally {
+    _syncingDisc = false;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════

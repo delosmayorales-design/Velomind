@@ -397,23 +397,59 @@ router.post('/biomechanics-video', upload.single('video'), async (req, res) => {
 
     console.log('[BioVideo] Video listo. Ejecutando análisis dinámico...');
 
-    // 3. Prompt de Análisis de Movimiento
-    const prompt = `Eres un Biomecánico de Ciclismo profesional. Analiza el video del ciclista y devuelve ÚNICAMENTE un JSON válido en español. No añadas texto fuera del JSON.
+    // 3. Contexto de disciplina/objetivo enviado desde el frontend
+    const videoDiscipline = (req.body?.discipline || 'carretera').toLowerCase();
+    const videoObjective  = (req.body?.objective  || 'rendimiento').toLowerCase();
+
+    // Criterios específicos por disciplina para el análisis dinámico
+    const discCriteria = {
+      carretera: {
+        hip_stability: 'Cadera sin balanceo lateral (aceptable <1 cm). El balanceo >2 cm indica sillín alto.',
+        knee_tracking: 'Rodillas alineadas sobre el pie durante todo el ciclo. Colapso valgo = problema serio.',
+        ankle_technique: 'Tobillo neutro con ligera flexión plantar en PMI (6 en punto). Talón caído = sillín bajo.',
+        pedaling_smoothness: 'Círculo de pedaleo fluido sin puntos muertos visibles. Movimiento a pistón = ineficiencia.',
+      },
+      gravel: {
+        hip_stability: 'Cadera puede moverse ligeramente más que en carretera por el terreno. Balanceo >3 cm = sillín alto.',
+        knee_tracking: 'Rodillas alineadas. Importante para largas distancias en terreno mixto.',
+        ankle_technique: 'Tobillo ligeramente más neutro que en carretera. Adaptación al terreno.',
+        pedaling_smoothness: 'Pedaleo fluido. En gravel es normal cierta variación por el terreno.',
+      },
+      mtb: {
+        hip_stability: 'Cadera puede moverse más que en carretera. Lo crítico es que los codos NUNCA estén bloqueados. Codos flexionados = absorción de impactos.',
+        knee_tracking: 'Rodillas alineadas. El colapso valgo repetitivo es señal de debilidad de glúteos o sillín mal posicionado.',
+        ankle_technique: 'Mayor variación aceptable en el tobillo para MTB. Controla que no haya talón muy elevado de forma constante.',
+        pedaling_smoothness: 'En MTB hay más variación natural. Busca fluidez en las secciones técnicas más que cadencia pura.',
+      },
+      triatlon: {
+        hip_stability: 'En posición de aero bars la cadera tiene tendencia a bascular. Balanceo >1 cm indica posición insostenible.',
+        knee_tracking: 'Rodillas alineadas críticamente en posición agresiva. El valgo en TT daña la rodilla.',
+        ankle_technique: 'Tobillo con mayor flexión plantar en TT. Talón muy caído = sillín bajo o bielas largas.',
+        pedaling_smoothness: 'El pedaleo suave en triatlón es fundamental para llegar bien a la carrera a pie.',
+      },
+    };
+
+    const criteria = discCriteria[videoDiscipline] || discCriteria.carretera;
+    const discLabel = { carretera:'Carretera', gravel:'Gravel', mtb:'MTB', triatlon:'Triatlón/TT' }[videoDiscipline] || videoDiscipline;
+
+    const prompt = `Eres un Biomecánico de Ciclismo profesional especializado en ${discLabel}. Analiza el video del ciclista y devuelve ÚNICAMENTE un JSON válido en español. No añadas texto fuera del JSON.
+
+DISCIPLINA DEL ATLETA: ${discLabel} | OBJETIVO: ${videoObjective}
 
 Para cada métrica asigna EXACTAMENTE uno de estos tres valores de "rating": "OK", "Mejorable" o "Problema".
-Sé crítico y objetivo: si ves cualquier desviación, asigna "Mejorable" o "Problema". Solo asigna "OK" si la técnica es claramente correcta.
-En "detail" describe en máximo 100 caracteres lo que observas objetivamente, mencionando siempre el defecto observado o confirmando la técnica correcta.
+Sé crítico y objetivo: si ves cualquier desviación, asigna "Mejorable" o "Problema". Solo asigna "OK" si la técnica es claramente correcta para esta disciplina.
+En "detail" describe en máximo 100 caracteres lo que observas, mencionando siempre el defecto o confirmando la técnica correcta.
 
-CRITERIOS OBJETIVOS (úsalos como referencia estricta):
-- hip_stability: OK=cadera estable sin balanceo lateral visible; Mejorable=ligero balanceo (<2 cm); Problema=balanceo evidente (>2 cm, indica sillín alto)
-- knee_tracking: OK=rodillas alineadas sobre los pies durante todo el ciclo; Mejorable=ligera desviación ocasional; Problema=colapso varo o valgo constante
-- ankle_technique: OK=tobillo neutro con ligera flexión plantar en PMI; Mejorable=talón muy caído o exceso de puntilla; Problema=movimiento excesivo o muy irregular del tobillo
-- pedaling_smoothness: OK=círculo fluido sin puntos muertos visibles; Mejorable=ligero tirón en la fase de recobro; Problema=movimiento claramente a pistón
+CRITERIOS ESPECÍFICOS PARA ${discLabel.toUpperCase()} (úsalos como referencia estricta):
+- hip_stability: ${criteria.hip_stability}
+- knee_tracking: ${criteria.knee_tracking}
+- ankle_technique: ${criteria.ankle_technique}
+- pedaling_smoothness: ${criteria.pedaling_smoothness}
 
-Si la calidad del video no permite evaluar una métrica con certeza, asigna "Mejorable" con detail="Calidad de video insuficiente para evaluar con precisión".
+${videoDiscipline === 'mtb' ? 'IMPORTANTE MTB: Marca como "Problema" si los codos están bloqueados (riesgo de lesión en caída).\n\n' : ''}Si la calidad del video no permite evaluar una métrica con certeza, asigna "Mejorable" con detail="Calidad de video insuficiente para evaluar con precisión".
 
-Formato JSON obligatorio (sustituye RATING por el valor real, no uses "OK" por defecto):
-{"dynamic_analysis":{"hip_stability":{"rating":"RATING","detail":"descripción objetiva"},"knee_tracking":{"rating":"RATING","detail":"descripción objetiva"},"ankle_technique":{"rating":"RATING","detail":"descripción objetiva"},"pedaling_smoothness":{"rating":"RATING","detail":"descripción objetiva"}},"expert_diagnosis":{"summary":"resumen general","red_flags":["alerta si la hay"],"recommended_adjustments":[{"component":"componente","action":"acción","reason":"motivo"}]}}`;
+Formato JSON obligatorio (sustituye RATING por el valor real):
+{"dynamic_analysis":{"hip_stability":{"rating":"RATING","detail":"descripción objetiva"},"knee_tracking":{"rating":"RATING","detail":"descripción objetiva"},"ankle_technique":{"rating":"RATING","detail":"descripción objetiva"},"pedaling_smoothness":{"rating":"RATING","detail":"descripción objetiva"}},"expert_diagnosis":{"summary":"resumen adaptado a ${discLabel} ${videoObjective}","red_flags":["alerta si la hay"],"recommended_adjustments":[{"component":"componente","action":"acción","reason":"motivo específico para ${discLabel}"}]}}`;
 
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const analyzeRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`, {
