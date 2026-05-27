@@ -1459,10 +1459,11 @@ function updateAnglesGrid() {
 
   // Obtener disciplina y objetivo actual para ajustar rangos dinámicos
   const isManualTab = document.getElementById('tab-manual-content').style.display !== 'none';
-  const obj = isManualTab ? 'rendimiento' : document.getElementById('objective').value;
+  const obj  = isManualTab ? 'rendimiento' : document.getElementById('objective').value;
+  const disc = isManualTab ? 'carretera'   : document.getElementById('discipline').value;
 
   // 1. Usar el nuevo motor biomecánico para calcular y validar
-  const result = BiomechanicsUtils.processBiomechanics(pts, obj);
+  const result = BiomechanicsUtils.processBiomechanics(pts, obj, disc);
 
   if (!result.isValid) {
     grid.innerHTML = '<div style="grid-column: 1 / -1; padding: 20px; text-align: center; color: var(--text-muted);">Coloca todos los puntos en el visor para calcular los ángulos.</div>';
@@ -1480,7 +1481,8 @@ function updateAnglesGrid() {
 
   grid.innerHTML = uiMap.map(item => {
     const { value, status } = item.ref;
-    const ranges = BiomechanicsUtils.BIKE_FIT_RANGES[obj][item.key];
+    // Usa los rangos resueltos ya calculados por el motor (disciplina × objetivo)
+    const ranges = result.ranges[item.key];
     const valDeg = Math.round(value);
     
     const st = status === 'ok' ? 'optimal' : (status === 'warning' ? 'warning' : 'bad');
@@ -1501,7 +1503,7 @@ function updateAnglesGrid() {
   }).join('');
 
   // 2. Mostrar recomendaciones dinámicas siempre que haya puntos válidos
-  const recs = BiomechanicsUtils.getRecommendations(result.angles, obj);
+  const recs = BiomechanicsUtils.getRecommendations(result.angles, obj, disc);
   document.getElementById('diagSection').style.display = '';
   document.getElementById('diagBadge').textContent = editMode ? '(Calculando en Tiempo Real)' : '(Análisis Geométrico)';
   
@@ -2327,7 +2329,11 @@ async function _loadBikesForSelector() {
 }
 
 async function openSaveSnapshotModal() {
-  const result = BiomechanicsUtils.processBiomechanics(pts, document.getElementById('objective').value);
+  const result = BiomechanicsUtils.processBiomechanics(
+    pts,
+    document.getElementById('objective').value,
+    document.getElementById('discipline').value
+  );
   if (!result.isValid) { alert('Coloca todos los puntos en la imagen antes de guardar.'); return; }
 
   const thumb = _captureThumb(400);
@@ -2357,7 +2363,7 @@ async function confirmSaveSnapshot() {
   try {
     const objective  = document.getElementById('objective').value;
     const discipline = document.getElementById('discipline').value;
-    const result     = BiomechanicsUtils.processBiomechanics(pts, objective);
+    const result     = BiomechanicsUtils.processBiomechanics(pts, objective, discipline);
     if (!result.isValid) throw new Error('Puntos incompletos');
 
     const angles = {};

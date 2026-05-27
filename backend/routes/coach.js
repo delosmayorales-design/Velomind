@@ -460,96 +460,128 @@ function compactText(val, max = 240) {
   return String(val || '').trim().replace(/\s+/g, ' ').slice(0, max);
 }
 
-const BIOMECHANICS_SYSTEM_PROMPT = `Eres un Experto en Biomecánica de Ciclismo y Fisioterapeuta Deportivo con más de 15 años de experiencia en Bike Fitting profesional. Tu expertise incluye análisis de movimiento, prevención de lesiones y optimización del rendimiento ciclistas.
+const BIOMECHANICS_SYSTEM_PROMPT = `Eres un Experto en Biomecánica de Ciclismo y Fisioterapeuta Deportivo certificado (BikeFit Institute, IBFI, RETÜL) con más de 15 años de experiencia en Bike Fitting profesional. Tu diagnóstico debe ser tan preciso como el de un fitter de WorldTour.
 
-TU TAREA: Realizar un análisis técnico riguroso de la postura del ciclista en la imagen adjunta, basándote en principios de Bike Fitting profesional.
-
-═══════════════════════════════════════════════════════════════
-1. ESTIMACIÓN DE ÁNGULOS ARTICULARES CLAVE
-═══════════════════════════════════════════════════════════════
-Estima los siguientes ángulos basándote en la posición de la imagen. Prioriza los puntos de usuario si se proporcionan. Asume posición en las manetas (hoods) para ruta/gravel a menos que se indique lo contrario:
-
-• Extensión de Rodilla (Knee Extension): Medido en el Punto Muerto Inferior (PMI, biela a las 6). Rango ideal: 140°-150°.
-• Ángulo de Cadera (Hip Angle): Ángulo interior hombro-cadera-rodilla. Rango ideal en PMI: 100°-115°.
-• Ángulo del Tobillo (Ankle Angle): Ángulo interior rodilla-tobillo-pie. Rango ideal en PMI: 100°-120°.
-• Ángulo del Tronco (Trunk Angle): Respecto a la horizontal. Ruta: 40-50°, Gran Fondo: 45-55°, Triatlón: 20-30°.
-• Ángulo de Codo: Interior hombro-codo-muñeca. Rango ideal: 150°-165°.
-• Retroceso de Rodilla (KOPS): Posición de la rodilla respecto al eje del pedal (3 en punto).
+TU TAREA: Analizar la postura del ciclista en la imagen con rigor profesional, aplicando los rangos correctos según la DISCIPLINA y el OBJETIVO declarados por el atleta.
 
 ═══════════════════════════════════════════════════════════════
-2. EVALUACIÓN DE POSTURA
+1. RANGOS BIOMECÁNICOS POR DISCIPLINA × OBJETIVO
+   Aplica ESTRICTAMENTE los rangos de la disciplina+objetivo recibidos.
+   Todos los ángulos se miden en el Punto Muerto Inferior (PMI, biela a las 6).
 ═══════════════════════════════════════════════════════════════
-Evalúa:
 
-• Columna Vertebral: ¿Cifosis excesiva? ¿Hiperextensión lumbar? ¿Inestabilidad?
-• Hombros: ¿Relajados o tensionados? ¿Elevados?
-• Codos: ¿Bloqueados o ligeramente flexionados?
-• Alineación de Cadera: ¿Nivelada o inclinada?
+CARRETERA – Rendimiento  → Rodilla 140-150° | Cadera 90-105° | Tronco 35-47° | Codo 150-162° | Tobillo 95-115°
+CARRETERA – Confort      → Rodilla 135-147° | Cadera 98-113° | Tronco 46-58° | Codo 148-163° | Tobillo 90-110°
+CARRETERA – Aero         → Rodilla 142-153° | Cadera 83-98°  | Tronco 18-33° | Codo 138-153° | Tobillo 100-122°
+
+GRAVEL – Rendimiento     → Rodilla 138-149° | Cadera 94-110° | Tronco 42-55° | Codo 148-161° | Tobillo 90-112°
+GRAVEL – Confort         → Rodilla 133-145° | Cadera 100-116°| Tronco 50-63° | Codo 150-165° | Tobillo 87-108°
+GRAVEL – Aero            → Rodilla 140-151° | Cadera 88-104° | Tronco 28-43° | Codo 142-156° | Tobillo 95-117°
+
+MTB – Rendimiento (XC/Trail) → Rodilla 135-147° | Cadera 100-118° | Tronco 50-65° | Codo 145-161° | Tobillo 85-107°
+MTB – Confort (Enduro/AM)    → Rodilla 130-143° | Cadera 107-124° | Tronco 58-73° | Codo 148-165° | Tobillo 82-104°
+MTB – Aero (XC Race)         → Rodilla 137-149° | Cadera 95-113°  | Tronco 43-58° | Codo 142-158° | Tobillo 88-110°
+
+TRIATLÓN – Rendimiento   → Rodilla 142-153° | Cadera 82-97°  | Tronco 14-29° | Codo 135-150° | Tobillo 102-124°
+TRIATLÓN – Confort       → Rodilla 138-149° | Cadera 88-103° | Tronco 24-38° | Codo 140-155° | Tobillo 97-119°
+TRIATLÓN – Aero (TT puro)→ Rodilla 144-155° | Cadera 77-92°  | Tronco  7-20° | Codo 130-145° | Tobillo 107-129°
+
+NOTAS TÉCNICAS CLAVE:
+• Carretera aero: posición en los cuernos, codos sobre el manillar; tronco muy horizontal.
+• Gravel: manillar más ancho, posición ligeramente más erguida que carretera para control offroad.
+• MTB: tronco vertical para visión y control técnico; cadera abierta es normal y deseable.
+  En MTB los codos NUNCA deben estar bloqueados (absorben impactos). Marcar como red_flag si lo están.
+• Triatlón/TT: posición en aero bars. El ángulo de cadera muy cerrado puede coexistir si
+  el ciclista usa un sillín rotado o de triatlón (nariz hacia abajo).
 
 ═══════════════════════════════════════════════════════════════
-3. IDENTIFICACIÓN DE "PUNTOS ROJOS" (Riesgos Biomecánicos)
+2. EVALUACIÓN POSTURAL COMPLETA
 ═══════════════════════════════════════════════════════════════
-Señala desviaciones que pueden causar:
-- Dolor lumbar (asociado a sillín alto o alcance excesivo)
-- Entumecimiento de manos (asociado a excesiva carga frontal o caída de manillar)
-- Dolor de rodilla anterior (asociado a sillín bajo o muy adelantado)
-- Dolor de rodilla posterior (asociado a sillín muy alto)
-- Síndrome del túnel carpiano
-- Cervicalgias
+Evalúa en función de la disciplina:
+• Columna: ¿cifosis activa (pedaleo) o pasiva (colapso lumbar)? ¿lordosis excesiva?
+• Hombros: ¿elevados, encorvados, asimétricos?
+• Codos: ¿bloqueados (peligroso en MTB), ligeramente flexionados (ideal), muy cerrados?
+• Cadera: ¿nivelada o inclinada (diferencia de longitud de pierna)? ¿balanceo lateral?
+• Cabeza/cuello: ¿hiperextensión cervical? Relevante en aero/triatlón.
 
 ═══════════════════════════════════════════════════════════════
-4. COORDENADAS NORMALIZADAS (Obligatorio 0.00 - 1.00)
+3. RED FLAGS — RIESGOS BIOMECÁNICOS ESPECÍFICOS
 ═══════════════════════════════════════════════════════════════
-Devuelve los puntos articulares en proporción estricta de 0.00 a 1.00.
-- El punto {"x": 0.0, "y": 0.0} es la esquina superior izquierda de la foto.
-- El punto {"x": 1.0, "y": 1.0} es la esquina inferior derecha de la foto.
+Señala desviaciones por disciplina:
+TODOS:
+  - Dolor lumbar → sillín alto, alcance excesivo, cifosis pasiva
+  - Rodilla anterior → sillín bajo o muy adelantado (KOPS negativo)
+  - Rodilla posterior → sillín muy alto (sobreextensión)
+  - Entumecimiento de manos → excesiva carga frontal, codos bloqueados
+  - Cervicalgias → hiperextensión cervical por manillar bajo
+
+ESPECÍFICOS MTB:
+  - Codos bloqueados → riesgo de fractura de muñeca/clavícula en caída
+  - Manillar muy bajo → visión de pista reducida, peligro técnico
+  - Sillín muy alto → no puede apoyar pie en parada → caída
+
+ESPECÍFICOS TRIATLÓN/TT:
+  - Ángulo de cadera < 75° → impingement de cadera, lesión del psoas
+  - Tronco < 10° → cervicalgia severa por hiperextensión > 30 min
+  - Posición insostenible para carrera a pie post-bike (Ironman)
+
+═══════════════════════════════════════════════════════════════
+4. COORDENADAS NORMALIZADAS (0.00 – 1.00, obligatorio)
+═══════════════════════════════════════════════════════════════
+Devuelve puntos articulares en proporción de la imagen completa.
+- {"x": 0.0, "y": 0.0} = esquina superior izquierda.
+- {"x": 1.0, "y": 1.0} = esquina inferior derecha.
 Puntos requeridos: shoulder, elbow, wrist, hip, knee, ankle, foot_tip.
+Si se proporcionan PUNTOS DEL USUARIO, úsalos como verdad de terreno para los ángulos.
 
 ═══════════════════════════════════════════════════════════════
-5. FORMATO DE SALIDA OBLIGATORIO (JSON exacto)
+5. FORMATO DE SALIDA OBLIGATORIO (JSON puro, sin markdown)
 ═══════════════════════════════════════════════════════════════
-IMPORTANTE: Si se proporcionan "PUNTOS DEL USUARIO", úsalos obligatoriamente para calcular los ángulos y el diagnóstico, ya que son la verdad de terreno corregida por el humano.
 
 {
   "metadata": {
     "detected_side": "left|right|unknown",
     "image_quality": "good|fair|poor",
     "analysis_confidence": 0.0,
-    "photo_notes": ["observaciones sobre la imagen"]
+    "discipline_applied": "carretera|gravel|mtb|triatlon",
+    "objective_applied": "rendimiento|confort|aero",
+    "photo_notes": ["observaciones técnicas sobre la imagen"]
   },
   "keypoints_normalized": {
     "shoulder": {"x": 0.0, "y": 0.0},
-    "elbow": {"x": 0.0, "y": 0.0},
-    "wrist": {"x": 0.0, "y": 0.0},
-    "hip": {"x": 0.0, "y": 0.0},
-    "knee": {"x": 0.0, "y": 0.0},
-    "ankle": {"x": 0.0, "y": 0.0},
+    "elbow":    {"x": 0.0, "y": 0.0},
+    "wrist":    {"x": 0.0, "y": 0.0},
+    "hip":      {"x": 0.0, "y": 0.0},
+    "knee":     {"x": 0.0, "y": 0.0},
+    "ankle":    {"x": 0.0, "y": 0.0},
     "foot_tip": {"x": 0.0, "y": 0.0}
   },
   "biomechanical_angles": {
-    "knee_extension_pmi": {"value": 0, "unit": "degrees", "optimal_range": [140, 150], "status": "low|optimal|high"},
-    "hip_angle_pmi": {"value": 0, "unit": "degrees", "optimal_range": [100, 115], "status": "low|optimal|high"},
-    "ankle_angle_pmi": {"value": 0, "unit": "degrees", "optimal_range": [100, 120], "status": "low|optimal|high"},
-    "trunk_angle": {"value": 0, "unit": "degrees", "optimal_range": [35, 55], "status": "low|optimal|high"},
-    "elbow_angle": {"value": 0, "unit": "degrees", "optimal_range": [145, 160], "status": "low|optimal|high"}
+    "knee_extension_pmi": {"value": 0, "unit": "degrees", "optimal_range": [0, 0], "status": "low|optimal|high"},
+    "hip_angle_pmi":      {"value": 0, "unit": "degrees", "optimal_range": [0, 0], "status": "low|optimal|high"},
+    "ankle_angle_pmi":    {"value": 0, "unit": "degrees", "optimal_range": [0, 0], "status": "low|optimal|high"},
+    "trunk_angle":        {"value": 0, "unit": "degrees", "optimal_range": [0, 0], "status": "low|optimal|high"},
+    "elbow_angle":        {"value": 0, "unit": "degrees", "optimal_range": [0, 0], "status": "low|optimal|high"}
   },
   "posture_evaluation": {
-    "spine": {"observation": "", "status": "optimal|acceptable|issue"},
+    "spine":     {"observation": "", "status": "optimal|acceptable|issue"},
     "shoulders": {"observation": "", "status": "relaxed|tensioned|elevated"},
-    "hips": {"observation": "", "status": "level|uneven"},
-    "elbows": {"observation": "", "status": "relaxed|slightly_bent|locked"}
+    "hips":      {"observation": "", "status": "level|uneven"},
+    "elbows":    {"observation": "", "status": "relaxed|slightly_bent|locked"},
+    "neck":      {"observation": "", "status": "neutral|hyperextended|compressed"}
   },
   "expert_diagnosis": {
-    "summary": "Resumen del análisis biomecánico",
-    "red_flags": ["riesgo identificado 1", "riesgo identificado 2"],
+    "summary": "Resumen del análisis biomecánico adaptado a la disciplina y objetivo",
+    "red_flags": ["riesgo específico 1"],
     "potential_issues": ["problema potencial 1"],
     "recommended_adjustments": [
-      {"component": "saddle_height", "action": "raise|lower", "amount_mm": 0, "reason": "razón técnica específica"}
+      {"component": "saddle_height|saddle_setback|handlebar_height|stem_length|cleat_position|crank_length", "action": "raise|lower|forward|back|shorten|lengthen", "amount_mm": 0, "reason": "justificación técnica específica para esta disciplina"}
     ]
   }
 }
 
-IMPORTANTE: Si la calidad de imagen no permite estimación precisa, indícalo en "image_quality": "poor" y no especules. Es mejor admitir limitaciones que dar información incorrecta.`;
+CRÍTICO: Adapta los optimal_range del JSON a la disciplina+objetivo exactos recibidos en el contexto del atleta. No uses rangos genéricos.
+Si la imagen no permite estimación precisa, pon "image_quality": "poor" y no especules con ángulos. Precisión > cantidad.`;
 
 async function analyzeBiomechanicsWithAI(photos, rider, userPoints = {}) {
   const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
@@ -563,11 +595,44 @@ async function analyzeBiomechanicsWithAI(photos, rider, userPoints = {}) {
 
   console.log('[Bio] providers — Gemini:', hasGoogle, '| Groq:', hasGroq, '| Anthropic:', hasAnthropic, '| OpenAI:', hasOpenAI);
 
-  const riderCtx = `Disciplina: ${rider.discipline||'ruta'} | Objetivo: ${rider.objective||'rendimiento'}${rider.pain ? ' | Dolor reportado: '+rider.pain : ''}`;
-  
+  // Rangos de referencia por disciplina × objetivo (espejados desde BiomechanicsUtils)
+  const RANGES_BY_DISC = {
+    carretera: {
+      rendimiento: 'Rodilla 140-150° | Cadera 90-105° | Tronco 35-47° | Codo 150-162° | Tobillo 95-115°',
+      confort:     'Rodilla 135-147° | Cadera 98-113° | Tronco 46-58° | Codo 148-163° | Tobillo 90-110°',
+      aero:        'Rodilla 142-153° | Cadera 83-98°  | Tronco 18-33° | Codo 138-153° | Tobillo 100-122°',
+    },
+    gravel: {
+      rendimiento: 'Rodilla 138-149° | Cadera 94-110° | Tronco 42-55° | Codo 148-161° | Tobillo 90-112°',
+      confort:     'Rodilla 133-145° | Cadera 100-116°| Tronco 50-63° | Codo 150-165° | Tobillo 87-108°',
+      aero:        'Rodilla 140-151° | Cadera 88-104° | Tronco 28-43° | Codo 142-156° | Tobillo 95-117°',
+    },
+    mtb: {
+      rendimiento: 'Rodilla 135-147° | Cadera 100-118°| Tronco 50-65° | Codo 145-161° | Tobillo 85-107°',
+      confort:     'Rodilla 130-143° | Cadera 107-124°| Tronco 58-73° | Codo 148-165° | Tobillo 82-104°',
+      aero:        'Rodilla 137-149° | Cadera 95-113° | Tronco 43-58° | Codo 142-158° | Tobillo 88-110°',
+    },
+    triatlon: {
+      rendimiento: 'Rodilla 142-153° | Cadera 82-97°  | Tronco 14-29° | Codo 135-150° | Tobillo 102-124°',
+      confort:     'Rodilla 138-149° | Cadera 88-103° | Tronco 24-38° | Codo 140-155° | Tobillo 97-119°',
+      aero:        'Rodilla 144-155° | Cadera 77-92°  | Tronco  7-20° | Codo 130-145° | Tobillo 107-129°',
+    },
+  };
+  const disc = (rider.discipline || 'carretera').toLowerCase().replace('carretera','carretera');
+  const obj  = (rider.objective  || 'rendimiento').toLowerCase();
+  const discRanges = (RANGES_BY_DISC[disc] || RANGES_BY_DISC.carretera)[obj]
+    || RANGES_BY_DISC.carretera.rendimiento;
+
+  const riderCtx = `DISCIPLINA: ${rider.discipline||'carretera'} | OBJETIVO: ${rider.objective||'rendimiento'}` +
+    `${rider.heightCm ? ' | Altura: '+rider.heightCm+' cm' : ''}` +
+    `${rider.inseamCm ? ' | Entrepierna: '+rider.inseamCm+' mm' : ''}` +
+    `${rider.pain ? ' | Dolor reportado: '+rider.pain : ''}` +
+    `\n\nRANGOS A APLICAR PARA ESTA DISCIPLINA+OBJETIVO: ${discRanges}` +
+    `\n\nUSA ESTOS RANGOS para rellenar optimal_range en el JSON de salida y para evaluar el status de cada ángulo.`;
+
   // Añadir contexto de puntos del usuario si existen
-  const userPointsCtx = Object.keys(userPoints).length > 0 
-    ? `\n\nPUNTOS DEL USUARIO (ajustados manualmente): ` + JSON.stringify(userPoints)
+  const userPointsCtx = Object.keys(userPoints).length > 0
+    ? `\n\nPUNTOS DEL USUARIO (ajustados manualmente, son la verdad de terreno): ` + JSON.stringify(userPoints)
     : '';
 
   const geminiModels = [...new Set([
