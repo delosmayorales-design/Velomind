@@ -360,7 +360,20 @@ const BiomechanicsUtils = (() => {
       });
     }
 
-    // P6 · Cadera abierta aislada (alcance corto)
+    // P5b · Cadera abierta + hombros hundidos (señales opuestas sobre potencia)
+    //       → causa raíz: sillín retrasado, no problema de alcance
+    //       Se evalúa ANTES de P6 y del bloque de hombro para evitar consejos contradictorios.
+    if (!explained.has('hip_angle') && high(hip_angle) && shoulder_angle && low(shoulder_angle)) {
+      explained.add('hip_angle');
+      explained.add('shoulder_angle');
+      adjustments.push({
+        priority: 2, icon: '↔️',
+        action: 'Adelanta el sillín 5–10 mm y reevalúa antes de cambiar la potencia',
+        reason: 'Cadera abierta + hombros hundidos al mismo tiempo apuntan al sillín retrasado: el cuerpo se sienta erguido (cadera) pero los hombros compensan alcanzando el manillar. Ajusta el sillín primero — si persiste, entonces valora la potencia.',
+      });
+    }
+
+    // P6 · Cadera abierta aislada (alcance corto, sin hombros hundidos)
     if (!explained.has('hip_angle') && high(hip_angle)) {
       explained.add('hip_angle');
       adjustments.push({
@@ -458,7 +471,7 @@ const BiomechanicsUtils = (() => {
       });
     }
 
-    if (shoulder_angle && bad(shoulder_angle)) {
+    if (shoulder_angle && bad(shoulder_angle) && !explained.has('shoulder_angle')) {
       adjustments.push({
         priority: 3, icon: '🙆',
         action: shoulder_angle.delta > 0
