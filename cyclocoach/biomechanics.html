@@ -1025,6 +1025,77 @@
               </div>
             </div>
 
+            <!-- ── SECCIÓN CALAS ─────────────────────────── -->
+            <div style="margin-top:16px">
+              <div class="measure-guide-box" style="padding:12px 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md)">
+                <div onclick="toggleGuide('guide-content-cleats','guide-icon-cleats')" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;">
+                  <span style="display:flex;align-items:center;gap:8px"><span>🦶</span> Posición de Calas <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(opcional)</span></span>
+                  <i id="guide-icon-cleats" class="fas fa-chevron-down" style="color:var(--text-muted);transition:transform .2s"></i>
+                </div>
+                <div id="guide-content-cleats" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+                  <!-- Guía visual -->
+                  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+                    <svg style="width:100%;height:auto;max-height:90px" viewBox="0 0 300 90" xmlns="http://www.w3.org/2000/svg">
+                      <!-- silueta zapatilla simplificada -->
+                      <path d="M20,65 Q30,30 70,28 Q140,24 200,32 Q240,36 270,55 Q275,65 260,68 L30,70 Z" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+                      <!-- suela -->
+                      <rect x="20" y="68" width="248" height="8" rx="4" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                      <!-- talón punto ref -->
+                      <circle cx="22" cy="72" r="3" fill="#ef4444"/>
+                      <text x="26" y="86" fill="#ef4444" font-size="9" font-family="Plus Jakarta Sans,sans-serif" font-weight="700">Talón</text>
+                      <!-- metatarso -->
+                      <circle cx="135" cy="72" r="3" fill="#facc15"/>
+                      <line x1="135" y1="28" x2="135" y2="68" stroke="#facc15" stroke-width="1" stroke-dasharray="3,2"/>
+                      <text x="105" y="22" fill="#facc15" font-size="9" font-family="Plus Jakarta Sans,sans-serif" font-weight="700">Metatarso</text>
+                      <!-- cala centro -->
+                      <circle cx="160" cy="72" r="4" fill="var(--primary)"/>
+                      <line x1="160" y1="35" x2="160" y2="68" stroke="var(--primary)" stroke-width="1" stroke-dasharray="3,2"/>
+                      <text x="143" y="30" fill="var(--primary)" font-size="9" font-family="Plus Jakarta Sans,sans-serif" font-weight="700">Centro cala</text>
+                      <!-- flechas medición -->
+                      <line x1="22" y1="80" x2="135" y2="80" stroke="#facc15" stroke-width="1.5" marker-end="url(#ah)"/>
+                      <text x="72" y="90" fill="#facc15" font-size="8" font-family="Plus Jakarta Sans,sans-serif" text-anchor="middle">Talón→metatarso</text>
+                      <line x1="22" y1="76" x2="160" y2="76" stroke="var(--primary)" stroke-width="1.5"/>
+                      <text x="91" y="74" fill="var(--primary)" font-size="8" font-family="Plus Jakarta Sans,sans-serif" text-anchor="middle">Talón→cala</text>
+                      <defs><marker id="ah" markerWidth="5" markerHeight="5" refX="5" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5" fill="none" stroke="#facc15" stroke-width="1"/></marker></defs>
+                    </svg>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">
+                      <strong style="color:#facc15">Metatarso:</strong> con el pie en el suelo, marca la protuberancia del 1er metatarso (costado interno) y mide desde el talón.<br>
+                      <strong style="color:var(--primary)">Centro cala:</strong> mide desde el talón de la zapatilla hasta el centro de la cala montada.
+                    </div>
+                  </div>
+                  <!-- Inputs -->
+                  <div class="field-row">
+                    <div class="field-group">
+                      <div class="field-label">Talla zapatilla (EU)</div>
+                      <input type="number" id="m-shoe-eu" class="field-input" placeholder="44" oninput="if(document.getElementById('manual-results').style.display!=='none') calcManual()">
+                    </div>
+                    <div class="field-group">
+                      <div class="field-label">Flotación cala</div>
+                      <select id="m-cleat-float" class="field-select" onchange="if(document.getElementById('manual-results').style.display!=='none') calcManual()">
+                        <option value="">— sin datos —</option>
+                        <option value="0">0° (fija)</option>
+                        <option value="4.5">4.5°</option>
+                        <option value="6">6°</option>
+                        <option value="9">9°</option>
+                        <option value="free">Libre</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="field-row">
+                    <div class="field-group">
+                      <div class="field-label">Talón → metatarso (mm)</div>
+                      <input type="number" id="m-meta" class="field-input" placeholder="185" oninput="if(document.getElementById('manual-results').style.display!=='none') calcManual()">
+                    </div>
+                    <div class="field-group">
+                      <div class="field-label">Talón → centro cala (mm)</div>
+                      <input type="number" id="m-cleat-pos" class="field-input" placeholder="178" oninput="if(document.getElementById('manual-results').style.display!=='none') calcManual()">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- ── FIN CALAS ──────────────────────────────── -->
+
           </div>
         </div>
 
@@ -2171,6 +2242,107 @@ function calcManual() {
     }
   }
 
+  // ── Posición de calas (Fore-Aft + flotación) ──────────────
+  const shoeEU     = +document.getElementById('m-shoe-eu').value;
+  const metaMM     = +document.getElementById('m-meta').value;
+  const cleatPosMM = +document.getElementById('m-cleat-pos').value;
+  const cleatFloat = document.getElementById('m-cleat-float').value;
+
+  // Estimar metatarso desde EU si no se midió directamente
+  // Longitud pie (mm) ≈ EU × 6.67 − 13  (validado EU38=240, EU44=280)
+  // 1er metatarso ≈ 71% de la longitud total del pie
+  const metaEst = metaMM || (shoeEU ? Math.round((shoeEU * 6.67 - 13) * 0.71) : 0);
+
+  if (metaEst && cleatPosMM) {
+    // offset > 0 → cala adelantada (bola del pie por delante del eje)
+    // offset < 0 → cala retrasada  (bola del pie por detrás del eje)
+    const offset = cleatPosMM - metaEst;
+
+    // Rangos óptimos fore-aft por disciplina × objetivo (mm, referencia eje de pedal)
+    const CLEAT_RANGES = {
+      carretera: { rendimiento: [-5,  5], confort: [-10, 0], aero: [0,  8] },
+      gravel:    { rendimiento: [-8,  3], confort: [-10, 0], aero: [-3, 5] },
+      mtb:       { rendimiento: [-10,-2], confort: [-12,-2], aero: [-8, 0] },
+      triatlon:  { rendimiento: [2,  10], confort: [-2,  8], aero: [5, 12] },
+    };
+    const [rMin, rMax] = (CLEAT_RANGES[disc] || CLEAT_RANGES.carretera)[obj] || [-5, 5];
+    const rOpt = Math.round((rMin + rMax) / 2);
+    const sign  = n => n >= 0 ? `+${n}` : `${n}`;
+
+    let cleatSt, cleatNote;
+    if (offset >= rMin && offset <= rMax) {
+      cleatSt   = 'good';
+      cleatNote = offset === 0
+        ? 'Bola del pie exactamente sobre el eje del pedal.'
+        : `Bola del pie ${Math.abs(offset)} mm ${offset > 0 ? 'por delante' : 'por detrás'} del eje — dentro del rango.`;
+    } else if (offset < rMin) {
+      const move = rMin - offset;
+      cleatSt   = offset < rMin - 6 ? 'bad' : 'warn';
+      cleatNote = `Mueve la cala ${move} mm hacia adelante (hacia los dedos). Actualmente la bola del pie queda ${Math.abs(offset)} mm detrás del eje.`;
+    } else {
+      const move = offset - rMax;
+      cleatSt   = offset > rMax + 6 ? 'bad' : 'warn';
+      cleatNote = `Mueve la cala ${move} mm hacia atrás (hacia el talón). Actualmente la bola del pie queda ${offset} mm por delante del eje.`;
+    }
+
+    rows.push({
+      label:   'Posición cala — Fore-Aft',
+      formula: 'Talón→cala − Talón→metatarso' + (metaMM ? '' : ' (metatarso estimado por EU)'),
+      rec:     `${sign(rMin)} a ${sign(rMax)} mm (${disc} ${obj})`,
+      val:     `${sign(offset)} mm`,
+      status:  cleatSt,
+      note:    cleatNote,
+    });
+  } else if (shoeEU && !cleatPosMM) {
+    // Solo talla: mostrar metatarso estimado como referencia
+    const footMM = Math.round(shoeEU * 6.67 - 13);
+    const metaRef = Math.round(footMM * 0.71);
+    rows.push({
+      label:   'Referencia metatarso (EU ' + shoeEU + ')',
+      formula: '(EU × 6.67 − 13) × 0.71',
+      rec:     '—',
+      val:     metaRef + ' mm desde talón',
+      status:  'neutral',
+      note:    'Introduce "Talón → centro cala" para calcular el offset real.',
+    });
+  }
+
+  // Flotación de cala
+  if (cleatFloat && cleatFloat !== '') {
+    const FLOAT_REC = {
+      carretera: { label: '4.5°–6°',  min: 4.5, max: 6   },
+      gravel:    { label: '4.5°–6°',  min: 4.5, max: 6   },
+      mtb:       { label: '6°–9°',    min: 6,   max: 9   },
+      triatlon:  { label: '0°–4.5°',  min: 0,   max: 4.5 },
+    };
+    const fr = FLOAT_REC[disc] || FLOAT_REC.carretera;
+    const fDeg = cleatFloat === 'free' ? 15 : parseFloat(cleatFloat);
+    let floatSt = 'good', floatNote = '';
+
+    if (cleatFloat === 'free') {
+      floatSt   = 'good';
+      floatNote = 'Flotación libre: máxima libertad. Ideal si tienes problemas de alineación de rodilla.';
+    } else if (fDeg === 0 && disc !== 'triatlon') {
+      floatSt   = 'warn';
+      floatNote = 'Cala fija (0°): solo recomendado si tu biomecánica es perfectamente alineada. La mayoría de ciclistas necesita al menos 4.5°.';
+    } else if (fDeg < fr.min) {
+      floatSt   = 'warn';
+      floatNote = `Para ${disc === 'mtb' ? 'MTB' : disc === 'triatlon' ? 'triatlón' : 'esta disciplina'} se recomienda mínimo ${fr.min}°. Con menos flotación aumenta el riesgo de síndrome de cintilla iliotibial.`;
+    } else if (fDeg > fr.max && cleatFloat !== 'free') {
+      floatSt   = 'warn';
+      floatNote = `Flotación alta (${fDeg}°): más libertad de rodilla, algo de pérdida de eficiencia. Aceptable en confort.`;
+    }
+
+    rows.push({
+      label:   'Flotación de cala',
+      formula: 'BikeFit Institute / RETÜL',
+      rec:     fr.label + (disc === 'triatlon' ? ' — pros llegan a 0°' : ''),
+      val:     cleatFloat === 'free' ? 'Libre' : `${cleatFloat}°`,
+      status:  floatSt,
+      note:    floatNote,
+    });
+  }
+
   // ── Fémur / entrepierna ────────────────────────────────────
   if (femur && inseam) {
     const ratio = (femur / inseam * 100).toFixed(1);
@@ -2227,6 +2399,33 @@ function calcManual() {
     if (reach < actualReachMin - 10) consejos.push(`👐 <strong>Alarga el alcance:</strong> Vas un poco encogido. Necesitas estirarte unos ${actualReachMin - reach} mm (prueba con una potencia más larga).`);
     else if (reach > actualReachMax + 10) consejos.push(`👐 <strong>Acorta el alcance:</strong> Vas demasiado estirado. Acércate unos ${reach - actualReachMax} mm para relajar los hombros, el cuello y las lumbares.`);
   } else faltanDatos = true;
+
+  // ── Calas ────────────────────────────────────────────────
+  {
+    const _shoeEU     = +document.getElementById('m-shoe-eu').value;
+    const _metaMM     = +document.getElementById('m-meta').value;
+    const _cleatPosMM = +document.getElementById('m-cleat-pos').value;
+    const _metaEst    = _metaMM || (_shoeEU ? Math.round((_shoeEU * 6.67 - 13) * 0.71) : 0);
+    if (_metaEst && _cleatPosMM) {
+      const _offset = _cleatPosMM - _metaEst;
+      const _disc   = document.getElementById('m-discipline').value;
+      const _obj    = document.getElementById('m-objective')?.value || 'rendimiento';
+      const CLEAT_R = {
+        carretera: { rendimiento: [-5,5], confort: [-10,0], aero: [0,8] },
+        gravel:    { rendimiento: [-8,3], confort: [-10,0], aero: [-3,5] },
+        mtb:       { rendimiento: [-10,-2], confort: [-12,-2], aero: [-8,0] },
+        triatlon:  { rendimiento: [2,10], confort: [-2,8], aero: [5,12] },
+      };
+      const [_rMin, _rMax] = (CLEAT_R[_disc] || CLEAT_R.carretera)[_obj] || [-5, 5];
+      if (_offset < _rMin) {
+        const move = _rMin - _offset;
+        consejos.push(`👟 <strong>Adelanta la cala ${move} mm:</strong> La bola del pie está ${Math.abs(_offset)} mm por detrás del eje del pedal. Desliza la cala hacia la punta de la zapatilla.`);
+      } else if (_offset > _rMax) {
+        const move = _offset - _rMax;
+        consejos.push(`👟 <strong>Retrasa la cala ${move} mm:</strong> La bola del pie está ${_offset} mm por delante del eje del pedal. Desliza la cala hacia el talón.`);
+      }
+    }
+  }
   
   let reportHTML = '';
   if (consejos.length > 0) {
@@ -2306,7 +2505,11 @@ async function saveMeasurements() {
     drop:       document.getElementById('m-drop').value,
     stem:       document.getElementById('m-stem').value,
     stemAngle:  document.getElementById('m-stem-angle').value,
-    discipline: document.getElementById('m-discipline').value
+    discipline:  document.getElementById('m-discipline').value,
+    shoeEU:      document.getElementById('m-shoe-eu').value,
+    cleatFloat:  document.getElementById('m-cleat-float').value,
+    metaMM:      document.getElementById('m-meta').value,
+    cleatPosMM:  document.getElementById('m-cleat-pos').value,
   };
 
   // Copia local inmediata
@@ -2359,7 +2562,11 @@ function applyMeasures(saved) {
   document.getElementById('m-drop').value       = saved.drop       || '';
   document.getElementById('m-stem').value       = saved.stem       || '';
   document.getElementById('m-stem-angle').value = saved.stemAngle  || '';
-  document.getElementById('m-discipline').value = saved.discipline || 'carretera';
+  document.getElementById('m-discipline').value    = saved.discipline  || 'carretera';
+  document.getElementById('m-shoe-eu').value        = saved.shoeEU     || '';
+  document.getElementById('m-cleat-float').value    = saved.cleatFloat || '';
+  document.getElementById('m-meta').value           = saved.metaMM     || '';
+  document.getElementById('m-cleat-pos').value      = saved.cleatPosMM || '';
   if (saved.inseam) calcManual();
 }
 
