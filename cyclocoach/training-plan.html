@@ -2039,7 +2039,7 @@ function renderPlan(plan, athlete) {
     };
     const sessionStructureTitle = 'Estructura detallada de la sesión';
     const color  = typeColors[sess.type] || 'var(--text-secondary)';
-    const tssVal = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare || 0) * plan.targetTSS);
+    const tssVal = Math.round((sess.tssShare || 0) * plan.targetTSS) || (Number.isFinite(sess.tss) ? sess.tss : 0);
     const durMin = Number.isFinite(sess.durationMin) ? sess.durationMin : (sess.ifTarget ? Math.round(tssVal / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
     const targetWatts = sess.ifTarget ? Math.round(ftp * sess.ifTarget) : (Number.isFinite(sess.targetWatts) ? sess.targetWatts : null);
     const ifVal = sess.ifTarget || 0;
@@ -3462,7 +3462,7 @@ function showSessionDetail(idx, showAlt = false) {
   const currentIntervals = showAlt && sess.alt_intervals ? sess.alt_intervals : sess.intervals;
   const currentDesc = showAlt && sess.alt_description ? sess.alt_description : sess.description;
   // Usar SIEMPRE la misma fuente de verdad que la tarjeta (valores ya calculados en el generador)
-  const tss = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare || 0) * currentPlan.targetTSS);
+  const tss = Math.round((sess.tssShare || 0) * currentPlan.targetTSS) || (Number.isFinite(sess.tss) ? sess.tss : 0);
   const durMin = Number.isFinite(sess.durationMin)
     ? sess.durationMin
     : (sess.ifTarget ? Math.round(tss / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
