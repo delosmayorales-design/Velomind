@@ -1152,6 +1152,54 @@
       }
     }
 
+    /* ══ Optimización de espacio: mapa libre ════════════════════════ */
+
+    /* 1. Header: icono-only para todos los botones secundarios */
+    .header-actions .btn-sm .btn-label { display: none; }
+    #btn-new-route .btn-label { display: inline !important; }
+
+    /* 2. Draw toolbar: fila única compacta */
+    .draw-toolbar {
+      flex-direction: row !important;
+      align-items: center !important;
+      padding: 7px 8px !important;
+      gap: 0 !important;
+      width: max-content;
+    }
+    .dt-sep-v {
+      width: 1px;
+      height: 22px;
+      background: rgba(255,255,255,0.12);
+      margin: 0 7px;
+      flex-shrink: 0;
+    }
+    .dt-btn.dt-type { padding: 6px 9px !important; font-size: 15px !important; }
+
+    /* 3. Map stats: ligeramente más compactas */
+    .map-stats { padding: 7px 16px !important; min-width: 260px !important; }
+
+    /* 4. Weather timeline: reducir ~14px de altura */
+    #wtl-info { padding: 5px 10px 2px !important; }
+    #wtl-strip { padding: 0 6px 5px !important; }
+    .wtl-col { min-height: 40px !important; padding: 3px 2px !important; }
+
+    /* 5. Recalcular offsets del toolbar en desktop con timeline compacta */
+    @media (min-width: 769px) {
+      body.timeline-open .draw-toolbar,
+      body.timeline-open .wind-card { bottom: 94px; }
+      body.elev-open.timeline-open .draw-toolbar { bottom: 226px; }
+    }
+
+    /* 6. Mobile: restaurar columna en draw-toolbar */
+    @media (max-width: 768px) {
+      .draw-toolbar {
+        flex-direction: column !important;
+        width: calc(100% - 20px) !important;
+        max-width: 360px !important;
+      }
+      .dt-sep-v { width: 100% !important; height: 1px !important; margin: 4px 0 !important; }
+    }
+
   </style>
 </head>
 <body>
@@ -1334,15 +1382,16 @@
       <!-- Toolbar dibujo (abajo del mapa) -->
       <div class="draw-toolbar" id="draw-toolbar">
         <div class="dt-types">
-          <button class="dt-btn dt-type active" id="dt-type-road"   onclick="setDrawType('road')"   title="Road">🚴 Road</button>
-          <button class="dt-btn dt-type"         id="dt-type-gravel" onclick="setDrawType('gravel')" title="Gravel">🪨 Gravel</button>
-          <button class="dt-btn dt-type"         id="dt-type-mtb"    onclick="setDrawType('mtb')"    title="MTB">🏔 MTB</button>
+          <button class="dt-btn dt-type active" id="dt-type-road"   onclick="setDrawType('road')"   title="Road — asfalto">🚴</button>
+          <button class="dt-btn dt-type"         id="dt-type-gravel" onclick="setDrawType('gravel')" title="Gravel — caminos">🪨</button>
+          <button class="dt-btn dt-type"         id="dt-type-mtb"    onclick="setDrawType('mtb')"    title="MTB — montaña">🏔</button>
         </div>
+        <div class="dt-sep-v"></div>
         <div class="dt-actions">
-          <span id="dt-wp-count" class="dt-wp-count" title="Clic derecho sobre un punto para eliminarlo · Arrastra para moverlo">0 puntos</span>
-          <button class="dt-btn" onclick="undoWaypoint()"><i class="fas fa-undo"></i> Deshacer</button>
-          <button class="dt-btn del" onclick="clearRoute()"><i class="fas fa-trash"></i> Limpiar</button>
-          <button class="dt-btn save" onclick="openSaveModal()"><i class="fas fa-save"></i> Guardar ruta</button>
+          <span id="dt-wp-count" class="dt-wp-count" title="Clic derecho sobre un punto para eliminarlo · Arrastra para moverlo">0 pts</span>
+          <button class="dt-btn" onclick="undoWaypoint()" title="Deshacer último punto"><i class="fas fa-undo"></i></button>
+          <button class="dt-btn del" onclick="clearRoute()" title="Limpiar ruta"><i class="fas fa-trash"></i></button>
+          <button class="dt-btn save" onclick="openSaveModal()"><i class="fas fa-save"></i> Guardar</button>
         </div>
       </div>
 
@@ -2337,7 +2386,7 @@ function _syncWpCount() {
   const el = document.getElementById('dt-wp-count');
   if (!el) return;
   const n = waypoints.length;
-  el.textContent = n === 0 ? '0 puntos' : n === 1 ? '1 punto' : `${n} puntos`;
+  el.textContent = n === 0 ? '0 pts' : n === 1 ? '1 pt' : `${n} pts`;
   el.style.color = n > 0 ? 'var(--primary, #ff6b35)' : '#6b7280';
   el.style.background = n > 0 ? 'rgba(255,107,53,0.12)' : 'rgba(255,255,255,0.05)';
   el.style.borderColor = n > 0 ? 'rgba(255,107,53,0.3)' : 'rgba(255,255,255,0.1)';
