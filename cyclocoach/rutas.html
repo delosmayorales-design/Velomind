@@ -1212,17 +1212,15 @@
 
     /* Desktop: toolbar barra completa en la parte inferior */
     @media (min-width: 769px) {
-      /* Toolbar: siempre anclada al fondo, ancho completo */
+      /* Toolbar: anclada al fondo, ancho según contenido */
       .draw-toolbar {
         bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        transform: none !important;
-        border-radius: 0 !important;
-        border-left: none !important;
-        border-right: none !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        border-radius: 10px 10px 0 0 !important;
         border-bottom: none !important;
-        justify-content: center !important;
+        width: max-content !important;
         padding: 5px 14px !important;
         gap: 5px !important;
       }
