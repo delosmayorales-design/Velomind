@@ -1158,13 +1158,14 @@
     .header-actions .btn-sm .btn-label { display: none; }
     #btn-new-route .btn-label { display: inline !important; }
 
-    /* 2. Draw toolbar: fila única compacta */
-    .draw-toolbar {
-      flex-direction: row !important;
-      align-items: center !important;
-      padding: 7px 8px !important;
-      gap: 0 !important;
-      width: max-content;
+    /* 2. Draw toolbar: fila única compacta (solo desktop) */
+    @media (min-width: 769px) {
+      .draw-toolbar {
+        flex-direction: row !important;
+        align-items: center !important;
+        padding: 7px 8px !important;
+        gap: 0 !important;
+      }
     }
     .dt-sep-v {
       width: 1px;
