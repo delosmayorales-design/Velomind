@@ -1201,6 +1201,58 @@
       .dt-sep-v { width: 100% !important; height: 1px !important; margin: 4px 0 !important; }
     }
 
+    /* ══ Layout bottom: toolbar fija · timeline · perfil ══════════ */
+
+    /* Botón de perfil de elevación */
+    #dt-btn-elev.active {
+      background: rgba(245,158,11,0.12) !important;
+      border-color: rgba(245,158,11,0.35) !important;
+      color: #F59E0B !important;
+    }
+
+    /* Desktop: toolbar barra completa en la parte inferior */
+    @media (min-width: 769px) {
+      /* Toolbar: siempre anclada al fondo, ancho completo */
+      .draw-toolbar {
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        transform: none !important;
+        border-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+        justify-content: center !important;
+        padding: 8px 20px !important;
+        gap: 6px !important;
+      }
+      /* La toolbar no se mueve con elev ni timeline */
+      body.elev-open .draw-toolbar,
+      body.timeline-open .draw-toolbar,
+      body.elev-open.timeline-open .draw-toolbar { bottom: 0 !important; }
+
+      /* Perfil de elevación: absoluto, justo encima del toolbar */
+      .elev-panel {
+        position: absolute !important;
+        bottom: 50px !important;
+        left: 0 !important; right: 0 !important;
+        border-top: 1px solid var(--border) !important;
+        border-radius: 0 !important;
+      }
+      /* Cuando la timeline también está abierta, el perfil sube */
+      body.timeline-open .elev-panel { bottom: 124px !important; } /* 50 + 74 */
+
+      /* Timeline 24h: justo encima del toolbar */
+      #weather-timeline {
+        bottom: 50px !important;
+        left: 0 !important; right: 0 !important;
+        border-radius: 0 !important;
+      }
+
+      /* Wind-card: sube cuando la timeline está abierta */
+      body.timeline-open .wind-card { bottom: 132px !important; }
+    }
+
   </style>
 </head>
 <body>
@@ -1393,6 +1445,8 @@
           <button class="dt-btn" onclick="undoWaypoint()" title="Deshacer último punto"><i class="fas fa-undo"></i></button>
           <button class="dt-btn del" onclick="clearRoute()" title="Limpiar ruta"><i class="fas fa-trash"></i></button>
           <button class="dt-btn save" onclick="openSaveModal()"><i class="fas fa-save"></i> Guardar</button>
+          <div class="dt-sep" style="width:1px;height:20px;background:rgba(255,255,255,0.10);margin:0 4px;flex-shrink:0;"></div>
+          <button class="dt-btn" id="dt-btn-elev" onclick="toggleElevPanel()" title="Perfil de elevación"><i class="fas fa-chart-area"></i></button>
         </div>
       </div>
 
@@ -1484,7 +1538,7 @@
       <div class="elev-panel" id="elev-panel">
         <div class="elev-hdr">
           <span class="elev-ttl"><i class="fas fa-mountain"></i> Perfil de elevación</span>
-          <button class="elev-close" onclick="document.getElementById('elev-panel').classList.remove('visible');document.body.classList.remove('elev-open')">×</button>
+          <button class="elev-close" onclick="toggleElevPanel()">×</button>
         </div>
         <canvas id="elev-chart" style="flex:1;min-height:0"></canvas>
       </div>
@@ -2282,10 +2336,27 @@ async function fetchElevation(latLngs) {
   }
 }
 
+function toggleElevPanel() {
+  const panel = document.getElementById('elev-panel');
+  const btn   = document.getElementById('dt-btn-elev');
+  if (panel.classList.contains('visible')) {
+    panel.classList.remove('visible');
+    document.body.classList.remove('elev-open');
+    btn?.classList.remove('active');
+  } else {
+    if (!currentRouteElevs?.length) return;
+    panel.classList.add('visible');
+    document.body.classList.add('elev-open');
+    btn?.classList.add('active');
+    setTimeout(() => map && map.invalidateSize(), 50);
+  }
+}
+
 function renderElevChart(elevs) {
   currentRouteElevs = elevs;
   document.getElementById('elev-panel').classList.add('visible');
   document.body.classList.add('elev-open');
+  document.getElementById('dt-btn-elev')?.classList.add('active');
   // Notificar a Leaflet que el contenedor cambió de tamaño
   setTimeout(() => map && map.invalidateSize(), 50);
   const ctx = document.getElementById('elev-chart').getContext('2d');
@@ -2456,6 +2527,7 @@ function clearRoute() {
     document.getElementById(id).textContent = i === 0 ? '0.0' : '—');
   document.getElementById('elev-panel').classList.remove('visible');
   document.body.classList.remove('elev-open');
+  document.getElementById('dt-btn-elev')?.classList.remove('active');
   _clearPreviewLine();
   _syncWpCount();
 }
