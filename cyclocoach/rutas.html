@@ -1176,8 +1176,8 @@
     }
     .dt-btn.dt-type { padding: 6px 9px !important; font-size: 15px !important; }
 
-    /* 3. Map stats: ligeramente más compactas */
-    .map-stats { padding: 7px 16px !important; min-width: 260px !important; }
+    /* 3. Map stats: compactas pero con espacio para los tres tiempos */
+    .map-stats { padding: 7px 16px !important; min-width: 320px !important; }
 
     /* 4. Weather timeline: reducir ~14px de altura */
     #wtl-info { padding: 5px 10px 2px !important; }
@@ -1251,6 +1251,33 @@
 
       /* Wind-card: sube cuando la timeline está abierta */
       body.timeline-open .wind-card { bottom: 132px !important; }
+
+      /* Perfil de elevación: z-index y margen de seguridad sobre toolbar */
+      .elev-panel { z-index: 600 !important; bottom: 54px !important; }
+    }
+
+    /* ══ Móvil: perfil como overlay encima del toolbar ══════════════ */
+    @media (max-width: 768px) {
+      /* Perfil: absoluto, siempre encima del toolbar */
+      .elev-panel {
+        position: absolute !important;
+        bottom: calc(180px + env(safe-area-inset-bottom, 0px)) !important;
+        left: 0 !important; right: 0 !important;
+        z-index: 600 !important;
+        border-radius: 14px 14px 0 0 !important;
+        border-top: 1px solid var(--border) !important;
+      }
+      /* Si la timeline también está abierta, el perfil sube */
+      body.timeline-open .elev-panel {
+        bottom: calc(270px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+      /* Toolbar: ya no se desplaza cuando solo se abre el perfil */
+      body.elev-open .draw-toolbar {
+        bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+      body.elev-open.timeline-open .draw-toolbar {
+        bottom: calc(166px + env(safe-area-inset-bottom, 0px)) !important;
+      }
     }
 
   </style>
@@ -2348,7 +2375,7 @@ function toggleElevPanel() {
     panel.classList.add('visible');
     document.body.classList.add('elev-open');
     btn?.classList.add('active');
-    setTimeout(() => map && map.invalidateSize(), 50);
+    setTimeout(() => { map && map.invalidateSize(); elevChart?.resize(); }, 80);
   }
 }
 
