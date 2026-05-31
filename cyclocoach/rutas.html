@@ -1174,7 +1174,7 @@
       margin: 0 7px;
       flex-shrink: 0;
     }
-    .dt-btn.dt-type { padding: 6px 9px !important; font-size: 15px !important; }
+    .dt-btn.dt-type { padding: 4px 8px !important; font-size: 13px !important; }
 
     /* 3. Map stats: compactas pero con espacio para los tres tiempos */
     .map-stats { padding: 7px 16px !important; min-width: 320px !important; }
@@ -1223,9 +1223,12 @@
         border-right: none !important;
         border-bottom: none !important;
         justify-content: center !important;
-        padding: 8px 20px !important;
-        gap: 6px !important;
+        padding: 5px 14px !important;
+        gap: 5px !important;
       }
+      /* Botones de acción más compactos en desktop */
+      .draw-toolbar .dt-btn { padding: 5px 10px !important; font-size: 12px !important; }
+      .draw-toolbar .dt-btn.save { padding: 5px 12px !important; }
       /* La toolbar no se mueve con elev ni timeline */
       body.elev-open .draw-toolbar,
       body.timeline-open .draw-toolbar,
@@ -2375,17 +2378,11 @@ function toggleElevPanel() {
     panel.classList.add('visible');
     document.body.classList.add('elev-open');
     btn?.classList.add('active');
-    setTimeout(() => { map && map.invalidateSize(); elevChart?.resize(); }, 80);
+    setTimeout(() => { _buildElevChart(currentRouteElevs); map && map.invalidateSize(); }, 30);
   }
 }
 
-function renderElevChart(elevs) {
-  currentRouteElevs = elevs;
-  document.getElementById('elev-panel').classList.add('visible');
-  document.body.classList.add('elev-open');
-  document.getElementById('dt-btn-elev')?.classList.add('active');
-  // Notificar a Leaflet que el contenedor cambió de tamaño
-  setTimeout(() => map && map.invalidateSize(), 50);
+function _buildElevChart(elevs) {
   const ctx = document.getElementById('elev-chart').getContext('2d');
   if (elevChart) elevChart.destroy();
   elevChart = new Chart(ctx, {
@@ -2404,6 +2401,14 @@ function renderElevChart(elevs) {
       }
     }
   });
+}
+
+function renderElevChart(elevs) {
+  currentRouteElevs = elevs;
+  // Solo actualizar el gráfico si el panel ya está visible (activado por el usuario)
+  if (document.getElementById('elev-panel').classList.contains('visible')) {
+    setTimeout(() => _buildElevChart(elevs), 30);
+  }
 }
 
 // ── Dibujo ───────────────────────────────────────────────────────
