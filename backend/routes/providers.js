@@ -147,11 +147,16 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
   console.log('\n[POST /strava/sync] 🔄 INICIANDO SYNC');
   console.log('👉 UID del usuario que sincroniza:', uid);
 
-  const { data: user } = await supabase
+  const { data: user, error: userError } = await supabase
     .from('users')
     .select('*')
     .eq('id', uid)
     .single();
+
+  if (userError) {
+    console.error('[Strava Sync] Error al obtener usuario:', userError.message);
+    return res.status(500).json({ error: 'Error al verificar tu cuenta. Intenta de nuevo.' });
+  }
 
   if (!user?.strava_token) {
     return res.status(400).json({ error: 'Strava no conectado' });
@@ -217,11 +222,12 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       if (r.status === 429) {
         console.warn('[Strava Sync] ⚠️ Rate limit de Strava alcanzado (HTTP 429).');
         if (page === 1) return res.status(429).json({ error: 'Límite de peticiones a Strava alcanzado. Intenta de nuevo en 15 minutos.' });
-        break; // Si ya descargamos páginas anteriores, paramos y guardamos lo que tenemos
+        break;
       }
       if (!r.ok) {
-        console.error(`[Strava Sync] Error HTTP ${r.status}:`, await r.text().catch(() => ''));
-        if (page === 1) return res.status(400).json({ error: 'Error al obtener actividades de Strava' });
+        const errBody = await r.text().catch(() => '');
+        console.error(`[Strava Sync] Error HTTP ${r.status} de Strava API:`, errBody.substring(0, 300));
+        if (page === 1) return res.status(502).json({ error: `Strava devolvió un error (HTTP ${r.status}). Intenta de nuevo en unos minutos.` });
         break;
       }
 
@@ -479,8 +485,8 @@ rowsToInsert.push({
     });
 
   } catch (e) {
-    console.error('\n❌ [Strava Sync] ERROR FATAL:', e);
-    res.status(500).json({ error: e.message });
+    console.error('\n❌ [Strava Sync] ERROR FATAL:', e.message || e, '\nStack:', e.stack || '(sin stack)');
+    res.status(500).json({ error: e.message || 'Error interno al sincronizar con Strava' });
   }
 });
 

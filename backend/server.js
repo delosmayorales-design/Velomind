@@ -78,6 +78,11 @@ app.use('/api/push',        require('./routes/push'));
 app.use('/api/wellness',   require('./routes/wellness'));
 
 // ─────────────────────────────────────────
+// HEALTH (usado por el keepalive y monitoreo externo)
+// ─────────────────────────────────────────
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+
+// ─────────────────────────────────────────
 // 404
 // ─────────────────────────────────────────
 app.use((req, res) => {
@@ -106,7 +111,7 @@ if (process.env.NODE_ENV !== 'test') require('./services/demoCleanup').start();
 if (process.env.NODE_ENV === 'production') {
   const SELF = process.env.RENDER_EXTERNAL_URL || 'https://velomind-backend.onrender.com';
   setInterval(() => {
-    fetch(`${SELF}/api/auth/verify`).catch(() => {});
+    fetch(`${SELF}/api/health`).catch(() => {});
   }, 14 * 60 * 1000); // cada 14 minutos
 }
 
