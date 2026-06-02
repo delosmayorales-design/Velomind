@@ -161,6 +161,14 @@
       display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
     }
     .route-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .route-item-perf {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px;
+      font-size: 11px; font-weight: 600;
+    }
+    .route-item-perf span { display: flex; align-items: center; gap: 4px; color: var(--text-secondary); }
+    .route-item-perf .fa-calendar-alt { color: var(--text-muted); }
+    .route-item-perf .fa-bolt  { color: #F59E0B; }
+    .route-item-perf .fa-heart { color: #ef4444; }
     .route-item-actions { display: flex; gap: 10px; margin-top: 6px; }
     .ri-btn {
       background: none; border: none;
@@ -2762,6 +2770,12 @@ function renderRouteList() {
       <div class="route-item-meta">
         ${r.notes?.startsWith('GPS ·') ? '<span style="color:#ff3b3b;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px"><i class="fas fa-circle" style="font-size:6px"></i> GPS</span> · ' : ''}${r.distance_km ? r.distance_km + ' km' : ''}${r.elevation_gain_m ? ' · ' + Math.round(r.elevation_gain_m) + ' m D+' : ''}${r.estimated_minutes ? ' · ~' + formatTime(r.estimated_minutes) : ''}
       </div>
+      ${(r.activity_date || r.avg_power || r.avg_hr) ? `
+      <div class="route-item-perf">
+        ${r.activity_date ? `<span><i class="far fa-calendar-alt"></i> ${new Date(r.activity_date + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' })}</span>` : ''}
+        ${r.avg_power     ? `<span><i class="fas fa-bolt"></i> ${r.avg_power} W</span>` : ''}
+        ${r.avg_hr        ? `<span><i class="fas fa-heart"></i> ${r.avg_hr} bpm</span>` : ''}
+      </div>` : ''}
       <div class="route-item-actions">
         <button class="ri-btn fav ${r.is_favorite?'on':''}" title="Favorito"
           onclick="event.stopPropagation();toggleFav('${r.id}',${!r.is_favorite})">

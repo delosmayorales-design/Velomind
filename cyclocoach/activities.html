@@ -320,6 +320,7 @@ let _stravaMapInst = null;
 window._polylineCache = {};
 let _currentStreamLatLng  = null;
 let _currentStreamAltitude = null;
+let _currentActivity = null;
 
 // ── Decodifica polilínea codificada de Google/Strava ─────
 function decodePolyline(encoded) {
@@ -946,6 +947,7 @@ function generateCoachComment(act, pmcSnap, allActs) {
 function showActivityDetail(actId) {
   const act = allActivities.find(a => String(a.id) === String(actId));
   if (!act) return;
+  _currentActivity = act;
   if (_stravaMapInst) { _stravaMapInst.remove(); _stravaMapInst = null; }
   Object.values(chartInsts).forEach(c => { try { c.destroy(); } catch {} });
   chartInsts = {};
@@ -1913,6 +1915,12 @@ async function saveActivityAsRoute() {
     }
   }
 
+  const actDate    = _currentActivity?.date     ? String(_currentActivity.date).substring(0, 10) : null;
+  const actPower   = _currentActivity?.avg_power || null;
+  const actHR      = _currentActivity?.avg_hr    || null;
+  const actDurMin  = _currentActivity?.duration  ? Math.round(_currentActivity.duration / 60)    : null;
+  const dateLabel  = actDate ? new Date(actDate + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' }) : null;
+
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
   try {
@@ -1923,7 +1931,11 @@ async function saveActivityAsRoute() {
         name, type, geojson,
         distance_km:      Math.round(distKm * 10) / 10,
         elevation_gain_m: elevGain ? Math.round(elevGain) : null,
-        notes: 'GPS · importada desde actividad Strava'
+        estimated_minutes: actDurMin,
+        notes:             actDate ? `GPS · importada desde actividad · ${actDate}` : 'GPS · importada desde actividad',
+        activity_date:     actDate,
+        avg_power:         actPower,
+        avg_hr:            actHR,
       })
     });
     if (!r.ok) throw new Error((await r.json()).error || 'Error');
@@ -1949,7 +1961,7 @@ function closePanel() {
   chartInsts = {};
   _selA = null; _selB = null; _sOrig = null;
   if (_stravaMapInst) { _stravaMapInst.remove(); _stravaMapInst = null; }
-  _currentStreamLatLng = null; _currentStreamAltitude = null;
+  _currentStreamLatLng = null; _currentStreamAltitude = null; _currentActivity = null;
   document.getElementById('detail-panel').classList.remove('open');
   document.getElementById('panel-overlay').classList.remove('show');
   document.body.style.overflow = '';
