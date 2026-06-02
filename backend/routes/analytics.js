@@ -128,21 +128,40 @@ router.get('/ftp-estimate', async (req, res) => {
   const ftpCap = weight > 0 ? Math.round(weight * 6.5) : 550;
 
   const { data: acts } = await supabase.from('activities')
-    .select('avg_power, np, duration, date, name, strava_id')
+    .select('avg_power, np, duration, date, name, strava_id, best_efforts')
     .eq('user_id', uid).gt('avg_power', 0).gte('duration', 1200)
     .lte('avg_power', 2500) // ignorar spikes de sensor
     .order('duration', { ascending: true });
 
+  // Método 1: mejor segmento rodante de 20 min a través de TODAS las actividades
+  // (igual que la curva de potencia — fuente de verdad consistente con Strava)
+  let estimatedFTP = null, best20min = null, method = null, bestLabel = null, source = null;
+  const allActs = acts || [];
+  const best20Source = allActs.reduce((best, a) => {
+    const be = Number(a.best_efforts?.[1200] || 0);
+    return be > (best ? Number(best.best_efforts?.[1200] || 0) : 0) ? a : best;
+  }, null);
+  if (best20Source) {
+    const rolling20 = Number(best20Source.best_efforts[1200]);
+    if (rolling20 > 0) {
+      const est = Math.min(Math.round(rolling20 * 0.95), ftpCap);
+      estimatedFTP = est;
+      best20min    = rolling20;
+      method       = 'best_rolling_20min';
+      bestLabel    = 'segmento 20 min';
+      source       = best20Source;
+    }
+  }
+
+  // Método 2: mejor NP/avg_power por ventana de duración (fallback sin best_efforts)
   const WINDOWS = [
     { min: 1200, max: 2400, factor: 0.95, label: '20-40 min' },
     { min: 2400, max: 3600, factor: 0.97, label: '40-60 min' },
     { min: 3600, max: 5400, factor: 1.00, label: '60-90 min' },
     { min: 5400, max: 99999, factor: 1.03, label: '>90 min'   },
   ];
-
-  let estimatedFTP = null, best20min = null, method = null, bestLabel = null, source = null;
   for (const w of WINDOWS) {
-    const bucket = (acts || []).filter(a => a.duration >= w.min && a.duration < w.max);
+    const bucket = allActs.filter(a => a.duration >= w.min && a.duration < w.max);
     if (!bucket.length) continue;
     bucket.sort((a, b) => (b.np || b.avg_power) - (a.np || a.avg_power));
     const top = bucket[0];
@@ -150,10 +169,10 @@ router.get('/ftp-estimate', async (req, res) => {
     const est = Math.min(Math.round(power * w.factor), ftpCap);
     if (!estimatedFTP || est > estimatedFTP) {
       estimatedFTP = est;
-      best20min = power;
-      method = `best_${w.label}`;
-      bestLabel = w.label;
-      source = top;
+      best20min    = power;
+      method       = `best_${w.label}`;
+      bestLabel    = w.label;
+      source       = top;
     }
   }
 
