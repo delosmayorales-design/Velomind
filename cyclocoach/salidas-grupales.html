@@ -261,6 +261,58 @@
 
     .comments-empty { font-size:12px; color:var(--text-muted); text-align:center; padding:12px 0; }
 
+    /* ── Invite ───────────────────────────────────────────────── */
+    .invite-search-wrap { position:relative; }
+    .invite-search {
+      width:100%; padding:9px 12px; background:var(--bg-input); border:1px solid var(--border);
+      border-radius:var(--radius-sm); color:var(--text-primary); font-size:16px;
+      font-family:inherit; box-sizing:border-box; transition:border-color .15s;
+    }
+    @media (min-width:601px) { .invite-search { font-size:13px; } }
+    .invite-search:focus { outline:none; border-color:var(--primary); }
+    .invite-dropdown {
+      position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:50;
+      background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm);
+      overflow:hidden; display:none; box-shadow:0 8px 24px rgba(0,0,0,.3);
+    }
+    .invite-dropdown.open { display:block; }
+    .invite-option {
+      display:flex; align-items:center; gap:10px; padding:12px;
+      cursor:pointer; transition:background .12s; min-height:44px;
+    }
+    .invite-option:hover { background:var(--bg-input); }
+    .invite-option-avatar {
+      width:28px; height:28px; border-radius:50%; flex-shrink:0;
+      background:linear-gradient(135deg,var(--primary),#ff9a56);
+      color:#fff; font-size:10px; font-weight:700;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+    }
+    .invite-option-avatar img { width:100%; height:100%; object-fit:cover; }
+    .invite-option-name { font-size:13px; color:var(--text-primary); }
+    .invite-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; min-height:0; }
+    .invite-chip {
+      display:flex; align-items:center; gap:6px; padding:4px 8px 4px 6px;
+      background:rgba(255,107,53,.12); border:1px solid rgba(255,107,53,.3);
+      border-radius:20px; font-size:12px; color:var(--primary);
+    }
+    .invite-chip-remove {
+      background:none; border:none; padding:0 4px; cursor:pointer;
+      color:var(--primary); font-size:18px; line-height:1; opacity:.6;
+      min-width:28px; min-height:28px; display:flex; align-items:center; justify-content:center;
+    }
+    .invite-chip-remove:hover { opacity:1; }
+    .btn-invite-send {
+      margin-top:10px; padding:10px 18px; border-radius:var(--radius-sm); border:none;
+      background:var(--primary); color:#fff; font-size:13px; font-weight:700;
+      font-family:inherit; cursor:pointer; transition:opacity .18s; min-height:44px;
+    }
+    .btn-invite-send:hover { opacity:.85; }
+    .btn-invite-send:disabled { opacity:.45; cursor:not-allowed; }
+    .invite-sent-list { display:flex; flex-direction:column; gap:6px; }
+    .invite-sent-item { display:flex; align-items:center; gap:10px; padding:7px 10px; background:var(--bg-input); border-radius:10px; }
+    .invite-sent-name { font-size:12px; color:var(--text-secondary); flex:1; }
+    .invite-sent-badge { font-size:10px; color:var(--text-muted); background:rgba(255,255,255,.05); padding:2px 7px; border-radius:10px; }
+
     /* ── Modal ────────────────────────────────────────────────── */
     .modal-overlay {
       display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
@@ -811,6 +863,24 @@
       <div class="panel-section-title">Participantes · ${maxInfo}</div>
       <div class="participant-list">${participantItems || '<p style="font-size:12px;color:var(--text-muted)">Sin participantes aún.</p>'}</div>
 
+      ${ride.is_mine ? `
+      <div class="panel-section-title">Invitar participantes</div>
+      <div id="invite-section">
+        <div class="invite-search-wrap">
+          <input class="invite-search" id="invite-search" type="text" placeholder="Buscar usuario por nombre…" autocomplete="off">
+          <div class="invite-dropdown" id="invite-dropdown"></div>
+        </div>
+        <div class="invite-chips" id="invite-chips"></div>
+        <button class="btn-invite-send" id="btn-invite-send" disabled>
+          <i class="fas fa-paper-plane"></i> Enviar invitaciones
+        </button>
+        <div id="invite-sent-wrap" style="display:none">
+          <div class="panel-section-title" style="margin-top:14px">Ya invitados</div>
+          <div class="invite-sent-list" id="invite-sent-list"></div>
+        </div>
+      </div>
+      ` : ''}
+
       <div class="panel-section-title">Chat</div>
       ${(ride.is_joined || ride.is_mine)
         ? `<div class="comment-list" id="comment-list">
@@ -924,6 +994,8 @@
         delBtn.title = 'Eliminar salida';
         delBtn.addEventListener('click', () => deleteRide(ride.id));
         actions.appendChild(delBtn);
+
+        setupInviteSection(ride.id);
       }
     }
 
@@ -934,6 +1006,130 @@
     backBtn.innerHTML = '<i class="fas fa-times"></i> Cerrar';
     backBtn.addEventListener('click', closePanel);
     actions.appendChild(backBtn);
+  }
+
+  async function setupInviteSection(rideId) {
+    const search   = document.getElementById('invite-search');
+    const dropdown = document.getElementById('invite-dropdown');
+    const chips    = document.getElementById('invite-chips');
+    const sendBtn  = document.getElementById('btn-invite-send');
+    const sentWrap = document.getElementById('invite-sent-wrap');
+    const sentList = document.getElementById('invite-sent-list');
+    if (!search) return;
+
+    const selected = new Map(); // userId -> {name, avatar}
+    let searchTimer = null;
+
+    // Load already-invited users
+    try {
+      const res = await fetch(`${API}/group-rides/${rideId}/invitations`, { headers: { Authorization: `Bearer ${Auth.getToken()}` } });
+      const invites = await res.json();
+      if (Array.isArray(invites) && invites.length > 0) {
+        sentWrap.style.display = '';
+        sentList.innerHTML = invites.map(i => {
+          const av = i.user_avatar ? `<img src="${i.user_avatar}" alt="">` : (i.user_name || 'U')[0].toUpperCase();
+          return `<div class="invite-sent-item">
+            <div class="invite-option-avatar">${av}</div>
+            <span class="invite-sent-name">${escHtml(i.user_name)}</span>
+            <span class="invite-sent-badge">Invitado</span>
+          </div>`;
+        }).join('');
+      }
+    } catch(_) {}
+
+    function renderChips() {
+      chips.innerHTML = [...selected.entries()].map(([id, u]) => {
+        const av = u.avatar ? `<img src="${u.avatar}" alt="">` : (u.name || 'U')[0].toUpperCase();
+        return `<div class="invite-chip" data-id="${id}">
+          <div class="invite-option-avatar" style="width:20px;height:20px;font-size:9px">${av}</div>
+          ${escHtml(u.name)}
+          <button class="invite-chip-remove" data-id="${id}" title="Quitar">×</button>
+        </div>`;
+      }).join('');
+      sendBtn.disabled = selected.size === 0;
+      chips.querySelectorAll('.invite-chip-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selected.delete(Number(btn.dataset.id));
+          renderChips();
+        });
+      });
+    }
+
+    search.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const q = search.value.trim();
+      if (q.length < 2) { dropdown.innerHTML = ''; dropdown.classList.remove('open'); return; }
+      searchTimer = setTimeout(async () => {
+        try {
+          const res   = await fetch(`${API}/group-rides/users/search?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${Auth.getToken()}` } });
+          const users = await res.json();
+          if (!users.length) {
+            dropdown.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--text-muted)">Sin resultados</div>';
+            dropdown.classList.add('open');
+            return;
+          }
+          dropdown.innerHTML = users.map(u => {
+            const av = u.avatar_url ? `<img src="${u.avatar_url}" alt="">` : (u.name || 'U')[0].toUpperCase();
+            return `<div class="invite-option" data-id="${u.id}" data-name="${escHtml(u.name)}" data-avatar="${u.avatar_url || ''}">
+              <div class="invite-option-avatar">${av}</div>
+              <span class="invite-option-name">${escHtml(u.name)}</span>
+            </div>`;
+          }).join('');
+          dropdown.classList.add('open');
+          dropdown.querySelectorAll('.invite-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+              const id = Number(opt.dataset.id);
+              if (!selected.has(id)) {
+                selected.set(id, { name: opt.dataset.name, avatar: opt.dataset.avatar });
+                renderChips();
+              }
+              search.value = '';
+              dropdown.innerHTML = '';
+              dropdown.classList.remove('open');
+            });
+          });
+        } catch(_) {}
+      }, 300);
+    });
+
+    document.addEventListener('click', function closeInviteDropdown(e) {
+      if (!dropdown.contains(e.target) && e.target !== search) {
+        dropdown.classList.remove('open');
+      }
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      if (selected.size === 0) return;
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+      try {
+        const res = await fetch(`${API}/group-rides/${rideId}/invite`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${Auth.getToken()}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_ids: [...selected.keys()] }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        sentWrap.style.display = '';
+        selected.forEach((u, _id) => {
+          const av = u.avatar ? `<img src="${u.avatar}" alt="">` : (u.name || 'U')[0].toUpperCase();
+          sentList.insertAdjacentHTML('beforeend', `<div class="invite-sent-item">
+            <div class="invite-option-avatar">${av}</div>
+            <span class="invite-sent-name">${escHtml(u.name)}</span>
+            <span class="invite-sent-badge">Invitado</span>
+          </div>`);
+        });
+        selected.clear();
+        renderChips();
+        sendBtn.innerHTML = '<i class="fas fa-check"></i> ¡Invitaciones enviadas!';
+        setTimeout(() => { sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar invitaciones'; }, 2500);
+      } catch(e) {
+        alert(e.message || 'Error al enviar invitaciones');
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar invitaciones';
+      }
+    });
   }
 
   function renderComment(c) {
@@ -987,7 +1183,6 @@
 
   function stopCommentPolling() {
     if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
-    knownCommentIds.clear();
   }
 
   async function pollComments(rideId) {
@@ -1014,6 +1209,7 @@
     document.getElementById('detail-panel').classList.remove('open');
     document.getElementById('panel-overlay').classList.remove('show');
     stopCommentPolling();
+    knownCommentIds.clear();
     openRide = null;
   }
   document.getElementById('panel-overlay').addEventListener('click', closePanel);

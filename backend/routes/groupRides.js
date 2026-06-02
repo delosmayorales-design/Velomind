@@ -101,6 +101,24 @@ router.get('/mine', requireAuth, async (req, res) => {
   }
 });
 
+// ─── GET /api/group-rides/users/search ────────────────────────────────────────
+router.get('/users/search', requireAuth, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (q.length < 2) return res.json([]);
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, name, avatar_url')
+      .ilike('name', `%${q}%`)
+      .neq('id', req.user.id)
+      .limit(10);
+    if (error) throw error;
+    res.json(data || []);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── GET /api/group-rides/:id ─────────────────────────────────────────────────
 router.get('/:id', requireAuth, async (req, res) => {
   try {
@@ -396,6 +414,84 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
         );
       } catch (_) {}
     });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── GET /api/group-rides/:id/invitations ─────────────────────────────────────
+router.get('/:id/invitations', requireAuth, async (req, res) => {
+  try {
+    const { data: ride } = await supabase
+      .from('group_rides')
+      .select('creator_id')
+      .eq('id', req.params.id)
+      .single();
+    if (!ride || String(ride.creator_id) !== String(req.user.id))
+      return res.status(403).json({ error: 'No autorizado' });
+
+    const { data, error } = await supabase
+      .from('group_ride_invitations')
+      .select('invitee_id, created_at, users!group_ride_invitations_invitee_id_fkey(name, avatar_url)')
+      .eq('ride_id', req.params.id)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json((data || []).map(i => ({
+      user_id:     i.invitee_id,
+      user_name:   i.users?.name,
+      user_avatar: i.users?.avatar_url,
+      invited_at:  i.created_at,
+    })));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── POST /api/group-rides/:id/invite ─────────────────────────────────────────
+router.post('/:id/invite', requireAuth, async (req, res) => {
+  try {
+    const { user_ids } = req.body;
+    if (!Array.isArray(user_ids) || user_ids.length === 0)
+      return res.status(400).json({ error: 'user_ids requerido' });
+
+    const { data: ride } = await supabase
+      .from('group_rides')
+      .select('id, title, departure_time, creator_id')
+      .eq('id', req.params.id)
+      .single();
+    if (!ride) return res.status(404).json({ error: 'Salida no encontrada' });
+    if (String(ride.creator_id) !== String(req.user.id))
+      return res.status(403).json({ error: 'No autorizado' });
+
+    const { data: inviter } = await supabase
+      .from('users')
+      .select('name')
+      .eq('id', req.user.id)
+      .single();
+    const inviterName = inviter?.name || 'Alguien';
+
+    await supabase
+      .from('group_ride_invitations')
+      .upsert(
+        user_ids.map(uid => ({ ride_id: req.params.id, inviter_id: req.user.id, invitee_id: uid })),
+        { onConflict: 'ride_id,invitee_id', ignoreDuplicates: true }
+      );
+
+    const dt      = new Date(ride.departure_time ?? '');
+    const dateStr = isNaN(dt) ? '' : dt.toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+
+    await Promise.allSettled(
+      user_ids.map(uid =>
+        sendPushToUser(uid, {
+          title: `🚴 ${inviterName} te ha invitado`,
+          body:  `${ride.title}${dateStr ? ' · ' + dateStr : ''}`,
+          tag:   `invite-${req.params.id}`,
+          url:   '/cyclocoach/salidas-grupales.html',
+        })
+      )
+    );
+
+    res.json({ ok: true, invited: user_ids.length });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
