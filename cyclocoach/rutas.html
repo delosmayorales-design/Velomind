@@ -1361,6 +1361,9 @@
       <button class="btn btn-secondary btn-sm" id="btn-rain" onclick="toggleRainLayer()" title="Radar de lluvia en tiempo real">
         <i class="fas fa-cloud-rain"></i><span class="btn-label"> Lluvia</span>
       </button>
+      <button class="btn btn-secondary btn-sm" id="btn-strava-segments" onclick="toggleStravaSegments()" title="Segmentos Strava en la ruta actual">
+        <i class="fab fa-strava"></i><span class="btn-label"> Segmentos</span>
+      </button>
       <button class="btn btn-secondary btn-sm" id="btn-weather-zone" onclick="toggleWeatherDrawer()" title="Tiempo en la zona">
         <i class="fas fa-cloud-sun"></i><span class="btn-label"> Tiempo zona</span>
       </button>
@@ -1916,6 +1919,7 @@ let map, baseOSM, elevChart, cycleOverlayLayer, cycleOverlayOn = false, mapWindC
 let currentRouteElevs = null;
 let waypoints = [], waypointMarkers = [];
 let routeLayer = null, routeGeoJSON = null;
+let segmentsLayer = null, segmentsOn = false;
 let allRoutes = [], activeFilter = 'all';
 let drawingActive = false, currentRouteType = 'road';
 let _elevFetchId = 0;          // guard anti-stale: se incrementa en cada nueva llamada
@@ -2019,6 +2023,125 @@ function toggleCycleOverlay() {
   const btn = document.getElementById('btn-overlay');
   btn.classList.toggle('btn-primary', cycleOverlayOn);
   btn.classList.toggle('btn-ghost',   !cycleOverlayOn);
+}
+
+// ── Strava Segments ──────────────────────────────────────────────
+// Decodifica polilínea con precisión 5 (formato estándar Strava/Google)
+function decodePolyline5(encoded) {
+  const coords = []; let idx = 0, lat = 0, lng = 0;
+  while (idx < encoded.length) {
+    let b, shift = 0, result = 0;
+    do { b = encoded.charCodeAt(idx++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+    shift = 0; result = 0;
+    do { b = encoded.charCodeAt(idx++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+    coords.push([lat / 1e5, lng / 1e5]);
+  }
+  return coords;
+}
+
+const SEGMENT_CAT = { 0: 'NC', 1: 'Cat 4', 2: 'Cat 3', 3: 'Cat 2', 4: 'Cat 1', 5: 'HC' };
+const SEGMENT_CAT_COLOR = { 0: '#94a3b8', 1: '#60a5fa', 2: '#4ade80', 3: '#fbbf24', 4: '#f97316', 5: '#ef4444' };
+
+async function loadStravaSegments() {
+  if (!routeLayer) { showToast('Abre una ruta primero para ver sus segmentos', 'info'); return; }
+  const btn = document.getElementById('btn-strava-segments');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span class="btn-label"> Cargando...</span>';
+
+  // Limpiar capa anterior
+  if (segmentsLayer) { map.removeLayer(segmentsLayer); segmentsLayer = null; }
+
+  try {
+    const b = routeLayer.getBounds();
+    const bounds = `${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}`;
+    const res = await Auth.apiFetch(`${API_BASE}/providers/strava/segments?bounds=${bounds}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al cargar segmentos');
+    }
+    const segments = await res.json();
+    if (!segments.length) { showToast('No hay segmentos Strava en esta zona', 'info'); return; }
+
+    segmentsLayer = L.layerGroup().addTo(map);
+
+    segments.forEach(seg => {
+      const cat      = seg.climb_category ?? 0;
+      const color    = SEGMENT_CAT_COLOR[cat] ?? '#94a3b8';
+      const catLabel = SEGMENT_CAT[cat] ?? 'NC';
+      const distKm   = seg.distance ? (seg.distance / 1000).toFixed(1) : '?';
+      const grade    = seg.avg_grade != null ? seg.avg_grade.toFixed(1) + '%' : '?';
+
+      // Polilínea del segmento
+      if (seg.points) {
+        const coords = decodePolyline5(seg.points);
+        if (coords.length >= 2) {
+          L.polyline(coords, { color, weight: 4, opacity: 0.85, dashArray: '8 4' })
+            .bindPopup(segmentPopup(seg, catLabel, distKm, grade, color))
+            .addTo(segmentsLayer);
+        }
+      }
+
+      // Marcador en el inicio del segmento
+      if (seg.start_latlng?.length === 2) {
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="
+            background:${color};color:#fff;font-size:9px;font-weight:800;
+            padding:2px 5px;border-radius:4px;white-space:nowrap;
+            box-shadow:0 2px 6px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.3);
+            max-width:120px;overflow:hidden;text-overflow:ellipsis;
+          ">${escHtml(seg.name)}</div>`,
+          iconAnchor: [0, 10],
+        });
+        L.marker(seg.start_latlng, { icon })
+          .bindPopup(segmentPopup(seg, catLabel, distKm, grade, color))
+          .addTo(segmentsLayer);
+      }
+    });
+
+    showToast(`${segments.length} segmento${segments.length !== 1 ? 's' : ''} Strava cargado${segments.length !== 1 ? 's' : ''}`, 'success');
+  } catch(e) {
+    showToast(e.message, 'error');
+    segmentsOn = false;
+  } finally {
+    btn.disabled = false;
+    const active = segmentsOn && segmentsLayer;
+    btn.innerHTML = '<i class="fab fa-strava"></i><span class="btn-label"> Segmentos</span>';
+    btn.classList.toggle('btn-primary', active);
+    btn.classList.toggle('btn-secondary', !active);
+  }
+}
+
+function segmentPopup(seg, catLabel, distKm, grade, color) {
+  const stravaUrl = `https://www.strava.com/segments/${seg.id}`;
+  return `<div style="min-width:160px;font-family:inherit">
+    <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#111">${escHtml(seg.name)}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="background:${color};color:#fff;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700">${catLabel}</span>
+      <span style="font-size:11px;color:#555"><i class="fas fa-ruler"></i> ${distKm} km</span>
+      <span style="font-size:11px;color:#555"><i class="fas fa-mountain"></i> ${grade}</span>
+    </div>
+    <a href="${stravaUrl}" target="_blank" rel="noopener"
+       style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+              color:#FC4C02;text-decoration:none">
+      <i class="fab fa-strava"></i> Ver en Strava
+    </a>
+  </div>`;
+}
+
+async function toggleStravaSegments() {
+  segmentsOn = !segmentsOn;
+  const btn = document.getElementById('btn-strava-segments');
+  btn.classList.toggle('btn-primary',   segmentsOn);
+  btn.classList.toggle('btn-secondary', !segmentsOn);
+  if (segmentsOn) {
+    await loadStravaSegments();
+  } else {
+    if (segmentsLayer) { map.removeLayer(segmentsLayer); segmentsLayer = null; }
+    btn.innerHTML = '<i class="fab fa-strava"></i><span class="btn-label"> Segmentos</span>';
+  }
 }
 
 // ── Routing: BRouter (MTB) → Valhalla → OSRM ────────────────────
@@ -2817,6 +2940,10 @@ function openRouteOnMap(id) {
   const isGps   = route.notes?.startsWith('GPS ·');
   const color   = routeColor(route);
   if (routeLayer) map.removeLayer(routeLayer);
+  if (segmentsLayer) { map.removeLayer(segmentsLayer); segmentsLayer = null; segmentsOn = false;
+    const sb = document.getElementById('btn-strava-segments');
+    if (sb) { sb.classList.remove('btn-primary'); sb.classList.add('btn-secondary'); }
+  }
   routeLayer = L.polyline(latLngSegments, { color, weight: 4, opacity: 0.9 }).addTo(map);
   map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
   _computedElevGain = route.elevation_gain_m ? Math.round(route.elevation_gain_m) : null;
