@@ -5987,73 +5987,95 @@ function saveRaceForm(sdk) {
 
 function _renderRaceStrategy(text, rc) {
   if (!text) return '';
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const bold = s => s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
 
-  // Escape HTML before processing
-  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Parse lines into sections and table rows
+  const lines = text.split('\n');
+  const sections = [];
+  let cur = null;
+  const tableLines = [];
 
-  // Process tables first (before other replacements)
-  const renderTable = raw => {
-    const lines = raw.trim().split('\n').filter(l => l.trim());
-    if (lines.length < 2) return raw;
-    const headerCells = lines[0].split('|').filter(c => c.trim())
-      .map(c => `<th style="padding:5px 10px;text-align:left;font-size:11px;color:${rc};font-weight:700;white-space:nowrap">${esc(c.trim())}</th>`).join('');
-    const bodyRows = lines.slice(2).map(row =>
-      `<tr style="border-top:1px solid var(--border)">${
-        row.split('|').filter(c => c.trim())
-          .map(c => `<td style="padding:5px 10px;font-size:11px;color:var(--text-muted);line-height:1.4;word-break:break-word">${esc(c.trim())}</td>`).join('')
-      }</tr>`
-    ).join('');
-    return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:8px 0 12px"><table style="width:100%;border-collapse:collapse;background:var(--bg-input);border-radius:8px;overflow:hidden"><thead><tr style="background:rgba(168,85,247,0.12)">${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table></div>`;
-  };
-
-  // Split into blocks and process
-  let html = '';
-  const blocks = text.split(/\n(?=\n)/);
-  for (const block of blocks) {
-    const b = block.trim();
-    if (!b) continue;
-
-    // Table block
-    if (/^\|.+\|/.test(b)) {
-      html += renderTable(b);
-      continue;
-    }
-
-    // Process line by line for headers and lists
-    const lines = b.split('\n');
-    let inList = false;
-    let listHtml = '';
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line) continue;
-
-      if (/^## /.test(line)) {
-        if (inList) { html += `<div style="padding:4px 0">${listHtml}</div>`; listHtml = ''; inList = false; }
-        const title = esc(line.replace(/^## /, ''));
-        html += `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${rc};margin:16px 0 8px;padding-top:14px;border-top:1px solid var(--border)">${title}</div>`;
-      } else if (/^### /.test(line)) {
-        if (inList) { html += `<div style="padding:4px 0">${listHtml}</div>`; listHtml = ''; inList = false; }
-        const title = esc(line.replace(/^### /, '')).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-        html += `<div style="font-size:12px;font-weight:700;color:var(--text-primary);margin:10px 0 5px">${title}</div>`;
-      } else if (/^[-*] /.test(line)) {
-        inList = true;
-        const content = esc(line.replace(/^[-*] /, '')).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-        listHtml += `<div style="display:flex;gap:8px;margin-bottom:5px"><span style="color:${rc};flex-shrink:0;margin-top:2px">•</span><span style="font-size:12px;color:var(--text-muted);line-height:1.5">${content}</span></div>`;
-      } else if (/^\d+\. /.test(line)) {
-        inList = true;
-        const num = line.match(/^(\d+)\./)[1];
-        const content = esc(line.replace(/^\d+\. /, '')).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-        listHtml += `<div style="display:flex;gap:8px;margin-bottom:5px"><span style="color:${rc};flex-shrink:0;font-weight:700;font-size:12px;min-width:18px">${num}.</span><span style="font-size:12px;color:var(--text-muted);line-height:1.5">${content}</span></div>`;
-      } else {
-        if (inList) { html += `<div style="padding:4px 0">${listHtml}</div>`; listHtml = ''; inList = false; }
-        const content = esc(line).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-        html += `<div style="font-size:12px;color:var(--text-muted);line-height:1.55;margin-bottom:4px">${content}</div>`;
-      }
-    }
-    if (inList) { html += `<div style="padding:4px 0">${listHtml}</div>`; listHtml = ''; inList = false; }
+  for (const raw of lines) {
+    const l = raw.trim();
+    if (!l) continue;
+    if (/^\|/.test(l)) { tableLines.push(l); continue; }
+    if (/^## /.test(l)) { cur = { title: l.replace(/^## /,''), rows: [] }; sections.push(cur); continue; }
+    if (cur) cur.rows.push(l);
   }
 
-  return `<div style="padding:14px 16px">${html}</div>`;
+  // Extract key metrics with flexible regex
+  const g = (re) => (text.match(re)||[])[1];
+  const chips = [
+    { k:'NP',     v: g(/NP[^:：\n]*[:：]\s*~?\*{0,2}(\d+)\s*W/i) && g(/NP[^:：\n]*[:：]\s*~?\*{0,2}(\d+)\s*W/i)+'W' },
+    { k:'IF',     v: g(/IF[^:：\n]*[:：]\s*~?\*{0,2}(0\.\d+)/i) },
+    { k:'TSS',    v: g(/TSS[^:：\n]*[:：]\s*~?\*{0,2}(\d+)/i) && '~'+g(/TSS[^:：\n]*[:：]\s*~?\*{0,2}(\d+)/i) },
+    { k:'Geles',  v: g(/(\d+)\s*gel/i) },
+    { k:'Carb/h', v: g(/(\d+)\s*g\s*[\/\s]h/i) && g(/(\d+)\s*g\s*[\/\s]h/i)+'g' },
+  ].filter(c => c.v);
+
+  const chipsHtml = chips.length ? `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 8px;border-bottom:1px solid var(--border)">
+      ${chips.map(c=>`<div style="background:${rc}12;border:1px solid ${rc}28;border-radius:8px;padding:4px 10px;text-align:center">
+        <div style="font-size:9px;color:${rc};font-weight:700;text-transform:uppercase;letter-spacing:.4px">${c.k}</div>
+        <div style="font-size:13px;font-weight:800;color:var(--text-primary);margin-top:1px">${c.v}</div>
+      </div>`).join('')}
+    </div>` : '';
+
+  // Render section body lines compactly
+  const renderBody = rows => {
+    let out = '', list = '';
+    for (const l of rows) {
+      if (/^\|/.test(l)) continue;
+      if (/^[-*•] /.test(l)) {
+        list += `<div style="display:flex;gap:6px;padding:2px 0">
+          <span style="color:${rc};font-size:9px;flex-shrink:0;margin-top:3px">▪</span>
+          <span style="font-size:11px;color:var(--text-muted);line-height:1.45">${bold(esc(l.replace(/^[-*•] /,'')))}</span>
+        </div>`;
+      } else {
+        if (list) { out += `<div style="margin-bottom:3px">${list}</div>`; list=''; }
+        if (/^###/.test(l)) {
+          out += `<div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin:6px 0 3px">${bold(esc(l.replace(/^#+\s*/,'')))}</div>`;
+        } else {
+          out += `<div style="font-size:11px;color:var(--text-muted);line-height:1.45;margin-bottom:2px">${bold(esc(l))}</div>`;
+        }
+      }
+    }
+    if (list) out += list;
+    return out;
+  };
+
+  // Sections as native <details> accordion
+  const secHtml = sections.map((s, i) => `
+    <details ${i===0?'open':''} style="border-bottom:1px solid var(--border)">
+      <summary style="padding:10px 14px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;-webkit-tap-highlight-color:transparent;user-select:none">
+        <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:${rc}">${esc(s.title)}</span>
+        <span style="font-size:11px;color:var(--text-muted)">▾</span>
+      </summary>
+      <div style="padding:2px 14px 10px">${renderBody(s.rows)||'—'}</div>
+    </details>`).join('');
+
+  // Table as collapsible section
+  let tblHtml = '';
+  if (tableLines.length >= 3) {
+    const hdr = tableLines[0].split('|').filter(c=>c.trim())
+      .map(c=>`<th style="padding:4px 8px;text-align:left;font-size:9px;font-weight:700;color:${rc};white-space:nowrap;background:${rc}10">${esc(c.trim())}</th>`).join('');
+    const bdy = tableLines.slice(2).map(r=>
+      `<tr>${r.split('|').filter(c=>c.trim()).map(c=>`<td style="padding:4px 8px;font-size:10px;color:var(--text-muted);border-top:1px solid var(--border)">${esc(c.trim())}</td>`).join('')}</tr>`
+    ).join('');
+    tblHtml = `
+    <details style="border-bottom:1px solid var(--border)">
+      <summary style="padding:10px 14px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;-webkit-tap-highlight-color:transparent;user-select:none">
+        <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:${rc}">Tabla resumen</span>
+        <span style="font-size:11px;color:var(--text-muted)">▾</span>
+      </summary>
+      <div style="padding:4px 14px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table style="width:100%;border-collapse:collapse"><thead><tr>${hdr}</tr></thead><tbody>${bdy}</tbody></table>
+      </div>
+    </details>`;
+  }
+
+  return `<div>${chipsHtml}${secHtml}${tblHtml}</div>`;
 }
 
 function _buildRaceAnalysisHtml(cp, rc) {
