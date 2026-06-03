@@ -1987,10 +1987,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   mapWindControl = new WindCtrl().addTo(map);
 
-  if (window.getGeoPosition) {
-    window.getGeoPosition().then(p => map.setView([p.coords.latitude, p.coords.longitude], 13)).catch(() => {});
-  } else if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(p => map.setView([p.coords.latitude, p.coords.longitude], 13), () => {});
+  const _routeParam = new URLSearchParams(location.search).get('route');
+  if (!_routeParam) {
+    if (window.getGeoPosition) {
+      window.getGeoPosition().then(p => map.setView([p.coords.latitude, p.coords.longitude], 13)).catch(() => {});
+    } else if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(p => map.setView([p.coords.latitude, p.coords.longitude], 13), () => {});
+    }
   }
 
   loadRoutes();
@@ -3172,7 +3175,6 @@ function openRouteOnMap(id) {
   }
   routeLayer = L.polyline(latLngSegments, { color, weight: 4, opacity: 0.9 }).addTo(map);
   _drawRouteArrows(latLngSegments, color);
-  map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
   _computedElevGain = route.elevation_gain_m ? Math.round(route.elevation_gain_m) : null;
   document.getElementById('stat-dist').textContent = route.distance_km?.toFixed(1) ?? '—';
   document.getElementById('stat-elev').textContent = _computedElevGain ?? '—';
@@ -3186,7 +3188,12 @@ function openRouteOnMap(id) {
   document.querySelectorAll('.route-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
   if (window.innerWidth <= 768) {
     closeRoutesPanel();
-    setTimeout(() => map.invalidateSize(), 280);
+    setTimeout(() => {
+      map.invalidateSize();
+      if (routeLayer) map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+    }, 280);
+  } else {
+    map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
   }
   // Lanzar fetch y guardar en BD si no había dato (evita recalcular en cada apertura)
   _pendingElevFetch = fetchElevation(flatLatLngs).then(gain => {
