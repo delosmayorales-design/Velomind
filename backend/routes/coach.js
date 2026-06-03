@@ -2745,6 +2745,7 @@ router.post('/analyze-race-profile', async (req, res) => {
   const openaiKey    = process.env.OPENAI_API_KEY    || '';
   const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
   const googleKey    = process.env.GOOGLE_API_KEY    || '';
+  const openAiModel  = (process.env.OPENAI_MODEL || 'gpt-4o-mini').trim();
   const hasOpenAI    = openaiKey.length > 20;
   const hasAnthropic = anthropicKey.startsWith('sk-ant-');
   const hasGoogle    = googleKey.startsWith('AIzaSy');
@@ -2835,7 +2836,7 @@ Si un campo no es legible, usa null o [].`;
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: openAiModel || 'gpt-4o-mini',
           max_tokens: 1024,
           temperature: 0,
           response_format: { type: 'json_object' },
@@ -2860,19 +2861,39 @@ Si un campo no es legible, usa null o [].`;
     if (hasAnthropic) {
       const b64 = imageBase64.replace(/^data:[^;]+;base64,/, '');
       const aiClient = new Anthropic({ apiKey: anthropicKey });
-      const msg = await aiClient.messages.create({
-        model: 'claude-opus-4-8',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: parsed.mime, data: b64 } },
-          { type: 'text', text: prompt },
-        ]}],
-      });
-      const data = extractRaceJSON(msg.content?.[0]?.text || '');
-      if (data) return res.json(data);
+      const anthropicModels = [
+        (process.env.ANTHROPIC_MODEL || '').trim(),
+        'claude-3-5-sonnet-20241022',
+        'claude-3-haiku-20240307',
+      ].filter(Boolean);
+      for (const model of anthropicModels) {
+        try {
+          const msg = await aiClient.messages.create({
+            model,
+            max_tokens: 1024,
+            messages: [{ role: 'user', content: [
+              { type: 'image', source: { type: 'base64', media_type: parsed.mime, data: b64 } },
+              { type: 'text', text: prompt },
+            ]}],
+          });
+          const data = extractRaceJSON(msg.content?.[0]?.text || '');
+          if (data) return res.json(data);
+        } catch (e) {
+          console.log('[race-profile] Anthropic model failed:', model, e.message);
+        }
+      }
     }
 
-    return res.status(422).json({ error: 'No se pudo interpretar la imagen como un perfil de carrera' });
+    return res.status(200).json({
+      distance_km: null,
+      elevation_m: null,
+      start_location: null,
+      finish_location: null,
+      climbs: [],
+      feed_zones_km: [],
+      _fallback: true,
+      _message: 'No se pudo interpretar la imagen con los proveedores disponibles. Se devolvió un análisis vacío para evitar bloquear la tarjeta.',
+    });
   } catch (e) {
     console.error('[race-profile]', e.message);
     res.status(500).json({ error: 'Error al analizar la imagen: ' + e.message });
