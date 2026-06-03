@@ -403,8 +403,10 @@
     /* Touch targets mínimos 44px (Apple HIG / Material) */
     .btn-join, .btn-details, .btn-panel-join, .btn-panel-edit,
     .btn-panel-delete, .btn-send, .btn-submit, .btn-cancel,
-    .rides-tab { min-height: 44px; }
+    .rides-tab, .btn-view-route { min-height: 44px; }
     .btn-send { min-width: 44px; }
+    .btn-view-route { -webkit-tap-highlight-color: transparent; }
+    .btn-view-route:active { background: var(--primary); color: #fff; }
 
     @media (max-width: 600px) {
       /* Panel ocupa toda la pantalla en móvil */
@@ -484,6 +486,8 @@
       .ride-card { padding: 12px; }
       .ride-card-title { font-size: 14px; }
       .panel-body { padding: 14px; padding-bottom: 90px; }
+      .weather-card { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .weather-stats { gap: 10px; }
     }
   </style>
   <script>window.API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : 'https://velomind-backend.onrender.com/api';</script>
