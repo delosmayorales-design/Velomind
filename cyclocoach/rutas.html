@@ -1585,6 +1585,22 @@
   </div>
 </main>
 
+<!-- Panel ranking de segmento -->
+<div id="segment-ranking-panel" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:10100;
+  background:var(--bg-card);border-top:1px solid var(--border);border-radius:16px 16px 0 0;
+  max-height:70vh;overflow-y:auto;box-shadow:0 -8px 32px rgba(0,0,0,.4);
+  padding:0 0 env(safe-area-inset-bottom,0px)">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1">
+    <div>
+      <div style="font-size:14px;font-weight:700;color:var(--text-primary)" id="ranking-seg-name">Ranking</div>
+      <div style="font-size:11px;color:var(--text-muted)" id="ranking-seg-meta"></div>
+    </div>
+    <button onclick="closeRankingPanel()" style="background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text-muted);cursor:pointer;font-size:13px">✕</button>
+  </div>
+  <div id="ranking-body" style="padding:12px 16px"></div>
+</div>
+<div id="ranking-overlay" onclick="closeRankingPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10099"></div>
+
 <!-- Modal guardar ruta -->
 <div id="save-modal" style="display:none">
   <div class="modal-overlay">
@@ -2136,11 +2152,82 @@ function segmentPopup(e, catLabel, distKm, grade, color) {
       ${e.avg_watts ? `<span>⚡ ${Math.round(e.avg_watts)} W</span>` : ''}
       ${e.avg_hr    ? `<span>❤ ${Math.round(e.avg_hr)} bpm</span>` : ''}
     </div>
-    <a href="${stravaUrl}" target="_blank" rel="noopener"
-       style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#FC4C02;text-decoration:none">
-      <i class="fab fa-strava"></i> Ver en Strava
-    </a>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button onclick="openRankingPanel('${e.segment_id}','${escHtml(e.name).replace(/'/g,"\\'")}','${distKm}','${grade}')"
+        style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);
+               color:var(--text-primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;
+               display:flex;align-items:center;justify-content:center;gap:5px">
+        <i class="fas fa-trophy" style="color:#F59E0B"></i> Ver ranking
+      </button>
+      <a href="${stravaUrl}" target="_blank" rel="noopener"
+         style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid rgba(252,76,2,.3);
+                background:rgba(252,76,2,.08);color:#FC4C02;font-size:11px;font-weight:700;
+                text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px">
+        <i class="fab fa-strava"></i> Strava
+      </a>
+    </div>
   </div>`;
+}
+
+async function openRankingPanel(segmentId, segmentName, distKm, grade) {
+  const panel   = document.getElementById('segment-ranking-panel');
+  const overlay = document.getElementById('ranking-overlay');
+  const body    = document.getElementById('ranking-body');
+  const nameEl  = document.getElementById('ranking-seg-name');
+  const metaEl  = document.getElementById('ranking-seg-meta');
+
+  nameEl.textContent = segmentName;
+  metaEl.textContent = `${distKm} km · ${grade}`;
+  body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Cargando clasificación...</div>';
+  panel.style.display = '';
+  overlay.style.display = '';
+
+  try {
+    const res = await Auth.apiFetch(`${API_BASE}/providers/strava/segment-leaderboard/${segmentId}`);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Error');
+    const data = await res.json();
+
+    if (!data.entries?.length) {
+      body.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;font-size:13px">Sin clasificación disponible</p>';
+      return;
+    }
+
+    const totalLabel = data.entry_count > 10
+      ? `<div style="font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:10px">${data.entry_count.toLocaleString('es-ES')} atletas en total</div>`
+      : '';
+
+    const medals = ['🥇','🥈','🥉'];
+    const rows = data.entries.map(e => {
+      const medal   = medals[e.rank - 1] || '';
+      const time    = formatSegTime(e.elapsed_time);
+      const date    = e.start_date ? new Date(e.start_date).toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' }) : '';
+      const photo   = e.athlete_photo && !e.athlete_photo.includes('avatar/athlete/large')
+        ? `<img src="${e.athlete_photo}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+        : `<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#ff9a56);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">${(e.athlete_name||'?')[0].toUpperCase()}</div>`;
+      const watts   = e.avg_watts ? `<span style="font-size:10px;color:var(--text-muted);margin-left:6px">⚡${Math.round(e.avg_watts)}W</span>` : '';
+      const rankStyle = e.rank <= 3
+        ? 'background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px;'
+        : 'border-bottom:1px solid var(--border);';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 8px;${rankStyle}margin-bottom:4px">
+        <div style="width:22px;text-align:center;font-size:${e.rank<=3?'16':'12'}px;font-weight:700;color:var(--text-muted);flex-shrink:0">${medal || e.rank}</div>
+        ${photo}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(e.athlete_name||'Atleta')}${watts}</div>
+          ${date ? `<div style="font-size:10px;color:var(--text-muted)">${date}</div>` : ''}
+        </div>
+        <div style="font-size:14px;font-weight:700;color:var(--primary);flex-shrink:0">${time}</div>
+      </div>`;
+    }).join('');
+
+    body.innerHTML = totalLabel + rows;
+  } catch(e) {
+    body.innerHTML = `<p style="text-align:center;color:#ef4444;padding:20px;font-size:13px">${escHtml(e.message)}</p>`;
+  }
+}
+
+function closeRankingPanel() {
+  document.getElementById('segment-ranking-panel').style.display = 'none';
+  document.getElementById('ranking-overlay').style.display = 'none';
 }
 
 async function toggleStravaSegments() {

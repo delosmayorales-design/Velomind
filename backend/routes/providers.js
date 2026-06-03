@@ -1365,6 +1365,64 @@ router.get('/strava/activity-segments/:stravaId', requireAuth, async (req, res) 
   }
 });
 
+// ─── STRAVA SEGMENT LEADERBOARD ─────────────────────────────────
+// GET /api/providers/strava/segment-leaderboard/:segmentId
+router.get('/strava/segment-leaderboard/:segmentId', requireAuth, async (req, res) => {
+  const uid = req.user.id;
+  const segmentId = req.params.segmentId;
+  if (!segmentId || !/^\d+$/.test(segmentId)) return res.status(400).json({ error: 'segmentId inválido' });
+
+  const { data: user } = await supabase
+    .from('users').select('strava_token, strava_refresh, strava_expires_at')
+    .eq('id', uid).single();
+  if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
+
+  let token = user.strava_token;
+  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
+  if (user.strava_refresh && isExpired) {
+    try {
+      const re = await fetch('https://www.strava.com/oauth/token', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: STRAVA_ID, client_secret: STRAVA_SECRET,
+          grant_type: 'refresh_token', refresh_token: user.strava_refresh }),
+      });
+      const d = await re.json();
+      if (re.ok && d.access_token) {
+        token = d.access_token;
+        await supabase.from('users').update({ strava_token: d.access_token,
+          strava_refresh: d.refresh_token, strava_expires_at: d.expires_at }).eq('id', uid);
+      }
+    } catch (e) { console.warn('[Leaderboard] Error refrescando token:', e.message); }
+  }
+
+  try {
+    const r = await fetch(
+      `https://www.strava.com/api/v3/segments/${segmentId}/leaderboard?per_page=10`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      return res.status(r.status).json({ error: err.message || 'Error Strava Leaderboard' });
+    }
+    const data = await r.json();
+    res.json({
+      entry_count: data.entry_count || 0,
+      entries: (data.entries || []).map(e => ({
+        rank:         e.rank,
+        athlete_name: e.athlete_name,
+        athlete_photo: e.athlete_profile,
+        elapsed_time: e.elapsed_time,
+        avg_watts:    e.average_watts || null,
+        start_date:   e.start_date_local,
+        effort_id:    e.effort_id,
+        activity_id:  e.activity_id,
+      })),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── STRAVA SEGMENTS EXPLORE ────────────────────────────────────
 // GET /api/providers/strava/segments?bounds=lat_sw,lon_sw,lat_ne,lon_ne
 router.get('/strava/segments', requireAuth, async (req, res) => {
