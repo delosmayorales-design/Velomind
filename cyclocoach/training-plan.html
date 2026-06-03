@@ -521,6 +521,9 @@
       border-top-color:#C4EF44; border-radius:50%; animation:spin 1s linear infinite;
     }
     @keyframes spin { to { transform:rotate(360deg); } }
+    @keyframes flagWave { 0%,100%{transform:rotate(-6deg) scale(1);filter:drop-shadow(0 0 10px rgba(168,85,247,.55))} 50%{transform:rotate(6deg) scale(1.1);filter:drop-shadow(0 0 22px rgba(168,85,247,.85))} }
+    .race-flag-anim { display:inline-block; font-size:60px; animation:flagWave 1.6s ease-in-out infinite; line-height:1; }
+    .eve-flag-anim  { display:inline-block; font-size:40px; animation:flagWave 2s ease-in-out infinite; line-height:1; }
 
     /* ── Plan params strip ───────────────────────────────────── */
     .plan-params-strip {
@@ -2339,34 +2342,99 @@ function renderPlan(plan, athlete) {
       </div>
     ` : '';
 
-    // ── Tarjeta especial día de carrera con análisis de entrenador ─
+    // ── Víspera de carrera ─────────────────────────────────────
+    if (sess.isPreRaceB) {
+      const _nextEv = _adjEvents?.find(ev => ev.date === new Date(sessDate.getTime()+86400000).toISOString().slice(0,10));
+      const _evName = _nextEv?.name || 'la carrera de mañana';
+      const _pc = '#38BDF8';
+      return `
+        <div class="session-card-item${isToday?' today-card':''}${sess.completed?' completed':''}">
+          <div style="background:linear-gradient(135deg,rgba(56,189,248,.12) 0%,rgba(56,189,248,.03) 100%);padding:14px 16px 12px;border-bottom:1px solid rgba(56,189,248,.2);display:flex;align-items:center;gap:12px">
+            <div class="day-badge" style="flex-shrink:0">
+              <div class="dn">${sess.day.substring(0,3)}</div>
+              <div class="dd" style="color:${_pc}">${sessDate.getDate()}</div>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${_pc};margin-bottom:3px">🌙 Víspera de carrera</div>
+              <div style="font-size:15px;font-weight:800;color:var(--text-primary);line-height:1.2">Mañana es el día · <span style="color:${_pc}">${_evName}</span></div>
+              ${sess.completed?`<span class="done-badge" style="margin-top:5px;display:inline-flex"><i class="fas fa-check"></i> Hecha</span>`:''}
+            </div>
+            <span class="eve-flag-anim" style="flex-shrink:0">🏁</span>
+          </div>
+          <div style="padding:12px 16px 4px">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_pc};margin-bottom:10px">Lo que debes hacer hoy</div>
+            ${[['😴','Sueño','Acuéstate pronto. Objetivo: 8-9 horas. Es el mejor recuperador que existe.'],
+               ['🍝','Cena','Carbohidratos fáciles: pasta, arroz, patata. Nada nuevo ni pesado. Cena 2-3h antes de dormir.'],
+               ['🎒','Material','Prepara todo esta tarde: ropa, casco, botines, bidones, geles, número. Sin sorpresas mañana.'],
+               ['🚴','Entreno de hoy','Activación suave como indica la sesión. Sin intensidad ni prolongar en exceso.'],
+               ['💧','Hidratación','Bebe bien durante todo el día. Orina clara = bien hidratado para mañana.'],
+               ['🧠','Mental','Visualiza la carrera. Confía en el trabajo de estas semanas. Estás preparado.'],
+            ].map(([em,lb,tx])=>`
+              <div style="display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border)">
+                <span style="font-size:18px;flex-shrink:0;line-height:1.25">${em}</span>
+                <div style="font-size:12px;line-height:1.5">
+                  <span style="font-weight:700;color:var(--text-primary)">${lb} · </span><span style="color:var(--text-muted)">${tx}</span>
+                </div>
+              </div>`).join('')}
+          </div>
+          <div style="padding:12px 16px 14px">
+            ${isPastOrToday?`<button onclick="event.preventDefault();event.stopPropagation();markSessionDone(${i})"
+              style="display:flex;align-items:center;gap:7px;background:${sess.completed?'rgba(16,185,129,.1)':'rgba(56,189,248,.08)'};border:1px solid ${sess.completed?'rgba(16,185,129,.3)':'rgba(56,189,248,.3)'};color:${sess.completed?'#10b981':_pc};border-radius:8px;padding:9px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;-webkit-tap-highlight-color:transparent">
+              <i class="fas ${sess.completed?'fa-check-circle':'fa-circle'}"></i>
+              ${sess.completed?'Activación hecha':'Marcar activación como hecha'}
+            </button>`:''}
+          </div>
+          ${execBadge}
+        </div>`;
+    }
+
+    // ── Día de carrera ─────────────────────────────────────────
     if (sess.type === 'race' || sess.isRaceC) {
-      const _isC   = sess.isRaceC && sess.type !== 'race';
-      // Buscar evento coincidente para obtener perfil del recorrido
-      const _matchEv = _adjEvents?.find(ev => ev.date === sessDayKey)
-        || (()=>{ try { return JSON.parse(athlete.target_events||'[]').find(ev=>ev.date===sessDayKey); } catch{return null;} })();
-      const _cp    = _buildRaceCoachPlan(ftp, athlete, metrics, _isC, _matchEv);
-      const _rc    = _cp.formColor;
-      const _rGrad = `linear-gradient(135deg,${_rc}18 0%,${_rc}06 100%)`;
-      const _name  = (sess.name || 'Carrera').replace(/^🏁\s*/,'');
+      const _isC  = sess.isRaceC && sess.type !== 'race';
+      const _rc   = '#A855F7'; // morado siempre en día de carrera
+      const _name = (sess.name || 'Carrera').replace(/^🏁\s*/,'');
+      const _dk   = sessDayKey;
+      const _sdk  = _dk.replace(/-/g,''); // safe ID
+      // Evento guardado (para prerellenar el formulario)
+      const _ev   = _adjEvents?.find(ev => ev.date === _dk)
+        || (()=>{ try { return JSON.parse(athlete.target_events||'[]').find(ev=>ev.date===_dk); } catch{return null;} })();
+      // Plan base (sin datos de recorrido — se regenera al pulsar el botón)
+      const _cp   = _buildRaceCoachPlan(ftp, athlete, metrics, _isC, _ev || null);
+
+      // Formulario prellenado con datos del evento si existen
+      const _fDist = _ev?.distance_km || '';
+      const _fElev = _ev?.elevation_m || '';
+      const _fTime = _ev?.start_time  || '';
+      const _fFeed = (_ev?.feed_zones_km||[]).join(', ');
+      const _fClimbs = (_ev?.climbs||[]).map((c,ci)=>
+        `<div id="rcrow-${_sdk}-${ci}" style="display:flex;flex-wrap:wrap;gap:4px;background:rgba(168,85,247,.06);border-radius:6px;padding:5px">
+          <input data-dk="${_dk}" data-ci="${ci}" data-f="name" type="text" class="params-input" value="${c.name||''}" placeholder="Nombre" style="flex:1;min-width:90px;font-size:11px" oninput="_rcField(this)">
+          <input data-dk="${_dk}" data-ci="${ci}" data-f="km_start" type="number" class="params-input" value="${c.km_start??''}" placeholder="Km inicio" style="width:72px;font-size:11px" oninput="_rcField(this)">
+          <input data-dk="${_dk}" data-ci="${ci}" data-f="length_km" type="number" class="params-input" value="${c.length_km??''}" placeholder="Long.km" style="width:65px;font-size:11px" oninput="_rcField(this)">
+          <input data-dk="${_dk}" data-ci="${ci}" data-f="elevation_m" type="number" class="params-input" value="${c.elevation_m??''}" placeholder="Desnivel m" style="width:78px;font-size:11px" oninput="_rcField(this)">
+          <button type="button" onclick="_rcRemoveClimb('${_dk}',${ci})" style="background:rgba(239,68,68,.15);border:none;border-radius:5px;padding:3px 7px;color:#ef4444;cursor:pointer;font-size:11px">✕</button>
+        </div>`).join('');
+
+      // Inicializar climbs globales con datos del evento
+      if (!_raceFormClimbs[_dk]) _raceFormClimbs[_dk] = (_ev?.climbs||[]).map(c=>({...c}));
+
+      const _hasAnalysis = !!_ev?.distance_km;
 
       return `
         <div class="session-card-item${sess.completed?' completed':''}${isToday?' today-card':''}" style="border-color:${_rc}55;overflow:hidden">
 
-          <!-- CABECERA -->
-          <div style="background:${_rGrad};padding:16px 16px 14px;border-bottom:1px solid ${_rc}28">
-            <div style="display:flex;align-items:flex-start;gap:12px">
-              <div class="day-badge" style="flex-shrink:0">
-                <div class="dn">${sess.day.substring(0,3)}</div>
-                <div class="dd" style="color:${_rc}">${sessDate.getDate()}</div>
-              </div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${_rc};margin-bottom:3px">🏁 ${_isC?'Carrera de entrenamiento':'Día de carrera'}</div>
-                <div style="font-size:17px;font-weight:800;color:var(--text-primary);line-height:1.2">${_name}</div>
-                ${sess.completed?`<span class="done-badge" style="margin-top:5px;display:inline-flex"><i class="fas fa-check"></i> Completada</span>`:''}
-              </div>
-              ${tssVal>0?`<div style="text-align:right;flex-shrink:0"><div style="font-size:22px;font-weight:800;color:${_rc};line-height:1">${tssVal}</div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">TSS</div></div>`:''}
+          <!-- CABECERA CON BANDERA ANIMADA -->
+          <div style="background:linear-gradient(135deg,rgba(168,85,247,.18) 0%,rgba(168,85,247,.05) 100%);padding:16px;border-bottom:1px solid rgba(168,85,247,.25);display:flex;align-items:center;gap:14px">
+            <div class="day-badge" style="flex-shrink:0">
+              <div class="dn">${sess.day.substring(0,3)}</div>
+              <div class="dd" style="color:${_rc}">${sessDate.getDate()}</div>
             </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${_rc};margin-bottom:3px">${_isC?'🏁 Carrera de entrenamiento':'🏁 Día de carrera'}</div>
+              <div style="font-size:18px;font-weight:800;color:var(--text-primary);line-height:1.2">${_name}</div>
+              ${sess.completed?`<span class="done-badge" style="margin-top:5px;display:inline-flex"><i class="fas fa-check"></i> Completada</span>`:''}
+            </div>
+            <span class="race-flag-anim" style="flex-shrink:0">🏁</span>
           </div>
 
           <!-- ESTADO DE FORMA -->
@@ -2375,87 +2443,63 @@ function renderPlan(plan, athlete) {
               <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_rc}">Tu estado hoy</span>
               <span style="background:${_rc}20;color:${_rc};font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px">${_cp.formTag}</span>
             </div>
-            <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
+            <div style="display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap">
               <span style="font-size:12px;color:var(--text-muted)">CTL <strong style="color:var(--text-primary)">${_cp.ctl}</strong></span>
               <span style="font-size:12px;color:var(--text-muted)">ATL <strong style="color:var(--text-primary)">${_cp.atl}</strong></span>
               <span style="font-size:12px;color:var(--text-muted)">Forma <strong style="color:${_rc}">${_cp.tsb>=0?'+':''}${_cp.tsb}</strong></span>
               <span style="font-size:12px;color:var(--text-muted)">FTP <strong style="color:var(--text-primary)">${ftp}W</strong></span>
             </div>
-            <div style="font-size:13px;color:var(--text-secondary);line-height:1.65;padding:10px 14px;background:${_rc}10;border-left:3px solid ${_rc};border-radius:0 8px 8px 0">
-              ${_cp.diagnosis}
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.65;padding:10px 14px;background:${_rc}10;border-left:3px solid ${_rc};border-radius:0 8px 8px 0">${_cp.diagnosis}</div>
+          </div>
+
+          <!-- DATOS DE LA CARRERA (formulario inline) -->
+          <div style="border-bottom:1px solid var(--border)">
+            <button type="button" onclick="document.getElementById('rcf-${_sdk}').style.display=document.getElementById('rcf-${_sdk}').style.display==='none'?'block':'none';this.querySelector('i').style.transform=document.getElementById('rcf-${_sdk}').style.display==='none'?'rotate(0deg)':'rotate(180deg)'"
+              style="width:100%;display:flex;align-items:center;gap:8px;padding:11px 16px;background:none;border:none;color:${_rc};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent">
+              <i class="fas fa-route" style="font-size:11px"></i>
+              Datos del recorrido${_ev?.distance_km?' · '+_ev.distance_km+' km':''}${_ev?.elevation_m?' · +'+_ev.elevation_m+'m':''}
+              <i class="fas fa-chevron-down" style="margin-left:auto;font-size:10px;transition:transform .2s;${_hasAnalysis?'transform:rotate(0deg)':'transform:rotate(0deg)'}"></i>
+            </button>
+            <div id="rcf-${_sdk}" style="display:${_hasAnalysis?'none':'block'};padding:0 16px 14px">
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+                <input type="number" id="rcd-dist-${_sdk}" class="params-input" placeholder="Distancia km" value="${_fDist}" style="width:115px;font-size:12px" min="1">
+                <input type="number" id="rcd-elev-${_sdk}" class="params-input" placeholder="Desnivel m" value="${_fElev}" style="width:112px;font-size:12px" min="0">
+                <input type="time"   id="rcd-time-${_sdk}" class="params-input" value="${_fTime}" style="width:95px;font-size:12px" title="Hora de salida">
+              </div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Puertos</div>
+              <div id="rcd-climbs-${_sdk}" style="display:flex;flex-direction:column;gap:4px;margin-bottom:5px">${_fClimbs}</div>
+              <button type="button" onclick="_rcAddClimb('${_dk}')" style="background:rgba(168,85,247,.1);border:1px dashed rgba(168,85,247,.4);border-radius:6px;padding:4px 10px;color:${_rc};font-size:11px;cursor:pointer;font-family:inherit;width:100%;margin-bottom:10px">+ Añadir puerto</button>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Avituallamientos · km (ej: 40, 90, 130)</div>
+              <input type="text" id="rcd-feeds-${_sdk}" class="params-input" value="${_fFeed}" placeholder="40, 90, 130" style="width:100%;margin-bottom:2px;font-size:12px">
             </div>
           </div>
 
-          <!-- ESTRATEGIA DE VATIOS -->
-          <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border)">
-            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_rc};margin-bottom:11px">Estrategia de vatios</div>
-            <div style="display:flex;flex-direction:column;gap:0">
-              ${_cp.rows.map((r,ri)=>`
-                <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;${ri<_cp.rows.length-1?'border-bottom:1px solid var(--border)':''}">
-                  <span style="font-size:18px;flex-shrink:0;width:24px;text-align:center;line-height:1.3">${r.e}</span>
-                  <div style="flex:1;min-width:0">
-                    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
-                      <span style="font-size:12px;font-weight:700;color:var(--text-primary)">${r.l}</span>
-                      <span style="font-size:13px;font-weight:800;color:${_rc}">${r.w}</span>
-                    </div>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:1px;line-height:1.4">${r.d}</div>
-                  </div>
-                </div>`).join('')}
-            </div>
+          <!-- BOTÓN ANÁLISIS -->
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+            <button type="button" onclick="event.preventDefault();event.stopPropagation();runRaceAnalysis('${_dk}',${_isC})"
+              style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,${_rc}33,${_rc}18);border:1px solid ${_rc}66;border-radius:10px;padding:12px 16px;color:${_rc};font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent">
+              <i class="fas fa-brain"></i> Análisis del entrenador
+            </button>
           </div>
 
-          <!-- SEÑALES DE ALERTA -->
-          <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
-            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#F59E0B;margin-bottom:8px">⚠️ Señales de alerta</div>
-            ${_cp.alerts.map(a=>`
-              <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px">
-                <span style="color:#F59E0B;font-size:11px;flex-shrink:0;margin-top:2px">•</span>
-                <span style="font-size:12px;color:var(--text-muted);line-height:1.5">${a}</span>
-              </div>`).join('')}
+          <!-- SLOT DE ANÁLISIS -->
+          <div id="rca-${_sdk}">
+            ${_hasAnalysis ? _buildRaceAnalysisHtml(_cp, _rc) : `
+              <div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;line-height:1.6">
+                <i class="fas fa-route" style="display:block;font-size:28px;margin-bottom:8px;opacity:.3"></i>
+                Introduce los datos del recorrido y pulsa <strong style="color:${_rc}">Análisis del entrenador</strong><br>para obtener la estrategia óptima tramo a tramo.
+              </div>`}
           </div>
 
-          ${_cp.tramos ? `
-          <!-- PLAN TRAMO A TRAMO -->
-          <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border)">
-            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_rc};margin-bottom:11px">📍 Plan tramo a tramo</div>
-            <div style="display:flex;flex-direction:column;gap:0">
-              ${_cp.tramos.map((t,ti)=>`
-                <div style="padding:9px 0;${ti<_cp.tramos.length-1?'border-bottom:1px solid var(--border)':''}">
-                  <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:3px">
-                    <span style="font-size:16px;line-height:1">${t.emoji}</span>
-                    <span style="font-size:12px;font-weight:700;color:var(--text-primary)">${t.label}</span>
-                    <span style="font-size:13px;font-weight:800;color:${_rc}">${t.watts}</span>
-                    ${t.meta ? `<span style="font-size:10px;color:var(--text-muted)">${t.meta}</span>` : ''}
-                  </div>
-                  <div style="font-size:11px;color:var(--text-muted);line-height:1.5;padding-left:24px">${t.tip}</div>
-                </div>`).join('')}
-            </div>
-          </div>` : ''}
-
-          ${_cp.nutrition ? `
-          <!-- PLAN NUTRICIONAL -->
-          <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
-            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#F59E0B;margin-bottom:8px">🍌 Plan nutricional</div>
-            ${_cp.nutrition.tips.map(t=>`
-              <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px">
-                <span style="color:#F59E0B;font-size:11px;flex-shrink:0;margin-top:2px">•</span>
-                <span style="font-size:12px;color:var(--text-muted);line-height:1.5">${t}</span>
-              </div>`).join('')}
-            <div style="margin-top:8px;font-size:11px;color:var(--text-muted);background:rgba(245,158,11,.08);border-radius:6px;padding:7px 10px">
-              ⏱ Duración estimada: ~${Math.floor(_cp.nutrition.totalMin/60)}h ${_cp.nutrition.totalMin%60}min
-              ${_cp.nutrition.startTime ? ` · Salida: ${_cp.nutrition.startTime}` : ''}
-            </div>
-          </div>` : ''}
-
-          <!-- BOTÓN -->
-          <div style="padding:12px 16px 14px;display:flex;align-items:center;gap:12px">
-            ${isPastOrToday?`
-              <button onclick="event.preventDefault();event.stopPropagation();markSessionDone(${i})"
-                style="display:flex;align-items:center;justify-content:center;gap:7px;flex:1;max-width:240px;background:${sess.completed?'rgba(16,185,129,.1)':_rc+'22'};border:1px solid ${sess.completed?'rgba(16,185,129,.35)':_rc+'66'};color:${sess.completed?'#10b981':_rc};border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;-webkit-tap-highlight-color:transparent">
-                <i class="fas ${sess.completed?'fa-check-circle':'fa-flag-checkered'}"></i>
-                ${sess.completed?'Completada':'Marcar como completada'}
-              </button>`:''}
-          </div>
+          <!-- MARCAR COMPLETADA -->
+          ${isPastOrToday?`
+          <div style="padding:12px 16px 14px;border-top:1px solid var(--border)">
+            <button onclick="event.preventDefault();event.stopPropagation();markSessionDone(${i})"
+              style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;max-width:260px;background:${sess.completed?'rgba(16,185,129,.1)':_rc+'18'};border:1px solid ${sess.completed?'rgba(16,185,129,.35)':_rc+'44'};color:${sess.completed?'#10b981':_rc};border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;-webkit-tap-highlight-color:transparent">
+              <i class="fas ${sess.completed?'fa-check-circle':'fa-flag-checkered'}"></i>
+              ${sess.completed?'Completada':'Marcar como completada'}
+            </button>
+          </div>`:''}
           ${execBadge}
         </div>`;
     }
@@ -5705,6 +5749,116 @@ function closeModal(id) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
   else build();
 })();
+
+// ── Tarjeta de carrera inline ────────────────────────────────────
+const _raceFormClimbs = {}; // dateKey → [{name, km_start, length_km, elevation_m}]
+
+function _rcAddClimb(dk) {
+  if (!_raceFormClimbs[dk]) _raceFormClimbs[dk] = [];
+  const ci  = _raceFormClimbs[dk].length;
+  _raceFormClimbs[dk].push({});
+  const sdk = dk.replace(/-/g,'');
+  const list = document.getElementById(`rcd-climbs-${sdk}`);
+  if (!list) return;
+  const row = document.createElement('div');
+  row.id = `rcrow-${sdk}-${ci}`;
+  row.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;background:rgba(168,85,247,.06);border-radius:6px;padding:5px';
+  row.innerHTML = `
+    <input data-dk="${dk}" data-ci="${ci}" data-f="name"        type="text"   class="params-input" placeholder="Nombre"    style="flex:1;min-width:90px;font-size:11px" oninput="_rcField(this)">
+    <input data-dk="${dk}" data-ci="${ci}" data-f="km_start"    type="number" class="params-input" placeholder="Km inicio" style="width:72px;font-size:11px"  oninput="_rcField(this)">
+    <input data-dk="${dk}" data-ci="${ci}" data-f="length_km"   type="number" class="params-input" placeholder="Long.km"   style="width:65px;font-size:11px"  oninput="_rcField(this)">
+    <input data-dk="${dk}" data-ci="${ci}" data-f="elevation_m" type="number" class="params-input" placeholder="Desnivel m" style="width:78px;font-size:11px" oninput="_rcField(this)">
+    <button type="button" onclick="_rcRemoveClimb('${dk}',${ci})" style="background:rgba(239,68,68,.15);border:none;border-radius:5px;padding:3px 7px;color:#ef4444;cursor:pointer;font-size:11px">✕</button>`;
+  list.appendChild(row);
+}
+
+function _rcField(el) {
+  const dk = el.dataset.dk, ci = +el.dataset.ci, f = el.dataset.f;
+  if (!_raceFormClimbs[dk]) _raceFormClimbs[dk] = [];
+  if (!_raceFormClimbs[dk][ci]) _raceFormClimbs[dk][ci] = {};
+  _raceFormClimbs[dk][ci][f] = f === 'name' ? el.value.trim() : parseFloat(el.value) || null;
+}
+
+function _rcRemoveClimb(dk, ci) {
+  if (_raceFormClimbs[dk]) _raceFormClimbs[dk][ci] = null;
+  const sdk = dk.replace(/-/g,'');
+  const row = document.getElementById(`rcrow-${sdk}-${ci}`);
+  if (row) row.remove();
+}
+
+function runRaceAnalysis(dk, isC) {
+  const sdk    = dk.replace(/-/g,'');
+  const dist   = parseFloat(document.getElementById(`rcd-dist-${sdk}`)?.value) || null;
+  const elev   = parseFloat(document.getElementById(`rcd-elev-${sdk}`)?.value) || null;
+  const time   = document.getElementById(`rcd-time-${sdk}`)?.value || null;
+  const feedRaw= document.getElementById(`rcd-feeds-${sdk}`)?.value || '';
+  const feeds  = feedRaw.split(',').map(s=>parseFloat(s.trim())).filter(n=>!isNaN(n));
+  const climbs = (_raceFormClimbs[dk]||[]).filter(Boolean).filter(c=>c.km_start!=null);
+
+  const ev = { distance_km: dist, elevation_m: elev, start_time: time, feed_zones_km: feeds, climbs };
+
+  // Guardar en _adjEvents y perfil
+  const existing = _adjEvents?.find(e=>e.date===dk);
+  if (existing) Object.assign(existing, ev);
+  try {
+    AppState.saveAthlete({ target_events: JSON.stringify(_adjEvents||[]) });
+    if (typeof BackendSync !== 'undefined') BackendSync.saveProfile({ target_events: JSON.stringify(_adjEvents||[]) }).catch(()=>{});
+  } catch(_) {}
+
+  const metrics = AppState.getCurrentMetrics();
+  const ftp     = AppState.athlete?.ftp || 200;
+  const cp      = _buildRaceCoachPlan(ftp, AppState.athlete||{}, metrics, isC, ev);
+  const rc      = '#A855F7';
+  const slot    = document.getElementById(`rca-${sdk}`);
+  if (slot) slot.innerHTML = _buildRaceAnalysisHtml(cp, rc);
+}
+
+function _buildRaceAnalysisHtml(cp, rc) {
+  const tramosHtml = cp.tramos ? `
+    <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${rc};margin-bottom:11px">📍 Plan tramo a tramo</div>
+      ${cp.tramos.map((t,ti)=>`
+        <div style="padding:9px 0;${ti<cp.tramos.length-1?'border-bottom:1px solid var(--border)':''}">
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:3px">
+            <span style="font-size:15px">${t.emoji}</span>
+            <span style="font-size:12px;font-weight:700;color:var(--text-primary)">${t.label}</span>
+            <span style="font-size:13px;font-weight:800;color:${rc}">${t.watts}</span>
+            ${t.meta?`<span style="font-size:10px;color:var(--text-muted)">${t.meta}</span>`:''}
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);line-height:1.5;padding-left:22px">${t.tip}</div>
+        </div>`).join('')}
+    </div>` : '';
+
+  const nutHtml = cp.nutrition ? `
+    <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#F59E0B;margin-bottom:8px">🍌 Plan nutricional</div>
+      ${cp.nutrition.tips.map(t=>`<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#F59E0B;font-size:11px;flex-shrink:0;margin-top:2px">•</span><span style="font-size:12px;color:var(--text-muted);line-height:1.5">${t}</span></div>`).join('')}
+      <div style="margin-top:8px;font-size:11px;color:var(--text-muted);background:rgba(245,158,11,.08);border-radius:6px;padding:7px 10px">
+        ⏱ Duración estimada: ~${Math.floor(cp.nutrition.totalMin/60)}h ${cp.nutrition.totalMin%60}min${cp.nutrition.startTime?' · Salida: '+cp.nutrition.startTime:''}
+      </div>
+    </div>` : '';
+
+  return `
+    <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${rc};margin-bottom:10px">Estrategia de vatios</div>
+      ${cp.rows.map((r,ri)=>`
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:7px 0;${ri<cp.rows.length-1?'border-bottom:1px solid var(--border)':''}">
+          <span style="font-size:17px;flex-shrink:0;width:22px;text-align:center;line-height:1.3">${r.e}</span>
+          <div style="flex:1">
+            <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+              <span style="font-size:12px;font-weight:700;color:var(--text-primary)">${r.l}</span>
+              <span style="font-size:13px;font-weight:800;color:${rc}">${r.w}</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);line-height:1.4">${r.d}</div>
+          </div>
+        </div>`).join('')}
+    </div>
+    <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#F59E0B;margin-bottom:8px">⚠️ Señales de alerta</div>
+      ${cp.alerts.map(a=>`<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#F59E0B;font-size:11px;flex-shrink:0;margin-top:2px">•</span><span style="font-size:12px;color:var(--text-muted);line-height:1.5">${a}</span></div>`).join('')}
+    </div>
+    ${tramosHtml}${nutHtml}`;
+}
 </script>
 <!-- Post-entreno modal -->
 <div id="post-modal-overlay" onclick="closePostModal()" style="display:none">
