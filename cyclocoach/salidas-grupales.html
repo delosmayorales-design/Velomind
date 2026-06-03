@@ -822,8 +822,23 @@
         fetch(`${API}/group-rides/${rideId}`, { headers: { Authorization: `Bearer ${Auth.getToken()}` } }),
         fetch(`${API}/group-rides/${rideId}/comments`, { headers: { Authorization: `Bearer ${Auth.getToken()}` } }),
       ]);
-      const ride     = await rideRes.json();
-      const comments = await commentsRes.json();
+
+      if (!rideRes.ok) {
+        const err = await rideRes.json().catch(() => ({}));
+        throw new Error(err.error || `Error ${rideRes.status} al cargar la salida`);
+      }
+      const ride = await rideRes.json();
+      if (!ride || typeof ride !== 'object' || ride.error) {
+        throw new Error(ride?.error || 'Respuesta inesperada del servidor');
+      }
+
+      // Los comentarios pueden devolver 403 si el usuario no es participante — no es fatal
+      let comments = [];
+      if (commentsRes.ok) {
+        const raw = await commentsRes.json();
+        if (Array.isArray(raw)) comments = raw;
+      }
+
       openRide = ride;
       knownCommentIds = new Set(comments.map(c => c.id));
       renderPanel(ride, comments);
@@ -835,25 +850,34 @@
         fetch(`${API}/routes/${ride.route_id}`, { headers: { Authorization: `Bearer ${Auth.getToken()}` } })
           .then(r => r.ok ? r.json() : null)
           .then(route => {
-            if (!route?.geojson?.coordinates?.length) return;
-            const c = route.geojson.coordinates;
-            const first = Array.isArray(c[0][0]) ? c[0][0] : c[0];
-            const lat = first[1], lng = first[0];
+            const coords = route?.geojson?.coordinates;
+            if (!coords?.length) return;
+            const first = Array.isArray(coords[0][0]) ? coords[0][0] : coords[0];
+            const lat = first?.[1], lng = first?.[0];
             if (lat && lng) loadWeatherForPanel(lat, lng, ride.departure_time);
           })
-          .catch(() => {});
+          .catch(err => console.warn('[panel] ruta no accesible:', err.message));
       }
     } catch(e) {
-      body.innerHTML = `<p style="color:var(--text-muted);font-size:13px">Error al cargar los detalles.</p>`;
+      console.error('[openPanel]', e);
+      titleEl.textContent = 'Error';
+      body.innerHTML = `<div style="padding:24px 16px;text-align:center">
+        <i class="fas fa-exclamation-circle" style="font-size:32px;color:var(--danger);margin-bottom:12px;display:block"></i>
+        <p style="color:var(--text-muted);font-size:13px;line-height:1.5">${e.message || 'No se pudo cargar la salida. Inténtalo de nuevo.'}</p>
+        <button onclick="openPanel('${rideId}')" style="margin-top:12px;padding:8px 20px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px">Reintentar</button>
+      </div>`;
+      actions.style.display = 'none';
     }
   }
 
   function renderPanel(ride, comments) {
+    if (!ride || typeof ride !== 'object') return;
+
     const titleEl = document.getElementById('panel-title');
     const body    = document.getElementById('panel-body');
     const actions = document.getElementById('panel-actions');
 
-    titleEl.textContent = ride.title;
+    titleEl.textContent = ride.title || 'Salida grupal';
 
     const dt      = new Date(ride.departure_time);
     const dateStr = dt.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
@@ -900,7 +924,7 @@
 
     // Participants
     const participantItems = (ride.participants || []).map(p => {
-      const av = p.avatar ? `<img src="${p.avatar}" alt="">` : (p.name || 'C')[0].toUpperCase();
+      const av = p.avatar ? `<img src="${p.avatar}" alt="">` : ((p.name || 'C').charAt(0)).toUpperCase();
       const isOrg = p.user_id === ride.creator_id;
       return `<div class="participant-item">
         <div class="participant-avatar">${av}</div>
