@@ -3001,86 +3001,89 @@ No actúes como una IA. Actúa como un director deportivo profesional cuyo prest
 Usa los datos reales: FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}.
 Usa ## para secciones, ### para nombres de puertos, - para listas, tablas markdown solo en Plan de Potencia y Plan de Nutrición.`;
 
+  const MAX_OUT = 1500; // tokens de salida — mantenemos bajo para evitar rate limits de free tier
+
   try {
     let strategyText = null;
+    const sysMsg  = 'Eres el Director Deportivo y Entrenador Jefe de un equipo World Tour. Responde siempre en español.';
+    const userMsg = prompt;
 
-    // ── 1. Groq (más rápido) ──
-    if (!strategyText && hasGroq) {
-      for (const model of ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile']) {
-        try {
-          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
-            body: JSON.stringify({ model, max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content: prompt }] }),
-          });
-          if (resp.ok) {
-            const d = await resp.json();
-            const text = d.choices?.[0]?.message?.content || '';
-            if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Groq (${model})`); break; }
-          } else {
-            const err = await resp.json().catch(() => ({}));
-            console.log(`[race-day] Groq (${model}) ${resp.status}:`, err?.error?.message);
-            continue; // siempre probar el siguiente modelo
-          }
-        } catch (e) { console.log('[race-day] Groq exception:', e.message); continue; }
-      }
+    // ── 1. Anthropic (igual que callAI — alta calidad) ──
+    if (!strategyText && hasAnthropic) {
+      try {
+        const aiClient = new Anthropic({ apiKey: anthropicKey });
+        const model = (process.env.ANTHROPIC_MODEL || '').trim() || 'claude-3-haiku-20240307';
+        const msg = await aiClient.messages.create({ model, max_tokens: MAX_OUT, system: sysMsg, messages: [{ role: 'user', content: userMsg }] });
+        const text = msg.content?.[0]?.text || '';
+        if (text.length > 50) { strategyText = text; console.log(`[race-day] OK Anthropic (${model})`); }
+      } catch (e) { console.log('[race-day] Anthropic:', e.message); }
     }
 
-    // ── 2. Google Gemini ──
-    if (!strategyText && hasGoogle) {
-      const geminiModels = [...new Set([(process.env.GEMINI_MODEL||'').trim(),'gemini-1.5-flash','gemini-2.0-flash','gemini-2.5-flash','gemini-1.5-pro'])].filter(Boolean);
-      for (const model of geminiModels) {
-        try {
-          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': googleKey },
-            body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 2048 } }),
-          });
-          const data = await resp.json();
-          if (!resp.ok) {
-            console.log(`[race-day] Gemini (${model}) ${resp.status}:`, data?.error?.message);
-            continue; // siempre probar el siguiente modelo
-          }
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Gemini (${model})`); break; }
-        } catch (e) { console.log('[race-day] Gemini exception:', e.message); }
-      }
-    }
-
-    // ── 3. OpenAI ──
+    // ── 2. OpenAI ──
     if (!strategyText && hasOpenAI) {
       try {
         const resp = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
-          body: JSON.stringify({ model: openAiModel || 'gpt-4o-mini', max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content: prompt }] }),
+          body: JSON.stringify({ model: openAiModel || 'gpt-4o-mini', max_tokens: MAX_OUT, temperature: 0.3, messages: [{ role: 'system', content: sysMsg }, { role: 'user', content: userMsg }] }),
         });
         if (resp.ok) {
           const d = await resp.json();
           const text = d.choices?.[0]?.message?.content || '';
-          if (text.length > 200) { strategyText = text; console.log('[race-day] OK OpenAI'); }
+          if (text.length > 50) { strategyText = text; console.log('[race-day] OK OpenAI'); }
         } else {
           const err = await resp.json().catch(() => ({}));
-          console.log('[race-day] OpenAI error:', resp.status, err?.error?.message);
+          console.log('[race-day] OpenAI', resp.status, err?.error?.message);
         }
       } catch (e) { console.log('[race-day] OpenAI exception:', e.message); }
     }
 
-    // ── 4. Anthropic ──
-    if (!strategyText && hasAnthropic) {
-      const aiClient = new Anthropic({ apiKey: anthropicKey });
-      for (const model of [(process.env.ANTHROPIC_MODEL||'').trim(),'claude-3-5-sonnet-20241022','claude-3-haiku-20240307'].filter(Boolean)) {
+    // ── 3. Google Gemini ──
+    if (!strategyText && hasGoogle) {
+      const geminiModel = (process.env.GEMINI_MODEL || '').trim() || 'gemini-1.5-flash';
+      const geminiModels = [...new Set([geminiModel, 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'])].filter(Boolean);
+      for (const model of geminiModels) {
         try {
-          const msg = await aiClient.messages.create({ model, max_tokens: 2048, messages: [{ role: 'user', content: prompt }] });
-          const text = msg.content?.[0]?.text || '';
-          if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Anthropic (${model})`); break; }
-        } catch (e) { console.log(`[race-day] Anthropic (${model}):`, e.message); }
+          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: sysMsg + '\n\n' + userMsg }] }], generationConfig: { temperature: 0.3, maxOutputTokens: MAX_OUT } }),
+          });
+          const data = await resp.json();
+          if (!resp.ok) { console.log(`[race-day] Gemini (${model}) ${resp.status}:`, data?.error?.message); continue; }
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || data.candidates?.[0]?.parts?.[0]?.text || '';
+          if (text.length > 50) { strategyText = text; console.log(`[race-day] OK Gemini (${model})`); break; }
+        } catch (e) { console.log('[race-day] Gemini exception:', e.message); }
+      }
+    }
+
+    // ── 4. Groq — igual que callAI: llama-3.1-8b-instant primero (menor rate limit) ──
+    if (!strategyText && hasGroq) {
+      const groqModels = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'];
+      for (const model of groqModels) {
+        try {
+          const groqMaxOut = Math.min(MAX_OUT, 2500); // free tier: max 6000 TPM (prompt + salida)
+          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
+            body: JSON.stringify({ model, max_tokens: groqMaxOut, temperature: 0.3, messages: [{ role: 'system', content: sysMsg }, { role: 'user', content: userMsg }] }),
+          });
+          if (resp.ok) {
+            const d = await resp.json();
+            const text = d.choices?.[0]?.message?.content || '';
+            if (text.length > 50) { strategyText = text; console.log(`[race-day] OK Groq (${model})`); break; }
+          } else {
+            const err = await resp.json().catch(() => ({}));
+            console.log(`[race-day] Groq (${model}) ${resp.status}:`, err?.error?.message);
+            continue;
+          }
+        } catch (e) { console.log('[race-day] Groq exception:', e.message); continue; }
       }
     }
 
     if (!strategyText) {
-      console.error('[race-day] Todos los proveedores fallaron — Groq:', hasGroq, 'Google:', hasGoogle, 'OpenAI:', hasOpenAI, 'Anthropic:', hasAnthropic);
-      return res.status(503).json({ error: 'No se pudo generar la estrategia' });
+      console.error('[race-day] 503 — proveedores disponibles: Anthropic=%s OpenAI=%s Google=%s Groq=%s', hasAnthropic, hasOpenAI, hasGoogle, hasGroq);
+      return res.status(503).json({ error: 'No se pudo generar la estrategia. Inténtalo de nuevo en unos segundos.' });
     }
     return res.json({ strategy: strategyText });
   } catch (e) {
