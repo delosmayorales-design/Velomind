@@ -1744,23 +1744,20 @@ Devuelve SOLO este JSON (sin texto adicional):
   "nutricion": "1 frase sobre qué comer/beber ${diaRef.toLowerCase()}"
 }`;
     
-    const result = await callAI(systemPrompt, userMsg, { max_tokens: 700, temperature: 0.4 });
+    const rawResult = await callAI(systemPrompt, userMsg, { max_tokens: 700, temperature: 0.4 });
 
     // La IA puede devolver el objeto anidado, lo extraemos si es necesario.
+    let result = rawResult;
     if (!result || !result.recomendacion) {
       const nested = result ? Object.values(result).find(v => v && typeof v === 'object' && v.recomendacion) : null;
-      if (nested) {
-        console.log('[Today Adaptation] result:', JSON.stringify(nested));
-        return res.json({ ok: true, today: nested });
-      }
-      return res.status(500).json({ error: 'La IA no devolvió una recomendación válida.' });
+      if (!nested) return res.status(500).json({ error: 'La IA no devolvió una recomendación válida.' });
+      result = nested;
     }
 
-    // Override determinista de duración para salidas libres con km especificados
-    // La IA no sabe hacer esta conversión de forma fiable — la hacemos nosotros
+    // Override determinista de duración para salidas libres con km especificados.
+    // Se aplica SIEMPRE, independientemente de si la IA devolvió objeto directo o anidado.
     if (kmMatch) {
-      const kmCalculatedMin = Math.round(parseFloat(kmMatch[1].replace(',', '.')) / 28 * 60);
-      result.duracion_min = kmCalculatedMin;
+      result.duracion_min = Math.round(parseFloat(kmMatch[1].replace(',', '.')) / 28 * 60);
     }
 
     // Capping determinista ±25% TSS — la IA no puede sobrepasar este límite
