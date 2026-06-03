@@ -851,21 +851,23 @@ const TrainingPlanGenerator = {
       let durMin = Math.round((sessTSS / (Math.pow(ifTarget, 2) * 100)) * 60);
 
       // Salvaguarda fisiológica: límites mínimos y máximos de duración
-      let minDur = 30, maxDur = 240;
+      // Mínimo 70 min (1h10) para cualquier sesión ciclista — nadie se viste de bici para menos
+      let minDur = 70, maxDur = 240;
       if (['vo2max', 'threshold', 'tempo', 'sprint', 'strength'].includes(t.type)) {
-        minDur = (exp === 'avanzado') ? 65 : 45;
         maxDur = 150;
       } else if (t.type === 'long') {
         minDur = (exp === 'avanzado') ? 120 : 90;
-        maxDur = 240; // máx 4h — fondos de 5h no son sostenibles semana a semana
+        maxDur = 240;
       } else if (t.type === 'endurance') {
-        minDur = (exp === 'avanzado') ? 75 : 45;
         maxDur = 210;
       } else if (t.type === 'recovery') {
         maxDur = 90;
       }
 
       if (durMin < minDur) {
+        // Mantener el TSS objetivo bajando el IF en lugar de subir el TSS
+        const newIF = Math.sqrt(sessTSS / ((minDur / 60) * 100));
+        if (newIF >= 0.50) ifTarget = Math.round(newIF * 100) / 100;
         durMin = minDur;
         sessTSS = Math.round((durMin / 60) * Math.pow(ifTarget, 2) * 100);
       }
