@@ -1707,6 +1707,7 @@ APLICA LA PRIMERA REGLA QUE COINCIDA CON EL INPUT:
 
 🚴 SALIDA LIBRE ("grupeta", "ruta larga", "salida libre", "carrera"):
    → Ignora intervalos. Consejos tácticos para esa salida según TSB=${Math.round(latestPMC.tsb)}. recomendacion:"adaptado".
+   → Si el atleta menciona distancia en km, calcula la duración en minutos así: duracion_min = km / 28 × 60 (velocidad media grupeta ~28 km/h). Ejemplos: 90 km → 193 min ≈ 195 min. 60 km → 129 min ≈ 130 min. NUNCA uses km directamente como minutos (90 km NO son 90 min NI 900 min).
 
 ⚙️ ESPECIFICIDAD ("quiero hacer Z3", "quiero series de umbral", "prefiero rodillo"):
    → Diseña exactamente ese tipo. Respeta FTP=${ftp}W.
