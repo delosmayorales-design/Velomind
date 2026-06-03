@@ -10,16 +10,28 @@ const PORT = process.env.PORT || 3000;
 // ─────────────────────────────────────────
 // CORS — restringido a orígenes conocidos
 // ─────────────────────────────────────────
-const _allowedOrigins = process.env.ALLOWED_ORIGINS
+const _envOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
-  : null;
+  : [];
+
+// Orígenes de la app siempre permitidos (Vercel + dominios propios)
+const _builtinOrigins = [
+  'https://velomind-liard.vercel.app',
+];
+
+const _allowedOrigins = _envOrigins.length > 0
+  ? [...new Set([..._envOrigins, ..._builtinOrigins])]
+  : null; // null = abierto en dev (sin env var)
 
 app.use(cors({
   origin: (origin, cb) => {
     // Peticiones sin origen (Postman, curl, server-to-server) se permiten en dev
     if (!origin) return cb(null, process.env.NODE_ENV !== 'production');
     if (!_allowedOrigins) return cb(null, true); // dev sin env var: abierto
+    // Permitir cualquier subdominio de Vercel del proyecto velomind
+    if (/^https:\/\/velomind[^.]*\.vercel\.app$/.test(origin)) return cb(null, true);
     if (_allowedOrigins.includes(origin)) return cb(null, true);
+    console.warn('[CORS] Origen bloqueado:', origin);
     cb(new Error(`Origen no permitido: ${origin}`));
   },
   credentials: true,
