@@ -2108,7 +2108,7 @@ async function loadStravaSegments() {
             .bindPopup(segmentPopup(e, catLabel, distKm, grade, color))
             .addTo(segmentsLayer);
           polyline._segColor = color;
-          polyline.on('click', () => highlightSegment(polyline, color));
+          polyline.on('popupopen',  () => highlightSegment(polyline, color));
           polyline.on('popupclose', () => resetSegmentHighlight(polyline, color));
         }
       }
@@ -2124,7 +2124,7 @@ async function loadStravaSegments() {
           .bindPopup(segmentPopup(e, catLabel, distKm, grade, color))
           .addTo(segmentsLayer);
         if (polyline) {
-          marker.on('click',      () => highlightSegment(polyline, color));
+          marker.on('popupopen',  () => highlightSegment(polyline, color));
           marker.on('popupclose', () => resetSegmentHighlight(polyline, color));
         }
       }
@@ -2219,9 +2219,9 @@ async function openRankingPanel(segmentId) {
   overlay.style.display = '';
 
   try {
-    const res = await Auth.apiFetch(`${API_BASE}/providers/strava/segment-leaderboard/${segmentId}`);
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Error');
-    const data = await res.json();
+    const res = await fetch(`${API_BASE}/providers/strava/segment-leaderboard/${segmentId}`, { headers: Auth.getHeaders() });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
 
     if (!data.entries?.length) {
       body.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;font-size:13px">Sin clasificación disponible</p>';
