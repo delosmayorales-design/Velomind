@@ -1936,6 +1936,7 @@ let currentRouteElevs = null;
 let waypoints = [], waypointMarkers = [];
 let routeLayer = null, routeGeoJSON = null;
 let segmentsLayer = null, segmentsOn = false;
+let _activeSegmentPolyline = null, _activeSegmentOrigStyle = null;
 let allRoutes = [], activeFilter = 'all';
 let drawingActive = false, currentRouteType = 'road';
 let _elevFetchId = 0;          // guard anti-stale: se incrementa en cada nueva llamada
@@ -2095,12 +2096,16 @@ async function loadStravaSegments() {
       const distKm   = e.distance ? (e.distance / 1000).toFixed(1) : '?';
       const grade    = e.avg_grade != null ? e.avg_grade.toFixed(1) + '%' : '?';
 
+      let polyline = null;
       if (e.points) {
         const coords = decodePolyline5(e.points);
         if (coords.length >= 2) {
-          L.polyline(coords, { color, weight: 4, opacity: 0.9, dashArray: '8 4' })
+          polyline = L.polyline(coords, { color, weight: 4, opacity: 0.9, dashArray: '8 4' })
             .bindPopup(segmentPopup(e, catLabel, distKm, grade, color))
             .addTo(segmentsLayer);
+          polyline._segColor = color;
+          polyline.on('click', () => highlightSegment(polyline, color));
+          polyline.on('popupclose', () => resetSegmentHighlight(polyline, color));
         }
       }
 
@@ -2111,9 +2116,13 @@ async function loadStravaSegments() {
           html: `<div style="background:${color};color:#fff;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.3);max-width:130px;overflow:hidden;text-overflow:ellipsis">${prBadge}${escHtml(e.name)}</div>`,
           iconAnchor: [0, 10],
         });
-        L.marker(e.start_latlng, { icon })
+        const marker = L.marker(e.start_latlng, { icon })
           .bindPopup(segmentPopup(e, catLabel, distKm, grade, color))
           .addTo(segmentsLayer);
+        if (polyline) {
+          marker.on('click',      () => highlightSegment(polyline, color));
+          marker.on('popupclose', () => resetSegmentHighlight(polyline, color));
+        }
       }
     });
 
@@ -2167,6 +2176,28 @@ function segmentPopup(e, catLabel, distKm, grade, color) {
       </a>
     </div>
   </div>`;
+}
+
+function highlightSegment(polyline, originalColor) {
+  // Resetear el anterior si era otro segmento
+  if (_activeSegmentPolyline && _activeSegmentPolyline !== polyline) {
+    _activeSegmentPolyline.setStyle({
+      color:     _activeSegmentPolyline._segColor,
+      weight:    4,
+      opacity:   0.9,
+      dashArray: '8 4',
+    });
+  }
+  _activeSegmentPolyline = polyline;
+  polyline.setStyle({ color: '#ffffff', weight: 7, opacity: 1, dashArray: null });
+  polyline.bringToFront();
+}
+
+function resetSegmentHighlight(polyline, originalColor) {
+  if (_activeSegmentPolyline === polyline) {
+    polyline.setStyle({ color: originalColor, weight: 4, opacity: 0.9, dashArray: '8 4' });
+    _activeSegmentPolyline = null;
+  }
 }
 
 async function openRankingPanel(segmentId, segmentName, distKm, grade) {
@@ -3040,6 +3071,7 @@ function openRouteOnMap(id) {
   const color   = routeColor(route);
   if (routeLayer) map.removeLayer(routeLayer);
   if (segmentsLayer) { map.removeLayer(segmentsLayer); segmentsLayer = null; segmentsOn = false;
+    _activeSegmentPolyline = null;
     const sb = document.getElementById('btn-strava-segments');
     if (sb) { sb.classList.remove('btn-primary'); sb.classList.add('btn-secondary'); }
   }
