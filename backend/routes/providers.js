@@ -1396,26 +1396,35 @@ router.get('/strava/segment-leaderboard/:segmentId', requireAuth, async (req, re
   }
 
   try {
-    const r = await fetch(
+    // Intentar leaderboard público; si Strava devuelve 403 (requiere aprobación especial),
+    // intentar con following=true (atletas que sigue el usuario)
+    let r = await fetch(
       `https://www.strava.com/api/v3/segments/${segmentId}/leaderboard?per_page=10`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
+    if (r.status === 403) {
+      r = await fetch(
+        `https://www.strava.com/api/v3/segments/${segmentId}/leaderboard?per_page=10&following=true`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    }
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
-      return res.status(r.status).json({ error: err.message || 'Error Strava Leaderboard' });
+      return res.status(r.status).json({ error: err.message || 'Strava no permite acceder al ranking de este segmento', restricted: true });
     }
     const data = await r.json();
     res.json({
       entry_count: data.entry_count || 0,
+      following_only: false,
       entries: (data.entries || []).map(e => ({
-        rank:         e.rank,
-        athlete_name: e.athlete_name,
+        rank:          e.rank,
+        athlete_name:  e.athlete_name,
         athlete_photo: e.athlete_profile,
-        elapsed_time: e.elapsed_time,
-        avg_watts:    e.average_watts || null,
-        start_date:   e.start_date_local,
-        effort_id:    e.effort_id,
-        activity_id:  e.activity_id,
+        elapsed_time:  e.elapsed_time,
+        avg_watts:     e.average_watts || null,
+        start_date:    e.start_date_local,
+        effort_id:     e.effort_id,
+        activity_id:   e.activity_id,
       })),
     });
   } catch (e) {

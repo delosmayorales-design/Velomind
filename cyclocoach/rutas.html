@@ -2062,6 +2062,28 @@ function decodePolyline5(encoded) {
 const SEGMENT_CAT = { 0: 'NC', 1: 'Cat 4', 2: 'Cat 3', 3: 'Cat 2', 4: 'Cat 1', 5: 'HC' };
 const SEGMENT_CAT_COLOR = { 0: '#94a3b8', 1: '#60a5fa', 2: '#4ade80', 3: '#fbbf24', 4: '#f97316', 5: '#ef4444' };
 
+// Extrae el tramo de segmento de la polilínea de la ruta activa buscando
+// los puntos más cercanos a start_latlng y end_latlng
+function extractSegmentFromRoute(startLL, endLL) {
+  if (!routeGeoJSON) return null;
+  const raw = routeGeoJSON.type === 'LineString'
+    ? routeGeoJSON.coordinates
+    : (routeGeoJSON.coordinates || []).flat(1);
+  if (!raw.length) return null;
+
+  function sq(a, b) { return (a[1]-b[0])*(a[1]-b[0]) + (a[0]-b[1])*(a[0]-b[1]); }
+
+  let si = 0, ei = 0, minS = Infinity, minE = Infinity;
+  raw.forEach((c, i) => {
+    const ds = sq(c, startLL), de = sq(c, endLL);
+    if (ds < minS) { minS = ds; si = i; }
+    if (de < minE) { minE = de; ei = i; }
+  });
+
+  if (si >= ei) return null; // Sin tramo válido
+  return raw.slice(si, ei + 1).map(c => [c[1], c[0]]); // GeoJSON [lng,lat] → Leaflet [lat,lng]
+}
+
 async function loadStravaSegments() {
   if (!routeLayer) { showToast('Abre una ruta primero para ver sus segmentos', 'info'); return; }
 
@@ -2100,17 +2122,20 @@ async function loadStravaSegments() {
 
       if (e.segment_id) _segmentDataMap.set(String(e.segment_id), { name: e.name, distKm, grade });
 
+      // Extraer tramo del segmento de la polilínea de la ruta (Strava no devuelve
+      // points en el endpoint de actividad, solo en /segments/{id})
       let polyline = null;
-      if (e.points) {
-        const coords = decodePolyline5(e.points);
-        if (coords.length >= 2) {
-          polyline = L.polyline(coords, { color, weight: 4, opacity: 0.9, dashArray: '8 4' })
-            .bindPopup(segmentPopup(e, catLabel, distKm, grade, color))
-            .addTo(segmentsLayer);
-          polyline._segColor = color;
-          polyline.on('popupopen',  () => highlightSegment(polyline, color));
-          polyline.on('popupclose', () => resetSegmentHighlight(polyline, color));
-        }
+      const segCoords = e.start_latlng?.length === 2 && e.end_latlng?.length === 2
+        ? extractSegmentFromRoute(e.start_latlng, e.end_latlng)
+        : null;
+
+      if (segCoords && segCoords.length >= 2) {
+        polyline = L.polyline(segCoords, { color, weight: 5, opacity: 0.95, dashArray: '10 5' })
+          .bindPopup(segmentPopup(e, catLabel, distKm, grade, color))
+          .addTo(segmentsLayer);
+        polyline._segColor = color;
+        polyline.on('popupopen',  () => highlightSegment(polyline, color));
+        polyline.on('popupclose', () => resetSegmentHighlight(polyline, color));
       }
 
       if (e.start_latlng?.length === 2) {
@@ -2123,10 +2148,8 @@ async function loadStravaSegments() {
         const marker = L.marker(e.start_latlng, { icon })
           .bindPopup(segmentPopup(e, catLabel, distKm, grade, color))
           .addTo(segmentsLayer);
-        if (polyline) {
-          marker.on('popupopen',  () => highlightSegment(polyline, color));
-          marker.on('popupclose', () => resetSegmentHighlight(polyline, color));
-        }
+        marker.on('popupopen',  () => polyline && highlightSegment(polyline, color));
+        marker.on('popupclose', () => polyline && resetSegmentHighlight(polyline, color));
       }
     });
 
@@ -2221,7 +2244,26 @@ async function openRankingPanel(segmentId) {
   try {
     const res = await fetch(`${API_BASE}/providers/strava/segment-leaderboard/${segmentId}`, { headers: Auth.getHeaders() });
     const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
+    if (!res.ok) {
+      // Strava no permite acceso al leaderboard (requiere aprobación especial de API)
+      const stravaUrl = `https://www.strava.com/segments/${segmentId}`;
+      const segD = _segmentDataMap.get(String(segmentId)) || {};
+      body.innerHTML = `
+        <div style="text-align:center;padding:20px 16px">
+          <i class="fab fa-strava" style="font-size:32px;color:#FC4C02;margin-bottom:10px;display:block"></i>
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+            Strava restringe el acceso al ranking desde apps de terceros.<br>
+            Puedes verlo directamente en Strava.
+          </p>
+          <a href="${stravaUrl}" target="_blank" rel="noopener"
+             style="display:inline-flex;align-items:center;gap:7px;padding:10px 20px;
+                    border-radius:10px;background:#FC4C02;color:#fff;font-weight:700;
+                    font-size:13px;text-decoration:none">
+            <i class="fab fa-strava"></i> Ver ranking en Strava
+          </a>
+        </div>`;
+      return;
+    }
 
     if (!data.entries?.length) {
       body.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;font-size:13px">Sin clasificación disponible</p>';
