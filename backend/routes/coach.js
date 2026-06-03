@@ -2933,17 +2933,31 @@ router.post('/race-day', async (req, res) => {
   const litersTotal = durH ? (durH * litersH).toFixed(1) : null;
   const sodiumMg   = durH ? Math.round(durH * 700) : null; // ~700mg/h
 
-  const climbsText = (raceData?.climbs?.length > 0)
-    ? raceData.climbs.map((c, i) => {
-        const name  = c.name || `Puerto ${i + 1}`;
-        const parts = [name];
-        if (c.length_km)  parts.push(`${c.length_km} km`);
-        if (c.avg_grade)  parts.push(`${c.avg_grade}% pendiente media`);
-        const elev = (c.length_km && c.avg_grade) ? Math.round(c.length_km * 1000 * c.avg_grade / 100) : null;
-        if (elev) parts.push(`+${elev}m aprox`);
-        return `  - ${parts.join(' · ')}`;
-      }).join('\n')
+  // Pre-calcular métricas de cada puerto para que la IA use datos reales
+  const climbs = (raceData?.climbs || []).map((c, i) => ({
+    name:      c.name || `Puerto ${i + 1}`,
+    length_km: parseFloat(c.length_km) || 0,
+    avg_grade: parseFloat(c.avg_grade) || 0,
+    elev_m:    (c.length_km && c.avg_grade) ? Math.round(c.length_km * 1000 * c.avg_grade / 100) : 0,
+  }));
+
+  const climbsText = climbs.length > 0
+    ? climbs.map(c => `  - ${c.name}: ${c.length_km} km · ${c.avg_grade}% · +${c.elev_m}m`).join('\n')
     : '  - Sin puertos especificados';
+
+  // Identificar puertos clave con datos reales (evita que la IA los invente)
+  const sorted = [...climbs].filter(c => c.length_km > 0);
+  const longestClimb  = sorted.sort((a,b) => b.length_km  - a.length_km)[0];
+  const hardestClimb  = [...climbs].filter(c => c.elev_m > 0).sort((a,b) => b.elev_m - a.elev_m)[0];
+  const steepestClimb = [...climbs].filter(c => c.avg_grade > 0).sort((a,b) => b.avg_grade - a.avg_grade)[0];
+  const lastClimb     = climbs.length > 0 ? climbs[climbs.length - 1] : null;
+
+  const climbStats = climbs.length > 0 ? `
+ANÁLISIS OBJETIVO DE LOS PUERTOS (usa estos datos, NO los inventes):
+- Puerto más largo: ${longestClimb ? `${longestClimb.name} (${longestClimb.length_km} km)` : 'N/D'}
+- Puerto con más desnivel: ${hardestClimb ? `${hardestClimb.name} (+${hardestClimb.elev_m}m)` : 'N/D'}
+- Puerto más empinado: ${steepestClimb ? `${steepestClimb.name} (${steepestClimb.avg_grade}%)` : 'N/D'}
+- Último puerto de la carrera: ${lastClimb ? `${lastClimb.name}` : 'N/D'}` : '';
 
   const tsbLabel = tsb >= 10 ? '🟢 Muy fresco' : tsb >= 0 ? '🟡 Fresco' : tsb >= -10 ? '🟠 Fatigado' : '🔴 Muy fatigado';
 
@@ -2963,8 +2977,9 @@ ${lthr ? `* LTHR: ${lthr} bpm` : ''}${max_hr ? `\n* FC máxima: ${max_hr} bpm` :
 # DATOS DE LA CARRERA
 * Distancia: ${raceData?.distance_km ? raceData.distance_km + ' km' : 'N/D'}
 * Desnivel: ${raceData?.elevation_m ? '+' + raceData.elevation_m + 'm' : 'N/D'}
-* Puertos:
+* Puertos (en orden de aparición en la carrera):
 ${climbsText}
+${climbStats}
 
 # PROHIBIDO
 - NO dar consejos genéricos ni decir "mantén un ritmo constante" sin vatios.
@@ -2987,7 +3002,11 @@ Clasifica la forma con emoji (🟢🟡🟠🔴) y explica cómo afectará a la c
 Divide en: Salida · Primer tercio · Parte central · Momento decisivo · Final. Qué hacer exactamente en cada fase con vatios concretos.
 
 ## ANÁLISIS TÁCTICO DEL RECORRIDO
-Puerto más peligroso, puerto decisivo, dónde suelen explotar los corredores, mejor lugar para atacar, peor lugar para gastar energía. Justifica cada decisión.
+OBLIGATORIO: usa los datos objetivos de los puertos (longitud en km, desnivel en m, pendiente %) para justificar cada punto. NO inventes características.
+- Puerto más peligroso: el de mayor desnivel acumulado o pendiente más alta según los datos.
+- Puerto decisivo: el que combine posición avanzada en la carrera + mayor dificultad.
+- Dónde suelen explotar: basándote en longitud y posición real dentro de la carrera.
+- Mejor lugar para atacar y peor para gastar energía: justifica con los datos reales.
 
 ## PLAN DE POTENCIA
 Para cada puerto, esta tabla markdown:
