@@ -2638,6 +2638,11 @@ async function adaptSession(idx, dayOffset) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
     if (!data.today) throw new Error('El coach no devolvió recomendación. Inténtalo de nuevo.');
+    // Override duracion_min para salidas con km — la IA no es fiable con esta conversión
+    const kmFE = text.match(/(\d+(?:[.,]\d+)?)\s*km/i);
+    if (kmFE && data.today) {
+      data.today.duracion_min = Math.round(parseFloat(kmFE[1].replace(',', '.')) / 28 * 60);
+    }
     renderAdaptResult(idx, data.today);
   } catch(e) {
     console.error('[adaptSession]', e);
