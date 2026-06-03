@@ -2911,12 +2911,14 @@ router.post('/race-strategy', async (req, res) => {
   const openaiKey    = process.env.OPENAI_API_KEY    || '';
   const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
   const googleKey    = process.env.GOOGLE_API_KEY    || '';
-  const openAiModel  = (process.env.OPENAI_MODEL || 'gpt-4o').trim();
+  const groqKey      = process.env.GROQ_API_KEY      || '';
+  const openAiModel  = (process.env.OPENAI_MODEL || 'gpt-4o-mini').trim();
   const hasOpenAI    = openaiKey.length > 20;
   const hasAnthropic = anthropicKey.startsWith('sk-ant-');
   const hasGoogle    = googleKey.startsWith('AIzaSy');
+  const hasGroq      = groqKey.startsWith('gsk_');
 
-  if (!hasOpenAI && !hasAnthropic && !hasGoogle) {
+  if (!hasOpenAI && !hasAnthropic && !hasGoogle && !hasGroq) {
     return res.status(503).json({ error: 'Servicio de IA no disponible' });
   }
 
@@ -3048,14 +3050,45 @@ Usa ## para títulos de sección, ### para subsecciones, - para listas y tablas 
       }
     }
 
-    // ── 2. OpenAI ──
+    // ── 2. Groq ──
+    if (!strategyText && hasGroq) {
+      const groqModels = [
+        'llama-3.3-70b-versatile',
+        'llama-3.1-70b-versatile',
+        'mixtral-8x7b-32768',
+      ];
+      for (const model of groqModels) {
+        try {
+          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
+            body: JSON.stringify({ model, max_tokens: 3000, temperature: 0.3, messages: [{ role: 'user', content: prompt }] }),
+          });
+          if (resp.ok) {
+            const d = await resp.json();
+            const text = d.choices?.[0]?.message?.content || '';
+            if (text.length > 200) { strategyText = text; break; }
+          } else {
+            const err = await resp.json().catch(() => ({}));
+            console.log('[race-strategy] Groq error:', resp.status, err?.error?.message || '');
+            if (resp.status === 404 || err?.error?.code === 'model_decommissioned') continue;
+            break;
+          }
+        } catch (e) {
+          console.log('[race-strategy] Groq exception:', e.message);
+          break;
+        }
+      }
+    }
+
+    // ── 3. OpenAI ──
     if (!strategyText && hasOpenAI) {
       const resp = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
         body: JSON.stringify({
-          model: openAiModel || 'gpt-4o',
-          max_tokens: 4096,
+          model: openAiModel || 'gpt-4o-mini',
+          max_tokens: 3000,
           temperature: 0.3,
           messages: [{ role: 'user', content: prompt }],
         }),
@@ -3065,11 +3098,12 @@ Usa ## para títulos de sección, ### para subsecciones, - para listas y tablas 
         const text = d.choices?.[0]?.message?.content || '';
         if (text.length > 200) strategyText = text;
       } else {
-        console.log('[race-strategy] OpenAI error:', resp.status);
+        const err = await resp.json().catch(() => ({}));
+        console.log('[race-strategy] OpenAI error:', resp.status, err?.error?.message || '');
       }
     }
 
-    // ── 3. Anthropic Claude ──
+    // ── 4. Anthropic Claude ──
     if (!strategyText && hasAnthropic) {
       const aiClient = new Anthropic({ apiKey: anthropicKey });
       const anthropicModels = [
