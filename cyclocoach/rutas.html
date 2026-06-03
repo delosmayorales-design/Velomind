@@ -2063,15 +2063,22 @@ const SEGMENT_CAT = { 0: 'NC', 1: 'Cat 4', 2: 'Cat 3', 3: 'Cat 2', 4: 'Cat 1', 5
 const SEGMENT_CAT_COLOR = { 0: '#94a3b8', 1: '#60a5fa', 2: '#4ade80', 3: '#fbbf24', 4: '#f97316', 5: '#ef4444' };
 
 // Extrae el tramo de segmento de la polilínea de la ruta activa buscando
-// los puntos más cercanos a start_latlng y end_latlng
+// los puntos más cercanos a start_latlng y end_latlng.
+// startLL y endLL son [lat, lng] (formato Strava/Leaflet).
 function extractSegmentFromRoute(startLL, endLL) {
-  if (!routeGeoJSON) return null;
+  const fallback = [startLL, endLL]; // línea directa mínima garantizada
+  if (!routeGeoJSON) return fallback;
+
   const raw = routeGeoJSON.type === 'LineString'
     ? routeGeoJSON.coordinates
     : (routeGeoJSON.coordinates || []).flat(1);
-  if (!raw.length) return null;
+  if (raw.length < 2) return fallback;
 
-  function sq(a, b) { return (a[1]-b[0])*(a[1]-b[0]) + (a[0]-b[1])*(a[0]-b[1]); }
+  // GeoJSON coord = [lng, lat]; Strava latlng = [lat, lng]
+  const sq = (c, ll) => {
+    const dlat = c[1] - ll[0], dlng = c[0] - ll[1];
+    return dlat * dlat + dlng * dlng;
+  };
 
   let si = 0, ei = 0, minS = Infinity, minE = Infinity;
   raw.forEach((c, i) => {
@@ -2080,8 +2087,9 @@ function extractSegmentFromRoute(startLL, endLL) {
     if (de < minE) { minE = de; ei = i; }
   });
 
-  if (si >= ei) return null; // Sin tramo válido
-  return raw.slice(si, ei + 1).map(c => [c[1], c[0]]); // GeoJSON [lng,lat] → Leaflet [lat,lng]
+  if (si > ei) [si, ei] = [ei, si]; // segmento en sentido inverso al track
+  if (si === ei) return fallback;   // mismo punto, usar fallback
+  return raw.slice(si, ei + 1).map(c => [c[1], c[0]]); // [lng,lat] → [lat,lng]
 }
 
 async function loadStravaSegments() {
