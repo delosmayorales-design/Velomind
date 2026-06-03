@@ -830,6 +830,18 @@
       if (ride.is_joined || ride.is_mine) startCommentPolling(ride.id);
       if (ride.meeting_lat && ride.meeting_lng) {
         loadWeatherForPanel(ride.meeting_lat, ride.meeting_lng, ride.departure_time);
+      } else if (ride.route_id) {
+        // Sin coordenadas almacenadas — extraerlas del GeoJSON de la ruta adjunta
+        fetch(`${API}/routes/${ride.route_id}`, { headers: { Authorization: `Bearer ${Auth.getToken()}` } })
+          .then(r => r.ok ? r.json() : null)
+          .then(route => {
+            if (!route?.geojson?.coordinates?.length) return;
+            const c = route.geojson.coordinates;
+            const first = Array.isArray(c[0][0]) ? c[0][0] : c[0];
+            const lat = first[1], lng = first[0];
+            if (lat && lng) loadWeatherForPanel(lat, lng, ride.departure_time);
+          })
+          .catch(() => {});
       }
     } catch(e) {
       body.innerHTML = `<p style="color:var(--text-muted);font-size:13px">Error al cargar los detalles.</p>`;
@@ -882,7 +894,7 @@
         <i class="fas fa-map-marked-alt"></i> Ver en el mapa de rutas
       </a>` : '';
 
-    const weatherBlock = (ride.meeting_lat && ride.meeting_lng) ? `
+    const weatherBlock = (ride.meeting_lat && ride.meeting_lng) || ride.route_id ? `
       <div class="panel-section-title" style="margin-top:16px">Pronóstico para la salida</div>
       <div id="panel-weather-slot"><div class="skel" style="height:72px"></div></div>` : '';
 
