@@ -5917,7 +5917,6 @@ async function _runRaceAnalysisWithData(sdk, raceData) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
       body: JSON.stringify({ imageBase64, athleteData }),
-      signal: AbortSignal.timeout(28000),
     });
     if (!res.ok) throw new Error((await res.json()).error || 'Error del servidor');
     const { strategy } = await res.json();

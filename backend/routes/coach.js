@@ -2999,7 +2999,6 @@ Usa ## para secciones, - para listas y tablas markdown.`;
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': googleKey },
             body: JSON.stringify(makeGeminiBody()),
-            signal: AbortSignal.timeout(20000),
           });
           const data = await resp.json();
           if (!resp.ok) {
@@ -3011,7 +3010,6 @@ Usa ## para secciones, - para listas y tablas markdown.`;
           if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Gemini (${model})`); break; }
         } catch (e) {
           console.log(`[race-day] Gemini (${model}) exception:`, e.message);
-          if (e.name === 'TimeoutError') continue;
         }
       }
     }
@@ -3024,7 +3022,6 @@ Usa ## para secciones, - para listas y tablas markdown.`;
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
             body: JSON.stringify({ model, max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content: prompt }] }),
-            signal: AbortSignal.timeout(20000),
           });
           if (resp.ok) {
             const d = await resp.json();
@@ -3050,7 +3047,6 @@ Usa ## para secciones, - para listas y tablas markdown.`;
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
           body: JSON.stringify({ model: parsed?.ok ? 'gpt-4o-mini' : (openAiModel||'gpt-4o-mini'), max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content }] }),
-          signal: AbortSignal.timeout(20000),
         });
         if (resp.ok) {
           const d = await resp.json();
