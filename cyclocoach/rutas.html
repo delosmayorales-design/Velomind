@@ -1937,6 +1937,7 @@ let waypoints = [], waypointMarkers = [];
 let routeLayer = null, routeGeoJSON = null;
 let segmentsLayer = null, segmentsOn = false;
 let _activeSegmentPolyline = null, _activeSegmentOrigStyle = null;
+const _segmentDataMap = new Map(); // segmentId → {name, distKm, grade}
 let allRoutes = [], activeFilter = 'all';
 let drawingActive = false, currentRouteType = 'road';
 let _elevFetchId = 0;          // guard anti-stale: se incrementa en cada nueva llamada
@@ -2077,6 +2078,7 @@ async function loadStravaSegments() {
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span class="btn-label"> Cargando...</span>';
   if (segmentsLayer) { map.removeLayer(segmentsLayer); segmentsLayer = null; }
+  _segmentDataMap.clear();
 
   try {
     const res = await Auth.apiFetch(`${API_BASE}/providers/strava/activity-segments/${currentRoute.strava_activity_id}`);
@@ -2095,6 +2097,8 @@ async function loadStravaSegments() {
       const catLabel = SEGMENT_CAT[cat] ?? 'NC';
       const distKm   = e.distance ? (e.distance / 1000).toFixed(1) : '?';
       const grade    = e.avg_grade != null ? e.avg_grade.toFixed(1) + '%' : '?';
+
+      if (e.segment_id) _segmentDataMap.set(String(e.segment_id), { name: e.name, distKm, grade });
 
       let polyline = null;
       if (e.points) {
@@ -2162,7 +2166,7 @@ function segmentPopup(e, catLabel, distKm, grade, color) {
       ${e.avg_hr    ? `<span>❤ ${Math.round(e.avg_hr)} bpm</span>` : ''}
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button onclick="openRankingPanel('${e.segment_id}','${escHtml(e.name).replace(/'/g,"\\'")}','${distKm}','${grade}')"
+      <button onclick="openRankingPanel(${e.segment_id})"
         style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);
                color:var(--text-primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;
                display:flex;align-items:center;justify-content:center;gap:5px">
@@ -2200,15 +2204,16 @@ function resetSegmentHighlight(polyline, originalColor) {
   }
 }
 
-async function openRankingPanel(segmentId, segmentName, distKm, grade) {
+async function openRankingPanel(segmentId) {
   const panel   = document.getElementById('segment-ranking-panel');
   const overlay = document.getElementById('ranking-overlay');
   const body    = document.getElementById('ranking-body');
   const nameEl  = document.getElementById('ranking-seg-name');
   const metaEl  = document.getElementById('ranking-seg-meta');
 
-  nameEl.textContent = segmentName;
-  metaEl.textContent = `${distKm} km · ${grade}`;
+  const segData = _segmentDataMap.get(String(segmentId)) || {};
+  nameEl.textContent = segData.name || 'Segmento';
+  metaEl.textContent = segData.distKm && segData.grade ? `${segData.distKm} km · ${segData.grade}` : '';
   body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Cargando clasificación...</div>';
   panel.style.display = '';
   overlay.style.display = '';
