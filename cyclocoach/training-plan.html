@@ -2418,11 +2418,10 @@ function renderPlan(plan, athlete) {
       const _name = (sess.name || 'Carrera').replace(/^🏁\s*/,'');
       const _dk   = sessDayKey;
       const _sdk  = _dk.replace(/-/g,'');
-      // Datos guardados de análisis IA previo
+      // Datos del formulario guardados en localStorage
       const _savedData = (() => { try { return JSON.parse(localStorage.getItem(`race_data_${_sdk}`) || 'null'); } catch{return null;} })();
       const _cp   = _buildRaceCoachPlan(ftp, athlete, metrics, _isC, _savedData);
-      // Imagen guardada en localStorage
-      const _savedImg = (() => { try { return localStorage.getItem(`race_profile_${_sdk}`); } catch{return null;} })();
+      const _inp  = 'width:100%;box-sizing:border-box;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text-primary);font-size:13px;outline:none;font-family:inherit;-webkit-appearance:none';
 
       return `
         <div class="session-card-item${sess.completed?' completed':''}${isToday?' today-card':''}" style="border-color:${_rc}55;overflow:hidden">
@@ -2456,20 +2455,25 @@ function renderPlan(plan, athlete) {
             <div style="font-size:13px;color:var(--text-secondary);line-height:1.65;padding:10px 14px;background:${_rc}10;border-left:3px solid ${_rc};border-radius:0 8px 8px 0">${_cp.diagnosis}</div>
           </div>
 
-          <!-- PERFIL DEL RECORRIDO (imagen) -->
+          <!-- DATOS DEL RECORRIDO (formulario) -->
           <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
-            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_rc};margin-bottom:10px">Perfil del recorrido</div>
-            <input type="file" id="rci-${_sdk}" accept="image/*" style="display:none" onchange="loadRaceProfileImage(this,'${_sdk}')">
-            <div id="rci-wrap-${_sdk}">
-              ${_savedImg
-                ? `<div style="position:relative">
-                     <img src="${_savedImg}" style="width:100%;border-radius:10px;display:block;max-height:340px;object-fit:contain;background:rgba(0,0,0,.08);image-rendering:auto">
-                     <button onclick="event.stopPropagation();clearRaceProfileImage('${_sdk}')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:26px;height:26px;color:#fff;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">✕</button>
-                   </div>`
-                : `<label for="rci-${_sdk}" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 16px;border:1.5px dashed rgba(168,85,247,.4);border-radius:10px;cursor:pointer;background:rgba(168,85,247,.05);-webkit-tap-highlight-color:transparent">
-                     <i class="fas fa-image" style="font-size:28px;color:${_rc};opacity:.6"></i>
-                     <span style="font-size:12px;color:var(--text-muted)">Toca para adjuntar el perfil del recorrido</span>
-                   </label>`}
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_rc};margin-bottom:10px">Datos del recorrido</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+              <div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Distancia (km)</div>
+                <input type="number" id="rf-dist-${_sdk}" value="${_savedData?.distance_km||''}" placeholder="ej: 120" min="1" step="1" oninput="saveRaceForm('${_sdk}')" style="${_inp}">
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Desnivel + (m)</div>
+                <input type="number" id="rf-elev-${_sdk}" value="${_savedData?.elevation_m||''}" placeholder="ej: 2800" min="0" step="100" oninput="saveRaceForm('${_sdk}')" style="${_inp}">
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-secondary)">Puertos <span style="font-weight:400;color:var(--text-muted)">(distancia · pendiente media)</span></div>
+              <button type="button" onclick="addRaceClimb('${_sdk}')" style="background:${_rc}18;border:1px solid ${_rc}44;border-radius:6px;padding:3px 10px;color:${_rc};font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent">+ Puerto</button>
+            </div>
+            <div id="rf-climbs-${_sdk}">
+              ${(_savedData?.climbs||[]).map((c,i) => _raceClimbRowHtml(_sdk,i,c)).join('')}
             </div>
           </div>
 
@@ -2483,21 +2487,10 @@ function renderPlan(plan, athlete) {
 
           <!-- SLOT ANÁLISIS -->
           <div id="rca-${_sdk}">
-            ${_savedData
-              ? (() => {
-                  const _climbsC = _savedData.climbs?.length||0;
-                  const _sum = [_savedData.distance_km&&`📍 ${_savedData.distance_km} km`,_savedData.elevation_m&&`⛰️ +${_savedData.elevation_m} m`,_climbsC&&`🏔️ ${_climbsC} puerto${_climbsC>1?'s':''}`,_savedData.feed_zones_km?.length&&`🍌 ${_savedData.feed_zones_km.length} avituall.`].filter(Boolean).join(' · ');
-                  // Auto-trigger AI strategy after DOM is ready
-                  setTimeout(() => _runRaceAnalysisWithData(_sdk, _savedData), 80);
-                  return `<div style="padding:10px 16px 0;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border)"><span style="font-weight:700;color:${_rc}">IA detectó:</span> ${_sum}</div>
-                    <div id="rca-strategy-${_sdk}" style="padding:20px 16px;display:flex;align-items:center;gap:12px;color:${_rc};font-size:13px;font-weight:600">
-                      <i class="fas fa-spinner fa-spin" style="font-size:18px"></i> Generando plan de carrera personalizado...
-                    </div>`;
-                })()
-              : `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;line-height:1.7">
-                   <i class="fas fa-brain" style="display:block;font-size:26px;margin-bottom:8px;opacity:.25;color:${_rc}"></i>
-                   Adjunta el perfil del recorrido y la IA extraerá los datos automáticamente,<br>o pulsa <strong style="color:${_rc}">Análisis del entrenador</strong> para obtener la estrategia según tu forma.
-                 </div>`}
+            <div id="rca-strategy-${_sdk}" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;line-height:1.7">
+              <i class="fas fa-brain" style="display:block;font-size:26px;margin-bottom:8px;opacity:.25;color:${_rc}"></i>
+              Introduce los datos del recorrido y pulsa <strong style="color:${_rc}">Análisis del entrenador</strong>.
+            </div>
           </div>
 
           <!-- MARCAR COMPLETADA -->
@@ -5824,49 +5817,16 @@ async function runRaceAnalysis(dk, isC) {
   const slot = document.getElementById(`rca-${sdk}`);
   const rc   = '#A855F7';
 
-  const imageBase64 = await getRaceProfileImageData(sdk);
+  // Guardar formulario y lanzar análisis IA
+  saveRaceForm(sdk);
+  let raceData = null;
+  try { raceData = JSON.parse(localStorage.getItem(`race_data_${sdk}`) || 'null'); } catch(_) {}
 
-  // Si hay imagen cargada, SIEMPRE re-analizar para obtener datos frescos del recorrido
-  if (imageBase64) {
-    if (slot) slot.innerHTML = `<div style="padding:20px 16px;display:flex;align-items:center;gap:12px;color:${rc};font-size:13px;font-weight:600">
-      <i class="fas fa-spinner fa-spin" style="font-size:18px"></i> Analizando perfil del recorrido con IA...
-    </div>`;
-    try {
-      const API = (window.API_URL || API_URL || 'https://velomind-backend.onrender.com/api');
-      const res = await fetch(`${API}/coach/analyze-race-profile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
-        body: JSON.stringify({ imageBase64 }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Error del servidor');
-      const raceData = await res.json();
-      try { localStorage.setItem(`race_data_${sdk}`, JSON.stringify(raceData)); } catch(_) {}
-      _runRaceAnalysisWithData(sdk, raceData);
-      return;
-    } catch(err) {
-      console.error('[race-analysis]', err);
-      // Si falla, mostrar error claro y caer al análisis genérico
-      if (slot) {
-        const errDiv = document.createElement('div');
-        errDiv.style.cssText = 'padding:10px 16px;font-size:11px;color:#f59e0b;border-bottom:1px solid var(--border)';
-        errDiv.textContent = '⚠️ No se pudo leer el perfil del recorrido — mostrando estrategia según tu forma.';
-        slot.innerHTML = '';
-        slot.appendChild(errDiv);
-      }
-    }
-  }
+  if (slot) slot.innerHTML = `<div id="rca-strategy-${sdk}" style="padding:20px 16px;display:flex;align-items:center;gap:12px;color:${rc};font-size:13px;font-weight:600">
+    <i class="fas fa-spinner fa-spin" style="font-size:18px"></i> Generando plan de carrera personalizado...
+  </div>`;
 
-  // Sin imagen o si falló: usar IA con datos guardados, o análisis estático como último recurso
-  let savedData = null;
-  try { savedData = JSON.parse(localStorage.getItem(`race_data_${sdk}`) || 'null'); } catch(_) {}
-  if (savedData) {
-    _runRaceAnalysisWithData(sdk, savedData);
-  } else {
-    const metrics = AppState.getCurrentMetrics();
-    const ftp     = AppState.athlete?.ftp || 200;
-    const cp = _buildRaceCoachPlan(ftp, AppState.athlete||{}, metrics, isC, null);
-    if (slot) slot.innerHTML = _buildRaceAnalysisHtml(cp, rc);
-  }
+  _runRaceAnalysisWithData(sdk, raceData);
 }
 
 async function _runRaceAnalysisWithData(sdk, raceData) {
@@ -5909,14 +5869,10 @@ async function _runRaceAnalysisWithData(sdk, raceData) {
       lthr,
       max_hr: athlete.max_hr || null,
     };
-    // Intentar obtener la imagen guardada del perfil de carrera
-    let imageBase64 = null;
-    try { imageBase64 = localStorage.getItem(`race_profile_${sdk}`) || null; } catch(_) {}
-
     const res = await fetch(`${API}/coach/race-day`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
-      body: JSON.stringify({ imageBase64, athleteData }),
+      body: JSON.stringify({ raceData, athleteData }),
     });
     if (!res.ok) throw new Error((await res.json()).error || 'Error del servidor');
     const { strategy } = await res.json();
@@ -5924,7 +5880,6 @@ async function _runRaceAnalysisWithData(sdk, raceData) {
     if (strategySlot) strategySlot.outerHTML = _renderRaceStrategy(strategy, rc);
   } catch (err) {
     console.error('[race-day]', err);
-    // Fallback al análisis estático
     const cp = _buildRaceCoachPlan(ftp, athlete, metrics, false, raceData);
     const strategySlot = document.getElementById(`rca-strategy-${sdk}`);
     if (strategySlot) strategySlot.outerHTML = _buildRaceAnalysisHtml(cp, rc);
@@ -5990,6 +5945,44 @@ function clearRaceProfileImage(sdk) {
     <i class="fas fa-image" style="font-size:28px;color:#A855F7;opacity:.6"></i>
     <span style="font-size:12px;color:var(--text-muted)">Toca para adjuntar el perfil del recorrido</span>
   </label>`;
+}
+
+// ── Formulario de datos de carrera ───────────────────────────────────────────
+function _raceClimbRowHtml(sdk, idx, c = {}) {
+  const s = 'box-sizing:border-box;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text-primary);font-size:12px;outline:none;font-family:inherit;-webkit-appearance:none';
+  return `<div data-rfr="${sdk}" style="display:grid;grid-template-columns:1fr 60px 52px 24px;gap:5px;margin-bottom:6px;align-items:center">
+    <input type="text" placeholder="Nombre (opcional)" value="${(c.name||'').replace(/"/g,'&quot;')}" oninput="saveRaceForm('${sdk}')" style="${s}">
+    <input type="number" placeholder="km" value="${c.length_km||''}" min="0.5" step="0.1" oninput="saveRaceForm('${sdk}')" style="${s};text-align:center">
+    <input type="number" placeholder="%" value="${c.avg_grade||''}" min="1" max="30" step="0.1" oninput="saveRaceForm('${sdk}')" style="${s};text-align:center">
+    <button type="button" onclick="removeRaceClimb('${sdk}',this)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0;line-height:1;-webkit-tap-highlight-color:transparent">✕</button>
+  </div>`;
+}
+
+function addRaceClimb(sdk) {
+  const container = document.getElementById(`rf-climbs-${sdk}`);
+  if (!container) return;
+  const idx = container.querySelectorAll('[data-rfr]').length;
+  container.insertAdjacentHTML('beforeend', _raceClimbRowHtml(sdk, idx));
+}
+
+function removeRaceClimb(sdk, btn) {
+  btn.closest('[data-rfr]')?.remove();
+  saveRaceForm(sdk);
+}
+
+function saveRaceForm(sdk) {
+  const dist = parseFloat(document.getElementById(`rf-dist-${sdk}`)?.value) || null;
+  const elev = parseFloat(document.getElementById(`rf-elev-${sdk}`)?.value) || null;
+  const rows  = document.querySelectorAll(`[data-rfr="${sdk}"]`);
+  const climbs = [];
+  rows.forEach(row => {
+    const inp = row.querySelectorAll('input');
+    const name       = inp[0]?.value?.trim() || null;
+    const length_km  = parseFloat(inp[1]?.value) || null;
+    const avg_grade  = parseFloat(inp[2]?.value) || null;
+    if (length_km || avg_grade) climbs.push({ name, length_km, avg_grade });
+  });
+  try { localStorage.setItem(`race_data_${sdk}`, JSON.stringify({ distance_km: dist, elevation_m: elev, climbs })); } catch(_) {}
 }
 
 function _renderRaceStrategy(text, rc) {

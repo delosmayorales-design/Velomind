@@ -2901,9 +2901,9 @@ Si un campo no es legible, usa null o [].`;
 });
 
 // ── POST /api/coach/race-day ──────────────────────────────────────────────────
-// Analiza la imagen del perfil Y genera la estrategia completa en una sola llamada IA
+// Genera estrategia personalizada a partir de datos estructurados del recorrido
 router.post('/race-day', async (req, res) => {
-  const { imageBase64, athleteData } = req.body;
+  const { raceData, athleteData } = req.body;
   if (!athleteData?.ftp) return res.status(400).json({ error: 'Datos del atleta requeridos' });
 
   const openaiKey    = process.env.OPENAI_API_KEY    || '';
@@ -2921,45 +2921,45 @@ router.post('/race-day', async (req, res) => {
   }
 
   const { ftp, weight, ctl, atl, tsb, lthr, max_hr } = athleteData;
-  const wkg = (ftp && weight) ? (ftp / weight).toFixed(2) : 'N/D';
+  const wkg        = (ftp && weight) ? (ftp / weight).toFixed(2) : 'N/D';
   const vo2max_est = (ftp && weight) ? Math.round((ftp / weight) * 10.8 + 7) : null;
 
-  const parsed = imageBase64 ? parseDataUrlImage(imageBase64) : null;
-  const b64    = parsed?.ok ? imageBase64.replace(/^data:[^;]+;base64,/, '') : null;
-  const hasImg = !!parsed?.ok;
+  const climbsText = (raceData?.climbs?.length > 0)
+    ? raceData.climbs.map((c, i) => {
+        const name  = c.name || `Puerto ${i + 1}`;
+        const parts = [name];
+        if (c.length_km)  parts.push(`${c.length_km} km`);
+        if (c.avg_grade)  parts.push(`${c.avg_grade}% pendiente media`);
+        const elev = (c.length_km && c.avg_grade) ? Math.round(c.length_km * 1000 * c.avg_grade / 100) : null;
+        if (elev) parts.push(`+${elev}m aprox`);
+        return `  - ${parts.join(' · ')}`;
+      }).join('\n')
+    : '  - Sin puertos especificados';
 
-  // Prompt para modelos con visión (Gemini, OpenAI, Anthropic) — menciona la imagen
-  const promptVision = `Eres un entrenador de ciclismo World Tour especializado en estrategia de competición.
-
-Analiza el perfil de carrera de la imagen adjunta y genera un plan de carrera completamente personalizado.
+  const prompt = `Eres un entrenador de ciclismo World Tour especializado en estrategia de competición.
+Genera un plan de carrera completamente personalizado para este ciclista.
 
 DATOS DEL CICLISTA:
-* FTP: ${ftp}W
-* Peso: ${weight} kg
-* W/kg: ${wkg} W/kg
-* CTL (fitness crónico): ${ctl}
-* ATL (fatiga aguda): ${atl}
-* Forma (TSB): ${tsb >= 0 ? '+' : ''}${tsb}
-* Potencia crítica: ${ftp}W
+* FTP: ${ftp}W · Peso: ${weight} kg · W/kg: ${wkg}
+* CTL: ${ctl} · ATL: ${atl} · Forma (TSB): ${tsb >= 0 ? '+' : ''}${tsb}
 * VO2max estimado: ${vo2max_est ? vo2max_est + ' ml/kg/min' : 'N/D'}
 ${lthr ? `* LTHR: ${lthr} bpm` : ''}${max_hr ? `\n* FC máxima: ${max_hr} bpm` : ''}
 
+DATOS DE LA CARRERA:
+* Distancia total: ${raceData?.distance_km ? raceData.distance_km + ' km' : 'N/D'}
+* Desnivel acumulado: ${raceData?.elevation_m ? '+' + raceData.elevation_m + 'm' : 'N/D'}
+* Puertos:
+${climbsText}
+
 INSTRUCCIONES:
 
-1. Extrae del perfil de carrera:
-   - Distancia total (km)
-   - Desnivel acumulado (m)
-   - Nombres y características de cada puerto (km inicio, longitud, desnivel, pendiente media)
-   - Ubicación de avituallamientos si aparecen
-   - Dónde se ganará realmente la carrera
+1. Adapta la estrategia al estado actual:
+   - TSB ${tsb >= 0 ? '+' : ''}${tsb}: ${tsb >= 15 ? 'pico de forma → agresivo' : tsb >= 0 ? 'buena forma → equilibrado' : tsb >= -10 ? 'cierta fatiga → conservador' : 'fatiga → muy conservador'}
+   - CTL ${ctl}: ${ctl >= 80 ? 'alta resistencia' : ctl >= 60 ? 'buena base aeróbica' : 'base moderada'}
 
-2. Adapta la estrategia al estado actual:
-   - TSB ${tsb >= 0 ? '+' : ''}${tsb}: ${tsb >= 15 ? 'pico de forma → estrategia agresiva' : tsb >= 0 ? 'buena forma → estrategia equilibrada' : tsb >= -10 ? 'cierta fatiga → estrategia conservadora' : 'fatiga significativa → estrategia muy conservadora'}
-   - CTL ${ctl}: ${ctl >= 80 ? 'alta resistencia acumulada' : ctl >= 60 ? 'buena base aeróbica' : 'base aeróbica moderada'}
+2. Para cada puerto: duración estimada, potencia objetivo (W y %FTP), límite máximo, qué hacer si se supera.
 
-3. Para cada puerto: nombre, km, duración estimada, potencia objetivo (W y %FTP), límite máximo, qué hacer si se supera.
-
-4. Plan por fases:
+3. Plan por fases:
 
 ## FASE 1 — SALIDA
 Vatios recomendados, %FTP, errores a evitar.
@@ -2973,107 +2973,33 @@ Cuándo seguir ataques, cuándo dejar marchar.
 ## FASE 4 — FINAL
 Estrategia para los últimos kilómetros.
 
-5. Tabla resumen (markdown):
+4. Tabla resumen (formato markdown):
 | Sector | Km | Potencia objetivo | %FTP | Riesgo |
 
-6. Métricas: NP objetivo, IF objetivo, TSS estimado, carbohidratos/hora (g/h), geles necesarios.
+5. Métricas: NP objetivo, IF objetivo, TSS estimado, carbohidratos/hora (g/h), geles necesarios.
 
-IMPORTANTE: Usa los datos reales del ciclista (FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}) para vatios concretos.
+IMPORTANTE: Usa los datos reales (FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}) para vatios concretos.
 Usa ## para secciones, - para listas y tablas markdown.`;
-
-  // Prompt para modelos sin visión (Groq) — no menciona imagen, usa solo datos del ciclista
-  const promptTextOnly = `Eres un entrenador de ciclismo World Tour especializado en estrategia de competición.
-
-Genera un plan de carrera completamente personalizado basándote en los datos del ciclista.
-
-DATOS DEL CICLISTA:
-* FTP: ${ftp}W
-* Peso: ${weight} kg
-* W/kg: ${wkg} W/kg
-* CTL (fitness crónico): ${ctl}
-* ATL (fatiga aguda): ${atl}
-* Forma (TSB): ${tsb >= 0 ? '+' : ''}${tsb}
-* Potencia crítica: ${ftp}W
-* VO2max estimado: ${vo2max_est ? vo2max_est + ' ml/kg/min' : 'N/D'}
-${lthr ? `* LTHR: ${lthr} bpm` : ''}${max_hr ? `\n* FC máxima: ${max_hr} bpm` : ''}
-
-INSTRUCCIONES:
-
-1. Adapta la estrategia al estado actual del ciclista:
-   - TSB ${tsb >= 0 ? '+' : ''}${tsb}: ${tsb >= 15 ? 'pico de forma → estrategia agresiva' : tsb >= 0 ? 'buena forma → estrategia equilibrada' : tsb >= -10 ? 'cierta fatiga → estrategia conservadora' : 'fatiga significativa → estrategia muy conservadora'}
-   - CTL ${ctl}: ${ctl >= 80 ? 'alta resistencia acumulada' : ctl >= 60 ? 'buena base aeróbica' : 'base aeróbica moderada'}
-
-2. Plan por fases con vatios concretos:
-
-## FASE 1 — SALIDA
-Vatios recomendados, %FTP, errores a evitar.
-
-## FASE 2 — PRIMERA MITAD
-Gestión de energía, cuándo comer y beber.
-
-## FASE 3 — MOMENTOS CLAVE
-Cuándo seguir ataques, cuándo dejar marchar.
-
-## FASE 4 — FINAL
-Estrategia para los últimos kilómetros.
-
-3. Tabla resumen (markdown):
-| Sector | Km | Potencia objetivo | %FTP | Riesgo |
-
-4. Métricas: NP objetivo, IF objetivo, TSS estimado, carbohidratos/hora (g/h), geles necesarios.
-
-IMPORTANTE: Usa los datos reales del ciclista (FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}) para vatios concretos. No inventes datos de recorrido.
-Usa ## para secciones, - para listas y tablas markdown.`;
-
-  const makeGeminiBody = () => {
-    const parts = [{ text: promptVision }];
-    if (hasImg) parts.push({ inlineData: { mimeType: parsed.mime, data: b64 } });
-    return { contents: [{ role: 'user', parts }], generationConfig: { temperature: 0.3, maxOutputTokens: 2048 } };
-  };
 
   try {
     let strategyText = null;
 
-    // ── 1. Google Gemini (con o sin imagen) — 1.5-flash primero: más fiable en tier gratuito
-    if (!strategyText && hasGoogle) {
-      const geminiModels = [...new Set([(process.env.GEMINI_MODEL||'').trim(),'gemini-1.5-flash','gemini-2.0-flash','gemini-2.5-flash','gemini-1.5-pro'])].filter(Boolean);
-      for (const model of geminiModels) {
-        try {
-          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': googleKey },
-            body: JSON.stringify(makeGeminiBody()),
-          });
-          const data = await resp.json();
-          if (!resp.ok) {
-            console.log(`[race-day] Gemini (${model}) ${resp.status}:`, data?.error?.message);
-            if (resp.status === 404 || resp.status === 400) continue;
-            break;
-          }
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Gemini (${model})`); break; }
-        } catch (e) {
-          console.log(`[race-day] Gemini (${model}) exception:`, e.message);
-        }
-      }
-    }
-
-    // ── 2. Groq (solo texto, sin imagen) ──
+    // ── 1. Groq (más rápido) ──
     if (!strategyText && hasGroq) {
-      for (const model of ['llama-3.3-70b-versatile','llama-3.1-70b-versatile']) {
+      for (const model of ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile']) {
         try {
           const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
-            body: JSON.stringify({ model, max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content: promptTextOnly }] }),
+            body: JSON.stringify({ model, max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content: prompt }] }),
           });
           if (resp.ok) {
             const d = await resp.json();
             const text = d.choices?.[0]?.message?.content || '';
             if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Groq (${model})`); break; }
           } else {
-            const err = await resp.json().catch(()=>({}));
-            console.log(`[race-day] Groq (${model}) ${resp.status}:`, err?.error?.message);
+            const err = await resp.json().catch(() => ({}));
+            console.log(`[race-day] Groq ${resp.status}:`, err?.error?.message);
             if (err?.error?.code === 'model_decommissioned') continue;
             break;
           }
@@ -3081,37 +3007,49 @@ Usa ## para secciones, - para listas y tablas markdown.`;
       }
     }
 
-    // ── 3. OpenAI (con o sin imagen) ──
+    // ── 2. Google Gemini ──
+    if (!strategyText && hasGoogle) {
+      const geminiModels = [...new Set([(process.env.GEMINI_MODEL||'').trim(),'gemini-1.5-flash','gemini-2.0-flash','gemini-2.5-flash'])].filter(Boolean);
+      for (const model of geminiModels) {
+        try {
+          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': googleKey },
+            body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 2048 } }),
+          });
+          const data = await resp.json();
+          if (!resp.ok) { console.log(`[race-day] Gemini ${resp.status}:`, data?.error?.message); if (resp.status === 404 || resp.status === 400) continue; break; }
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Gemini (${model})`); break; }
+        } catch (e) { console.log('[race-day] Gemini exception:', e.message); }
+      }
+    }
+
+    // ── 3. OpenAI ──
     if (!strategyText && hasOpenAI) {
-      const content = hasImg
-        ? [{ type: 'text', text: promptVision }, { type: 'image_url', image_url: { url: imageBase64, detail: 'high' } }]
-        : promptTextOnly;
       try {
         const resp = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
-          body: JSON.stringify({ model: parsed?.ok ? 'gpt-4o-mini' : (openAiModel||'gpt-4o-mini'), max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content }] }),
+          body: JSON.stringify({ model: openAiModel || 'gpt-4o-mini', max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content: prompt }] }),
         });
         if (resp.ok) {
           const d = await resp.json();
           const text = d.choices?.[0]?.message?.content || '';
           if (text.length > 200) { strategyText = text; console.log('[race-day] OK OpenAI'); }
         } else {
-          const err = await resp.json().catch(()=>({}));
+          const err = await resp.json().catch(() => ({}));
           console.log('[race-day] OpenAI error:', resp.status, err?.error?.message);
         }
       } catch (e) { console.log('[race-day] OpenAI exception:', e.message); }
     }
 
-    // ── 4. Anthropic Claude (con o sin imagen) ──
+    // ── 4. Anthropic ──
     if (!strategyText && hasAnthropic) {
       const aiClient = new Anthropic({ apiKey: anthropicKey });
-      const msgContent = hasImg
-        ? [{ type: 'image', source: { type: 'base64', media_type: parsed.mime, data: b64 } }, { type: 'text', text: promptVision }]
-        : promptTextOnly;
       for (const model of [(process.env.ANTHROPIC_MODEL||'').trim(),'claude-3-5-sonnet-20241022','claude-3-haiku-20240307'].filter(Boolean)) {
         try {
-          const msg = await aiClient.messages.create({ model, max_tokens: 2048, messages: [{ role: 'user', content: msgContent }] });
+          const msg = await aiClient.messages.create({ model, max_tokens: 2048, messages: [{ role: 'user', content: prompt }] });
           const text = msg.content?.[0]?.text || '';
           if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Anthropic (${model})`); break; }
         } catch (e) { console.log(`[race-day] Anthropic (${model}):`, e.message); }
@@ -3119,7 +3057,7 @@ Usa ## para secciones, - para listas y tablas markdown.`;
     }
 
     if (!strategyText) {
-      console.error('[race-day] Todos los proveedores fallaron — Google:', hasGoogle, 'Groq:', hasGroq, 'OpenAI:', hasOpenAI, 'Anthropic:', hasAnthropic);
+      console.error('[race-day] Todos los proveedores fallaron — Groq:', hasGroq, 'Google:', hasGoogle, 'OpenAI:', hasOpenAI, 'Anthropic:', hasAnthropic);
       return res.status(503).json({ error: 'No se pudo generar la estrategia' });
     }
     return res.json({ strategy: strategyText });
