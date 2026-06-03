@@ -1879,11 +1879,15 @@ function _buildRaceCoachPlan(ftp, athlete, metrics, isC, event) {
 
   // ── Plan tramo a tramo si hay perfil de recorrido ──
   let tramos = null, nutrition = null;
-  if (event?.distance_km) {
-    const dist = event.distance_km;
-    const climbs = [...(event.climbs || [])].filter(c => c.km_start != null).sort((a,b)=>a.km_start-b.km_start);
-    const feeds  = [...(event.feed_zones_km || [])].sort((a,b)=>a-b);
-    const weight = athlete.weight || 70;
+  const _n = v => { const x = parseFloat(v); return isNaN(x) ? null : x; }; // parse seguro de strings/números de la IA
+  if (_n(event?.distance_km)) {
+    const dist = _n(event.distance_km);
+    const climbs = [...(event.climbs || [])]
+      .map(c => ({ ...c, km_start: _n(c.km_start), length_km: _n(c.length_km), elevation_m: _n(c.elevation_m), avg_grade: _n(c.avg_grade) }))
+      .filter(c => c.km_start != null)
+      .sort((a,b) => a.km_start - b.km_start);
+    const feeds  = [...(event.feed_zones_km || [])].map(_n).filter(v=>v!=null).sort((a,b)=>a-b);
+    const weight = _n(athlete.weight) || 70;
 
     // Construir segmentos
     const segs = [];
@@ -5874,23 +5878,14 @@ function clearRaceProfileImage(sdk) {
 }
 
 function _buildRaceAnalysisHtml(cp, rc) {
-  const tramosHtml = cp.tramos ? `
-    <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border)">
-      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${rc};margin-bottom:11px">📍 Plan tramo a tramo</div>
-      ${cp.tramos.map((t,ti)=>`
-        <div style="padding:9px 0;${ti<cp.tramos.length-1?'border-bottom:1px solid var(--border)':''}">
-          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:3px">
-            <span style="font-size:15px">${t.emoji}</span>
-            <span style="font-size:12px;font-weight:700;color:var(--text-primary)">${t.label}</span>
-            <span style="font-size:13px;font-weight:800;color:${rc}">${t.watts}</span>
-            ${t.meta?`<span style="font-size:10px;color:var(--text-muted)">${t.meta}</span>`:''}
-          </div>
-          <div style="font-size:11px;color:var(--text-muted);line-height:1.5;padding-left:22px">${t.tip}</div>
-        </div>`).join('')}
-    </div>` : '';
+  const alertsHtml = `
+    <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#F59E0B;margin-bottom:8px">⚠️ Señales de alerta</div>
+      ${cp.alerts.map(a=>`<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#F59E0B;font-size:11px;flex-shrink:0;margin-top:2px">•</span><span style="font-size:12px;color:var(--text-muted);line-height:1.5">${a}</span></div>`).join('')}
+    </div>`;
 
   const nutHtml = cp.nutrition ? `
-    <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
+    <div style="padding:12px 16px 12px;border-bottom:1px solid var(--border)">
       <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#F59E0B;margin-bottom:8px">🍌 Plan nutricional</div>
       ${cp.nutrition.tips.map(t=>`<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#F59E0B;font-size:11px;flex-shrink:0;margin-top:2px">•</span><span style="font-size:12px;color:var(--text-muted);line-height:1.5">${t}</span></div>`).join('')}
       <div style="margin-top:8px;font-size:11px;color:var(--text-muted);background:rgba(245,158,11,.08);border-radius:6px;padding:7px 10px">
@@ -5898,6 +5893,26 @@ function _buildRaceAnalysisHtml(cp, rc) {
       </div>
     </div>` : '';
 
+  // Con datos del recorrido → plan tramo a tramo específico (reemplaza los rows genéricos)
+  if (cp.tramos?.length) {
+    return `
+      <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${rc};margin-bottom:11px">📍 Plan tramo a tramo</div>
+        ${cp.tramos.map((t,ti)=>`
+          <div style="padding:10px 0;${ti<cp.tramos.length-1?'border-bottom:1px solid var(--border)':''}">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+              <span style="font-size:18px;flex-shrink:0">${t.emoji}</span>
+              <span style="font-size:13px;font-weight:700;color:var(--text-primary)">${t.label}</span>
+              <span style="font-size:14px;font-weight:800;color:${rc}">${t.watts}</span>
+              ${t.meta?`<span style="font-size:11px;color:var(--text-muted);background:var(--bg-input);padding:1px 8px;border-radius:6px">${t.meta}</span>`:''}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);line-height:1.55;padding-left:26px">${t.tip}</div>
+          </div>`).join('')}
+      </div>
+      ${nutHtml}${alertsHtml}`;
+  }
+
+  // Sin datos → estrategia genérica basada en forma
   return `
     <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border)">
       <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${rc};margin-bottom:10px">Estrategia de vatios</div>
@@ -5913,11 +5928,7 @@ function _buildRaceAnalysisHtml(cp, rc) {
           </div>
         </div>`).join('')}
     </div>
-    <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
-      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#F59E0B;margin-bottom:8px">⚠️ Señales de alerta</div>
-      ${cp.alerts.map(a=>`<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#F59E0B;font-size:11px;flex-shrink:0;margin-top:2px">•</span><span style="font-size:12px;color:var(--text-muted);line-height:1.5">${a}</span></div>`).join('')}
-    </div>
-    ${tramosHtml}${nutHtml}`;
+    ${alertsHtml}${nutHtml}`;
 }
 </script>
 <!-- Post-entreno modal -->
