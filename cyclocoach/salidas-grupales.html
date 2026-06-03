@@ -363,6 +363,29 @@
     .btn-submit:hover { opacity:.88; }
     .btn-submit:disabled { opacity:.5; cursor:not-allowed; }
 
+    /* ── Meteorología en panel ───────────────────────────────── */
+    .weather-card {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px; margin-top: 4px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .weather-icon { font-size: 34px; line-height: 1; flex-shrink: 0; }
+    .weather-body { flex: 1; }
+    .weather-desc { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 7px; }
+    .weather-stats { display: flex; gap: 14px; flex-wrap: wrap; }
+    .weather-stat { font-size: 12px; color: var(--text-muted); }
+    .weather-stat strong { color: var(--text-primary); font-size: 14px; }
+    .weather-nodata { font-size: 12px; color: var(--text-muted); font-style: italic; }
+    /* ── Botón ver ruta ───────────────────────────────────────── */
+    .btn-view-route {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 20px; border: 1px solid var(--primary);
+      color: var(--primary); font-size: 12px; font-weight: 600;
+      background: transparent; cursor: pointer; text-decoration: none;
+      font-family: inherit; transition: background .15s, color .15s;
+    }
+    .btn-view-route:hover { background: var(--primary); color: #fff; }
+
     /* ── Skeleton ─────────────────────────────────────────────── */
     @keyframes skelShimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
     .skel {
@@ -589,6 +612,12 @@
         </div>
       </div>
       <div class="form-group">
+        <label>Ruta adjunta</label>
+        <select id="f-route-id">
+          <option value="">Sin ruta adjunta</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Punto de encuentro</label>
         <input type="text" id="f-meeting-point" placeholder="Ej: Plaza Mayor, Bar El Cruce...">
       </div>
@@ -795,6 +824,9 @@
       knownCommentIds = new Set(comments.map(c => c.id));
       renderPanel(ride, comments);
       if (ride.is_joined || ride.is_mine) startCommentPolling(ride.id);
+      if (ride.meeting_lat && ride.meeting_lng) {
+        loadWeatherForPanel(ride.meeting_lat, ride.meeting_lng, ride.departure_time);
+      }
     } catch(e) {
       body.innerHTML = `<p style="color:var(--text-muted);font-size:13px">Error al cargar los detalles.</p>`;
     }
@@ -840,6 +872,16 @@
         <div class="panel-info-value">${ride.elevation_gain_m} m</div>
       </div>`;
 
+    const routeBlock = ride.route_id ? `
+      <div class="panel-section-title" style="margin-top:16px">Ruta adjunta</div>
+      <a class="btn-view-route" href="rutas.html" target="_blank">
+        <i class="fas fa-map-marked-alt"></i> Ver en el mapa de rutas
+      </a>` : '';
+
+    const weatherBlock = (ride.meeting_lat && ride.meeting_lng) ? `
+      <div class="panel-section-title" style="margin-top:16px">Pronóstico para la salida</div>
+      <div id="panel-weather-slot"><div class="skel" style="height:72px"></div></div>` : '';
+
     // Participants
     const participantItems = (ride.participants || []).map(p => {
       const av = p.avatar ? `<img src="${p.avatar}" alt="">` : (p.name || 'C')[0].toUpperCase();
@@ -859,8 +901,10 @@
 
       <div class="panel-section-title">Información</div>
       <div class="panel-info-grid">${infoHTML}</div>
+      ${routeBlock}
+      ${weatherBlock}
 
-      <div class="panel-section-title">Participantes · ${maxInfo}</div>
+      <div class="panel-section-title" style="margin-top:16px">Participantes · ${maxInfo}</div>
       <div class="participant-list">${participantItems || '<p style="font-size:12px;color:var(--text-muted)">Sin participantes aún.</p>'}</div>
 
       ${ride.is_mine ? `
@@ -1241,6 +1285,8 @@
     document.getElementById('btn-submit-ride').innerHTML = '<i class="fas fa-plus"></i> Crear salida';
     document.getElementById('f-edit-id').value = '';
     document.getElementById('create-ride-form').reset();
+    _formLat = null; _formLng = null;
+    loadUserRoutesForSelector();
 
     const now = new Date();
     now.setHours(now.getHours() + 1, 0, 0, 0);
@@ -1262,6 +1308,9 @@
     document.getElementById('f-max-participants').value = ride.max_participants || '';
     document.getElementById('f-route-type').value   = ride.route_type || 'road';
     document.getElementById('f-is-public').checked  = ride.is_public !== false;
+    _formLat = ride.meeting_lat || null;
+    _formLng = ride.meeting_lng || null;
+    loadUserRoutesForSelector(ride.route_id || '');
 
     const dt  = new Date(ride.departure_time);
     const pad = n => String(n).padStart(2, '0');
@@ -1274,6 +1323,7 @@
     document.getElementById('modal-overlay').classList.remove('show');
     document.getElementById('create-ride-form').reset();
     document.getElementById('f-edit-id').value = '';
+    _formLat = null; _formLng = null;
   }
   document.getElementById('modal-overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
@@ -1286,6 +1336,7 @@
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
 
+    const selectedRouteId = document.getElementById('f-route-id').value || null;
     const body = {
       title:            document.getElementById('f-title').value.trim(),
       description:      document.getElementById('f-description').value.trim() || null,
@@ -1296,6 +1347,9 @@
       route_type:       document.getElementById('f-route-type').value,
       is_public:        document.getElementById('f-is-public').checked,
       max_participants: parseInt(document.getElementById('f-max-participants').value) || null,
+      route_id:         selectedRouteId,
+      meeting_lat:      _formLat,
+      meeting_lng:      _formLng,
     };
 
     try {
@@ -1323,6 +1377,90 @@
     btn.disabled = false;
     btn.innerHTML = editId ? '<i class="fas fa-save"></i> Guardar cambios' : '<i class="fas fa-plus"></i> Crear salida';
   });
+
+  // ── Rutas adjuntas ────────────────────────────────────────
+  let _userRoutes = null;
+  let _formLat = null, _formLng = null;
+
+  async function loadUserRoutesForSelector(selectedId) {
+    const sel = document.getElementById('f-route-id');
+    if (!_userRoutes) {
+      try {
+        const res = await fetch(`${API}/routes`, { headers: { Authorization: `Bearer ${Auth.getToken()}` } });
+        _userRoutes = res.ok ? await res.json() : [];
+      } catch(_) { _userRoutes = []; }
+    }
+    sel.innerHTML = '<option value="">Sin ruta adjunta</option>';
+    (_userRoutes || []).forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.id;
+      const info = [r.distance_km ? `${r.distance_km} km` : '', r.elevation_gain_m ? `${r.elevation_gain_m} m` : ''].filter(Boolean).join(' · ');
+      opt.textContent = r.name + (info ? ` · ${info}` : '');
+      sel.appendChild(opt);
+    });
+    if (selectedId) sel.value = selectedId;
+  }
+
+  document.getElementById('f-route-id').addEventListener('change', function() {
+    const route = (_userRoutes || []).find(r => r.id === this.value);
+    if (!route) { _formLat = null; _formLng = null; return; }
+    if (route.distance_km)      document.getElementById('f-distance').value  = route.distance_km;
+    if (route.elevation_gain_m) document.getElementById('f-elevation').value = route.elevation_gain_m;
+    if (route.type)             document.getElementById('f-route-type').value = route.type;
+    // Extraer primera coordenada del GeoJSON para meteorología
+    const coords = route.geojson?.coordinates;
+    if (coords?.length) {
+      const first = Array.isArray(coords[0][0]) ? coords[0][0] : coords[0]; // LineString o MultiLineString
+      _formLng = first[0]; _formLat = first[1];
+    }
+  });
+
+  // ── Meteorología ──────────────────────────────────────────
+  const _WMO_GRP = {
+    0:{i:'☀️',d:'Cielo despejado'},1:{i:'🌤️',d:'Mayormente despejado'},
+    2:{i:'⛅',d:'Parcialmente nublado'},3:{i:'☁️',d:'Nublado'},
+    45:{i:'🌫️',d:'Niebla'},48:{i:'🌫️',d:'Niebla'},
+    51:{i:'🌦️',d:'Llovizna ligera'},53:{i:'🌦️',d:'Llovizna'},55:{i:'🌧️',d:'Llovizna intensa'},
+    61:{i:'🌧️',d:'Lluvia ligera'},63:{i:'🌧️',d:'Lluvia moderada'},65:{i:'🌧️',d:'Lluvia intensa'},
+    71:{i:'🌨️',d:'Nieve ligera'},73:{i:'🌨️',d:'Nieve'},75:{i:'❄️',d:'Nieve intensa'},
+    80:{i:'🌦️',d:'Chubascos'},81:{i:'🌧️',d:'Chubascos mod.'},82:{i:'⛈️',d:'Chubascos fuertes'},
+    95:{i:'⛈️',d:'Tormenta'},96:{i:'⛈️',d:'Tormenta con granizo'},99:{i:'⛈️',d:'Tormenta'},
+  };
+  function _wmoGrp(c) { return _WMO_GRP[c] || _WMO_GRP[Math.floor(c/10)*10] || {i:'🌡️',d:'Variable'}; }
+
+  async function loadWeatherForPanel(lat, lng, departureIso) {
+    const slot = document.getElementById('panel-weather-slot');
+    if (!slot) return;
+    const depDate = new Date(departureIso);
+    const diffDays = (depDate - Date.now()) / 86400000;
+    if (diffDays < -1 || diffDays > 15.5) {
+      slot.innerHTML = '<div class="weather-nodata">Pronóstico no disponible para esta fecha.</div>';
+      return;
+    }
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${(+lat).toFixed(4)}&longitude=${(+lng).toFixed(4)}&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&timezone=UTC&forecast_days=16`;
+      const res = await fetch(url);
+      const d = await res.json();
+      if (!d.hourly) throw new Error('sin datos');
+      const depHour = depDate.toISOString().slice(0, 13); // "YYYY-MM-DDTHH"
+      let idx = d.hourly.time.findIndex(t => t.startsWith(depHour));
+      if (idx === -1) idx = 0;
+      const w = _wmoGrp(d.hourly.weather_code[idx]);
+      slot.innerHTML = `<div class="weather-card">
+        <div class="weather-icon">${w.i}</div>
+        <div class="weather-body">
+          <div class="weather-desc">${w.d}</div>
+          <div class="weather-stats">
+            <span class="weather-stat">🌡️ <strong>${Math.round(d.hourly.temperature_2m[idx])}°C</strong></span>
+            <span class="weather-stat">💧 <strong>${d.hourly.precipitation_probability[idx] ?? 0}%</strong></span>
+            <span class="weather-stat">💨 <strong>${Math.round(d.hourly.wind_speed_10m[idx])} km/h</strong></span>
+          </div>
+        </div>
+      </div>`;
+    } catch(_) {
+      slot.innerHTML = '<div class="weather-nodata">No se pudo cargar el pronóstico.</div>';
+    }
+  }
 
   // ── Helpers ───────────────────────────────────────────────
   function invalidateCache() { ridesCache.proximas = null; ridesCache.mine = null; }

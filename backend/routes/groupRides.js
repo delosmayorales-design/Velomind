@@ -214,7 +214,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
     const allowed = [
       'title','description','departure_time','meeting_point',
       'meeting_lat','meeting_lng','distance_km','elevation_gain_m',
-      'route_type','is_public','max_participants',
+      'route_type','is_public','max_participants','route_id',
     ];
     const updates = { updated_at: new Date().toISOString() };
     allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
