@@ -5749,6 +5749,30 @@ function closeModal(id) {
 // ── Tarjeta de carrera inline ────────────────────────────────────
 const _raceFormClimbs = {}; // dateKey → [{name, km_start, length_km, elevation_m}]
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return reject(new Error('No hay imagen para analizar.'));
+    const reader = new FileReader();
+    reader.onload = e => resolve(String(e.target?.result || ''));
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen seleccionada.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function getRaceProfileImageData(sdk) {
+  try {
+    const savedImg = localStorage.getItem(`race_profile_${sdk}`);
+    if (savedImg && /^data:image\//i.test(savedImg)) return savedImg;
+  } catch (_) {}
+
+  const input = document.getElementById(`rci-${sdk}`);
+  if (input?.files?.length) {
+    return await fileToDataUrl(input.files[0]);
+  }
+
+  return null;
+}
+
 function _rcAddClimb(dk) {
   if (!_raceFormClimbs[dk]) _raceFormClimbs[dk] = [];
   const ci  = _raceFormClimbs[dk].length;
@@ -5787,9 +5811,10 @@ async function runRaceAnalysis(dk, isC) {
   const slot = document.getElementById(`rca-${sdk}`);
   const rc   = '#A855F7';
 
-  // Si hay imagen guardada, SIEMPRE re-analizar para obtener datos frescos del recorrido
-  const savedImg = (() => { try { return localStorage.getItem(`race_profile_${sdk}`); } catch{return null;} })();
-  if (savedImg) {
+  const imageBase64 = await getRaceProfileImageData(sdk);
+
+  // Si hay imagen cargada, SIEMPRE re-analizar para obtener datos frescos del recorrido
+  if (imageBase64) {
     if (slot) slot.innerHTML = `<div style="padding:20px 16px;display:flex;align-items:center;gap:12px;color:${rc};font-size:13px;font-weight:600">
       <i class="fas fa-spinner fa-spin" style="font-size:18px"></i> Analizando perfil del recorrido con IA...
     </div>`;
@@ -5798,7 +5823,7 @@ async function runRaceAnalysis(dk, isC) {
       const res = await fetch(`${API}/coach/analyze-race-profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
-        body: JSON.stringify({ imageBase64: savedImg }),
+        body: JSON.stringify({ imageBase64 }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Error del servidor');
       const raceData = await res.json();
@@ -5860,9 +5885,8 @@ function _runRaceAnalysisWithData(sdk, raceData) {
 function loadRaceProfileImage(input, sdk) {
   const file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async e => {
-    const dataUrl = e.target.result;
+
+  fileToDataUrl(file).then(async dataUrl => {
     // Mostrar imagen de inmediato
     try { localStorage.setItem(`race_profile_${sdk}`, dataUrl); } catch(_) {}
     const wrap = document.getElementById(`rci-wrap-${sdk}`);
@@ -5900,8 +5924,13 @@ function loadRaceProfileImage(input, sdk) {
         <span>${err.message || 'No se pudo analizar la imagen. Comprueba que sea un perfil de carrera legible.'}</span>
       </div>`;
     }
-  };
-  reader.readAsDataURL(file);
+  }).catch(err => {
+    const slot = document.getElementById(`rca-${sdk}`);
+    if (slot) slot.innerHTML = `<div style="padding:16px;color:#ef4444;font-size:12px;display:flex;gap:8px;align-items:flex-start">
+      <i class="fas fa-exclamation-triangle" style="margin-top:2px;flex-shrink:0"></i>
+      <span>${err.message || 'No se pudo leer la imagen seleccionada.'}</span>
+    </div>`;
+  });
 }
 
 function clearRaceProfileImage(sdk) {
