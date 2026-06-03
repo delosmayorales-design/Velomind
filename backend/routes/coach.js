@@ -2742,7 +2742,13 @@ router.post('/analyze-race-profile', async (req, res) => {
   const parsed = parseDataUrlImage(imageBase64);
   if (!parsed.ok) return res.status(400).json({ error: parsed.error });
 
+  const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
+  if (!anthropicKey || !anthropicKey.startsWith('sk-ant-')) {
+    return res.status(503).json({ error: 'Servicio de análisis de imagen no disponible (API key no configurada)' });
+  }
+
   try {
+    const aiClient = new Anthropic({ apiKey: anthropicKey });
     const prompt = `Eres un analista de ciclismo. Analiza este perfil de etapa/carrera ciclista y extrae la información en JSON.
 Devuelve ÚNICAMENTE el JSON, sin texto adicional, sin markdown, sin \`\`\`.
 
@@ -2766,7 +2772,7 @@ Devuelve ÚNICAMENTE el JSON, sin texto adicional, sin markdown, sin \`\`\`.
 
 Si un campo no es legible o no aparece en la imagen, usa null o [] según corresponda.`;
 
-    const msg = await anthropic.messages.create({
+    const msg = await aiClient.messages.create({
       model: 'claude-opus-4-8',
       max_tokens: 1024,
       messages: [{
