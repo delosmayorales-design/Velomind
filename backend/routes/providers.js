@@ -423,25 +423,37 @@ rowsToInsert.push({
     // Actualizar odómetro de cada bici con actividades sincronizadas
     // Se recalcula desde TODAS las actividades (idempotente: seguro en re-sync)
     const bikeIdsToUpdate = [...new Set(rowsToInsert.filter(r => r.gear_id).map(r => r.gear_id))];
-    for (const bikeId of bikeIdsToUpdate) {
+    for (const gearId of bikeIdsToUpdate) {
       try {
+        const { data: bikeRow } = await supabase
+          .from('bikes')
+          .select('id, total_km')
+          .eq('user_id', uid)
+          .eq('strava_gear_id', String(gearId))
+          .maybeSingle();
+
+        if (!bikeRow) {
+          console.warn(`[Strava Sync] No se encontró bici para gear_id ${gearId}`);
+          continue;
+        }
+
+        const bikeId = bikeRow.id;
         const { data: bikeActs } = await supabase
           .from('activities')
           .select('distance, duration')
           .eq('user_id', uid)
-          .eq('gear_id', bikeId);
+          .eq('gear_id', String(gearId));
 
         const totalDistM = (bikeActs || []).reduce((s, a) => s + (Number(a.distance) || 0), 0);
         const totalDurS  = (bikeActs || []).reduce((s, a) => s + (Number(a.duration) || 0), 0);
         const newKm  = Math.round(totalDistM / 1000 * 10) / 10;
         const newHrs = Math.round(totalDurS / 3600 * 10) / 10;
 
-        const { data: bikeRow } = await supabase.from('bikes').select('total_km').eq('id', bikeId).single();
-        const oldKm  = bikeRow?.total_km || 0;
+        const oldKm  = bikeRow.total_km || 0;
         const deltaKm = Math.max(0, newKm - oldKm);
 
         await supabase.from('bikes').update({ total_km: newKm, total_hours: newHrs }).eq('id', bikeId);
-        console.log(`[Strava Sync] 🚴 Odómetro bici ${bikeId}: ${oldKm}km → ${newKm}km (Δ${deltaKm.toFixed(1)}km)`);
+        console.log(`[Strava Sync] 🚴 Odómetro bici ${bikeId} (gear ${gearId}): ${oldKm}km → ${newKm}km (Δ${deltaKm.toFixed(1)}km)`);
 
         if (deltaKm > 0.01) {
           const { data: comps } = await supabase.from('bike_components')
