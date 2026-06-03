@@ -1468,7 +1468,7 @@ const G = (() => {
 
   // ─── Render Overview ──────────────────────────────────────
   function renderOverview() {
-    const sc = localStorage.getItem('cyclocoach_strava_connected') === '1';
+    const sc = localStorage.getItem('velomind_strava_connected') === '1';
     document.getElementById('strava-banner').style.display = sc ? 'flex' : 'none';
 
     if (!st.bikes || st.bikes.length === 0) {
