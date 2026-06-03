@@ -6084,27 +6084,7 @@ function _renderRaceStrategy(text, rc, extraChips = []) {
       <div style="padding:2px 14px 10px">${renderBody(s.rows)||'—'}</div>
     </details>`).join('');
 
-  // Table as collapsible section
-  let tblHtml = '';
-  if (tableLines.length >= 3) {
-    const hdr = tableLines[0].split('|').filter(c=>c.trim())
-      .map(c=>`<th style="padding:4px 8px;text-align:left;font-size:9px;font-weight:700;color:${rc};white-space:nowrap;background:${rc}10">${esc(c.trim())}</th>`).join('');
-    const bdy = tableLines.slice(2).map(r=>
-      `<tr>${r.split('|').filter(c=>c.trim()).map(c=>`<td style="padding:4px 8px;font-size:10px;color:var(--text-muted);border-top:1px solid var(--border)">${esc(c.trim())}</td>`).join('')}</tr>`
-    ).join('');
-    tblHtml = `
-    <details style="border-bottom:1px solid var(--border)">
-      <summary style="padding:10px 14px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;-webkit-tap-highlight-color:transparent;user-select:none">
-        <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:${rc}">Tabla resumen</span>
-        <span style="font-size:11px;color:var(--text-muted)">▾</span>
-      </summary>
-      <div style="padding:4px 14px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch">
-        <table style="width:100%;border-collapse:collapse"><thead><tr>${hdr}</tr></thead><tbody>${bdy}</tbody></table>
-      </div>
-    </details>`;
-  }
-
-  return `<div>${chipsHtml}${secHtml}${tblHtml}</div>`;
+  return `<div>${chipsHtml}${secHtml}</div>`;
 }
 
 function _buildRaceAnalysisHtml(cp, rc) {

@@ -2973,13 +2973,10 @@ Cuándo seguir ataques, cuándo dejar marchar.
 ## FASE 4 — FINAL
 Estrategia para los últimos kilómetros.
 
-4. Tabla resumen (formato markdown):
-| Sector | Km | Potencia objetivo | %FTP | Riesgo |
-
-5. Métricas: NP objetivo, IF objetivo, TSS estimado, carbohidratos/hora (g/h), geles necesarios.
+4. Métricas: NP objetivo, IF objetivo, TSS estimado, carbohidratos/hora (g/h), geles necesarios.
 
 IMPORTANTE: Usa los datos reales (FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}) para vatios concretos.
-Usa ## para secciones, - para listas y tablas markdown.`;
+Usa ## para secciones y - para listas. No generes tablas markdown.`;
 
   try {
     let strategyText = null;
@@ -3167,22 +3164,17 @@ Sectores donde seguir ataques, sectores donde dejar marchar, cómo leer la carre
 ## FASE 4 — FINAL
 Estrategia para los últimos kilómetros, cuándo gastar las últimas reservas.
 
-5. Tabla resumen de sectores (usa formato markdown):
-| Sector | Km | Potencia objetivo | %FTP | Riesgo |
-Incluye al menos un tramo por cada fase y cada puerto.
-
-6. Métricas objetivo:
+5. Métricas objetivo:
 - NP objetivo de la carrera
 - IF objetivo
 - TSS estimado
 - Consumo estimado de carbohidratos por hora (g/h)
 - Número aproximado de geles necesarios
 
-7. Si el estado de forma actual (TSB ${tsb >= 0 ? '+' : ''}${tsb}) es incompatible con una estrategia agresiva, dilo claramente y propone una estrategia alternativa optimizada.
+6. Si el estado de forma actual (TSB ${tsb >= 0 ? '+' : ''}${tsb}) es incompatible con una estrategia agresiva, dilo claramente y propone una estrategia alternativa optimizada.
 
 IMPORTANTE: No des consejos genéricos. Usa los datos reales del ciclista (FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}) para calcular recomendaciones concretas de vatios, intensidad y gestión de energía. Habla como un entrenador profesional preparando a su corredor.
-
-Usa ## para títulos de sección, ### para subsecciones, - para listas y tablas markdown.`;
+Usa ## para secciones, ### para nombres de puertos, - para listas. No generes tablas markdown.`;
 
   try {
     let strategyText = null;
