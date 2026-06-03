@@ -5845,6 +5845,9 @@ async function _runRaceAnalysisWithData(sdk, raceData) {
   try {
     const API = (window.API_URL || API_URL || 'https://velomind-backend.onrender.com/api');
     const lthr = athlete.lthr || (athlete.max_hr ? Math.round(athlete.max_hr * 0.88) : null);
+    // Calcular duración antes de llamar al backend para incluirla en el prompt
+    const dur = _estimateRaceDuration(raceData, ftp, athlete.weight || 70, metrics.tsb || 0);
+
     const athleteData = {
       ftp,
       weight: athlete.weight || 70,
@@ -5853,6 +5856,7 @@ async function _runRaceAnalysisWithData(sdk, raceData) {
       tsb:    Math.round(metrics.tsb || 0),
       lthr,
       max_hr: athlete.max_hr || null,
+      estimatedDurationMin: dur?.conParadas || null,
     };
     const res = await fetch(`${API}/coach/race-day`, {
       method: 'POST',
@@ -5861,9 +5865,6 @@ async function _runRaceAnalysisWithData(sdk, raceData) {
     });
     if (!res.ok) throw new Error((await res.json()).error || 'Error del servidor');
     const { strategy } = await res.json();
-
-    // Calcular duración estimada en el frontend (más fiable que esperar a la IA)
-    const dur = _estimateRaceDuration(raceData, ftp, athlete.weight || 70, metrics.tsb || 0);
     const fmt = m => `${Math.floor(m/60)}h ${m%60}min`;
     const durChips = dur ? [
       { k: 'Sin paradas', v: fmt(dur.sinParadas) },

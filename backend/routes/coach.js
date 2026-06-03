@@ -2920,9 +2920,18 @@ router.post('/race-day', async (req, res) => {
     return res.status(503).json({ error: 'Servicio de IA no disponible' });
   }
 
-  const { ftp, weight, ctl, atl, tsb, lthr, max_hr } = athleteData;
+  const { ftp, weight, ctl, atl, tsb, lthr, max_hr, estimatedDurationMin } = athleteData;
   const wkg        = (ftp && weight) ? (ftp / weight).toFixed(2) : 'N/D';
   const vo2max_est = (ftp && weight) ? Math.round((ftp / weight) * 10.8 + 7) : null;
+
+  // Calcular parámetros nutricionales reales a partir de la duración estimada
+  const durH       = estimatedDurationMin ? (estimatedDurationMin / 60) : null;
+  const durStr     = durH ? `${Math.floor(durH)}h ${Math.round((durH % 1) * 60)}min` : 'N/D';
+  const choPerHour = 75; // g/h estándar World Tour (60-90g/h, 1.5 geles × 45g ≈ 67g)
+  const choTotal   = durH ? Math.round(durH * choPerHour) : null;
+  const litersH    = 0.65; // litros/hora (500-750ml/h según temperatura)
+  const litersTotal = durH ? (durH * litersH).toFixed(1) : null;
+  const sodiumMg   = durH ? Math.round(durH * 700) : null; // ~700mg/h
 
   const climbsText = (raceData?.climbs?.length > 0)
     ? raceData.climbs.map((c, i) => {
@@ -2989,10 +2998,17 @@ Después de la tabla: qué hacer si las piernas van bien, si van mal, si el puls
 NP objetivo, IF objetivo, TSS esperado, Variability Index esperado. Explica por qué.
 
 ## PLAN DE NUTRICIÓN PROFESIONAL
-Duración estimada, CHO totales, CHO/hora, litros, sodio.
-Tabla markdown:
-| Hora | CHO | Líquidos | Sodio | Acción |
-Cuándo empezar a comer, cuándo tomar cafeína, cuándo aumentar ingesta.
+Usa EXACTAMENTE estos valores calculados (no los cambies):
+- Duración estimada con paradas: ${durStr}
+- CHO/hora: ${choPerHour}g (equivale a 1.5 geles de 45g + complementos)
+- CHO totales carrera: ${choTotal !== null ? choTotal + 'g' : 'calcular según duración'}
+- Líquidos/hora: ${litersH}L → total: ${litersTotal !== null ? litersTotal + 'L' : 'calcular'}
+- Sodio total: ${sodiumMg !== null ? sodiumMg + 'mg' : 'calcular'} (~700mg/hora)
+
+Genera una tabla markdown por franjas de 30 minutos que cubra TODA la duración de la carrera.
+Muestra el consumo de esa franja (no acumulado):
+| Franja | CHO | Líquidos | Sodio | Acción concreta |
+Indica cuándo empezar a comer (antes del km 10), cuándo tomar cafeína (último tercio), cuándo aumentar ingesta (antes de los puertos finales).
 
 ## ALERTAS DEL DIRECTOR DEPORTIVO
 3 a 5 advertencias personalizadas basadas en el perfil y estado del ciclista. Menciona vatios y puntos concretos de la carrera.
