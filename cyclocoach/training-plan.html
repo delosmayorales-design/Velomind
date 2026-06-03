@@ -5897,38 +5897,34 @@ async function _runRaceAnalysisWithData(sdk, raceData) {
       <i class="fas fa-spinner fa-spin" style="font-size:18px"></i> Generando plan de carrera personalizado...
     </div>`;
 
-  // Si no hay datos reales de ruta, usar análisis estático directamente
-  const hasRouteData = raceData && !raceData._fallback && (raceData.distance_km || raceData.climbs?.length);
-  if (!hasRouteData && !raceData) {
-    const cp = _buildRaceCoachPlan(ftp, athlete, metrics, false, null);
-    const strategySlot = document.getElementById(`rca-strategy-${sdk}`);
-    if (strategySlot) strategySlot.outerHTML = _buildRaceAnalysisHtml(cp, rc);
-    return;
-  }
-
   try {
     const API = (window.API_URL || API_URL || 'https://velomind-backend.onrender.com/api');
     const lthr = athlete.lthr || (athlete.max_hr ? Math.round(athlete.max_hr * 0.88) : null);
     const athleteData = {
       ftp,
       weight: athlete.weight || 70,
-      ctl: Math.round(metrics.ctl || 0),
-      atl: Math.round(metrics.atl || 0),
-      tsb: Math.round(metrics.tsb || 0),
+      ctl:    Math.round(metrics.ctl || 0),
+      atl:    Math.round(metrics.atl || 0),
+      tsb:    Math.round(metrics.tsb || 0),
       lthr,
       max_hr: athlete.max_hr || null,
     };
-    const res = await fetch(`${API}/coach/race-strategy`, {
+    // Intentar obtener la imagen guardada del perfil de carrera
+    let imageBase64 = null;
+    try { imageBase64 = localStorage.getItem(`race_profile_${sdk}`) || null; } catch(_) {}
+
+    const res = await fetch(`${API}/coach/race-day`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
-      body: JSON.stringify({ athleteData, raceProfile: hasRouteData ? raceData : null }),
+      body: JSON.stringify({ imageBase64, athleteData }),
+      signal: AbortSignal.timeout(28000),
     });
     if (!res.ok) throw new Error((await res.json()).error || 'Error del servidor');
     const { strategy } = await res.json();
     const strategySlot = document.getElementById(`rca-strategy-${sdk}`);
     if (strategySlot) strategySlot.outerHTML = _renderRaceStrategy(strategy, rc);
   } catch (err) {
-    console.error('[race-strategy]', err);
+    console.error('[race-day]', err);
     // Fallback al análisis estático
     const cp = _buildRaceCoachPlan(ftp, athlete, metrics, false, raceData);
     const strategySlot = document.getElementById(`rca-strategy-${sdk}`);

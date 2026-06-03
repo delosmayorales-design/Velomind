@@ -2900,6 +2900,195 @@ Si un campo no es legible, usa null o [].`;
   }
 });
 
+// ── POST /api/coach/race-day ──────────────────────────────────────────────────
+// Analiza la imagen del perfil Y genera la estrategia completa en una sola llamada IA
+router.post('/race-day', async (req, res) => {
+  const { imageBase64, athleteData } = req.body;
+  if (!athleteData?.ftp) return res.status(400).json({ error: 'Datos del atleta requeridos' });
+
+  const openaiKey    = process.env.OPENAI_API_KEY    || '';
+  const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
+  const googleKey    = process.env.GOOGLE_API_KEY    || '';
+  const groqKey      = process.env.GROQ_API_KEY      || '';
+  const openAiModel  = (process.env.OPENAI_MODEL || 'gpt-4o-mini').trim();
+  const hasOpenAI    = openaiKey.length > 20;
+  const hasAnthropic = anthropicKey.startsWith('sk-ant-');
+  const hasGoogle    = googleKey.startsWith('AIzaSy');
+  const hasGroq      = groqKey.startsWith('gsk_');
+
+  if (!hasOpenAI && !hasAnthropic && !hasGoogle && !hasGroq) {
+    return res.status(503).json({ error: 'Servicio de IA no disponible' });
+  }
+
+  const { ftp, weight, ctl, atl, tsb, lthr, max_hr } = athleteData;
+  const wkg = (ftp && weight) ? (ftp / weight).toFixed(2) : 'N/D';
+  const vo2max_est = (ftp && weight) ? Math.round((ftp / weight) * 10.8 + 7) : null;
+
+  const prompt = `Eres un entrenador de ciclismo World Tour especializado en estrategia de competición.
+
+${imageBase64 ? 'Analiza el perfil de carrera de la imagen adjunta y' : 'Basándote en los datos del ciclista,'} genera un plan de carrera completamente personalizado.
+
+DATOS DEL CICLISTA:
+* FTP: ${ftp}W
+* Peso: ${weight} kg
+* W/kg: ${wkg} W/kg
+* CTL (fitness crónico): ${ctl}
+* ATL (fatiga aguda): ${atl}
+* Forma (TSB): ${tsb >= 0 ? '+' : ''}${tsb}
+* Potencia crítica: ${ftp}W
+* VO2max estimado: ${vo2max_est ? vo2max_est + ' ml/kg/min' : 'N/D'}
+${lthr ? `* LTHR: ${lthr} bpm` : ''}${max_hr ? `\n* FC máxima: ${max_hr} bpm` : ''}
+
+INSTRUCCIONES:
+
+${imageBase64 ? `1. Extrae del perfil de carrera:
+   - Distancia total (km)
+   - Desnivel acumulado (m)
+   - Nombres y características de cada puerto (km inicio, longitud, desnivel, pendiente media)
+   - Ubicación de avituallamientos si aparecen
+   - Dónde se ganará realmente la carrera
+
+2. ` : '1. '}Adapta la estrategia al estado actual:
+   - TSB ${tsb >= 0 ? '+' : ''}${tsb}: ${tsb >= 15 ? 'pico de forma → estrategia agresiva' : tsb >= 0 ? 'buena forma → estrategia equilibrada' : tsb >= -10 ? 'cierta fatiga → estrategia conservadora' : 'fatiga significativa → estrategia muy conservadora'}
+   - CTL ${ctl}: ${ctl >= 80 ? 'alta resistencia acumulada' : ctl >= 60 ? 'buena base aeróbica' : 'base aeróbica moderada'}
+
+${imageBase64 ? '3.' : '2.'} Para cada puerto identificado: nombre, km, duración estimada, potencia objetivo (W y %FTP), límite máximo, qué hacer si se supera.
+
+${imageBase64 ? '4.' : '3.'} Plan por fases:
+
+## FASE 1 — SALIDA
+Vatios recomendados, %FTP, errores a evitar.
+
+## FASE 2 — PRIMERA MITAD
+Gestión de energía, cuándo comer y beber.
+
+## FASE 3 — MOMENTOS CLAVE
+Cuándo seguir ataques, cuándo dejar marchar.
+
+## FASE 4 — FINAL
+Estrategia para los últimos kilómetros.
+
+${imageBase64 ? '5.' : '4.'} Tabla resumen (markdown):
+| Sector | Km | Potencia objetivo | %FTP | Riesgo |
+
+${imageBase64 ? '6.' : '5.'} Métricas:
+- NP objetivo, IF objetivo, TSS estimado
+- Carbohidratos por hora (g/h) y geles necesarios
+
+IMPORTANTE: Usa los datos reales del ciclista (FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}) para vatios concretos. Habla como un entrenador profesional.
+Usa ## para secciones, - para listas y tablas markdown.`;
+
+  const parsed = imageBase64 ? parseDataUrlImage(imageBase64) : null;
+  const b64 = imageBase64 ? imageBase64.replace(/^data:[^;]+;base64,/, '') : null;
+
+  const makeGeminiBody = () => {
+    const parts = [{ text: prompt }];
+    if (parsed?.ok) parts.push({ inlineData: { mimeType: parsed.mime, data: b64 } });
+    return { contents: [{ role: 'user', parts }], generationConfig: { temperature: 0.3, maxOutputTokens: 2048 } };
+  };
+
+  try {
+    let strategyText = null;
+
+    // ── 1. Google Gemini (con o sin imagen) ──
+    if (!strategyText && hasGoogle) {
+      const geminiModels = [...new Set([(process.env.GEMINI_MODEL||'').trim(),'gemini-2.5-flash','gemini-2.0-flash','gemini-1.5-flash','gemini-1.5-pro'])].filter(Boolean);
+      for (const model of geminiModels) {
+        try {
+          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': googleKey },
+            body: JSON.stringify(makeGeminiBody()),
+            signal: AbortSignal.timeout(20000),
+          });
+          const data = await resp.json();
+          if (!resp.ok) {
+            console.log(`[race-day] Gemini (${model}) ${resp.status}:`, data?.error?.message);
+            if (resp.status === 404 || resp.status === 400) continue;
+            break;
+          }
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Gemini (${model})`); break; }
+        } catch (e) {
+          console.log(`[race-day] Gemini (${model}) exception:`, e.message);
+          if (e.name === 'TimeoutError') continue;
+        }
+      }
+    }
+
+    // ── 2. Groq (solo texto, sin imagen) ──
+    if (!strategyText && hasGroq) {
+      for (const model of ['llama-3.3-70b-versatile','llama-3.1-70b-versatile']) {
+        try {
+          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
+            body: JSON.stringify({ model, max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content: prompt }] }),
+            signal: AbortSignal.timeout(20000),
+          });
+          if (resp.ok) {
+            const d = await resp.json();
+            const text = d.choices?.[0]?.message?.content || '';
+            if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Groq (${model})`); break; }
+          } else {
+            const err = await resp.json().catch(()=>({}));
+            console.log(`[race-day] Groq (${model}) ${resp.status}:`, err?.error?.message);
+            if (err?.error?.code === 'model_decommissioned') continue;
+            break;
+          }
+        } catch (e) { console.log('[race-day] Groq exception:', e.message); break; }
+      }
+    }
+
+    // ── 3. OpenAI (con o sin imagen) ──
+    if (!strategyText && hasOpenAI) {
+      const content = (parsed?.ok)
+        ? [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: imageBase64, detail: 'high' } }]
+        : prompt;
+      try {
+        const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+          body: JSON.stringify({ model: parsed?.ok ? 'gpt-4o-mini' : (openAiModel||'gpt-4o-mini'), max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content }] }),
+          signal: AbortSignal.timeout(20000),
+        });
+        if (resp.ok) {
+          const d = await resp.json();
+          const text = d.choices?.[0]?.message?.content || '';
+          if (text.length > 200) { strategyText = text; console.log('[race-day] OK OpenAI'); }
+        } else {
+          const err = await resp.json().catch(()=>({}));
+          console.log('[race-day] OpenAI error:', resp.status, err?.error?.message);
+        }
+      } catch (e) { console.log('[race-day] OpenAI exception:', e.message); }
+    }
+
+    // ── 4. Anthropic Claude (con o sin imagen) ──
+    if (!strategyText && hasAnthropic) {
+      const aiClient = new Anthropic({ apiKey: anthropicKey });
+      const msgContent = (parsed?.ok)
+        ? [{ type: 'image', source: { type: 'base64', media_type: parsed.mime, data: b64 } }, { type: 'text', text: prompt }]
+        : prompt;
+      for (const model of [(process.env.ANTHROPIC_MODEL||'').trim(),'claude-3-5-sonnet-20241022','claude-3-haiku-20240307'].filter(Boolean)) {
+        try {
+          const msg = await aiClient.messages.create({ model, max_tokens: 2048, messages: [{ role: 'user', content: msgContent }] });
+          const text = msg.content?.[0]?.text || '';
+          if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Anthropic (${model})`); break; }
+        } catch (e) { console.log(`[race-day] Anthropic (${model}):`, e.message); }
+      }
+    }
+
+    if (!strategyText) {
+      console.error('[race-day] Todos los proveedores fallaron — Google:', hasGoogle, 'Groq:', hasGroq, 'OpenAI:', hasOpenAI, 'Anthropic:', hasAnthropic);
+      return res.status(503).json({ error: 'No se pudo generar la estrategia' });
+    }
+    return res.json({ strategy: strategyText });
+  } catch (e) {
+    console.error('[race-day]', e.message);
+    res.status(500).json({ error: 'Error interno: ' + e.message });
+  }
+});
+
 // ── POST /api/coach/race-strategy ─────────────────────────────────────────────
 // Genera un plan de carrera personalizado con IA usando los datos reales del ciclista
 router.post('/race-strategy', async (req, res) => {
