@@ -1955,7 +1955,14 @@ function _buildRaceCoachPlan(ftp, athlete, metrics, isC, event) {
     };
   }
 
-  return { formTag, formColor, diagnosis, rows, alerts, ctl, atl, tsb, flatIF, tramos, nutrition };
+  const coachBriefing = [
+    `Tu forma actual es ${formTag.toLowerCase()} (${tsb >= 0 ? '+' : ''}${tsb} TSB, CTL ${ctl}, ATL ${atl}). En carrera no arranques con la rueda del grupo: mantén el primer tramo por debajo de tu ritmo real y deja que las piernas entren en calor.`,
+    `En puertos cortos, sube con cadencia y sin golpes; en puertos largos, empieza 3-5% por debajo del objetivo y solo sube si la respiración y la cadencia se mantienen estables.`,
+    `No te detengas más de 10-20 segundos en avituallamientos; bebe 150-250 ml y toma un gel o masticable si vas por encima de 60-75 min.`,
+    `Si vas con fatiga (TSB < 0), protege la salida: no te enganches a ataques en los primeros 15-20 km y conserva energía para el segundo tercio y la subida final.`,
+  ];
+
+  return { formTag, formColor, diagnosis, rows, alerts, ctl, atl, tsb, flatIF, tramos, nutrition, coachBriefing };
 }
 
 function renderPlan(plan, athlete) {
@@ -2455,7 +2462,7 @@ function renderPlan(plan, athlete) {
             <div id="rci-wrap-${_sdk}">
               ${_savedImg
                 ? `<div style="position:relative">
-                     <img src="${_savedImg}" style="width:100%;border-radius:8px;display:block;max-height:200px;object-fit:contain;background:rgba(0,0,0,.3)">
+                     <img src="${_savedImg}" style="width:100%;border-radius:10px;display:block;max-height:340px;object-fit:contain;background:rgba(0,0,0,.08);image-rendering:auto">
                      <button onclick="event.stopPropagation();clearRaceProfileImage('${_sdk}')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:26px;height:26px;color:#fff;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">✕</button>
                    </div>`
                 : `<label for="rci-${_sdk}" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 16px;border:1.5px dashed rgba(168,85,247,.4);border-radius:10px;cursor:pointer;background:rgba(168,85,247,.05);-webkit-tap-highlight-color:transparent">
@@ -5891,7 +5898,7 @@ function loadRaceProfileImage(input, sdk) {
     try { localStorage.setItem(`race_profile_${sdk}`, dataUrl); } catch(_) {}
     const wrap = document.getElementById(`rci-wrap-${sdk}`);
     if (wrap) wrap.innerHTML = `<div style="position:relative">
-      <img src="${dataUrl}" style="width:100%;border-radius:8px;display:block;max-height:200px;object-fit:contain;background:rgba(0,0,0,.3)">
+      <img src="${dataUrl}" style="width:100%;border-radius:10px;display:block;max-height:340px;object-fit:contain;background:rgba(0,0,0,.08);image-rendering:auto">
       <button onclick="event.stopPropagation();clearRaceProfileImage('${sdk}')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:26px;height:26px;color:#fff;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">✕</button>
     </div>`;
 
@@ -5950,6 +5957,12 @@ function _buildRaceAnalysisHtml(cp, rc) {
       ${cp.alerts.map(a=>`<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#F59E0B;font-size:11px;flex-shrink:0;margin-top:2px">•</span><span style="font-size:12px;color:var(--text-muted);line-height:1.5">${a}</span></div>`).join('')}
     </div>`;
 
+  const coachBriefingHtml = cp.coachBriefing ? `
+    <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${rc};margin-bottom:8px">👨‍🏫 Briefing del entrenador</div>
+      ${cp.coachBriefing.map(b=>`<div style="display:flex;gap:8px;margin-bottom:7px"><span style="color:${rc};font-size:11px;flex-shrink:0;margin-top:2px">•</span><span style="font-size:12px;color:var(--text-muted);line-height:1.45">${b}</span></div>`).join('')}
+    </div>` : '';
+
   const nutHtml = cp.nutrition ? `
     <div style="padding:12px 16px 12px;border-bottom:1px solid var(--border)">
       <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#F59E0B;margin-bottom:8px">🍌 Plan nutricional</div>
@@ -5975,7 +5988,7 @@ function _buildRaceAnalysisHtml(cp, rc) {
             <div style="font-size:12px;color:var(--text-muted);line-height:1.55;padding-left:26px">${t.tip}</div>
           </div>`).join('')}
       </div>
-      ${nutHtml}${alertsHtml}`;
+      ${coachBriefingHtml}${nutHtml}${alertsHtml}`;
   }
 
   // Sin datos → estrategia genérica basada en forma
@@ -5994,7 +6007,7 @@ function _buildRaceAnalysisHtml(cp, rc) {
           </div>
         </div>`).join('')}
     </div>
-    ${alertsHtml}${nutHtml}`;
+    ${coachBriefingHtml}${alertsHtml}${nutHtml}`;
 }
 </script>
 <!-- Post-entreno modal -->
