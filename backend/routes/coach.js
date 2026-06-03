@@ -3026,8 +3026,8 @@ Usa ## para títulos de sección, ### para subsecciones, - para listas y tablas 
         (process.env.GEMINI_MODEL || '').trim(),
         'gemini-2.5-flash',
         'gemini-2.0-flash',
-        'gemini-1.5-pro',
         'gemini-1.5-flash',
+        'gemini-1.5-pro',
       ])].filter(Boolean);
 
       for (const model of geminiModels) {
@@ -3037,13 +3037,18 @@ Usa ## para títulos de sección, ### para subsecciones, - para listas y tablas 
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': googleKey },
             body: JSON.stringify({
               contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
+              generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
             }),
           });
           const data = await resp.json();
-          if (!resp.ok) { if (resp.status === 404) continue; continue; }
+          if (!resp.ok) {
+            console.log(`[race-strategy] Gemini (${model}) error ${resp.status}:`, data?.error?.message || JSON.stringify(data?.error));
+            if (resp.status === 404 || resp.status === 400) continue;
+            break;
+          }
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          if (text.length > 200) { strategyText = text; break; }
+          if (text.length > 200) { strategyText = text; console.log(`[race-strategy] Gemini OK (${model})`); break; }
+          console.log(`[race-strategy] Gemini (${model}) respuesta vacía`);
         } catch (e) {
           console.log('[race-strategy] Gemini exception:', e.message);
         }
@@ -3127,6 +3132,7 @@ Usa ## para títulos de sección, ### para subsecciones, - para listas y tablas 
     }
 
     if (!strategyText) {
+      console.error('[race-strategy] Todos los proveedores fallaron — Google:', hasGoogle, 'Groq:', hasGroq, 'OpenAI:', hasOpenAI, 'Anthropic:', hasAnthropic);
       return res.status(503).json({ error: 'No se pudo generar la estrategia con los proveedores disponibles' });
     }
 

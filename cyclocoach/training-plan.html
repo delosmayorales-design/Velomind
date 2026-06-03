@@ -5897,6 +5897,15 @@ async function _runRaceAnalysisWithData(sdk, raceData) {
       <i class="fas fa-spinner fa-spin" style="font-size:18px"></i> Generando plan de carrera personalizado...
     </div>`;
 
+  // Si no hay datos reales de ruta, usar análisis estático directamente
+  const hasRouteData = raceData && !raceData._fallback && (raceData.distance_km || raceData.climbs?.length);
+  if (!hasRouteData && !raceData) {
+    const cp = _buildRaceCoachPlan(ftp, athlete, metrics, false, null);
+    const strategySlot = document.getElementById(`rca-strategy-${sdk}`);
+    if (strategySlot) strategySlot.outerHTML = _buildRaceAnalysisHtml(cp, rc);
+    return;
+  }
+
   try {
     const API = (window.API_URL || API_URL || 'https://velomind-backend.onrender.com/api');
     const lthr = athlete.lthr || (athlete.max_hr ? Math.round(athlete.max_hr * 0.88) : null);
@@ -5912,7 +5921,7 @@ async function _runRaceAnalysisWithData(sdk, raceData) {
     const res = await fetch(`${API}/coach/race-strategy`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
-      body: JSON.stringify({ athleteData, raceProfile: raceData }),
+      body: JSON.stringify({ athleteData, raceProfile: hasRouteData ? raceData : null }),
     });
     if (!res.ok) throw new Error((await res.json()).error || 'Error del servidor');
     const { strategy } = await res.json();
