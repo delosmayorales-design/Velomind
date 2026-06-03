@@ -2169,6 +2169,81 @@ function renderPlan(plan, athlete) {
       </div>
     ` : '';
 
+    // ── Tarjeta especial día de carrera ───────────────────────
+    if (sess.type === 'race' || sess.isRaceC) {
+      const _isC = sess.isRaceC && sess.type !== 'race';
+      const _raceColor = _isC ? '#64a0ff' : '#EC4899';
+      const _raceGrad  = _isC
+        ? 'linear-gradient(135deg,rgba(100,160,255,.13) 0%,rgba(100,160,255,.04) 100%)'
+        : 'linear-gradient(135deg,rgba(236,72,153,.16) 0%,rgba(168,85,247,.07) 100%)';
+      const _raceName  = (sess.name || 'Carrera').replace(/^🏁\s*/,'');
+      const _quotes = _isC
+        ? ['Ritmo controlado, sensaciones buenas. El objetivo es llegar fresco al siguiente entreno.',
+           'Aprende el recorrido y mantén el esfuerzo. Hoy es una sesión de calidad con dorsales.',
+           'Úsala como entrenamiento de calidad, no te vacíes.']
+        : ['Has entrenado semanas para este día. Confía en tu preparación y libera todo.',
+           'El dolor es temporal. El resultado y el orgullo son para siempre.',
+           'Cada kilómetro que rodaste te trajo hasta aquí. Es tu momento.',
+           'Sal controlado, aprieta a mitad, vacíate al final. El plan funciona.'];
+      const _quote = _quotes[(i + sessDate.getDate()) % _quotes.length];
+      const _advice = _isC
+        ? [['🎯','Objetivo','Mantén ritmo de umbral · no superes Z4 · IF ≤ 0.88'],
+           ['🔥','Calentamiento','10-15 min suave + 4 aceleraciones cortas'],
+           ['📊','Métricas','Monitoriza la FC y no salgas por encima del plan'],
+           ['🏁','Final','Guarda energía para los últimos km']]
+        : [['🔥','Calentamiento','15-20 min suave + 6 aceleraciones cortas a ritmo carrera'],
+           ['🍌','Nutrición','Carbohidratos 2-3 h antes · gel si la prueba dura > 90 min'],
+           ['🧠','Estrategia','Sal al 90% · aprieta en el último tercio · vacíate al final'],
+           ['💧','Hidratación','Bebe antes de tener sed · pequeños sorbos frecuentes']];
+
+      return `
+        <div class="session-card-item${sess.completed ? ' completed' : ''}${isToday ? ' today-card' : ''}" style="border-color:${_raceColor}55;overflow:hidden">
+          <div style="background:${_raceGrad};padding:16px 16px 14px;border-bottom:1px solid ${_raceColor}30">
+            <div style="display:flex;align-items:flex-start;gap:12px">
+              <div class="day-badge" style="flex-shrink:0">
+                <div class="dn">${sess.day.substring(0,3)}</div>
+                <div class="dd" style="color:${_raceColor}">${sessDate.getDate()}</div>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${_raceColor};margin-bottom:4px">
+                  🏁 ${_isC ? 'Carrera de entrenamiento' : 'Día de carrera'}
+                </div>
+                <div style="font-size:17px;font-weight:800;color:var(--text-primary);line-height:1.2;margin-bottom:${sess.completed?'6px':'0'}">${_raceName}</div>
+                ${sess.completed ? `<span class="done-badge"><i class="fas fa-check"></i> Completada</span>` : ''}
+              </div>
+              ${tssVal > 0 ? `<div style="text-align:right;flex-shrink:0">
+                <div style="font-size:24px;font-weight:800;color:${_raceColor};line-height:1">${tssVal}</div>
+                <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">TSS</div>
+              </div>` : ''}
+            </div>
+            <div style="margin-top:12px;padding:10px 14px;background:${_raceColor}18;border-left:3px solid ${_raceColor};border-radius:0 8px 8px 0;font-size:13px;color:var(--text-secondary);font-style:italic;line-height:1.6">
+              "${_quote}"
+            </div>
+          </div>
+          <div style="padding:14px 16px 6px">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_raceColor};margin-bottom:10px">Cómo afrontarla</div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              ${_advice.map(([em,lb,tx])=>`
+                <div style="display:flex;gap:10px;align-items:flex-start">
+                  <span style="font-size:17px;flex-shrink:0;line-height:1.25">${em}</span>
+                  <div style="font-size:12px;line-height:1.55">
+                    <span style="font-weight:700;color:var(--text-primary)">${lb} · </span><span style="color:var(--text-muted)">${tx}</span>
+                  </div>
+                </div>`).join('')}
+            </div>
+          </div>
+          <div style="padding:12px 16px 14px;display:flex;align-items:center;gap:12px;margin-top:4px">
+            ${isPastOrToday ? `
+              <button onclick="event.preventDefault();event.stopPropagation();markSessionDone(${i})"
+                style="display:flex;align-items:center;justify-content:center;gap:7px;flex:1;max-width:220px;background:${sess.completed?'rgba(16,185,129,.1)':_raceColor+'22'};border:1px solid ${sess.completed?'rgba(16,185,129,.35)':_raceColor+'66'};color:${sess.completed?'#10b981':_raceColor};border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;-webkit-tap-highlight-color:transparent">
+                <i class="fas ${sess.completed?'fa-check-circle':'fa-flag-checkered'}"></i>
+                ${sess.completed ? 'Completada' : 'Marcar como completada'}
+              </button>` : ''}
+          </div>
+          ${execBadge}
+        </div>`;
+    }
+
     return `
       <div class="session-card-item${sess.completed ? ' completed' : ''}${isToday ? ' today-card' : ''}">
         <div class="session-row" onclick="showSessionDetail(${i})">
