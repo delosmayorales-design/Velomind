@@ -2936,47 +2936,82 @@ router.post('/race-day', async (req, res) => {
       }).join('\n')
     : '  - Sin puertos especificados';
 
-  const prompt = `Eres un entrenador de ciclismo World Tour especializado en estrategia de competición.
-Genera un plan de carrera completamente personalizado para este ciclista.
+  const tsbLabel = tsb >= 10 ? '🟢 Muy fresco' : tsb >= 0 ? '🟡 Fresco' : tsb >= -10 ? '🟠 Fatigado' : '🔴 Muy fatigado';
 
-DATOS DEL CICLISTA:
-* FTP: ${ftp}W · Peso: ${weight} kg · W/kg: ${wkg}
-* CTL: ${ctl} · ATL: ${atl} · Forma (TSB): ${tsb >= 0 ? '+' : ''}${tsb}
+  const prompt = `Eres el Director Deportivo y Entrenador Jefe de un equipo World Tour.
+
+Tu misión NO es describir el perfil de la carrera.
+Tu misión es elaborar el plan de competición más inteligente posible para ESTE ciclista y ESTA carrera concreta.
+
+# DATOS DEL CICLISTA
+* FTP: ${ftp}W
+* Peso: ${weight} kg
+* W/kg: ${wkg} W/kg
+* CTL (carga crónica / fitness): ${ctl}
+* ATL (carga aguda / fatiga): ${atl}
+* Forma (TSB): ${tsb >= 0 ? '+' : ''}${tsb} (${tsbLabel})
+* Potencia crítica: ${ftp}W
 * VO2max estimado: ${vo2max_est ? vo2max_est + ' ml/kg/min' : 'N/D'}
 ${lthr ? `* LTHR: ${lthr} bpm` : ''}${max_hr ? `\n* FC máxima: ${max_hr} bpm` : ''}
 
-DATOS DE LA CARRERA:
-* Distancia total: ${raceData?.distance_km ? raceData.distance_km + ' km' : 'N/D'}
+# DATOS DE LA CARRERA
+* Distancia: ${raceData?.distance_km ? raceData.distance_km + ' km' : 'N/D'}
 * Desnivel acumulado: ${raceData?.elevation_m ? '+' + raceData.elevation_m + 'm' : 'N/D'}
-* Puertos:
+* Puertos identificados:
 ${climbsText}
 
-INSTRUCCIONES:
+# FORMA DE RAZONAR
+Antes de generar recomendaciones responde internamente (no lo muestres):
+1. ¿Qué tipo de corredor es este ciclista?
+2. ¿Llega fresco, neutro o fatigado?
+3. ¿Dónde se decidirá realmente esta carrera?
+4. ¿Cuál es el mayor riesgo de fracaso?
+5. ¿Cuál es la estrategia que maximiza sus probabilidades de rendir bien?
 
-1. Adapta la estrategia al estado actual:
-   - TSB ${tsb >= 0 ? '+' : ''}${tsb}: ${tsb >= 15 ? 'pico de forma → agresivo' : tsb >= 0 ? 'buena forma → equilibrado' : tsb >= -10 ? 'cierta fatiga → conservador' : 'fatiga → muy conservador'}
-   - CTL ${ctl}: ${ctl >= 80 ? 'alta resistencia' : ctl >= 60 ? 'buena base aeróbica' : 'base moderada'}
+# PROHIBIDO
+- NO dar consejos genéricos.
+- NO decir únicamente "mantén un ritmo constante".
+- NO recomendar potencias sin explicar el motivo.
+- NO limitarte a recorrer puerto por puerto sin táctica global.
 
-2. Para cada puerto: duración estimada, potencia objetivo (W y %FTP), límite máximo, qué hacer si se supera.
+# ESTRUCTURA OBLIGATORIA
 
-3. Plan por fases:
+## RESUMEN EJECUTIVO
+Máximo 5 frases. Responde: cómo llega el ciclista, dónde se gana la carrera, qué debe evitar, qué debe hacer para sacar su mejor resultado.
 
-## FASE 1 — SALIDA
-Vatios recomendados, %FTP, errores a evitar.
+## DIAGNÓSTICO DEL ESTADO DE FORMA
+Explica qué significa su CTL ${ctl}, ATL ${atl} y TSB ${tsb >= 0 ? '+' : ''}${tsb} y cómo afectará a la carrera. Clasifica con emoji (🟢🟡🟠🔴) y justifica.
 
-## FASE 2 — PRIMERA MITAD
-Gestión de energía, cuándo comer y beber.
+## ESTRATEGIA GLOBAL
+Divide la carrera en: Salida · Primer tercio · Parte central · Momento decisivo · Final. Explica exactamente qué hacer en cada fase.
 
-## FASE 3 — MOMENTOS CLAVE
-Cuándo seguir ataques, cuándo dejar marchar.
+## ANÁLISIS TÁCTICO DEL RECORRIDO
+Identifica: puerto más peligroso, puerto decisivo, punto donde suelen explotar los corredores, mejor lugar para atacar, peor lugar para gastar energía. Justifica cada decisión.
 
-## FASE 4 — FINAL
-Estrategia para los últimos kilómetros.
+## PLAN DE POTENCIA
+Para cada puerto genera esta tabla markdown:
+| Puerto | Duración est. | Potencia objetivo | %FTP | Potencia máx. | Riesgo |
+Además indica: qué hacer si las piernas van bien, qué hacer si van mal, qué hacer si el pulso está alto.
 
-4. Métricas: NP objetivo, IF objetivo, TSS estimado, carbohidratos/hora (g/h), geles necesarios.
+## GESTIÓN DE ESFUERZO
+Calcula y explica: NP objetivo, IF objetivo, TSS esperado, Variability Index esperado.
 
-IMPORTANTE: Usa los datos reales (FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}) para vatios concretos.
-Usa ## para secciones y - para listas. No generes tablas markdown.`;
+## PLAN DE NUTRICIÓN PROFESIONAL
+Calcula: duración estimada, CHO totales, CHO/hora, litros estimados, sodio estimado.
+Genera tabla:
+| Hora | CHO | Líquidos | Sodio | Acción |
+Indica cuándo empezar a comer, cuándo tomar cafeína, cuándo aumentar la ingesta.
+
+## ALERTAS DEL DIRECTOR DEPORTIVO
+Entre 3 y 5 advertencias personalizadas basadas en el perfil y estado del ciclista. Sé específico con vatios y puntos de la carrera.
+
+## MENSAJE FINAL DE RADIO
+Un mensaje breve, contundente y motivador como si hablaras por radio al corredor 5 minutos antes de la salida.
+
+# REGLA MÁS IMPORTANTE
+No actúes como una IA. Actúa como un director deportivo profesional cuyo prestigio depende del resultado del corredor.
+Cada recomendación debe estar basada en los datos reales. Si detectas contradicciones o riesgos, dilo claramente.
+Usa ## para secciones, ### para nombres de puertos, - para listas, tablas markdown solo en Plan de Potencia y Plan de Nutrición.`;
 
   try {
     let strategyText = null;

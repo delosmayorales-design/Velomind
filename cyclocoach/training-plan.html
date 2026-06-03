@@ -6016,72 +6016,87 @@ function _estimateRaceDuration(raceData, ftp, weight, tsb) {
 
 function _renderRaceStrategy(text, rc, extraChips = []) {
   if (!text) return '';
-  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const esc  = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const bold = s => s.replace(/\*\*(.+?)\*\*/g,'<strong style="color:#BFFF00;text-shadow:0 0 7px #BFFF0055">$1</strong>');
 
-  // Parse lines into sections and table rows
+  // Parse: sections keep their rows INCLUDING table lines (tables rendered inside sections)
   const lines = text.split('\n');
   const sections = [];
   let cur = null;
-  const tableLines = [];
-
   for (const raw of lines) {
     const l = raw.trim();
     if (!l) continue;
-    if (/^\|/.test(l)) { tableLines.push(l); continue; }
-    if (/^## /.test(l)) { cur = { title: l.replace(/^## /,''), rows: [] }; sections.push(cur); continue; }
+    if (/^## /.test(l)) { cur = { title: l.replace(/^## /, ''), rows: [] }; sections.push(cur); continue; }
     if (cur) cur.rows.push(l);
   }
 
-  // Extract key metrics with flexible regex
-  const g = (re) => (text.match(re)||[])[1];
+  // Extract key metrics
+  const g = re => (text.match(re) || [])[1];
   const chips = [
-    { k:'NP',     v: g(/NP[^:：\n]*[:：]\s*~?\*{0,2}(\d+)\s*W/i) && g(/NP[^:：\n]*[:：]\s*~?\*{0,2}(\d+)\s*W/i)+'W' },
-    { k:'IF',     v: g(/IF[^:：\n]*[:：]\s*~?\*{0,2}(0\.\d+)/i) },
-    { k:'TSS',    v: g(/TSS[^:：\n]*[:：]\s*~?\*{0,2}(\d+)/i) && '~'+g(/TSS[^:：\n]*[:：]\s*~?\*{0,2}(\d+)/i) },
-    { k:'Carb/hora', v: g(/(\d+)\s*g\s*[\/\s]h/i) && g(/(\d+)\s*g\s*[\/\s]h/i)+'g' },
+    { k: 'NP',       v: g(/NP[^:：\n]*[:：]\s*~?\*{0,2}(\d+)\s*W/i) && g(/NP[^:：\n]*[:：]\s*~?\*{0,2}(\d+)\s*W/i) + 'W' },
+    { k: 'IF',       v: g(/IF[^:：\n]*[:：]\s*~?\*{0,2}(0\.\d+)/i) },
+    { k: 'TSS',      v: g(/TSS[^:：\n]*[:：]\s*~?\*{0,2}(\d+)/i) && '~' + g(/TSS[^:：\n]*[:：]\s*~?\*{0,2}(\d+)/i) },
+    { k: 'Carb/hora',v: g(/(\d+)\s*g\s*[\/\s]h/i) && g(/(\d+)\s*g\s*[\/\s]h/i) + 'g' },
   ].filter(c => c.v);
 
   const allChips = [...extraChips, ...chips];
   const chipsHtml = allChips.length ? `
     <div style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 8px;border-bottom:1px solid var(--border)">
-      ${allChips.map(c=>`<div style="background:${rc}12;border:1px solid ${rc}28;border-radius:8px;padding:4px 10px;text-align:center">
+      ${allChips.map(c => `<div style="background:${rc}12;border:1px solid ${rc}28;border-radius:8px;padding:4px 10px;text-align:center">
         <div style="font-size:9px;color:${rc};font-weight:700;text-transform:uppercase;letter-spacing:.4px">${c.k}</div>
         <div style="font-size:13px;font-weight:800;color:var(--text-primary);margin-top:1px">${c.v}</div>
       </div>`).join('')}
     </div>` : '';
 
-  // Render section body lines compactly
+  // Render a markdown table
+  const renderTable = tblLines => {
+    if (tblLines.length < 3) return '';
+    const hdr = tblLines[0].split('|').filter(c => c.trim())
+      .map(c => `<th style="padding:5px 8px;text-align:left;font-size:9px;font-weight:700;color:${rc};white-space:nowrap;background:${rc}10">${esc(c.trim())}</th>`).join('');
+    const bdy = tblLines.slice(2).map(r =>
+      `<tr>${r.split('|').filter(c => c.trim()).map(c => `<td style="padding:5px 8px;font-size:10px;color:var(--text-muted);border-top:1px solid var(--border)">${esc(c.trim())}</td>`).join('')}</tr>`
+    ).join('');
+    return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px 0 4px">
+      <table style="width:100%;border-collapse:collapse"><thead><tr>${hdr}</tr></thead><tbody>${bdy}</tbody></table>
+    </div>`;
+  };
+
+  // Render a section's rows (text, bullets, ###headers, tables)
   const renderBody = rows => {
-    let out = '', list = '';
+    let out = '', list = '', tbl = [];
+    const flushList  = () => { if (list)  { out += `<div style="margin-bottom:3px">${list}</div>`; list = ''; } };
+    const flushTable = () => { if (tbl.length) { out += renderTable(tbl); tbl = []; } };
     for (const l of rows) {
-      if (/^\|/.test(l)) continue;
-      if (/^[-*•] /.test(l)) {
-        list += `<div style="display:flex;gap:6px;padding:2px 0">
-          <span style="color:${rc};font-size:9px;flex-shrink:0;margin-top:3px">▪</span>
-          <span style="font-size:11px;color:var(--text-muted);line-height:1.45">${bold(esc(l.replace(/^[-*•] /,'')))}</span>
-        </div>`;
+      if (/^\|/.test(l)) {
+        flushList(); tbl.push(l);
       } else {
-        if (list) { out += `<div style="margin-bottom:3px">${list}</div>`; list=''; }
-        if (/^###/.test(l)) {
-          out += `<div style="font-size:11px;font-weight:800;color:#BFFF00;margin:6px 0 3px;text-shadow:0 0 8px #BFFF0066">${bold(esc(l.replace(/^#+\s*/,'')))}</div>`;
+        flushTable();
+        if (/^[-*•] /.test(l)) {
+          list += `<div style="display:flex;gap:6px;padding:2px 0">
+            <span style="color:${rc};font-size:9px;flex-shrink:0;margin-top:3px">▪</span>
+            <span style="font-size:11px;color:var(--text-muted);line-height:1.45">${bold(esc(l.replace(/^[-*•] /, '')))}</span>
+          </div>`;
         } else {
-          out += `<div style="font-size:11px;color:var(--text-muted);line-height:1.45;margin-bottom:2px">${bold(esc(l))}</div>`;
+          flushList();
+          if (/^###/.test(l)) {
+            out += `<div style="font-size:11px;font-weight:800;color:#BFFF00;margin:8px 0 3px;text-shadow:0 0 8px #BFFF0066">${bold(esc(l.replace(/^#+\s*/, '')))}</div>`;
+          } else {
+            out += `<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:2px">${bold(esc(l))}</div>`;
+          }
         }
       }
     }
-    if (list) out += list;
+    flushList(); flushTable();
     return out;
   };
 
-  // Sections as native <details> accordion
   const secHtml = sections.filter(s => s.rows.length > 0).map((s, i) => `
-    <details ${i===0?'open':''} style="border-bottom:1px solid var(--border)">
+    <details ${i === 0 ? 'open' : ''} style="border-bottom:1px solid var(--border)">
       <summary style="padding:10px 14px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;-webkit-tap-highlight-color:transparent;user-select:none">
         <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:${rc}">${esc(s.title)}</span>
         <span style="font-size:11px;color:var(--text-muted)">▾</span>
       </summary>
-      <div style="padding:2px 14px 10px">${renderBody(s.rows)||'—'}</div>
+      <div style="padding:2px 14px 10px">${renderBody(s.rows) || '—'}</div>
     </details>`).join('');
 
   return `<div>${chipsHtml}${secHtml}</div>`;
