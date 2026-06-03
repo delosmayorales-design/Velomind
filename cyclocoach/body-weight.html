@@ -25,6 +25,32 @@
       #bw-main-grid     { grid-template-columns: 1fr !important; }
       #bw-analysis-grid { grid-template-columns: 1fr !important; }
     }
+    /* ── Bluetooth báscula ────────────────────────────────────── */
+    .btn-bt {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 20px; min-height: 34px;
+      border: 1px solid #2196F3; background: transparent;
+      color: #2196F3; font-size: 12px; font-weight: 600;
+      font-family: inherit; cursor: pointer; white-space: nowrap;
+      transition: background .15s, color .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-bt:hover:not(:disabled) { background: #2196F3; color: #fff; }
+    .btn-bt:active:not(:disabled) { background: #1565C0; color: #fff; }
+    .btn-bt:disabled { opacity: .45; cursor: default; border-color: var(--border); color: var(--text-muted); }
+    .btn-bt-connected { border-color: #4CAF50; color: #4CAF50; }
+    .btn-bt-connected:hover:not(:disabled) { background: #4CAF50; color: #fff; }
+    .bt-dot-led {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      background: #4CAF50; box-shadow: 0 0 0 2px rgba(76,175,80,.28);
+    }
+    @keyframes btSpin { to { transform: rotate(360deg); } }
+    @keyframes btFieldFlash {
+      0%   { box-shadow: 0 0 0 0 rgba(33,150,243,.7); }
+      50%  { box-shadow: 0 0 0 5px rgba(33,150,243,.2); }
+      100% { box-shadow: 0 0 0 0 rgba(33,150,243,0); border-color: inherit; }
+    }
+    .bt-filled { animation: btFieldFlash 1.2s ease-out; outline: 1px solid #2196F3; }
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
@@ -131,8 +157,14 @@
 
       <!-- QUICK ENTRY FORM -->
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap:wrap;gap:8px;align-items:center">
           <div class="card-title"><i class="fas fa-pen" style="color:var(--accent)"></i> Registrar Entrada</div>
+          <button class="btn-bt" id="btn-bt-connect" onclick="btConnect()">
+            <span class="bt-dot-led" id="bt-dot-led" style="display:none"></span>
+            <i class="fab fa-bluetooth-b" id="bt-icon"></i>
+            <span id="bt-btn-text">Conectar báscula</span>
+            <i class="fas fa-times" id="bt-times-icon" style="display:none;opacity:.6"></i>
+          </button>
         </div>
         <div class="card-body">
           <div class="form-group">
@@ -347,6 +379,7 @@ async function init() {
   renderWkg();
   renderComposition();
   loadGoal();
+  btSetStatus('disconnected'); // establece estado inicial del botón BT
 }
 
 function setDefaultDate() {
@@ -806,6 +839,153 @@ function clearAllWeight() {
   localStorage.removeItem('velomind_weight_log'); // Ya usa velomind_
   AppState.weightLog = [];
   renderStats(); renderChart(); renderTable(); renderWkg(); renderComposition();
+}
+
+// ── Bluetooth báscula ─────────────────────────────────────────────────────────
+const BT_WEIGHT_SVC = 0x181D;  // Weight Scale
+const BT_WEIGHT_CHR = 0x2A9D;  // Weight Measurement
+const BT_BODY_SVC   = 0x181B;  // Body Composition
+const BT_BODY_CHR   = 0x2A9C;  // Body Composition Measurement
+
+let _btDevice = null;
+
+function btSetStatus(state, name) {
+  const btn   = document.getElementById('btn-bt-connect');
+  const dot   = document.getElementById('bt-dot-led');
+  const icon  = document.getElementById('bt-icon');
+  const txt   = document.getElementById('bt-btn-text');
+  const times = document.getElementById('bt-times-icon');
+  if (!btn) return;
+
+  // Reset a estado base
+  btn.className = 'btn-bt';
+  btn.disabled = false;
+  dot.style.display   = 'none';
+  icon.style.display  = '';
+  times.style.display = 'none';
+
+  if (state === 'connecting') {
+    btn.disabled = true;
+    icon.className = 'fas fa-spinner';
+    icon.style.animation = 'btSpin .8s linear infinite';
+    txt.textContent = 'Conectando...';
+  } else if (state === 'connected') {
+    btn.className = 'btn-bt btn-bt-connected';
+    btn.onclick = btDisconnect;
+    dot.style.display   = 'inline-block';
+    icon.style.display  = 'none';
+    icon.style.animation = '';
+    times.style.display = 'inline';
+    txt.textContent = name || 'Báscula';
+  } else {
+    btn.onclick = btConnect;
+    icon.className = 'fab fa-bluetooth-b';
+    icon.style.animation = '';
+    if (!navigator.bluetooth) {
+      btn.disabled = true;
+      btn.title = 'Requiere Chrome o Edge en Android/escritorio';
+      txt.textContent = 'BT (solo Chrome/Edge)';
+    } else {
+      txt.textContent = 'Conectar báscula';
+    }
+  }
+}
+
+async function btConnect() {
+  if (!navigator.bluetooth) return;
+  btSetStatus('connecting');
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [
+        { services: [BT_WEIGHT_SVC] },
+        { services: [BT_BODY_SVC] },
+      ],
+      optionalServices: [BT_WEIGHT_SVC, BT_BODY_SVC],
+    });
+    _btDevice = device;
+    device.addEventListener('gattserverdisconnected', () => {
+      _btDevice = null;
+      btSetStatus('disconnected');
+    });
+
+    const server = await device.gatt.connect();
+    let ok = false;
+
+    try {
+      const svc = await server.getPrimaryService(BT_WEIGHT_SVC);
+      const chr = await svc.getCharacteristic(BT_WEIGHT_CHR);
+      chr.addEventListener('characteristicvaluechanged', btOnWeight);
+      await chr.startNotifications();
+      ok = true;
+    } catch(_) {}
+
+    try {
+      const svc = await server.getPrimaryService(BT_BODY_SVC);
+      const chr = await svc.getCharacteristic(BT_BODY_CHR);
+      chr.addEventListener('characteristicvaluechanged', btOnBody);
+      await chr.startNotifications();
+      ok = true;
+    } catch(_) {}
+
+    if (!ok) throw new Error('La báscula no usa el estándar BLE Weight Scale');
+    btSetStatus('connected', device.name || 'Báscula');
+  } catch(e) {
+    _btDevice = null;
+    btSetStatus('disconnected');
+    if (e.name !== 'NotFoundError') {
+      showFeedback(document.getElementById('entry-feedback'),
+        '⚠️ ' + (e.message || 'Error al conectar'), 'danger');
+    }
+  }
+}
+
+function btDisconnect() {
+  try { if (_btDevice?.gatt?.connected) _btDevice.gatt.disconnect(); } catch(_) {}
+  _btDevice = null;
+  btSetStatus('disconnected');
+}
+
+function btOnWeight(event) {
+  const dv       = event.target.value;
+  const flags    = dv.getUint8(0);
+  const imperial = flags & 0x01;
+  const raw      = dv.getUint16(1, true);
+  const kg       = imperial ? raw * 0.01 * 0.453592 : raw * 0.005;
+  if (kg >= 30 && kg <= 200) {
+    const f = document.getElementById('entry-weight');
+    f.value = kg.toFixed(1);
+    btFlash(f);
+  }
+}
+
+function btOnBody(event) {
+  const dv    = event.target.value;
+  const flags = dv.getUint16(0, true);
+  // % Grasa siempre en offset 2 (uint16, resolución 0.1 %)
+  if (dv.byteLength >= 4) {
+    const fat = dv.getUint16(2, true) * 0.1;
+    if (fat >= 3 && fat <= 60) {
+      const f = document.getElementById('entry-fat'); f.value = fat.toFixed(1); btFlash(f);
+    }
+  }
+  // % Músculo — saltar campos opcionales según flags
+  let off = 4;
+  if (flags & 0x02) off += 7; // timestamp
+  if (flags & 0x04) off += 1; // user ID
+  if (flags & 0x08) off += 2; // basal metabolism
+  if ((flags & 0x10) && dv.byteLength > off + 1) {
+    const muscle = dv.getUint16(off, true) * 0.1;
+    if (muscle >= 10 && muscle <= 80) {
+      const f = document.getElementById('entry-muscle'); f.value = muscle.toFixed(1); btFlash(f);
+    }
+  }
+}
+
+function btFlash(field) {
+  field.classList.remove('bt-filled');
+  void field.offsetWidth; // fuerza reflow para reiniciar animación
+  field.classList.add('bt-filled');
+  setTimeout(() => field.classList.remove('bt-filled'), 1300);
 }
 
 init();
