@@ -5864,9 +5864,11 @@ async function _runRaceAnalysisWithData(sdk, raceData) {
 
     // Calcular duración estimada en el frontend (más fiable que esperar a la IA)
     const dur = _estimateRaceDuration(raceData, ftp, athlete.weight || 70, metrics.tsb || 0);
+    const fmt = m => `${Math.floor(m/60)}h ${m%60}min`;
     const durChips = dur ? [
-      { k: 'Sin paradas',  v: `${Math.floor(dur.sinParadas/60)}h ${dur.sinParadas%60}min` },
-      { k: 'Con paradas',  v: `${Math.floor(dur.conParadas/60)}h ${dur.conParadas%60}min` },
+      { k: 'Sin paradas', v: fmt(dur.sinParadas) },
+      { k: 'Con paradas', v: fmt(dur.conParadas) },
+      { k: 'Geles mín.',  v: `${dur.geles}` },
     ] : [];
 
     const strategySlot = document.getElementById(`rca-strategy-${sdk}`);
@@ -5983,33 +5985,33 @@ function _estimateRaceDuration(raceData, ftp, weight, tsb) {
   const dist = raceData.distance_km;
   const elev = raceData.elevation_m || 0;
 
-  const flatIF   = tsb >= 15 ? 0.91 : tsb >= 8 ? 0.88 : tsb >= 0 ? 0.85 : tsb >= -8 ? 0.82 : 0.78;
-  const flatW    = ftp * flatIF;
-  const flatKmh  = Math.max(18, 28 + (flatW - 180) * 0.04);
-  const climbW   = ftp * Math.min(flatIF + 0.08, 1.0);
-  const vamPerMin = (climbW * 60) / (weight * 9.81); // m/min verticales
+  const wkg = ftp / weight;
 
-  // Obtener distancia de subida de los puertos del formulario, o estimarla
-  const climbs = (raceData.climbs || []).filter(c => c.length_km && c.avg_grade);
-  let climbDist = 0, climbElev = 0;
-  if (climbs.length > 0) {
-    climbs.forEach(c => { climbDist += c.length_km; climbElev += c.length_km * 1000 * c.avg_grade / 100; });
-  } else if (elev > 0) {
-    climbDist = elev / (0.07 * 1000); // asume pendiente media 7% si no hay puertos
-    climbElev = elev;
-  }
-  const actualClimbElev = Math.min(climbElev, elev || climbElev); // no superar el desnivel total
+  // Factor de forma según TSB
+  const ef = tsb >= 15 ? 1.05 : tsb >= 8 ? 1.02 : tsb >= 0 ? 0.98 : tsb >= -8 ? 0.93 : 0.88;
 
-  const climbMin = actualClimbElev / vamPerMin;
-  const descMin  = actualClimbElev / (vamPerMin * 2);        // bajadas al doble de velocidad vertical
-  const flatDist = Math.max(0, dist - climbDist * 2);
-  const flatMin  = (flatDist / flatKmh) * 60;
+  // Velocidad base en llano según W/kg (empírica, conservadora para condiciones reales)
+  // 3 W/kg → 29 km/h · 4 W/kg → 31 km/h · 5 W/kg → 33 km/h
+  const flatBase  = 23 + wkg * 2;
+  const flatSpeed = flatBase * ef;
 
-  const sinParadas  = Math.round(climbMin + descMin + flatMin);
-  const stops       = Math.max(0, Math.floor(dist / 45) - 1); // avituallamientos cada ~45km
-  const conParadas  = sinParadas + stops * 4;                  // ~4 min por parada
+  // Penalización por desnivel: cada m/km de perfil reduce la velocidad media
+  // Factor calibrado: 100 m/km de desnivel → ~1.22x más tiempo
+  const elevPerKm  = dist > 0 ? elev / dist : 0;
+  const elevFactor = 1 + elevPerKm / 100;
 
-  return { sinParadas, conParadas };
+  const avgSpeed  = flatSpeed / elevFactor;
+  const totalMin  = Math.round((dist / avgSpeed) * 60);
+
+  // Paradas: 5 min por avituallamiento natural (~cada 45 km)
+  const stops     = dist >= 60 ? Math.max(1, Math.floor(dist / 45) - 1) : 0;
+  const conParadas = totalMin + stops * 5;
+
+  // Geles mínimos: 2 por hora después del primer calentamiento (30 min)
+  const totalHours = totalMin / 60;
+  const geles = Math.max(2, Math.ceil((totalHours - 0.5) * 2));
+
+  return { sinParadas: totalMin, conParadas, geles };
 }
 
 function _renderRaceStrategy(text, rc, extraChips = []) {
@@ -6037,8 +6039,7 @@ function _renderRaceStrategy(text, rc, extraChips = []) {
     { k:'NP',     v: g(/NP[^:：\n]*[:：]\s*~?\*{0,2}(\d+)\s*W/i) && g(/NP[^:：\n]*[:：]\s*~?\*{0,2}(\d+)\s*W/i)+'W' },
     { k:'IF',     v: g(/IF[^:：\n]*[:：]\s*~?\*{0,2}(0\.\d+)/i) },
     { k:'TSS',    v: g(/TSS[^:：\n]*[:：]\s*~?\*{0,2}(\d+)/i) && '~'+g(/TSS[^:：\n]*[:：]\s*~?\*{0,2}(\d+)/i) },
-    { k:'Geles carrera', v: g(/(\d+)\s*gel/i) },
-    { k:'Carb/hora',    v: g(/(\d+)\s*g\s*[\/\s]h/i) && g(/(\d+)\s*g\s*[\/\s]h/i)+'g' },
+    { k:'Carb/hora', v: g(/(\d+)\s*g\s*[\/\s]h/i) && g(/(\d+)\s*g\s*[\/\s]h/i)+'g' },
   ].filter(c => c.v);
 
   const allChips = [...extraChips, ...chips];
