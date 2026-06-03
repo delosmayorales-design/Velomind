@@ -5456,10 +5456,13 @@ function adaptToRoller(idx) {
     '📊 Monitorea potencia, no velocidad.'
   ];
 
-  // Intervalos adaptados para la duración de rodillo
-  const _rollerIvs = window.TrainingPlanGenerator
-    ? TrainingPlanGenerator._buildIntervals(sess.type, ftp, rollerDur, rollerTSS, sess.ifTarget || 0.75, 'main')
-    : (sess.intervals || []);
+  // Usa los mismos intervalos de la sesión (igual que la vista normal)
+  // Recalcularlos con duración reducida producía resultados vacíos o distintos a lo mostrado
+  const _rollerIvs = (sess.intervals && sess.intervals.length > 0)
+    ? sess.intervals
+    : (window.TrainingPlanGenerator
+        ? TrainingPlanGenerator._buildIntervals(sess.type, ftp, rollerDur, rollerTSS, sess.ifTarget || 0.75, 'main')
+        : []);
   const _getRollerReps = (lbl) => {
     const m = String(lbl || '').match(/\(×\s*(\d+(?:-\d+)?)/i);
     if (!m) return 1;
