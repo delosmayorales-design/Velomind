@@ -2188,19 +2188,13 @@ function segmentPopup(e, catLabel, distKm, grade, color) {
       ${e.avg_watts ? `<span>⚡ ${Math.round(e.avg_watts)} W</span>` : ''}
       ${e.avg_hr    ? `<span>❤ ${Math.round(e.avg_hr)} bpm</span>` : ''}
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <div>
       <button onclick="openRankingPanel(${e.segment_id})"
-        style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);
+        style="width:100%;padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);
                color:var(--text-primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;
                display:flex;align-items:center;justify-content:center;gap:5px">
         <i class="fas fa-trophy" style="color:#F59E0B"></i> Ver ranking
       </button>
-      <a href="${stravaUrl}" target="_blank" rel="noopener"
-         style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid rgba(252,76,2,.3);
-                background:rgba(252,76,2,.08);color:#FC4C02;font-size:11px;font-weight:700;
-                text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px">
-        <i class="fab fa-strava"></i> Strava
-      </a>
     </div>
   </div>`;
 }

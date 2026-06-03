@@ -1358,6 +1358,7 @@ router.get('/strava/activity-segments/:stravaId', requireAuth, async (req, res) 
       climb_category: e.segment?.climb_category ?? 0,
       points:        e.segment?.points || null,
       start_latlng:  e.segment?.start_latlng || null,
+      end_latlng:    e.segment?.end_latlng   || null,
     }));
     res.json(efforts);
   } catch (e) {
