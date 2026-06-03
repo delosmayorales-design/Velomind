@@ -2406,7 +2406,9 @@ function renderPlan(plan, athlete) {
       const _name = (sess.name || 'Carrera').replace(/^🏁\s*/,'');
       const _dk   = sessDayKey;
       const _sdk  = _dk.replace(/-/g,'');
-      const _cp   = _buildRaceCoachPlan(ftp, athlete, metrics, _isC, null);
+      // Datos guardados de análisis IA previo
+      const _savedData = (() => { try { return JSON.parse(localStorage.getItem(`race_data_${_sdk}`) || 'null'); } catch{return null;} })();
+      const _cp   = _buildRaceCoachPlan(ftp, athlete, metrics, _isC, _savedData);
       // Imagen guardada en localStorage
       const _savedImg = (() => { try { return localStorage.getItem(`race_profile_${_sdk}`); } catch{return null;} })();
 
@@ -2469,10 +2471,16 @@ function renderPlan(plan, athlete) {
 
           <!-- SLOT ANÁLISIS -->
           <div id="rca-${_sdk}">
-            <div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;line-height:1.7">
-              <i class="fas fa-brain" style="display:block;font-size:26px;margin-bottom:8px;opacity:.25;color:${_rc}"></i>
-              Pulsa <strong style="color:${_rc}">Análisis del entrenador</strong> para obtener<br>la estrategia personalizada para tu estado de forma.
-            </div>
+            ${_savedData
+              ? (() => {
+                  const _climbsC = _savedData.climbs?.length||0;
+                  const _sum = [_savedData.distance_km&&`📍 ${_savedData.distance_km} km`,_savedData.elevation_m&&`⛰️ +${_savedData.elevation_m} m`,_climbsC&&`🏔️ ${_climbsC} puerto${_climbsC>1?'s':''}`,_savedData.feed_zones_km?.length&&`🍌 ${_savedData.feed_zones_km.length} avituall.`].filter(Boolean).join(' · ');
+                  return `<div style="padding:10px 16px 0;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border)"><span style="font-weight:700;color:${_rc}">IA detectó:</span> ${_sum}</div>${_buildRaceAnalysisHtml(_cp, _rc)}`;
+                })()
+              : `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;line-height:1.7">
+                   <i class="fas fa-brain" style="display:block;font-size:26px;margin-bottom:8px;opacity:.25;color:${_rc}"></i>
+                   Adjunta el perfil del recorrido y la IA extraerá los datos automáticamente,<br>o pulsa <strong style="color:${_rc}">Análisis del entrenador</strong> para obtener la estrategia según tu forma.
+                 </div>`}
           </div>
 
           <!-- MARCAR COMPLETADA -->
@@ -5774,23 +5782,83 @@ function runRaceAnalysis(dk, isC) {
   const sdk     = dk.replace(/-/g,'');
   const metrics = AppState.getCurrentMetrics();
   const ftp     = AppState.athlete?.ftp || 200;
-  const cp      = _buildRaceCoachPlan(ftp, AppState.athlete||{}, metrics, isC, null);
-  const slot    = document.getElementById(`rca-${sdk}`);
+  // Intentar usar datos extraídos previamente por la IA
+  let savedData = null;
+  try { savedData = JSON.parse(localStorage.getItem(`race_data_${sdk}`) || 'null'); } catch(_) {}
+  const cp   = _buildRaceCoachPlan(ftp, AppState.athlete||{}, metrics, isC, savedData);
+  const slot = document.getElementById(`rca-${sdk}`);
   if (slot) slot.innerHTML = _buildRaceAnalysisHtml(cp, '#A855F7');
+}
+
+function _runRaceAnalysisWithData(sdk, raceData) {
+  const metrics = AppState.getCurrentMetrics();
+  const ftp     = AppState.athlete?.ftp || 200;
+  const isC     = false;
+  const cp      = _buildRaceCoachPlan(ftp, AppState.athlete||{}, metrics, isC, raceData);
+  const rc      = '#A855F7';
+
+  // Resumen de lo que extrajo la IA
+  const climbsCount = raceData.climbs?.length || 0;
+  const summary = [
+    raceData.distance_km  && `📍 ${raceData.distance_km} km`,
+    raceData.elevation_m  && `⛰️ +${raceData.elevation_m} m`,
+    climbsCount           && `🏔️ ${climbsCount} puerto${climbsCount>1?'s':''}`,
+    raceData.feed_zones_km?.length && `🍌 ${raceData.feed_zones_km.length} avituall.`,
+  ].filter(Boolean).join(' · ');
+
+  const slot = document.getElementById(`rca-${sdk}`);
+  if (!slot) return;
+  slot.innerHTML = `
+    ${summary ? `<div style="padding:10px 16px 0;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border)">
+      <span style="font-weight:700;color:${rc}">IA detectó:</span> ${summary}
+      ${raceData.start_location?` · Salida: ${raceData.start_location}`:''}
+    </div>` : ''}
+    ${_buildRaceAnalysisHtml(cp, rc)}`;
 }
 
 function loadRaceProfileImage(input, sdk) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
-    try { localStorage.setItem(`race_profile_${sdk}`, e.target.result); } catch(_) {}
+  reader.onload = async e => {
+    const dataUrl = e.target.result;
+    // Mostrar imagen de inmediato
+    try { localStorage.setItem(`race_profile_${sdk}`, dataUrl); } catch(_) {}
     const wrap = document.getElementById(`rci-wrap-${sdk}`);
-    if (!wrap) return;
-    wrap.innerHTML = `<div style="position:relative">
-      <img src="${e.target.result}" style="width:100%;border-radius:8px;display:block;max-height:200px;object-fit:contain;background:rgba(0,0,0,.3)">
+    if (wrap) wrap.innerHTML = `<div style="position:relative">
+      <img src="${dataUrl}" style="width:100%;border-radius:8px;display:block;max-height:200px;object-fit:contain;background:rgba(0,0,0,.3)">
       <button onclick="event.stopPropagation();clearRaceProfileImage('${sdk}')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:26px;height:26px;color:#fff;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">✕</button>
     </div>`;
+
+    // Analizar con IA
+    const slot = document.getElementById(`rca-${sdk}`);
+    if (slot) slot.innerHTML = `<div style="padding:20px 16px;display:flex;align-items:center;gap:12px;color:#A855F7;font-size:13px;font-weight:600">
+      <i class="fas fa-spinner fa-spin" style="font-size:18px"></i> Analizando perfil del recorrido con IA...
+    </div>`;
+
+    try {
+      const API = window.API_URL;
+      const res = await fetch(`${API}/coach/analyze-race-profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
+        body: JSON.stringify({ imageBase64: dataUrl }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Error del servidor');
+      const raceData = await res.json();
+
+      // Guardar datos extraídos para el análisis
+      try { localStorage.setItem(`race_data_${sdk}`, JSON.stringify(raceData)); } catch(_) {}
+
+      // Mostrar resumen de lo extraído y lanzar análisis
+      const dk = sdk.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
+      _runRaceAnalysisWithData(sdk, raceData);
+
+    } catch(err) {
+      if (slot) slot.innerHTML = `<div style="padding:16px;color:#ef4444;font-size:12px;display:flex;gap:8px;align-items:flex-start">
+        <i class="fas fa-exclamation-triangle" style="margin-top:2px;flex-shrink:0"></i>
+        <span>${err.message || 'No se pudo analizar la imagen. Comprueba que sea un perfil de carrera legible.'}</span>
+      </div>`;
+    }
   };
   reader.readAsDataURL(file);
 }

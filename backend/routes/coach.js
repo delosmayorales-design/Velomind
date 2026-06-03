@@ -2740,4 +2740,65 @@ Objetivo del atleta: ${user.goal || 'resistencia'}`;
   }
 });
 
+// ── POST /api/coach/analyze-race-profile ─────────────────────────────────────
+// Analiza una imagen del perfil de carrera con Claude Vision y extrae los datos
+router.post('/analyze-race-profile', async (req, res) => {
+  const { imageBase64 } = req.body;
+  if (!imageBase64) return res.status(400).json({ error: 'Imagen requerida' });
+
+  const parsed = parseDataUrlImage(imageBase64);
+  if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+
+  try {
+    const prompt = `Eres un analista de ciclismo. Analiza este perfil de etapa/carrera ciclista y extrae la información en JSON.
+Devuelve ÚNICAMENTE el JSON, sin texto adicional, sin markdown, sin \`\`\`.
+
+{
+  "distance_km": número (distancia total en km, null si no visible),
+  "elevation_m": número (desnivel acumulado total en metros, null si no visible),
+  "start_location": "nombre del lugar de salida si aparece, null si no",
+  "finish_location": "nombre del lugar de llegada si aparece, null si no",
+  "climbs": [
+    {
+      "name": "nombre del puerto o repecho",
+      "km_start": número (km donde empieza la subida),
+      "length_km": número (longitud en km),
+      "elevation_m": número (desnivel en metros),
+      "avg_grade": número (pendiente media en %, null si no visible),
+      "max_elevation": número (altitud máxima en metros, null si no visible)
+    }
+  ],
+  "feed_zones_km": [lista de km donde hay puntos de avituallamiento, vacío si no hay]
+}
+
+Si un campo no es legible o no aparece en la imagen, usa null o [] según corresponda.`;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: parsed.mime, data: parsed.ok ? imageBase64.replace(/^data:[^;]+;base64,/, '') : '' } },
+          { type: 'text', text: prompt }
+        ]
+      }]
+    });
+
+    const raw = msg.content?.[0]?.text || '';
+    // Limpiar posible markdown que el modelo devuelva
+    const jsonStr = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    let data;
+    try { data = JSON.parse(jsonStr); } catch(e) {
+      console.error('[race-profile] JSON parse error:', jsonStr.slice(0, 200));
+      return res.status(422).json({ error: 'No se pudo interpretar la imagen como un perfil de carrera' });
+    }
+
+    res.json(data);
+  } catch (e) {
+    console.error('[race-profile]', e.message);
+    res.status(500).json({ error: 'Error al analizar la imagen: ' + e.message });
+  }
+});
+
 module.exports = router;
