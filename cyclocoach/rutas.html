@@ -165,6 +165,15 @@
     .bp-tip {
       font-size: 11px; color: var(--text-muted); padding: 4px 0;
     }
+    /* Móvil: el panel bikepacking ocupa bien el espacio */
+    @media (max-width: 600px) {
+      #bp-panel { padding: 14px 12px; }
+      .bp-input { font-size: 16px; } /* evitar zoom iOS */
+      .bp-day-card { padding: 12px; }
+      .bp-accom-item { flex-direction: column; align-items: flex-start; gap: 6px; }
+      .bp-accom-book { align-self: flex-start; }
+      .bp-stats-row { gap: 8px; }
+    }
     .route-item {
       padding: 10px 12px;
       border-radius: var(--radius-md);
@@ -1496,8 +1505,8 @@
             <input id="bp-start" class="bp-input" type="text" placeholder="Ej: Madrid, España" autocomplete="off">
           </div>
           <div>
-            <label class="bp-label">Destino</label>
-            <input id="bp-end" class="bp-input" type="text" placeholder="Ej: Lisboa, Portugal" autocomplete="off">
+            <label class="bp-label">Destino / Punto de vuelta</label>
+            <input id="bp-end" class="bp-input" type="text" placeholder="Ej: Segovia, España" autocomplete="off">
           </div>
           <div>
             <label class="bp-label">Tipo de bici</label>
@@ -1508,10 +1517,17 @@
             </div>
           </div>
           <div>
-            <label class="bp-label">Días para completarla: <span id="bp-days-val">5</span></label>
-            <input id="bp-days" type="range" min="1" max="30" value="5" style="width:100%;accent-color:var(--primary)"
+            <label class="bp-label">Días: <span id="bp-days-val">3</span></label>
+            <input id="bp-days" type="range" min="1" max="30" value="3" style="width:100%;accent-color:var(--primary)"
               oninput="document.getElementById('bp-days-val').textContent=this.value">
           </div>
+          <!-- Circular -->
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 0">
+            <input type="checkbox" id="bp-circular" style="width:16px;height:16px;accent-color:var(--primary)">
+            <span style="font-size:12px;color:var(--text-secondary)">
+              Ruta circular <span style="color:var(--text-muted);font-size:10px">(vuelta por distinto camino)</span>
+            </span>
+          </label>
           <button id="bp-submit" class="bp-submit" onclick="planBikepacking()">
             <i class="fas fa-route"></i> Planificar ruta
           </button>
@@ -1523,6 +1539,12 @@
             <div class="bp-stat"><div class="bp-stat-val" id="bp-r-dist">—</div><div class="bp-stat-lbl">km totales</div></div>
             <div class="bp-stat"><div class="bp-stat-val" id="bp-r-elev">—</div><div class="bp-stat-lbl">m D+</div></div>
             <div class="bp-stat"><div class="bp-stat-val" id="bp-r-days">—</div><div class="bp-stat-lbl">días</div></div>
+          </div>
+
+          <!-- Perfil de elevación -->
+          <div id="bp-elev-wrap" style="display:none;background:var(--bg-input);border-radius:10px;padding:8px 10px">
+            <div class="bp-section-title" style="margin:0 0 6px">📈 Perfil de elevación</div>
+            <canvas id="bp-elev-chart" height="80"></canvas>
           </div>
 
           <div class="bp-description" id="bp-r-desc"></div>
@@ -3154,20 +3176,21 @@ function clearBpLayers() {
 }
 
 async function planBikepacking() {
-  const start = document.getElementById('bp-start').value.trim();
-  const end   = document.getElementById('bp-end').value.trim();
-  const days  = parseInt(document.getElementById('bp-days').value) || 5;
+  const start    = document.getElementById('bp-start').value.trim();
+  const end      = document.getElementById('bp-end').value.trim();
+  const days     = parseInt(document.getElementById('bp-days').value) || 3;
+  const circular = document.getElementById('bp-circular').checked;
   if (!start || !end) { showToast('Introduce origen y destino', 'error'); return; }
 
   const btn = document.getElementById('bp-submit');
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculando ruta...';
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculando…';
 
   try {
-    const res = await Auth.apiFetch(`${API_BASE}/bikepacking/plan`, {
+    const res  = await fetch(`${API_BASE}/bikepacking/plan`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ start, end, bike_type: _bpBikeType, days }),
+      headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start, end, bike_type: _bpBikeType, days, circular }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al planificar');
@@ -3181,77 +3204,148 @@ async function planBikepacking() {
 }
 
 const BP_DAY_COLORS = ['#FF6B35','#F59E0B','#10B981','#60a5fa','#c084fc','#f43f5e','#14b8a6'];
+let _bpElevChart = null;
 
 function renderBikepackingResult(data) {
   clearBpLayers();
 
-  // Ruta completa en el mapa (tenue)
-  if (data.geojson?.coordinates?.length) {
-    const lls = data.geojson.coordinates.map(c => [c[1], c[0]]);
-    _bpRouteLayer = L.polyline(lls, { color: '#94a3b8', weight: 3, opacity: 0.5, dashArray: '6 4' }).addTo(map);
-    map.fitBounds(_bpRouteLayer.getBounds(), { padding: [40,40] });
+  // ── Mapa: ruta completa de fondo ──────────────────────────────
+  const allCoords = data.geojson?.coordinates || [];
+  if (allCoords.length >= 2) {
+    const lls = allCoords.map(c => [c[1], c[0]]);
+    _bpRouteLayer = L.polyline(lls, { color:'#475569', weight:3, opacity:0.45, dashArray:'6 4' }).addTo(map);
+    map.fitBounds(_bpRouteLayer.getBounds(), { padding:[40,40] });
   }
 
-  // Stats
+  // ── Stats ─────────────────────────────────────────────────────
   document.getElementById('bp-r-dist').textContent = data.total_distance_km ?? '—';
-  document.getElementById('bp-r-elev').textContent = data.total_elevation_m ?? '—';
+  document.getElementById('bp-r-elev').textContent = data.total_elevation_m ? data.total_elevation_m.toLocaleString('es-ES') : '—';
   document.getElementById('bp-r-days').textContent = data.days ?? '—';
   document.getElementById('bp-r-desc').textContent = data.description || '';
 
-  // Plan por días
+  // ── Perfil de elevación ───────────────────────────────────────
+  const elevWrap = document.getElementById('bp-elev-wrap');
+  const hasAlt   = allCoords.some(c => c[2]);
+  if (hasAlt) {
+    elevWrap.style.display = '';
+    const step    = Math.max(1, Math.floor(allCoords.length / 200));
+    const elevPts = allCoords.filter((_,i) => i % step === 0).map(c => c[2] || 0);
+    if (_bpElevChart) { _bpElevChart.destroy(); _bpElevChart = null; }
+    const ctx = document.getElementById('bp-elev-chart').getContext('2d');
+    _bpElevChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: elevPts.map(() => ''),
+        datasets: [{
+          data: elevPts,
+          fill: true,
+          borderColor: 'var(--primary)',
+          backgroundColor: 'rgba(255,107,53,0.15)',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3,
+        }],
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          callbacks: { label: ctx => `${Math.round(ctx.parsed.y)} m` },
+        }},
+        scales: {
+          x: { display: false },
+          y: { ticks: { color:'#94a3b8', font:{size:9}, maxTicksLimit:4 }, grid:{ color:'rgba(255,255,255,.05)' } },
+        },
+      },
+    });
+  } else {
+    elevWrap.style.display = 'none';
+  }
+
+  // ── Plan por días ─────────────────────────────────────────────
   const daysList = document.getElementById('bp-r-days-list');
   daysList.innerHTML = '';
   (data.day_plans || []).forEach((d, i) => {
-    const color = BP_DAY_COLORS[i % BP_DAY_COLORS.length];
-    // Dibujar segmento del día en el mapa
+    const color    = BP_DAY_COLORS[i % BP_DAY_COLORS.length];
+    const isLast   = i === (data.day_plans.length - 1);
+
+    // Tramo del día en el mapa
     if (d.geojson?.coordinates?.length >= 2) {
-      const lls = d.geojson.coordinates.map(c => [c[1], c[0]]);
-      const layer = L.polyline(lls, { color, weight: 4, opacity: 0.9 }).addTo(map);
+      const lls   = d.geojson.coordinates.map(c => [c[1], c[0]]);
+      const layer = L.polyline(lls, { color, weight:4, opacity:0.9 }).addTo(map);
       _bpDayLayers.push(layer);
-      // Marker de parada nocturna
-      if (i < data.day_plans.length - 1) {
-        const stopLL = [d.overnight_stop.lat, d.overnight_stop.lng];
-        const moonIcon = L.divIcon({ className: '', html: `<div style="background:#1e293b;border:2px solid ${color};border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.4)">🌙</div>`, iconAnchor:[11,11] });
-        _bpDayLayers.push(L.marker(stopLL, { icon: moonIcon }).addTo(map));
-      }
     }
 
+    // Marcador de parada nocturna
+    if (!isLast && d.overnight_stop) {
+      const stopLL = [d.overnight_stop.lat, d.overnight_stop.lng];
+      const adjNote = d.stop_adjusted && d.adjusted_town ? ` (${d.adjusted_town})` : '';
+      const moonHtml = `<div style="background:#0f172a;border:2.5px solid ${color};border-radius:50%;
+        width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+        font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.5)" title="Parada día ${d.day}${adjNote}">🌙</div>`;
+      _bpDayLayers.push(L.marker(stopLL, {
+        icon: L.divIcon({ className:'', html: moonHtml, iconAnchor:[12,12] })
+      }).addTo(map));
+    }
+
+    // Aviso de parada ajustada
+    const adjBanner = d.stop_adjusted && d.adjusted_town
+      ? `<div style="font-size:10px;color:#F59E0B;margin-bottom:6px;display:flex;align-items:center;gap:5px">
+           <i class="fas fa-info-circle"></i> No había alojamiento en la parada calculada. Se encontró en <strong>${escHtml(d.adjusted_town)}</strong>.
+         </div>`
+      : '';
+
+    // Lista de alojamientos
     const accomHTML = d.accommodations?.length
       ? d.accommodations.map(a => `
-        <div class="bp-accom-item">
-          <div>
-            <div class="bp-accom-name">${escHtml(a.name)}</div>
-            <div class="bp-accom-type">${a.type} ${a.stars}</div>
-          </div>
-          <a href="${a.booking_url}" target="_blank" rel="noopener" class="bp-accom-book">Booking →</a>
-        </div>`).join('')
-      : '<div style="font-size:11px;color:var(--text-muted);padding:4px 0">Sin alojamientos encontrados en OSM cerca de esta parada</div>';
+          <div class="bp-accom-item">
+            <div style="flex:1;min-width:0">
+              <div class="bp-accom-name" style="white-space:normal">${escHtml(a.name)}</div>
+              <div class="bp-accom-type">${a.type}${a.stars ? ' · ' + a.stars : ''}</div>
+            </div>
+            <a href="${a.booking_url}" target="_blank" rel="noopener" class="bp-accom-book">
+              <i class="fas fa-external-link-alt" style="font-size:9px"></i> Booking
+            </a>
+          </div>`).join('')
+      : `<div style="font-size:11px;color:var(--text-muted);padding:6px 0;text-align:center">
+           <i class="fas fa-map-marker-alt" style="margin-right:4px"></i>
+           Sin alojamiento en OSM · <a href="https://www.booking.com/searchresults.html?latitude=${d.overnight_stop?.lat}&longitude=${d.overnight_stop?.lng}&group_adults=1" target="_blank" style="color:var(--primary);text-decoration:none">Buscar en Booking →</a>
+         </div>`;
 
     const card = document.createElement('div');
     card.className = 'bp-day-card';
+    card.dataset.dayIdx = i;
     card.innerHTML = `
-      <div class="bp-day-head" onclick="this.parentElement.classList.toggle('active');highlightBpDay(${i})">
-        <span class="bp-day-num" style="color:${color}">Día ${d.day}</span>
-        <span class="bp-day-meta">${d.distance_km} km · ${d.elevation_m} m D+</span>
+      <div class="bp-day-head" onclick="toggleBpDay(this.parentElement,${i})">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>
+          <span class="bp-day-num" style="color:${color}">Día ${d.day}</span>
+          ${data.circular && i === Math.floor((data.day_plans.length)/2) ? '<span style="font-size:9px;background:rgba(96,165,250,.15);color:#60a5fa;padding:1px 5px;border-radius:8px;font-weight:700">↩ Vuelta</span>' : ''}
+        </div>
+        <span class="bp-day-meta">${d.distance_km} km · ${d.elevation_m ? d.elevation_m + ' m D+' : '—'}</span>
       </div>
-      ${i < data.day_plans.length - 1 ? `
+      ${!isLast ? `
       <div class="bp-accom-list">
-        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🌙 Alojamiento</div>
+        ${adjBanner}
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">🌙 Dónde dormir</div>
         ${accomHTML}
       </div>` : ''}`;
     daysList.appendChild(card);
   });
 
-  // Highlights
-  const hiDiv = document.getElementById('bp-r-highlights');
+  // ── Highlights ────────────────────────────────────────────────
+  const hiDiv   = document.getElementById('bp-r-highlights');
   const hiTitle = document.getElementById('bp-hi-title');
   if (data.highlights?.length) {
     hiTitle.style.display = '';
-    hiDiv.innerHTML = data.highlights.map(h => `<div class="bp-highlight-item"><span style="color:var(--primary);flex-shrink:0">📍</span><span>${escHtml(h)}</span></div>`).join('');
+    hiDiv.innerHTML = data.highlights.map(h =>
+      `<div class="bp-highlight-item"><span style="color:var(--primary);flex-shrink:0;font-size:13px">📍</span><span>${escHtml(h)}</span></div>`
+    ).join('');
   } else { hiTitle.style.display = 'none'; hiDiv.innerHTML = ''; }
 
-  // Tips
-  const tipsDiv = document.getElementById('bp-r-tips');
+  // ── Tips ──────────────────────────────────────────────────────
+  const tipsDiv   = document.getElementById('bp-r-tips');
   const tipsTitle = document.getElementById('bp-tips-title');
   if (data.tips?.length) {
     tipsTitle.style.display = '';
@@ -3262,17 +3356,28 @@ function renderBikepackingResult(data) {
   document.getElementById('bp-result').classList.add('visible');
 }
 
+function toggleBpDay(card, idx) {
+  const wasActive = card.classList.contains('active');
+  document.querySelectorAll('.bp-day-card.active').forEach(c => c.classList.remove('active'));
+  if (!wasActive) {
+    card.classList.add('active');
+    highlightBpDay(idx);
+  }
+}
+
 function highlightBpDay(dayIdx) {
   _bpDayLayers.forEach((l, i) => {
     if (l instanceof L.Polyline) {
-      l.setStyle({ opacity: i === dayIdx ? 1 : 0.35, weight: i === dayIdx ? 6 : 3 });
-      if (i === dayIdx) { l.bringToFront(); map.fitBounds(l.getBounds(), { padding:[40,40] }); }
+      const active = i === dayIdx;
+      l.setStyle({ opacity: active ? 1 : 0.3, weight: active ? 6 : 3 });
+      if (active) { l.bringToFront(); map.fitBounds(l.getBounds(), { padding:[50,50] }); }
     }
   });
 }
 
 function resetBikepacking() {
   clearBpLayers();
+  if (_bpElevChart) { _bpElevChart.destroy(); _bpElevChart = null; }
   document.getElementById('bp-form').style.display = '';
   document.getElementById('bp-result').classList.remove('visible');
 }
