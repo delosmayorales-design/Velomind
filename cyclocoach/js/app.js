@@ -840,7 +840,7 @@ const TrainingPlanGenerator = {
       // Endurance y long: IF máx 0.68 para mantener estabilidad aeróbica y baja fatiga
       const isAerobic = ['endurance', 'long'].includes(t.type);
       const cappedIF = isAerobic ? Math.min(0.68, rawIF) : rawIF;
-      const ifTarget = isQuality ? Math.min(1.05, Math.round(cappedIF * intensityBoost * 100) / 100) : cappedIF;
+      let ifTarget = isQuality ? Math.min(1.05, Math.round(cappedIF * intensityBoost * 100) / 100) : cappedIF;
 
       // Cap de TSS por sesión ANTES del cálculo de duración.
       // Evita que la normalización de días_semana concentre TSS absurdos en una sola sesión.
