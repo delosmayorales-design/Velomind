@@ -2924,9 +2924,14 @@ router.post('/race-day', async (req, res) => {
   const wkg = (ftp && weight) ? (ftp / weight).toFixed(2) : 'N/D';
   const vo2max_est = (ftp && weight) ? Math.round((ftp / weight) * 10.8 + 7) : null;
 
-  const prompt = `Eres un entrenador de ciclismo World Tour especializado en estrategia de competición.
+  const parsed = imageBase64 ? parseDataUrlImage(imageBase64) : null;
+  const b64    = parsed?.ok ? imageBase64.replace(/^data:[^;]+;base64,/, '') : null;
+  const hasImg = !!parsed?.ok;
 
-${imageBase64 ? 'Analiza el perfil de carrera de la imagen adjunta y' : 'Basándote en los datos del ciclista,'} genera un plan de carrera completamente personalizado.
+  // Prompt para modelos con visión (Gemini, OpenAI, Anthropic) — menciona la imagen
+  const promptVision = `Eres un entrenador de ciclismo World Tour especializado en estrategia de competición.
+
+Analiza el perfil de carrera de la imagen adjunta y genera un plan de carrera completamente personalizado.
 
 DATOS DEL CICLISTA:
 * FTP: ${ftp}W
@@ -2941,20 +2946,20 @@ ${lthr ? `* LTHR: ${lthr} bpm` : ''}${max_hr ? `\n* FC máxima: ${max_hr} bpm` :
 
 INSTRUCCIONES:
 
-${imageBase64 ? `1. Extrae del perfil de carrera:
+1. Extrae del perfil de carrera:
    - Distancia total (km)
    - Desnivel acumulado (m)
    - Nombres y características de cada puerto (km inicio, longitud, desnivel, pendiente media)
    - Ubicación de avituallamientos si aparecen
    - Dónde se ganará realmente la carrera
 
-2. ` : '1. '}Adapta la estrategia al estado actual:
+2. Adapta la estrategia al estado actual:
    - TSB ${tsb >= 0 ? '+' : ''}${tsb}: ${tsb >= 15 ? 'pico de forma → estrategia agresiva' : tsb >= 0 ? 'buena forma → estrategia equilibrada' : tsb >= -10 ? 'cierta fatiga → estrategia conservadora' : 'fatiga significativa → estrategia muy conservadora'}
    - CTL ${ctl}: ${ctl >= 80 ? 'alta resistencia acumulada' : ctl >= 60 ? 'buena base aeróbica' : 'base aeróbica moderada'}
 
-${imageBase64 ? '3.' : '2.'} Para cada puerto identificado: nombre, km, duración estimada, potencia objetivo (W y %FTP), límite máximo, qué hacer si se supera.
+3. Para cada puerto: nombre, km, duración estimada, potencia objetivo (W y %FTP), límite máximo, qué hacer si se supera.
 
-${imageBase64 ? '4.' : '3.'} Plan por fases:
+4. Plan por fases:
 
 ## FASE 1 — SALIDA
 Vatios recomendados, %FTP, errores a evitar.
@@ -2968,31 +2973,70 @@ Cuándo seguir ataques, cuándo dejar marchar.
 ## FASE 4 — FINAL
 Estrategia para los últimos kilómetros.
 
-${imageBase64 ? '5.' : '4.'} Tabla resumen (markdown):
+5. Tabla resumen (markdown):
 | Sector | Km | Potencia objetivo | %FTP | Riesgo |
 
-${imageBase64 ? '6.' : '5.'} Métricas:
-- NP objetivo, IF objetivo, TSS estimado
-- Carbohidratos por hora (g/h) y geles necesarios
+6. Métricas: NP objetivo, IF objetivo, TSS estimado, carbohidratos/hora (g/h), geles necesarios.
 
-IMPORTANTE: Usa los datos reales del ciclista (FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}) para vatios concretos. Habla como un entrenador profesional.
+IMPORTANTE: Usa los datos reales del ciclista (FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}) para vatios concretos.
 Usa ## para secciones, - para listas y tablas markdown.`;
 
-  const parsed = imageBase64 ? parseDataUrlImage(imageBase64) : null;
-  const b64 = imageBase64 ? imageBase64.replace(/^data:[^;]+;base64,/, '') : null;
+  // Prompt para modelos sin visión (Groq) — no menciona imagen, usa solo datos del ciclista
+  const promptTextOnly = `Eres un entrenador de ciclismo World Tour especializado en estrategia de competición.
+
+Genera un plan de carrera completamente personalizado basándote en los datos del ciclista.
+
+DATOS DEL CICLISTA:
+* FTP: ${ftp}W
+* Peso: ${weight} kg
+* W/kg: ${wkg} W/kg
+* CTL (fitness crónico): ${ctl}
+* ATL (fatiga aguda): ${atl}
+* Forma (TSB): ${tsb >= 0 ? '+' : ''}${tsb}
+* Potencia crítica: ${ftp}W
+* VO2max estimado: ${vo2max_est ? vo2max_est + ' ml/kg/min' : 'N/D'}
+${lthr ? `* LTHR: ${lthr} bpm` : ''}${max_hr ? `\n* FC máxima: ${max_hr} bpm` : ''}
+
+INSTRUCCIONES:
+
+1. Adapta la estrategia al estado actual del ciclista:
+   - TSB ${tsb >= 0 ? '+' : ''}${tsb}: ${tsb >= 15 ? 'pico de forma → estrategia agresiva' : tsb >= 0 ? 'buena forma → estrategia equilibrada' : tsb >= -10 ? 'cierta fatiga → estrategia conservadora' : 'fatiga significativa → estrategia muy conservadora'}
+   - CTL ${ctl}: ${ctl >= 80 ? 'alta resistencia acumulada' : ctl >= 60 ? 'buena base aeróbica' : 'base aeróbica moderada'}
+
+2. Plan por fases con vatios concretos:
+
+## FASE 1 — SALIDA
+Vatios recomendados, %FTP, errores a evitar.
+
+## FASE 2 — PRIMERA MITAD
+Gestión de energía, cuándo comer y beber.
+
+## FASE 3 — MOMENTOS CLAVE
+Cuándo seguir ataques, cuándo dejar marchar.
+
+## FASE 4 — FINAL
+Estrategia para los últimos kilómetros.
+
+3. Tabla resumen (markdown):
+| Sector | Km | Potencia objetivo | %FTP | Riesgo |
+
+4. Métricas: NP objetivo, IF objetivo, TSS estimado, carbohidratos/hora (g/h), geles necesarios.
+
+IMPORTANTE: Usa los datos reales del ciclista (FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}) para vatios concretos. No inventes datos de recorrido.
+Usa ## para secciones, - para listas y tablas markdown.`;
 
   const makeGeminiBody = () => {
-    const parts = [{ text: prompt }];
-    if (parsed?.ok) parts.push({ inlineData: { mimeType: parsed.mime, data: b64 } });
+    const parts = [{ text: promptVision }];
+    if (hasImg) parts.push({ inlineData: { mimeType: parsed.mime, data: b64 } });
     return { contents: [{ role: 'user', parts }], generationConfig: { temperature: 0.3, maxOutputTokens: 2048 } };
   };
 
   try {
     let strategyText = null;
 
-    // ── 1. Google Gemini (con o sin imagen) ──
+    // ── 1. Google Gemini (con o sin imagen) — 1.5-flash primero: más fiable en tier gratuito
     if (!strategyText && hasGoogle) {
-      const geminiModels = [...new Set([(process.env.GEMINI_MODEL||'').trim(),'gemini-2.5-flash','gemini-2.0-flash','gemini-1.5-flash','gemini-1.5-pro'])].filter(Boolean);
+      const geminiModels = [...new Set([(process.env.GEMINI_MODEL||'').trim(),'gemini-1.5-flash','gemini-2.0-flash','gemini-2.5-flash','gemini-1.5-pro'])].filter(Boolean);
       for (const model of geminiModels) {
         try {
           const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -3021,7 +3065,7 @@ Usa ## para secciones, - para listas y tablas markdown.`;
           const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
-            body: JSON.stringify({ model, max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content: prompt }] }),
+            body: JSON.stringify({ model, max_tokens: 2048, temperature: 0.3, messages: [{ role: 'user', content: promptTextOnly }] }),
           });
           if (resp.ok) {
             const d = await resp.json();
@@ -3039,9 +3083,9 @@ Usa ## para secciones, - para listas y tablas markdown.`;
 
     // ── 3. OpenAI (con o sin imagen) ──
     if (!strategyText && hasOpenAI) {
-      const content = (parsed?.ok)
-        ? [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: imageBase64, detail: 'high' } }]
-        : prompt;
+      const content = hasImg
+        ? [{ type: 'text', text: promptVision }, { type: 'image_url', image_url: { url: imageBase64, detail: 'high' } }]
+        : promptTextOnly;
       try {
         const resp = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
@@ -3062,9 +3106,9 @@ Usa ## para secciones, - para listas y tablas markdown.`;
     // ── 4. Anthropic Claude (con o sin imagen) ──
     if (!strategyText && hasAnthropic) {
       const aiClient = new Anthropic({ apiKey: anthropicKey });
-      const msgContent = (parsed?.ok)
-        ? [{ type: 'image', source: { type: 'base64', media_type: parsed.mime, data: b64 } }, { type: 'text', text: prompt }]
-        : prompt;
+      const msgContent = hasImg
+        ? [{ type: 'image', source: { type: 'base64', media_type: parsed.mime, data: b64 } }, { type: 'text', text: promptVision }]
+        : promptTextOnly;
       for (const model of [(process.env.ANTHROPIC_MODEL||'').trim(),'claude-3-5-sonnet-20241022','claude-3-haiku-20240307'].filter(Boolean)) {
         try {
           const msg = await aiClient.messages.create({ model, max_tokens: 2048, messages: [{ role: 'user', content: msgContent }] });
