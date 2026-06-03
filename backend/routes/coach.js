@@ -1592,6 +1592,16 @@ router.post('/today-adaptation', async (req, res) => {
 
     const contexto = estadoUsuario.contexto_libre || '';
 
+    // Pre-calcular duración desde km para salidas libres/grupeta
+    // Así la IA recibe el número ya calculado y no tiene que hacer matemáticas
+    const kmMatch = contexto.match(/(\d+(?:[.,]\d+)?)\s*km/i);
+    const contextoFinal = kmMatch
+      ? contexto.replace(
+          kmMatch[0],
+          `${kmMatch[0]} (≈ ${Math.round(parseFloat(kmMatch[1].replace(',', '.')) / 28 * 60)} min)`
+        )
+      : contexto;
+
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const recentActs = (acts || []).filter(a => a.date >= sevenDaysAgo);
@@ -1673,7 +1683,7 @@ Sesión de MAÑANA:
 CTL ${Math.round(latestPMC.ctl)} / ATL ${Math.round(latestPMC.atl)} / TSB ${Math.round(latestPMC.tsb)}.
 Sesión planificada para ${diaRef}: tipo="${tipoSesion}", ${sesionOriginal?.durationMin || 0} min, TSS=${tssOrig}, IF=${sesionOriginal?.ifTarget || 0}.
 ${proximaBlock}${perdidaBlock}
-Input del atleta: "${contexto || 'no especificado'}".
+Input del atleta: "${contextoFinal || 'no especificado'}".
 Carga últimos 7 días: ${recentHours.toFixed(1)}h, ${recentTSS} TSS.
 HISTORIAL RECIENTE:
 - Ayer: ${actsCompact[0] ? `TSS ${actsCompact[0].tss}, NP ${actsCompact[0].np}, Tipo ${actsCompact[0].tipo}` : 'descanso (sin actividad registrada)'}
@@ -1707,7 +1717,7 @@ APLICA LA PRIMERA REGLA QUE COINCIDA CON EL INPUT:
 
 🚴 SALIDA LIBRE ("grupeta", "ruta larga", "salida libre", "carrera"):
    → Ignora intervalos. Consejos tácticos para esa salida según TSB=${Math.round(latestPMC.tsb)}. recomendacion:"adaptado".
-   → Si el atleta menciona distancia en km, calcula la duración en minutos así: duracion_min = km / 28 × 60 (velocidad media grupeta ~28 km/h). Ejemplos: 90 km → 193 min ≈ 195 min. 60 km → 129 min ≈ 130 min. NUNCA uses km directamente como minutos (90 km NO son 90 min NI 900 min).
+   → La duración ya viene calculada en el input entre paréntesis (ej: "90 km (≈ 195 min)"). Usa ese valor de minutos directamente como duracion_min.
 
 ⚙️ ESPECIFICIDAD ("quiero hacer Z3", "quiero series de umbral", "prefiero rodillo"):
    → Diseña exactamente ese tipo. Respeta FTP=${ftp}W.
