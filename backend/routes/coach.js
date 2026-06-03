@@ -1592,6 +1592,11 @@ router.post('/today-adaptation', async (req, res) => {
 
     const contexto = estadoUsuario.contexto_libre || '';
 
+    // Sanitizar durationMin de la sesión original — si es > 600 min es un bug previo de conversión
+    if (sesionOriginal && sesionOriginal.durationMin > 600) {
+      sesionOriginal.durationMin = null;
+    }
+
     // Pre-calcular duración desde km para salidas libres/grupeta
     // Así la IA recibe el número ya calculado y no tiene que hacer matemáticas
     const kmMatch = contexto.match(/(\d+(?:[.,]\d+)?)\s*km/i);
@@ -1717,7 +1722,7 @@ APLICA LA PRIMERA REGLA QUE COINCIDA CON EL INPUT:
 
 🚴 SALIDA LIBRE ("grupeta", "ruta larga", "salida libre", "carrera"):
    → Ignora intervalos. Consejos tácticos para esa salida según TSB=${Math.round(latestPMC.tsb)}. recomendacion:"adaptado".
-   → La duración ya viene calculada en el input entre paréntesis (ej: "90 km (≈ 195 min)"). Usa ese valor de minutos directamente como duracion_min.
+   → DURACIÓN OBLIGATORIA: El input ya contiene la duración calculada entre paréntesis "≈ X min". Usa ESE valor como duracion_min. IGNORA completamente la duración de la sesión planificada (que puede ser incorrecta). Ejemplo: input "90 km (≈ 195 min)" → duracion_min: 195. NUNCA uses ${sesionOriginal?.durationMin || 0} min para salidas libres.
 
 ⚙️ ESPECIFICIDAD ("quiero hacer Z3", "quiero series de umbral", "prefiero rodillo"):
    → Diseña exactamente ese tipo. Respeta FTP=${ftp}W.
