@@ -108,6 +108,7 @@
         <option value="90">90 días</option>
         <option value="180">6 meses</option>
         <option value="365">1 año</option>
+        <option value="ytd">Este año (1 ene - hoy)</option>
         <option value="9999">Todo</option>
       </select>
     </div>
@@ -634,12 +635,33 @@ function calculatePMC(activities) {
   return PMC.compute(activities, 99999);
 }
 
+function getPeriodConfig() {
+  const raw = (document.getElementById('period')?.value || '30').toString().trim();
+  const now = new Date();
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  if (raw === 'ytd') {
+    const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+    return { value: raw, mode: 'ytd', label: 'Este año (1 ene - hoy)', start, end, days: null };
+  }
+
+  if (raw === '9999') {
+    return { value: raw, mode: 'all', label: 'Todo', start: new Date(0), end, days: 9999 };
+  }
+
+  const days = parseInt(raw, 10) || 30;
+  const start = new Date(end.getTime() - days * 86400000);
+  start.setHours(0, 0, 0, 0);
+
+  return { value: raw, mode: 'days', label: days === 365 ? 'Últimos 1 año' : `Últimos ${days} días`, start, end, days };
+}
+
 function getFiltered() {
-  const days = parseInt(document.getElementById('period').value);
-  const cutoff = new Date(Date.now() - days * 86400000);
+  const period = getPeriodConfig();
   return (state.activities || []).filter(a => {
     const d = new Date(a.date + 'T00:00:00');
-    return !isNaN(d.getTime()) && d >= cutoff;
+    return !isNaN(d.getTime()) && d >= period.start && d <= period.end;
   });
 }
 
@@ -768,6 +790,7 @@ function renderWeekStrip(allActs) {
 
 // ─── RENDER ───────────────────────────────────────────────────
 function render() {
+  const period = getPeriodConfig();
   const acts = getFiltered();
   const profileFtp = Number(
     (state.athlete && state.athlete.ftp) ||
@@ -775,7 +798,7 @@ function render() {
     0
   );
   const ftp = profileFtp > 0 ? profileFtp : 250;
-  const days = document.getElementById('period').value;
+  const days = period.value;
 
   // Toggle Empty State vs Content
   const hasData = state.activities.length > 0;
@@ -791,7 +814,7 @@ function render() {
   // PMC metric cards — los valores son siempre HOY (acumulado),
   // el delta refleja el cambio en el período seleccionado
   if (state.pmc.length) {
-    var daysNum = parseInt(days) || 90;
+    var daysNum = (period.mode === 'ytd' ? 365 : parseInt(days, 10)) || 90;
     var last = state.pmc[state.pmc.length - 1];
     var prevIdx = state.pmc.length > daysNum ? state.pmc.length - 1 - daysNum : 0;
     var prevPeriod = state.pmc[prevIdx];
@@ -837,21 +860,21 @@ function render() {
   }
 
   try { renderWeekStrip(state.activities); } catch(e) { console.error('Error renderWeekStrip', e); }
-  try { renderPMCChart(days); } catch(e) { console.error('Error renderPMCChart', e); }
+  try { renderPMCChart(period); } catch(e) { console.error('Error renderPMCChart', e); }
   try { renderTSSChart(acts); } catch(e) { console.error('Error renderTSSChart', e); }
   try { renderZonesChart(acts, ftp); } catch(e) { console.error('Error renderZonesChart', e); }
   try { renderPowerChart(acts); } catch(e) { console.error('Error renderPowerChart', e); }
   try { renderKJChart(acts); } catch(e) { console.error('Error renderKJChart', e); }
-  try { renderVolumeStats(acts, days); } catch(e) { console.error('Error renderVolumeStats', e); }
+  try { renderVolumeStats(acts, period); } catch(e) { console.error('Error renderVolumeStats', e); }
   try { renderBestEfforts(acts, ftp); } catch(e) { console.error('Error renderBestEfforts', e); }
-  try { loadPowerCurve(days); } catch(e) { console.error('Error loadPowerCurve', e); }
+  try { loadPowerCurve(period.value); } catch(e) { console.error('Error loadPowerCurve', e); }
   try { renderRiderProfile(state.activities, state.athlete || AppState?.athlete || {}, null); } catch(e) { console.error('Error renderRiderProfile', e); }
 }
 
 // ─── PMC CHART ────────────────────────────────────────────────
-function renderPMCChart(days) {
-  var cutoff = days > 9000 ? new Date(0) : new Date(Date.now() - days * 86400000);
-  var filtered = state.pmc.filter(function(p) { return new Date(p.date) >= cutoff; });
+function renderPMCChart(period) {
+  var cutoff = period.mode === 'all' ? new Date(0) : period.start;
+  var filtered = state.pmc.filter(function(p) { return new Date(p.date) >= cutoff && new Date(p.date) <= period.end; });
   if (charts.pmc) charts.pmc.destroy();
   if (!filtered.length) {
     showChartEmptyState('pmc-canvas', 'No hay suficientes datos de carga en este período');
@@ -1369,8 +1392,8 @@ function renderKJChart(acts) {
 }
 
 // ─── VOLUME STATS ─────────────────────────────────────────────
-function renderVolumeStats(acts, days) {
-  document.getElementById('period-label').textContent = 'Últimos ' + days + ' días';
+function renderVolumeStats(acts, period) {
+  document.getElementById('period-label').textContent = period.label || 'Periodo';
   if (!acts.length) {
     document.getElementById('volume-stats').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">Sin actividades en el período</div>';
     return;

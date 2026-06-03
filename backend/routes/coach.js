@@ -206,7 +206,7 @@ router.get('/power-curve', async (req, res) => {
   const ftp    = user?.ftp    || 200;
   const weight = user?.weight || 70;
 
-  const days = parseInt(req.query.days) || 0; // 0 = sin filtro (all-time)
+  const daysParam = String(req.query.days || '').trim().toLowerCase();
   let query = supabase.from('activities')
     .select('np, avg_power, max_power, duration, date, best_efforts')
     .eq('user_id', req.user.id)
@@ -214,10 +214,18 @@ router.get('/power-curve', async (req, res) => {
     .order('date', { ascending: false })
     .limit(500);
 
-  if (days > 0) {
+  if (daysParam === 'ytd') {
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
+    cutoff.setMonth(0, 1);
+    cutoff.setHours(0, 0, 0, 0);
     query = query.gte('date', cutoff.toISOString().split('T')[0]);
+  } else {
+    const days = parseInt(daysParam, 10) || 0; // 0 = sin filtro (all-time)
+    if (days > 0) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      query = query.gte('date', cutoff.toISOString().split('T')[0]);
+    }
   }
 
   const { data: acts, error: actsError } = await query;
