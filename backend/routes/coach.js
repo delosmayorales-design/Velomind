@@ -2900,4 +2900,207 @@ Si un campo no es legible, usa null o [].`;
   }
 });
 
+// ── POST /api/coach/race-strategy ─────────────────────────────────────────────
+// Genera un plan de carrera personalizado con IA usando los datos reales del ciclista
+router.post('/race-strategy', async (req, res) => {
+  const { athleteData, raceProfile } = req.body;
+  if (!athleteData || !athleteData.ftp) {
+    return res.status(400).json({ error: 'Datos del atleta requeridos (ftp)' });
+  }
+
+  const openaiKey    = process.env.OPENAI_API_KEY    || '';
+  const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
+  const googleKey    = process.env.GOOGLE_API_KEY    || '';
+  const openAiModel  = (process.env.OPENAI_MODEL || 'gpt-4o').trim();
+  const hasOpenAI    = openaiKey.length > 20;
+  const hasAnthropic = anthropicKey.startsWith('sk-ant-');
+  const hasGoogle    = googleKey.startsWith('AIzaSy');
+
+  if (!hasOpenAI && !hasAnthropic && !hasGoogle) {
+    return res.status(503).json({ error: 'Servicio de IA no disponible' });
+  }
+
+  const { ftp, weight, ctl, atl, tsb, lthr, max_hr } = athleteData;
+  const wkg = (ftp && weight) ? (ftp / weight).toFixed(2) : 'N/D';
+  const vo2max_est = (ftp && weight) ? Math.round((ftp / weight) * 10.8 + 7) : null;
+
+  const climbsText = (raceProfile?.climbs?.length > 0)
+    ? raceProfile.climbs.map((c, i) => {
+        const parts = [c.name || `Puerto ${i + 1}`, `km ${c.km_start}`];
+        if (c.length_km)   parts.push(`${c.length_km} km`);
+        if (c.elevation_m) parts.push(`+${c.elevation_m}m`);
+        if (c.avg_grade)   parts.push(`${c.avg_grade}% pendiente media`);
+        return `  - ${parts.join(' · ')}`;
+      }).join('\n')
+    : '  - No identificados en el perfil';
+
+  const feedText = raceProfile?.feed_zones_km?.length
+    ? `* Avituallamientos en km: ${raceProfile.feed_zones_km.join(', ')}`
+    : '';
+
+  const prompt = `Eres un entrenador de ciclismo World Tour especializado en estrategia de competición.
+
+Tu tarea es analizar el perfil de la carrera y generar un plan de carrera completamente personalizado utilizando TODOS los datos del ciclista disponibles.
+
+DATOS DEL CICLISTA:
+* FTP: ${ftp}W
+* Peso: ${weight} kg
+* W/kg: ${wkg} W/kg
+* CTL (fitness crónico): ${ctl}
+* ATL (fatiga aguda): ${atl}
+* Forma (TSB): ${tsb >= 0 ? '+' : ''}${tsb}
+* Potencia crítica: ${ftp}W
+* VO2max estimado: ${vo2max_est ? vo2max_est + ' ml/kg/min' : 'N/D'}
+${lthr ? `* Umbral de FC (LTHR): ${lthr} bpm` : ''}
+${max_hr ? `* FC máxima: ${max_hr} bpm` : ''}
+
+DATOS DE LA ETAPA:
+* Distancia total: ${raceProfile?.distance_km ? raceProfile.distance_km + ' km' : 'N/D'}
+* Desnivel acumulado: ${raceProfile?.elevation_m ? '+' + raceProfile.elevation_m + 'm' : 'N/D'}
+* Salida: ${raceProfile?.start_location || 'N/D'}
+* Llegada: ${raceProfile?.finish_location || 'N/D'}
+* Puertos identificados:
+${climbsText}
+${feedText}
+
+INSTRUCCIONES:
+
+1. Analiza el perfil completo de la carrera como lo haría un director deportivo profesional. Determina:
+   - Dónde se ganará realmente la carrera
+   - Qué puertos son decisivos y cuáles son de transición
+   - Qué sectores son de recuperación
+   - Dónde conviene ahorrar energía
+   - Dónde es probable que se produzcan ataques
+
+2. Adapta completamente la estrategia al estado actual del ciclista:
+   - TSB ${tsb >= 0 ? '+' : ''}${tsb}: ${tsb >= 15 ? 'pico de forma, permite estrategia agresiva' : tsb >= 0 ? 'buena forma, estrategia equilibrada' : tsb >= -10 ? 'cierta fatiga, estrategia conservadora' : 'fatiga significativa, estrategia muy conservadora'}
+   - CTL ${ctl}: ${ctl >= 80 ? 'alta resistencia acumulada' : ctl >= 60 ? 'buena base aeróbica' : 'base aeróbica moderada'}
+   - ATL ${atl}: ${atl > ctl + 10 ? 'carga aguda alta, vigilar sobresfuerzo' : 'carga aguda controlada'}
+
+3. Para CADA puerto identificado proporciona:
+   - Nombre y kilómetro de inicio
+   - Duración estimada (en minutos)
+   - Potencia objetivo en W y en %FTP
+   - Límite máximo permitido en W
+   - Qué hacer si el esfuerzo supera lo esperado
+
+4. Plan por fases:
+
+## FASE 1 — SALIDA
+Vatios recomendados, %FTP, errores a evitar en los primeros kilómetros.
+
+## FASE 2 — PRIMERA MITAD
+Gestión de energía, cuándo comer, cuándo beber, ritmo de pedaleo.
+
+## FASE 3 — MOMENTOS CLAVE
+Sectores donde seguir ataques, sectores donde dejar marchar, cómo leer la carrera.
+
+## FASE 4 — FINAL
+Estrategia para los últimos kilómetros, cuándo gastar las últimas reservas.
+
+5. Tabla resumen de sectores (usa formato markdown):
+| Sector | Km | Potencia objetivo | %FTP | Riesgo |
+Incluye al menos un tramo por cada fase y cada puerto.
+
+6. Métricas objetivo:
+- NP objetivo de la carrera
+- IF objetivo
+- TSS estimado
+- Consumo estimado de carbohidratos por hora (g/h)
+- Número aproximado de geles necesarios
+
+7. Si el estado de forma actual (TSB ${tsb >= 0 ? '+' : ''}${tsb}) es incompatible con una estrategia agresiva, dilo claramente y propone una estrategia alternativa optimizada.
+
+IMPORTANTE: No des consejos genéricos. Usa los datos reales del ciclista (FTP ${ftp}W, ${wkg} W/kg, TSB ${tsb >= 0 ? '+' : ''}${tsb}) para calcular recomendaciones concretas de vatios, intensidad y gestión de energía. Habla como un entrenador profesional preparando a su corredor.
+
+Usa ## para títulos de sección, ### para subsecciones, - para listas y tablas markdown.`;
+
+  try {
+    let strategyText = null;
+
+    // ── 1. Google Gemini ──
+    if (!strategyText && hasGoogle) {
+      const geminiModels = [...new Set([
+        (process.env.GEMINI_MODEL || '').trim(),
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-1.5-pro',
+        'gemini-1.5-flash',
+      ])].filter(Boolean);
+
+      for (const model of geminiModels) {
+        try {
+          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': googleKey },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
+            }),
+          });
+          const data = await resp.json();
+          if (!resp.ok) { if (resp.status === 404) continue; continue; }
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (text.length > 200) { strategyText = text; break; }
+        } catch (e) {
+          console.log('[race-strategy] Gemini exception:', e.message);
+        }
+      }
+    }
+
+    // ── 2. OpenAI ──
+    if (!strategyText && hasOpenAI) {
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+        body: JSON.stringify({
+          model: openAiModel || 'gpt-4o',
+          max_tokens: 4096,
+          temperature: 0.3,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      if (resp.ok) {
+        const d = await resp.json();
+        const text = d.choices?.[0]?.message?.content || '';
+        if (text.length > 200) strategyText = text;
+      } else {
+        console.log('[race-strategy] OpenAI error:', resp.status);
+      }
+    }
+
+    // ── 3. Anthropic Claude ──
+    if (!strategyText && hasAnthropic) {
+      const aiClient = new Anthropic({ apiKey: anthropicKey });
+      const anthropicModels = [
+        (process.env.ANTHROPIC_MODEL || '').trim(),
+        'claude-3-5-sonnet-20241022',
+        'claude-3-haiku-20240307',
+      ].filter(Boolean);
+      for (const model of anthropicModels) {
+        try {
+          const msg = await aiClient.messages.create({
+            model,
+            max_tokens: 4096,
+            messages: [{ role: 'user', content: prompt }],
+          });
+          const text = msg.content?.[0]?.text || '';
+          if (text.length > 200) { strategyText = text; break; }
+        } catch (e) {
+          console.log('[race-strategy] Anthropic model failed:', model, e.message);
+        }
+      }
+    }
+
+    if (!strategyText) {
+      return res.status(503).json({ error: 'No se pudo generar la estrategia con los proveedores disponibles' });
+    }
+
+    return res.json({ strategy: strategyText });
+  } catch (e) {
+    console.error('[race-strategy]', e.message);
+    res.status(500).json({ error: 'Error al generar estrategia: ' + e.message });
+  }
+});
+
 module.exports = router;

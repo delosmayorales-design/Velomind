@@ -5864,11 +5864,10 @@ async function runRaceAnalysis(dk, isC) {
   }
 }
 
-function _runRaceAnalysisWithData(sdk, raceData) {
+async function _runRaceAnalysisWithData(sdk, raceData) {
   const metrics = AppState.getCurrentMetrics();
   const ftp     = AppState.athlete?.ftp || 200;
-  const isC     = false;
-  const cp      = _buildRaceCoachPlan(ftp, AppState.athlete||{}, metrics, isC, raceData);
+  const athlete = AppState.athlete || {};
   const rc      = '#A855F7';
 
   // Resumen de lo que extrajo la IA
@@ -5882,12 +5881,45 @@ function _runRaceAnalysisWithData(sdk, raceData) {
 
   const slot = document.getElementById(`rca-${sdk}`);
   if (!slot) return;
-  slot.innerHTML = `
-    ${summary ? `<div style="padding:10px 16px 0;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border)">
-      <span style="font-weight:700;color:${rc}">IA detectó:</span> ${summary}
-      ${raceData.start_location?` · Salida: ${raceData.start_location}`:''}
-    </div>` : ''}
-    ${_buildRaceAnalysisHtml(cp, rc)}`;
+
+  const summaryHtml = summary ? `<div style="padding:10px 16px 0;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border)">
+    <span style="font-weight:700;color:${rc}">IA detectó:</span> ${summary}
+    ${raceData.start_location ? ` · Salida: ${raceData.start_location}` : ''}
+  </div>` : '';
+
+  slot.innerHTML = `${summaryHtml}
+    <div id="rca-strategy-${sdk}" style="padding:20px 16px;display:flex;align-items:center;gap:12px;color:${rc};font-size:13px;font-weight:600">
+      <i class="fas fa-spinner fa-spin" style="font-size:18px"></i> Generando plan de carrera personalizado...
+    </div>`;
+
+  try {
+    const API = (window.API_URL || API_URL || 'https://velomind-backend.onrender.com/api');
+    const lthr = athlete.lthr || (athlete.max_hr ? Math.round(athlete.max_hr * 0.88) : null);
+    const athleteData = {
+      ftp,
+      weight: athlete.weight || 70,
+      ctl: Math.round(metrics.ctl || 0),
+      atl: Math.round(metrics.atl || 0),
+      tsb: Math.round(metrics.tsb || 0),
+      lthr,
+      max_hr: athlete.max_hr || null,
+    };
+    const res = await fetch(`${API}/coach/race-strategy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
+      body: JSON.stringify({ athleteData, raceProfile: raceData }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Error del servidor');
+    const { strategy } = await res.json();
+    const strategySlot = document.getElementById(`rca-strategy-${sdk}`);
+    if (strategySlot) strategySlot.outerHTML = _renderRaceStrategy(strategy, rc);
+  } catch (err) {
+    console.error('[race-strategy]', err);
+    // Fallback al análisis estático
+    const cp = _buildRaceCoachPlan(ftp, athlete, metrics, false, raceData);
+    const strategySlot = document.getElementById(`rca-strategy-${sdk}`);
+    if (strategySlot) strategySlot.outerHTML = _buildRaceAnalysisHtml(cp, rc);
+  }
 }
 
 function loadRaceProfileImage(input, sdk) {
@@ -5949,6 +5981,77 @@ function clearRaceProfileImage(sdk) {
     <i class="fas fa-image" style="font-size:28px;color:#A855F7;opacity:.6"></i>
     <span style="font-size:12px;color:var(--text-muted)">Toca para adjuntar el perfil del recorrido</span>
   </label>`;
+}
+
+function _renderRaceStrategy(text, rc) {
+  if (!text) return '';
+
+  // Escape HTML before processing
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // Process tables first (before other replacements)
+  const renderTable = raw => {
+    const lines = raw.trim().split('\n').filter(l => l.trim());
+    if (lines.length < 2) return raw;
+    const headerCells = lines[0].split('|').filter(c => c.trim())
+      .map(c => `<th style="padding:5px 10px;text-align:left;font-size:11px;color:${rc};font-weight:700;white-space:nowrap">${esc(c.trim())}</th>`).join('');
+    const bodyRows = lines.slice(2).map(row =>
+      `<tr style="border-top:1px solid var(--border)">${
+        row.split('|').filter(c => c.trim())
+          .map(c => `<td style="padding:5px 10px;font-size:11px;color:var(--text-muted);line-height:1.4">${esc(c.trim())}</td>`).join('')
+      }</tr>`
+    ).join('');
+    return `<div style="overflow-x:auto;margin:8px 0 12px"><table style="width:100%;border-collapse:collapse;background:var(--bg-input);border-radius:8px;overflow:hidden"><thead><tr style="background:rgba(168,85,247,0.12)">${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table></div>`;
+  };
+
+  // Split into blocks and process
+  let html = '';
+  const blocks = text.split(/\n(?=\n)/);
+  for (const block of blocks) {
+    const b = block.trim();
+    if (!b) continue;
+
+    // Table block
+    if (/^\|.+\|/.test(b)) {
+      html += renderTable(b);
+      continue;
+    }
+
+    // Process line by line for headers and lists
+    const lines = b.split('\n');
+    let inList = false;
+    let listHtml = '';
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      if (/^## /.test(line)) {
+        if (inList) { html += `<div style="padding:4px 0">${listHtml}</div>`; listHtml = ''; inList = false; }
+        const title = esc(line.replace(/^## /, ''));
+        html += `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${rc};margin:16px 0 8px;padding-top:14px;border-top:1px solid var(--border)">${title}</div>`;
+      } else if (/^### /.test(line)) {
+        if (inList) { html += `<div style="padding:4px 0">${listHtml}</div>`; listHtml = ''; inList = false; }
+        const title = esc(line.replace(/^### /, '')).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+        html += `<div style="font-size:12px;font-weight:700;color:var(--text-primary);margin:10px 0 5px">${title}</div>`;
+      } else if (/^[-*] /.test(line)) {
+        inList = true;
+        const content = esc(line.replace(/^[-*] /, '')).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+        listHtml += `<div style="display:flex;gap:8px;margin-bottom:5px"><span style="color:${rc};flex-shrink:0;margin-top:2px">•</span><span style="font-size:12px;color:var(--text-muted);line-height:1.5">${content}</span></div>`;
+      } else if (/^\d+\. /.test(line)) {
+        inList = true;
+        const num = line.match(/^(\d+)\./)[1];
+        const content = esc(line.replace(/^\d+\. /, '')).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+        listHtml += `<div style="display:flex;gap:8px;margin-bottom:5px"><span style="color:${rc};flex-shrink:0;font-weight:700;font-size:12px;min-width:18px">${num}.</span><span style="font-size:12px;color:var(--text-muted);line-height:1.5">${content}</span></div>`;
+      } else {
+        if (inList) { html += `<div style="padding:4px 0">${listHtml}</div>`; listHtml = ''; inList = false; }
+        const content = esc(line).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+        html += `<div style="font-size:12px;color:var(--text-muted);line-height:1.55;margin-bottom:4px">${content}</div>`;
+      }
+    }
+    if (inList) { html += `<div style="padding:4px 0">${listHtml}</div>`; listHtml = ''; inList = false; }
+  }
+
+  return `<div style="padding:14px 16px">${html}</div>`;
 }
 
 function _buildRaceAnalysisHtml(cp, rc) {
