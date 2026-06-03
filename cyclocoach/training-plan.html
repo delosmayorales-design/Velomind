@@ -5782,16 +5782,53 @@ function _rcRemoveClimb(dk, ci) {
   if (row) row.remove();
 }
 
-function runRaceAnalysis(dk, isC) {
-  const sdk     = dk.replace(/-/g,'');
+async function runRaceAnalysis(dk, isC) {
+  const sdk  = dk.replace(/-/g,'');
+  const slot = document.getElementById(`rca-${sdk}`);
+  const rc   = '#A855F7';
+
+  // Si hay imagen guardada, SIEMPRE re-analizar para obtener datos frescos del recorrido
+  const savedImg = (() => { try { return localStorage.getItem(`race_profile_${sdk}`); } catch{return null;} })();
+  if (savedImg) {
+    if (slot) slot.innerHTML = `<div style="padding:20px 16px;display:flex;align-items:center;gap:12px;color:${rc};font-size:13px;font-weight:600">
+      <i class="fas fa-spinner fa-spin" style="font-size:18px"></i> Analizando perfil del recorrido con IA...
+    </div>`;
+    try {
+      const API = window.API_URL;
+      const res = await fetch(`${API}/coach/analyze-race-profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
+        body: JSON.stringify({ imageBase64: savedImg }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Error del servidor');
+      const raceData = await res.json();
+      try { localStorage.setItem(`race_data_${sdk}`, JSON.stringify(raceData)); } catch(_) {}
+      _runRaceAnalysisWithData(sdk, raceData);
+      return;
+    } catch(err) {
+      console.error('[race-analysis]', err);
+      // Si falla, mostrar error claro y caer al análisis genérico
+      if (slot) {
+        const errDiv = document.createElement('div');
+        errDiv.style.cssText = 'padding:10px 16px;font-size:11px;color:#f59e0b;border-bottom:1px solid var(--border)';
+        errDiv.textContent = '⚠️ No se pudo leer el perfil del recorrido — mostrando estrategia según tu forma.';
+        slot.innerHTML = '';
+        slot.appendChild(errDiv);
+      }
+    }
+  }
+
+  // Sin imagen o si falló: análisis genérico basado en forma
   const metrics = AppState.getCurrentMetrics();
   const ftp     = AppState.athlete?.ftp || 200;
-  // Intentar usar datos extraídos previamente por la IA
   let savedData = null;
   try { savedData = JSON.parse(localStorage.getItem(`race_data_${sdk}`) || 'null'); } catch(_) {}
-  const cp   = _buildRaceCoachPlan(ftp, AppState.athlete||{}, metrics, isC, savedData);
-  const slot = document.getElementById(`rca-${sdk}`);
-  if (slot) slot.innerHTML = _buildRaceAnalysisHtml(cp, '#A855F7');
+  const cp = _buildRaceCoachPlan(ftp, AppState.athlete||{}, metrics, isC, savedData);
+  if (slot) {
+    const html = _buildRaceAnalysisHtml(cp, rc);
+    if (slot.children.length) slot.innerHTML += html; // append after error div
+    else slot.innerHTML = html;
+  }
 }
 
 function _runRaceAnalysisWithData(sdk, raceData) {
