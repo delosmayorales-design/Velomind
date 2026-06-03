@@ -640,7 +640,7 @@ function renderActivities(activities) {
       + (svgThumb ? '<div class="route-mini-thumb">' + svgThumb + '</div>' : '')
       + '<div class="activity-name-main"><div class="value-bold activity-name-title" title="' + esc(a.name || 'Entrenamiento') + '">' + esc(a.name || 'Entrenamiento') + '</div>'
       + (sid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FC4C02" style="flex-shrink:0;opacity:0.75"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>' : '')
-      + '</div><div class="activity-badges"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + '">' + esc(zone?.name?.split(' ')[0] || 'Z?') + '</span><span class="badge badge-blue">' + esc(a.source || 'CSV') + '</span></div></td>'
+      + '</div><div class="activity-badges"><span class="badge" style="background:' + (zone?.color || '#333') + '22;color:' + (zone?.color || '#888') + '">' + esc(zone?.name?.split(' ')[0] || 'Z?') + '</span>' + (a.type === 'strength' ? '<span class="badge" style="background:#A78BFA22;color:#A78BFA"><i class="fas fa-dumbbell"></i> Gym</span>' : '') + '<span class="badge badge-blue">' + esc(a.source || 'CSV') + '</span></div></td>'
       + '<td style="white-space:nowrap">' + Utils.formatDate(a.date) + '</td>'
       + '<td class="value-bold">' + Utils.formatDuration(a.duration) + '</td>'
       + '<td>' + Utils.formatDistance(a.distance) + '</td>'

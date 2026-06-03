@@ -312,46 +312,32 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
     console.log(`[Strava Sync] ── Tipos de actividad recibidos de Strava (${acts.length} total):`, JSON.stringify(typeCount));
 
     for (const a of acts) {
-      // 1. Filtrar primero: SOLO salidas ciclistas (Ride, VirtualRide, EBikeRide, GravelRide, MountainBikeRide)
       const typeStr = a.sport_type || a.type || '';
-      const nameLower = (a.name || '').toLowerCase();
+      const type = stravaToAppType(typeStr);
 
-      const validCyclingTypes = ['Ride', 'VirtualRide', 'EBikeRide', 'MountainBikeRide', 'GravelRide'];
-      let isRide = validCyclingTypes.includes(typeStr);
+      // Solo ciclismo y fuerza/gym
+      if (type !== 'cycling' && type !== 'strength') continue;
 
-      // Detección opcional por nombre si Strava lo catalogó diferente (ej: Workout con "mtb" en el título)
-      if (!isRide && (nameLower.includes('mtb') || nameLower.includes('gravel') || nameLower.includes('ciclismo'))) {
-        isRide = true;
-      }
-
-      if (!isRide) {
-        console.log(`[Strava Sync] ⚠️ DESCARTADA: "${a.name}" → tipo="${typeStr}" (no es ciclismo)`);
-        continue;
-      }
-      
-      const type = 'cycling';
-
-      // Calcular TSS e Intensity Factor (IF) basándonos en la potencia normalizada
+      // Calcular TSS e Intensity Factor (IF)
       const np = a.weighted_average_watts || 0;
       const duration = a.moving_time || a.elapsed_time || 0;
       let tss = 0, ifValue = 0;
       let finalNp = np;
       let finalAvgPower = a.average_watts || 0;
-      
+
       if (np && duration && ftp > 0) {
         ifValue = Math.round((np / ftp) * 100) / 100;
         tss = Math.round((duration * np * ifValue) / (ftp * 3600) * 100);
       } else if (a.average_heartrate > 0 && duration > 0) {
-        // Fallback hrTSS si no hay potenciómetro pero sí pulso
         const lthr = user.lthr || (user.max_hr ? Math.round(user.max_hr * 0.88) : 160);
         const hrIF = a.average_heartrate / lthr;
         ifValue = Math.round(hrIF * 100) / 100;
         tss = Math.round((duration * a.average_heartrate * hrIF) / (lthr * 3600) * 100);
         finalNp = Math.round(ifValue * ftp);
       } else if (duration > 0) {
-        // Fallback básico: asume rodaje aeróbico si no hay pulso ni potencia
-        ifValue = 0.65;
-        tss = Math.round((duration * 0.65 * 0.65) / 3600 * 100);
+        // Gym sin FC: IF más bajo que ciclismo (≈30 TSS/hora de gym moderado)
+        ifValue = type === 'strength' ? 0.55 : 0.65;
+        tss = Math.round((duration * ifValue * ifValue) / 3600 * 100);
         finalNp = Math.round(ifValue * ftp);
       }
 
@@ -383,7 +369,7 @@ rowsToInsert.push({
       });
     }
     
-    console.log(`[Strava Sync] ── Total Strava: ${acts.length} | Ciclistas filtradas: ${rowsToInsert.length} | user_id: ${uid}`);
+    console.log(`[Strava Sync] ── Total Strava: ${acts.length} | Importadas: ${rowsToInsert.length} | user_id: ${uid}`);
     if (rowsToInsert.length > 0) {
       console.log('[Strava Sync] Primera fila a insertar:', JSON.stringify(rowsToInsert[0]).substring(0, 300));
       console.log('[Strava Sync] Última fila a insertar:', JSON.stringify(rowsToInsert[rowsToInsert.length - 1]).substring(0, 300));
@@ -751,30 +737,56 @@ async function refreshGarminIfNeeded(user) {
   return token;
 }
 
-function isGarminCycling(a) {
-  const type = String(a.activityType || a.activityTypeName || a.activityName || '').toLowerCase();
-  return ['cycling', 'biking', 'road_biking', 'mountain_biking', 'indoor_cycling', 'e_biking', 'gravel_cycling']
-    .some(t => type.includes(t.replace(/_/g, '')) || type.includes(t));
+function garminToAppType(a) {
+  const t = String(a.activityType || a.activityTypeName || a.activityName || '').toLowerCase().replace(/[\s-]/g, '_');
+  if (['cycling','biking','road_biking','mountain_biking','indoor_cycling','e_biking','gravel_cycling'].some(k => t.includes(k.replace(/_/g,'')) || t.includes(k))) return 'cycling';
+  if (['running','trail_running','track_running','treadmill_running','jogging'].some(k => t.includes(k.replace(/_/g,'')) || t.includes(k))) return 'running';
+  if (['swimming','open_water_swimming','pool_swimming'].some(k => t.includes(k.replace(/_/g,'')) || t.includes(k))) return 'swimming';
+  if (['strength_training','fitness_equipment','weight_training','gym','core','crossfit','hiit','floor_climbing','indoor_cardio','cardio'].some(k => t.includes(k.replace(/_/g,'')) || t.includes(k))) return 'strength';
+  if (['yoga','pilates','barre','stretching','flexibility'].some(k => t.includes(k))) return 'yoga';
+  if (['walking','hiking','trail_walking'].some(k => t.includes(k.replace(/_/g,'')) || t.includes(k))) return 'walking';
+  return 'other';
 }
 
-function mapGarminActivity(a, uid, ftp) {
+function stravaToAppType(sportType) {
+  const t = String(sportType || '');
+  if (['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide'].includes(t)) return 'cycling';
+  if (['Run','VirtualRun','TrailRun'].includes(t)) return 'running';
+  if (['Swim','OpenWaterSwim'].includes(t)) return 'swimming';
+  if (['WeightTraining','Workout','Crossfit','RockClimbing','Elliptical','StairStepper'].includes(t)) return 'strength';
+  if (['Yoga','Pilates'].includes(t)) return 'yoga';
+  if (['Walk','Hike','Snowshoe'].includes(t)) return 'walking';
+  return 'other';
+}
+
+function mapGarminActivity(a, uid, ftp, user) {
   const id = a.summaryId || a.activityId || a.startTimeInSeconds || a.startTimeOffsetInSeconds;
   const startSec = Number(a.startTimeInSeconds || a.startTimeOffsetInSeconds || 0);
   const duration = Math.round(Number(a.durationInSeconds || a.activeTimeInSeconds || a.elapsedDurationInSeconds || 0));
   const avgPower = Math.round(Number(a.averagePowerInWatts || a.avgPower || 0));
+  const avgHr = Math.round(Number(a.averageHeartRateInBeatsPerMinute || a.averageHR || 0));
   const np = (a.normalizedPowerInWatts || a.normPower)
     ? Math.round(Number(a.normalizedPowerInWatts || a.normPower))
     : null;
+  const actType = garminToAppType(a);
   let ifValue = 0, tss = 0;
   if (np > 0 && duration > 0 && ftp > 0) {
     ifValue = Math.round((np / ftp) * 100) / 100;
     tss = Math.round((duration * np * ifValue) / (ftp * 3600) * 100);
+  } else if (avgHr > 0 && duration > 0) {
+    const lthr = user?.lthr || (user?.max_hr ? Math.round(user.max_hr * 0.88) : 160);
+    const hrIF = avgHr / lthr;
+    ifValue = Math.round(hrIF * 100) / 100;
+    tss = Math.round((duration * avgHr * hrIF) / (lthr * 3600) * 100);
+  } else if (duration > 0) {
+    ifValue = actType === 'strength' ? 0.55 : 0.65;
+    tss = Math.round((duration * ifValue * ifValue) / 3600 * 100);
   }
   return {
     id: `garmin_${id}`,
     user_id: uid,
     name: String(a.activityName || a.activityType || 'Actividad Garmin').substring(0, 250),
-    type: 'cycling',
+    type: garminToAppType(a),
     date: startSec ? new Date(startSec * 1000).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10),
     duration,
     distance: Math.round(Number(a.distanceInMeters || a.distance || 0)),
@@ -821,7 +833,9 @@ router.post('/garmin/sync', requireAuth, async (req, res) => {
     if (!r.ok) throw new Error(`Garmin activities HTTP ${r.status}: ${raw.substring(0, 200)}`);
     const acts = raw ? JSON.parse(raw) : [];
     const ftp = Math.max(1, user.ftp || 200);
-    const rows = (Array.isArray(acts) ? acts : []).filter(isGarminCycling).map(a => mapGarminActivity(a, uid, ftp)).filter(a => a.garmin_id);
+    const rows = (Array.isArray(acts) ? acts : [])
+      .map(a => mapGarminActivity(a, uid, ftp, user))
+      .filter(a => a.garmin_id && ['cycling', 'strength'].includes(a.type));
     let failed = 0;
     for (let i = 0; i < rows.length; i += 100) {
       const chunk = rows.slice(i, i + 100);
