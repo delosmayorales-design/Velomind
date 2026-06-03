@@ -2742,14 +2742,18 @@ router.post('/analyze-race-profile', async (req, res) => {
   const parsed = parseDataUrlImage(imageBase64);
   if (!parsed.ok) return res.status(400).json({ error: parsed.error });
 
+  const openaiKey    = process.env.OPENAI_API_KEY    || '';
   const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
-  if (!anthropicKey || !anthropicKey.startsWith('sk-ant-')) {
-    return res.status(503).json({ error: 'Servicio de análisis de imagen no disponible (API key no configurada)' });
+  const googleKey    = process.env.GOOGLE_API_KEY    || '';
+  const hasOpenAI    = openaiKey.length > 20;
+  const hasAnthropic = anthropicKey.startsWith('sk-ant-');
+  const hasGoogle    = googleKey.startsWith('AIzaSy');
+
+  if (!hasOpenAI && !hasAnthropic && !hasGoogle) {
+    return res.status(503).json({ error: 'Servicio de análisis de imagen no disponible en este servidor' });
   }
 
-  try {
-    const aiClient = new Anthropic({ apiKey: anthropicKey });
-    const prompt = `Eres un analista de ciclismo. Analiza este perfil de etapa/carrera ciclista y extrae la información en JSON.
+  const prompt = `Eres un analista de ciclismo. Analiza este perfil de etapa/carrera ciclista y extrae la información en JSON.
 Devuelve ÚNICAMENTE el JSON, sin texto adicional, sin markdown, sin \`\`\`.
 
 {
@@ -2769,31 +2773,66 @@ Devuelve ÚNICAMENTE el JSON, sin texto adicional, sin markdown, sin \`\`\`.
   ],
   "feed_zones_km": [lista de km donde hay puntos de avituallamiento, vacío si no hay]
 }
+Si un campo no es legible, usa null o [].`;
 
-Si un campo no es legible o no aparece en la imagen, usa null o [] según corresponda.`;
+  function extractRaceJSON(text) {
+    try {
+      const clean = text.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/i,'').trim();
+      const data = JSON.parse(clean);
+      if (typeof data === 'object' && data !== null) return data;
+    } catch(_) {}
+    try {
+      const m = text.match(/\{[\s\S]*\}/);
+      if (m) return JSON.parse(m[0]);
+    } catch(_) {}
+    return null;
+  }
 
-    const msg = await aiClient.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 1024,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: parsed.mime, data: parsed.ok ? imageBase64.replace(/^data:[^;]+;base64,/, '') : '' } },
-          { type: 'text', text: prompt }
-        ]
-      }]
-    });
-
-    const raw = msg.content?.[0]?.text || '';
-    // Limpiar posible markdown que el modelo devuelva
-    const jsonStr = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    let data;
-    try { data = JSON.parse(jsonStr); } catch(e) {
-      console.error('[race-profile] JSON parse error:', jsonStr.slice(0, 200));
-      return res.status(422).json({ error: 'No se pudo interpretar la imagen como un perfil de carrera' });
+  try {
+    // ── 1. OpenAI GPT-4o (visión) ──
+    if (hasOpenAI) {
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          max_tokens: 1024,
+          temperature: 0,
+          response_format: { type: 'json_object' },
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: imageBase64, detail: 'high' } },
+            ],
+          }],
+        }),
+      });
+      if (resp.ok) {
+        const d = await resp.json();
+        const data = extractRaceJSON(d.choices?.[0]?.message?.content || '');
+        if (data) return res.json(data);
+      }
+      console.log('[race-profile] OpenAI falló o devolvió respuesta vacía');
     }
 
-    res.json(data);
+    // ── 2. Anthropic Claude ──
+    if (hasAnthropic) {
+      const b64 = imageBase64.replace(/^data:[^;]+;base64,/, '');
+      const aiClient = new Anthropic({ apiKey: anthropicKey });
+      const msg = await aiClient.messages.create({
+        model: 'claude-opus-4-8',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: parsed.mime, data: b64 } },
+          { type: 'text', text: prompt },
+        ]}],
+      });
+      const data = extractRaceJSON(msg.content?.[0]?.text || '');
+      if (data) return res.json(data);
+    }
+
+    return res.status(422).json({ error: 'No se pudo interpretar la imagen como un perfil de carrera' });
   } catch (e) {
     console.error('[race-profile]', e.message);
     res.status(500).json({ error: 'Error al analizar la imagen: ' + e.message });
