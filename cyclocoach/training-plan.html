@@ -6017,7 +6017,7 @@ function _estimateRaceDuration(raceData, ftp, weight, tsb) {
 function _renderRaceStrategy(text, rc, extraChips = []) {
   if (!text) return '';
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const bold = s => s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  const bold = s => s.replace(/\*\*(.+?)\*\*/g,'<strong style="color:#BFFF00;text-shadow:0 0 7px #BFFF0055">$1</strong>');
 
   // Parse lines into sections and table rows
   const lines = text.split('\n');
