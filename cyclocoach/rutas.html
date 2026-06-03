@@ -1937,6 +1937,7 @@ let map, baseOSM, elevChart, cycleOverlayLayer, cycleOverlayOn = false, mapWindC
 let currentRouteElevs = null;
 let waypoints = [], waypointMarkers = [];
 let routeLayer = null, routeGeoJSON = null;
+let arrowMarkers = [];
 let segmentsLayer = null, segmentsOn = false;
 let _activeSegmentPolyline = null, _activeSegmentOrigStyle = null;
 const _segmentDataMap = new Map(); // segmentId → {name, distKm, grade}
@@ -2418,6 +2419,36 @@ function _bearing(lat1, lon1, lat2, lon2) {
   return Math.round((Math.atan2(y, x) * 180 / Math.PI + 360) % 360);
 }
 
+function _clearArrows() {
+  arrowMarkers.forEach(m => map.removeLayer(m));
+  arrowMarkers = [];
+}
+
+function _drawRouteArrows(latLngs, color) {
+  _clearArrows();
+  const pts = latLngs.flat ? latLngs.flat() : latLngs;
+  if (!pts || pts.length < 2) return;
+  // Distribuir ~5 flechas a lo largo de la ruta, evitando inicio y final
+  const count = 5;
+  for (let i = 1; i <= count; i++) {
+    const idx = Math.floor((i / (count + 1)) * (pts.length - 1));
+    const next = Math.min(idx + Math.max(1, Math.floor(pts.length / 20)), pts.length - 1);
+    const [la1, lo1] = pts[idx];
+    const [la2, lo2] = pts[next];
+    const deg = _bearing(la1, lo1, la2, lo2);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 18" width="12" height="18">
+      <polygon points="6,0 12,18 6,12 0,18" fill="${color}" stroke="rgba(0,0,0,0.35)" stroke-width="1" stroke-linejoin="round"/>
+    </svg>`;
+    const icon = L.divIcon({
+      html: `<div style="transform:rotate(${deg}deg);transform-origin:center;line-height:0;">${svg}</div>`,
+      iconSize: [12, 18],
+      iconAnchor: [6, 9],
+      className: '',
+    });
+    arrowMarkers.push(L.marker([la1, lo1], { icon, interactive: false, zIndexOffset: 500 }).addTo(map));
+  }
+}
+
 // BRouter — perfil MTB real: usa tags OSM mtb:scale, evita carreteras asfaltadas
 async function routeBRouter(type) {
   const profile = type === 'mtb' ? 'mtb' : type === 'gravel' ? 'trekking' : 'fastbike';
@@ -2546,6 +2577,7 @@ async function calcRoute(type) {
     const color = type === 'gravel' ? '#F59E0B' : type === 'mtb' ? '#10B981' : '#FF6B35';
     if (routeLayer) map.removeLayer(routeLayer);
     routeLayer = L.polyline(latLngs, { color, weight: 4, opacity: 0.9, interactive: false }).addTo(map);
+    _drawRouteArrows(latLngs, color);
 
     document.getElementById('stat-dist').textContent = distKm.toFixed(1);
     setTimeStat(distKm, elevGain ?? 0, type);
@@ -2752,7 +2784,7 @@ function createWaypointMarker(lat, lng) {
     map.removeLayer(marker);
     _syncWpCount();
     if (waypoints.length >= 2) calcRoute(currentRouteType);
-    else if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+    else if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; _clearArrows(); }
   });
 
   return marker;
@@ -2853,7 +2885,7 @@ function undoWaypoint() {
   if (m) map.removeLayer(m);
   _syncWpCount();
   if (waypoints.length >= 2) calcRoute(currentRouteType);
-  else if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  else if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; _clearArrows(); }
 }
 
 function clearRoute() {
@@ -2864,6 +2896,7 @@ function clearRoute() {
   waypointMarkers.forEach(m => map.removeLayer(m));
   waypointMarkers.length = 0;
   if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  _clearArrows();
   routeGeoJSON = null;
   ['stat-dist','stat-elev','stat-time','stat-t-slow','stat-t-mid','stat-t-fast'].forEach((id, i) =>
     document.getElementById(id).textContent = i === 0 ? '0.0' : '—');
@@ -2907,6 +2940,7 @@ function importGPX(input) {
         : { type: 'LineString', coordinates: latLngs.map(([la,ln]) => [ln,la]) };
       if (routeLayer) map.removeLayer(routeLayer);
       routeLayer = L.polyline(trkSegs.length > 1 ? trkSegs : latLngs, { color: '#10B981', weight: 4, opacity: 0.9 }).addTo(map);
+      _drawRouteArrows(trkSegs.length > 1 ? trkSegs : latLngs, '#10B981');
       map.fitBounds(routeLayer.getBounds(), { padding: [30,30] });
 
       const distKm  = haversineTotal(latLngs);
@@ -3135,6 +3169,7 @@ function openRouteOnMap(id) {
     if (sb) { sb.classList.remove('btn-primary'); sb.classList.add('btn-secondary'); }
   }
   routeLayer = L.polyline(latLngSegments, { color, weight: 4, opacity: 0.9 }).addTo(map);
+  _drawRouteArrows(latLngSegments, color);
   map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
   _computedElevGain = route.elevation_gain_m ? Math.round(route.elevation_gain_m) : null;
   document.getElementById('stat-dist').textContent = route.distance_km?.toFixed(1) ?? '—';
@@ -3172,7 +3207,7 @@ async function toggleFav(id, fav) {
 async function deleteRoute(id) {
   if (!confirm('¿Eliminar esta ruta?')) return;
   await Auth.apiFetch(`${API_BASE}/routes/${id}`, { method: 'DELETE' });
-  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; _clearArrows(); }
   await loadRoutes();
 }
 
@@ -3230,6 +3265,7 @@ async function shareCard(id) {
       // Ocultar la ruta normal temporalmente para sacar una "foto" limpia del mapa
       const hadRoute = routeLayer && map.hasLayer(routeLayer);
       if (hadRoute) map.removeLayer(routeLayer);
+      arrowMarkers.forEach(m => map.removeLayer(m));
       const visibleMarkers = waypointMarkers.filter(m => map.hasLayer(m));
       visibleMarkers.forEach(m => map.removeLayer(m));
 
@@ -3242,6 +3278,7 @@ async function shareCard(id) {
 
       // Restaurar capas originales de la app
       if (hadRoute) routeLayer.addTo(map);
+      arrowMarkers.forEach(m => map.addLayer(m));
       visibleMarkers.forEach(m => map.addLayer(m));
 
       // Escala basada en el contenedor real del mapa (siempre correcta)
@@ -4345,6 +4382,7 @@ async function generateWindRoute() {
     const color = type === 'gravel' ? '#F59E0B' : type === 'mtb' ? '#10B981' : '#00D4FF';
     if (routeLayer) map.removeLayer(routeLayer);
     routeLayer = L.polyline(latLngs, { color, weight: 5, opacity: 0.9, interactive: false }).addTo(map);
+    _drawRouteArrows(latLngs, color);
     map.fitBounds(routeLayer.getBounds(), { padding: [40,40] });
 
     // Crear marcadores arrastrables para cada waypoint (el último siempre duplica el inicio,
