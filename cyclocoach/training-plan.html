@@ -1781,6 +1781,73 @@ function dismissRecalcSummary() {
   if (el) { el.style.display = 'none'; el.innerHTML = ''; }
 }
 
+function _buildRaceCoachPlan(ftp, athlete, metrics, isC) {
+  const ctl = Math.round(metrics.ctl || 40);
+  const atl = Math.round(metrics.atl || 40);
+  const tsb = Math.round(metrics.tsb || 0);
+  const lthr = athlete.lthr || (athlete.max_hr ? Math.round(athlete.max_hr * 0.88) : 0);
+
+  let flatIF, formTag, formColor, diagnosis;
+  if (isC) {
+    flatIF = 0.84; formTag = 'Carrera de entrenamiento'; formColor = '#64a0ff';
+    diagnosis = `Con tu base actual de ${ctl} CTL úsala como sesión de calidad con dorsales. Mantén un esfuerzo controlado (IF ~0.84), no te vacíes — el objetivo es llegar fresco al siguiente entreno de la semana.`;
+  } else if (tsb >= 15) {
+    flatIF = 0.91; formTag = '🟢 Pico de forma'; formColor = '#10B981';
+    diagnosis = `Llegas en estado óptimo — ${tsb} puntos de forma positiva con una base de ${ctl} CTL. El tapering ha funcionado. Tu cuerpo está fresco y cargado. Hoy puedes exigirte al máximo: sal controlado los primeros 15 min y luego libera todo.`;
+  } else if (tsb >= 8) {
+    flatIF = 0.88; formTag = '🟡 Buena forma'; formColor = '#9ED62B';
+    diagnosis = `Llegas bien — forma de +${tsb} con ${ctl} CTL de base. Buen equilibrio entre frescura y fitness. Al 88% de tu FTP en los tramos planos tendrás margen para apretar al final sin vaciar el depósito antes de tiempo.`;
+  } else if (tsb >= 0) {
+    flatIF = 0.85; formTag = '🟡 Forma aceptable'; formColor = '#F59E0B';
+    diagnosis = `Llegas con ligera frescura pero sin el tapering completo (forma +${tsb}, ATL ${atl}). Tienes el nivel para competir bien. Ve al 85% en los primeros km; si las piernas responden a los 20 min, puedes ir subiendo progresivamente.`;
+  } else if (tsb >= -8) {
+    flatIF = 0.82; formTag = '🟠 Cierta fatiga'; formColor = '#FB923C';
+    diagnosis = `Llegas con ${Math.abs(tsb)} puntos de carga acumulada (ATL ${atl} vs CTL ${ctl}). El cuerpo tiene fatiga — arranca conservador, los primeros 20 min costarán. Si las piernas se abren a mitad, puedes ir apretando. No te compares con cómo saldrán otros.`;
+  } else {
+    flatIF = 0.78; formTag = '🔴 Fatiga significativa'; formColor = '#EF4444';
+    diagnosis = `Llegas con carga alta: ${Math.abs(tsb)} puntos negativos (ATL ${atl}, CTL ${ctl}). La clave es una salida muy conservadora — si aguantas los primeros 30 min por debajo del umbral, desde la mitad puedes subir el ritmo progresivamente. No te enganches al pelotón inicial.`;
+  }
+
+  const W = n => Math.round(ftp * n);
+  const start    = W(flatIF - 0.08);
+  const flatLow  = W(flatIF - 0.03);
+  const flatHigh = W(flatIF + 0.03);
+  const sClimb   = W(flatIF + 0.12);
+  const lClimbLo = W(flatIF + 0.04);
+  const lClimbHi = W(flatIF + 0.09);
+  const descent  = W(0.60);
+  const finalW   = W(flatIF + 0.06);
+
+  const hrStr = (ifMul) => lthr ? ` · ~${Math.round(lthr * ifMul)} bpm` : '';
+
+  const rows = isC
+    ? [
+        { e:'🚦', l:'Salida',                   w:`${W(flatIF-0.07)}W`,             d:`Rueda en el grupo, no te despegues pero tampoco lideres${hrStr(flatIF-0.05)}` },
+        { e:'⬆️', l:'Esfuerzo sostenido',        w:`${flatLow}-${flatHigh}W`,        d:`IF ~${flatIF.toFixed(2)} — mantén constante, no reacciones a ataques${hrStr(flatIF)}` },
+        { e:'🏔️', l:'Subidas',                   w:`hasta ${W(flatIF+0.08)}W`,       d:`Ritmo controlado, no superes Z4. Objetivo: recuperar rápido en bajada` },
+        { e:'🏁', l:'Últimos km',                 w:`${W(flatIF+0.02)}W`,             d:`Si tienes energía aprieta, pero sin vaciar el depósito` },
+      ]
+    : [
+        { e:'🚦', l:'Salida (0-15 min)',          w:`${start}W`,                      d:`Conserva aunque notes las piernas frescas — el ritmo de carrera engaña${hrStr(flatIF-0.08)}` },
+        { e:'⬆️', l:'Llano sostenido',            w:`${flatLow}-${flatHigh}W`,        d:`IF objetivo ~${flatIF.toFixed(2)} — ritmo que puedas mantener sin deuda${hrStr(flatIF)}` },
+        { e:'🏔️', l:'Puertos cortos (<5 min)',   w:`hasta ${sClimb}W`,               d:`Puedes arriesgar más. Gestiona el inicio de la subida, no el final` },
+        { e:'⛰️', l:'Puertos largos (>10 min)', w:`${lClimbLo}-${lClimbHi}W`,       d:`Empieza prudente y mantén constante — la trampa es irse arriba los primeros 2 km${hrStr(flatIF+0.05)}` },
+        { e:'⬇️', l:'Bajadas',                   w:`~${descent}W`,                   d:`Recupera, hidrata, come si toca. No bloquees los pedales` },
+        { e:'🏁', l:'Últimos 5 km',               w:`${finalW}W→ máx`,               d:`Si conservaste bien, ahora vacía el depósito progresivamente` },
+      ];
+
+  const halfAlert = Math.round(W(flatIF) * 1.02);
+  const alerts = [
+    `Si a mitad de carrera tu potencia media supera ${halfAlert}W${lthr ? ` o ${Math.round(lthr*(flatIF+0.02))} bpm` : ''}, baja el ritmo`,
+    `Si las piernas se cargan al inicio de una subida, reduce ${Math.round(ftp*0.05)}W y mantén cadencia`,
+    tsb < 0
+      ? `Con tu carga actual (TSB ${tsb}), las piernas tardarán 20 min en abrirse — es normal, no entres en pánico`
+      : `Aunque llegues fresco, controla los primeros 15 min — el entusiasmo al inicio arruina muchas carreras`,
+  ];
+
+  return { formTag, formColor, diagnosis, rows, alerts, ctl, atl, tsb, flatIF };
+}
+
 function renderPlan(plan, athlete) {
   const metrics = AppState.getCurrentMetrics();
   const ftp = athlete.ftp || 200;
@@ -2169,76 +2236,86 @@ function renderPlan(plan, athlete) {
       </div>
     ` : '';
 
-    // ── Tarjeta especial día de carrera ───────────────────────
+    // ── Tarjeta especial día de carrera con análisis de entrenador ─
     if (sess.type === 'race' || sess.isRaceC) {
-      const _isC = sess.isRaceC && sess.type !== 'race';
-      const _raceColor = _isC ? '#64a0ff' : '#EC4899';
-      const _raceGrad  = _isC
-        ? 'linear-gradient(135deg,rgba(100,160,255,.13) 0%,rgba(100,160,255,.04) 100%)'
-        : 'linear-gradient(135deg,rgba(236,72,153,.16) 0%,rgba(168,85,247,.07) 100%)';
-      const _raceName  = (sess.name || 'Carrera').replace(/^🏁\s*/,'');
-      const _quotes = _isC
-        ? ['Ritmo controlado, sensaciones buenas. El objetivo es llegar fresco al siguiente entreno.',
-           'Aprende el recorrido y mantén el esfuerzo. Hoy es una sesión de calidad con dorsales.',
-           'Úsala como entrenamiento de calidad, no te vacíes.']
-        : ['Has entrenado semanas para este día. Confía en tu preparación y libera todo.',
-           'El dolor es temporal. El resultado y el orgullo son para siempre.',
-           'Cada kilómetro que rodaste te trajo hasta aquí. Es tu momento.',
-           'Sal controlado, aprieta a mitad, vacíate al final. El plan funciona.'];
-      const _quote = _quotes[(i + sessDate.getDate()) % _quotes.length];
-      const _advice = _isC
-        ? [['🎯','Objetivo','Mantén ritmo de umbral · no superes Z4 · IF ≤ 0.88'],
-           ['🔥','Calentamiento','10-15 min suave + 4 aceleraciones cortas'],
-           ['📊','Métricas','Monitoriza la FC y no salgas por encima del plan'],
-           ['🏁','Final','Guarda energía para los últimos km']]
-        : [['🔥','Calentamiento','15-20 min suave + 6 aceleraciones cortas a ritmo carrera'],
-           ['🍌','Nutrición','Carbohidratos 2-3 h antes · gel si la prueba dura > 90 min'],
-           ['🧠','Estrategia','Sal al 90% · aprieta en el último tercio · vacíate al final'],
-           ['💧','Hidratación','Bebe antes de tener sed · pequeños sorbos frecuentes']];
+      const _isC   = sess.isRaceC && sess.type !== 'race';
+      const _cp    = _buildRaceCoachPlan(ftp, athlete, metrics, _isC);
+      const _rc    = _cp.formColor;
+      const _rGrad = `linear-gradient(135deg,${_rc}18 0%,${_rc}06 100%)`;
+      const _name  = (sess.name || 'Carrera').replace(/^🏁\s*/,'');
 
       return `
-        <div class="session-card-item${sess.completed ? ' completed' : ''}${isToday ? ' today-card' : ''}" style="border-color:${_raceColor}55;overflow:hidden">
-          <div style="background:${_raceGrad};padding:16px 16px 14px;border-bottom:1px solid ${_raceColor}30">
+        <div class="session-card-item${sess.completed?' completed':''}${isToday?' today-card':''}" style="border-color:${_rc}55;overflow:hidden">
+
+          <!-- CABECERA -->
+          <div style="background:${_rGrad};padding:16px 16px 14px;border-bottom:1px solid ${_rc}28">
             <div style="display:flex;align-items:flex-start;gap:12px">
               <div class="day-badge" style="flex-shrink:0">
                 <div class="dn">${sess.day.substring(0,3)}</div>
-                <div class="dd" style="color:${_raceColor}">${sessDate.getDate()}</div>
+                <div class="dd" style="color:${_rc}">${sessDate.getDate()}</div>
               </div>
               <div style="flex:1;min-width:0">
-                <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${_raceColor};margin-bottom:4px">
-                  🏁 ${_isC ? 'Carrera de entrenamiento' : 'Día de carrera'}
-                </div>
-                <div style="font-size:17px;font-weight:800;color:var(--text-primary);line-height:1.2;margin-bottom:${sess.completed?'6px':'0'}">${_raceName}</div>
-                ${sess.completed ? `<span class="done-badge"><i class="fas fa-check"></i> Completada</span>` : ''}
+                <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${_rc};margin-bottom:3px">🏁 ${_isC?'Carrera de entrenamiento':'Día de carrera'}</div>
+                <div style="font-size:17px;font-weight:800;color:var(--text-primary);line-height:1.2">${_name}</div>
+                ${sess.completed?`<span class="done-badge" style="margin-top:5px;display:inline-flex"><i class="fas fa-check"></i> Completada</span>`:''}
               </div>
-              ${tssVal > 0 ? `<div style="text-align:right;flex-shrink:0">
-                <div style="font-size:24px;font-weight:800;color:${_raceColor};line-height:1">${tssVal}</div>
-                <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">TSS</div>
-              </div>` : ''}
-            </div>
-            <div style="margin-top:12px;padding:10px 14px;background:${_raceColor}18;border-left:3px solid ${_raceColor};border-radius:0 8px 8px 0;font-size:13px;color:var(--text-secondary);font-style:italic;line-height:1.6">
-              "${_quote}"
+              ${tssVal>0?`<div style="text-align:right;flex-shrink:0"><div style="font-size:22px;font-weight:800;color:${_rc};line-height:1">${tssVal}</div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">TSS</div></div>`:''}
             </div>
           </div>
-          <div style="padding:14px 16px 6px">
-            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_raceColor};margin-bottom:10px">Cómo afrontarla</div>
-            <div style="display:flex;flex-direction:column;gap:9px">
-              ${_advice.map(([em,lb,tx])=>`
-                <div style="display:flex;gap:10px;align-items:flex-start">
-                  <span style="font-size:17px;flex-shrink:0;line-height:1.25">${em}</span>
-                  <div style="font-size:12px;line-height:1.55">
-                    <span style="font-weight:700;color:var(--text-primary)">${lb} · </span><span style="color:var(--text-muted)">${tx}</span>
+
+          <!-- ESTADO DE FORMA -->
+          <div style="padding:14px 16px 12px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+              <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_rc}">Tu estado hoy</span>
+              <span style="background:${_rc}20;color:${_rc};font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px">${_cp.formTag}</span>
+            </div>
+            <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
+              <span style="font-size:12px;color:var(--text-muted)">CTL <strong style="color:var(--text-primary)">${_cp.ctl}</strong></span>
+              <span style="font-size:12px;color:var(--text-muted)">ATL <strong style="color:var(--text-primary)">${_cp.atl}</strong></span>
+              <span style="font-size:12px;color:var(--text-muted)">Forma <strong style="color:${_rc}">${_cp.tsb>=0?'+':''}${_cp.tsb}</strong></span>
+              <span style="font-size:12px;color:var(--text-muted)">FTP <strong style="color:var(--text-primary)">${ftp}W</strong></span>
+            </div>
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.65;padding:10px 14px;background:${_rc}10;border-left:3px solid ${_rc};border-radius:0 8px 8px 0">
+              ${_cp.diagnosis}
+            </div>
+          </div>
+
+          <!-- ESTRATEGIA DE VATIOS -->
+          <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_rc};margin-bottom:11px">Estrategia de vatios</div>
+            <div style="display:flex;flex-direction:column;gap:0">
+              ${_cp.rows.map((r,ri)=>`
+                <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;${ri<_cp.rows.length-1?'border-bottom:1px solid var(--border)':''}">
+                  <span style="font-size:18px;flex-shrink:0;width:24px;text-align:center;line-height:1.3">${r.e}</span>
+                  <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                      <span style="font-size:12px;font-weight:700;color:var(--text-primary)">${r.l}</span>
+                      <span style="font-size:13px;font-weight:800;color:${_rc}">${r.w}</span>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:1px;line-height:1.4">${r.d}</div>
                   </div>
                 </div>`).join('')}
             </div>
           </div>
-          <div style="padding:12px 16px 14px;display:flex;align-items:center;gap:12px;margin-top:4px">
-            ${isPastOrToday ? `
+
+          <!-- SEÑALES DE ALERTA -->
+          <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#F59E0B;margin-bottom:8px">⚠️ Señales de alerta</div>
+            ${_cp.alerts.map(a=>`
+              <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px">
+                <span style="color:#F59E0B;font-size:11px;flex-shrink:0;margin-top:2px">•</span>
+                <span style="font-size:12px;color:var(--text-muted);line-height:1.5">${a}</span>
+              </div>`).join('')}
+          </div>
+
+          <!-- BOTÓN -->
+          <div style="padding:12px 16px 14px;display:flex;align-items:center;gap:12px">
+            ${isPastOrToday?`
               <button onclick="event.preventDefault();event.stopPropagation();markSessionDone(${i})"
-                style="display:flex;align-items:center;justify-content:center;gap:7px;flex:1;max-width:220px;background:${sess.completed?'rgba(16,185,129,.1)':_raceColor+'22'};border:1px solid ${sess.completed?'rgba(16,185,129,.35)':_raceColor+'66'};color:${sess.completed?'#10b981':_raceColor};border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;-webkit-tap-highlight-color:transparent">
+                style="display:flex;align-items:center;justify-content:center;gap:7px;flex:1;max-width:240px;background:${sess.completed?'rgba(16,185,129,.1)':_rc+'22'};border:1px solid ${sess.completed?'rgba(16,185,129,.35)':_rc+'66'};color:${sess.completed?'#10b981':_rc};border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;-webkit-tap-highlight-color:transparent">
                 <i class="fas ${sess.completed?'fa-check-circle':'fa-flag-checkered'}"></i>
-                ${sess.completed ? 'Completada' : 'Marcar como completada'}
-              </button>` : ''}
+                ${sess.completed?'Completada':'Marcar como completada'}
+              </button>`:''}
           </div>
           ${execBadge}
         </div>`;
