@@ -6003,10 +6003,10 @@ function _renderRaceStrategy(text, rc) {
     const bodyRows = lines.slice(2).map(row =>
       `<tr style="border-top:1px solid var(--border)">${
         row.split('|').filter(c => c.trim())
-          .map(c => `<td style="padding:5px 10px;font-size:11px;color:var(--text-muted);line-height:1.4">${esc(c.trim())}</td>`).join('')
+          .map(c => `<td style="padding:5px 10px;font-size:11px;color:var(--text-muted);line-height:1.4;word-break:break-word">${esc(c.trim())}</td>`).join('')
       }</tr>`
     ).join('');
-    return `<div style="overflow-x:auto;margin:8px 0 12px"><table style="width:100%;border-collapse:collapse;background:var(--bg-input);border-radius:8px;overflow:hidden"><thead><tr style="background:rgba(168,85,247,0.12)">${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table></div>`;
+    return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:8px 0 12px"><table style="width:100%;border-collapse:collapse;background:var(--bg-input);border-radius:8px;overflow:hidden"><thead><tr style="background:rgba(168,85,247,0.12)">${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table></div>`;
   };
 
   // Split into blocks and process
