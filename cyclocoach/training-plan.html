@@ -2381,7 +2381,7 @@ function renderPlan(plan, athlete) {
             ${[['😴','Sueño','Acuéstate pronto. Objetivo: 8-9 horas. Es el mejor recuperador que existe.'],
                ['🍝','Cena','Carbohidratos fáciles: pasta, arroz, patata. Nada nuevo ni pesado. Cena 2-3h antes de dormir.'],
                ['🎒','Material','Prepara todo esta tarde: ropa, casco, botines, bidones, geles, número. Sin sorpresas mañana.'],
-               ['🚴','Entreno de hoy','Activación suave como indica la sesión. Sin intensidad ni prolongar en exceso.'],
+               ['🚴','Entreno de hoy',`${sess.name || 'Activación pre-carrera'}${durMin>0?' · '+durMin+' min':''}${tssVal>0?' · '+tssVal+' TSS':''} — Sin intensidad, suave y corto.`],
                ['💧','Hidratación','Bebe bien durante todo el día. Orina clara = bien hidratado para mañana.'],
                ['🧠','Mental','Visualiza la carrera. Confía en el trabajo de estas semanas. Estás preparado.'],
             ].map(([em,lb,tx])=>`
