@@ -1932,10 +1932,11 @@ async function saveActivityAsRoute() {
         distance_km:      Math.round(distKm * 10) / 10,
         elevation_gain_m: elevGain ? Math.round(elevGain) : null,
         estimated_minutes: actDurMin,
-        notes:             actDate ? `GPS · importada desde actividad · ${actDate}` : 'GPS · importada desde actividad',
-        activity_date:     actDate,
-        avg_power:         actPower,
-        avg_hr:            actHR,
+        notes:              actDate ? `GPS · importada desde actividad · ${actDate}` : 'GPS · importada desde actividad',
+        activity_date:      actDate,
+        avg_power:          actPower,
+        avg_hr:             actHR,
+        strava_activity_id: _currentActivity?.strava_id || null,
       })
     });
     if (!r.ok) throw new Error((await r.json()).error || 'Error');

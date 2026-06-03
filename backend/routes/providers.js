@@ -1304,6 +1304,67 @@ async function syncBikeOdometersFromStrava(uid, token) {
   }
 }
 
+// ─── STRAVA SEGMENT EFFORTS DE UNA ACTIVIDAD ────────────────────
+// GET /api/providers/strava/activity-segments/:stravaId
+router.get('/strava/activity-segments/:stravaId', requireAuth, async (req, res) => {
+  const uid = req.user.id;
+  const stravaId = req.params.stravaId;
+  if (!stravaId || !/^\d+$/.test(stravaId)) return res.status(400).json({ error: 'stravaId inválido' });
+
+  const { data: user } = await supabase
+    .from('users').select('strava_token, strava_refresh, strava_expires_at')
+    .eq('id', uid).single();
+  if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
+
+  let token = user.strava_token;
+  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
+  if (user.strava_refresh && isExpired) {
+    try {
+      const re = await fetch('https://www.strava.com/oauth/token', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: STRAVA_ID, client_secret: STRAVA_SECRET,
+          grant_type: 'refresh_token', refresh_token: user.strava_refresh }),
+      });
+      const d = await re.json();
+      if (re.ok && d.access_token) {
+        token = d.access_token;
+        await supabase.from('users').update({ strava_token: d.access_token,
+          strava_refresh: d.refresh_token, strava_expires_at: d.expires_at }).eq('id', uid);
+      }
+    } catch (e) { console.warn('[ActivitySegments] Error refrescando token:', e.message); }
+  }
+
+  try {
+    const r = await fetch(
+      `https://www.strava.com/api/v3/activities/${stravaId}?include_all_efforts=true`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      return res.status(r.status).json({ error: err.message || 'Error Strava' });
+    }
+    const act = await r.json();
+    const efforts = (act.segment_efforts || []).map(e => ({
+      effort_id:     e.id,
+      name:          e.name,
+      elapsed_time:  e.elapsed_time,
+      avg_watts:     e.average_watts   || null,
+      avg_hr:        e.average_heartrate || null,
+      pr_rank:       e.pr_rank         || null,
+      kom_rank:      e.kom_rank        || null,
+      segment_id:    e.segment?.id,
+      distance:      e.segment?.distance,
+      avg_grade:     e.segment?.average_grade,
+      climb_category: e.segment?.climb_category ?? 0,
+      points:        e.segment?.points || null,
+      start_latlng:  e.segment?.start_latlng || null,
+    }));
+    res.json(efforts);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── STRAVA SEGMENTS EXPLORE ────────────────────────────────────
 // GET /api/providers/strava/segments?bounds=lat_sw,lon_sw,lat_ne,lon_ne
 router.get('/strava/segments', requireAuth, async (req, res) => {

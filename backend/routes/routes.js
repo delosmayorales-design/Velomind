@@ -22,7 +22,7 @@ router.get('/', requireAuth, async (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
   try {
     const { name, type, geojson, distance_km, elevation_gain_m, estimated_minutes, notes,
-            activity_date, avg_power, avg_hr } = req.body;
+            activity_date, avg_power, avg_hr, strava_activity_id } = req.body;
     if (!geojson) return res.status(400).json({ error: 'GeoJSON requerido' });
 
     const { data, error } = await supabase
@@ -35,10 +35,11 @@ router.post('/', requireAuth, async (req, res) => {
         distance_km:       distance_km       ? Math.round(distance_km * 10) / 10       : null,
         elevation_gain_m:  elevation_gain_m  ? Math.round(elevation_gain_m)             : null,
         estimated_minutes: estimated_minutes ? Math.round(estimated_minutes)             : null,
-        notes:             notes             || null,
-        activity_date:     activity_date     || null,
-        avg_power:         avg_power         ? Math.round(avg_power)                    : null,
-        avg_hr:            avg_hr            ? Math.round(avg_hr)                       : null,
+        notes:               notes               || null,
+        activity_date:       activity_date       || null,
+        avg_power:           avg_power           ? Math.round(avg_power)  : null,
+        avg_hr:              avg_hr              ? Math.round(avg_hr)     : null,
+        strava_activity_id:  strava_activity_id  || null,
       })
       .select('*')
       .single();

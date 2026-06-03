@@ -2046,62 +2046,62 @@ const SEGMENT_CAT_COLOR = { 0: '#94a3b8', 1: '#60a5fa', 2: '#4ade80', 3: '#fbbf2
 
 async function loadStravaSegments() {
   if (!routeLayer) { showToast('Abre una ruta primero para ver sus segmentos', 'info'); return; }
+
+  const currentRoute = allRoutes.find(r => r.id === document.querySelector('.route-item.active')?.dataset.id);
+  if (!currentRoute?.strava_activity_id) {
+    showToast('Esta ruta no tiene actividad Strava asociada. Guárdala desde Actividades para ver sus segmentos.', 'info');
+    segmentsOn = false;
+    const sb = document.getElementById('btn-strava-segments');
+    sb.classList.remove('btn-primary'); sb.classList.add('btn-secondary');
+    return;
+  }
+
   const btn = document.getElementById('btn-strava-segments');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span class="btn-label"> Cargando...</span>';
-
-  // Limpiar capa anterior
   if (segmentsLayer) { map.removeLayer(segmentsLayer); segmentsLayer = null; }
 
   try {
-    const b = routeLayer.getBounds();
-    const bounds = `${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}`;
-    const res = await Auth.apiFetch(`${API_BASE}/providers/strava/segments?bounds=${bounds}`);
+    const res = await Auth.apiFetch(`${API_BASE}/providers/strava/activity-segments/${currentRoute.strava_activity_id}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Error al cargar segmentos');
     }
-    const segments = await res.json();
-    if (!segments.length) { showToast('No hay segmentos Strava en esta zona', 'info'); return; }
+    const efforts = await res.json();
+    if (!efforts.length) { showToast('Esta actividad no tiene segmentos Strava', 'info'); return; }
 
     segmentsLayer = L.layerGroup().addTo(map);
 
-    segments.forEach(seg => {
-      const cat      = seg.climb_category ?? 0;
+    efforts.forEach(e => {
+      const cat      = e.climb_category ?? 0;
       const color    = SEGMENT_CAT_COLOR[cat] ?? '#94a3b8';
       const catLabel = SEGMENT_CAT[cat] ?? 'NC';
-      const distKm   = seg.distance ? (seg.distance / 1000).toFixed(1) : '?';
-      const grade    = seg.avg_grade != null ? seg.avg_grade.toFixed(1) + '%' : '?';
+      const distKm   = e.distance ? (e.distance / 1000).toFixed(1) : '?';
+      const grade    = e.avg_grade != null ? e.avg_grade.toFixed(1) + '%' : '?';
 
-      // Polilínea del segmento
-      if (seg.points) {
-        const coords = decodePolyline5(seg.points);
+      if (e.points) {
+        const coords = decodePolyline5(e.points);
         if (coords.length >= 2) {
-          L.polyline(coords, { color, weight: 4, opacity: 0.85, dashArray: '8 4' })
-            .bindPopup(segmentPopup(seg, catLabel, distKm, grade, color))
+          L.polyline(coords, { color, weight: 4, opacity: 0.9, dashArray: '8 4' })
+            .bindPopup(segmentPopup(e, catLabel, distKm, grade, color))
             .addTo(segmentsLayer);
         }
       }
 
-      // Marcador en el inicio del segmento
-      if (seg.start_latlng?.length === 2) {
+      if (e.start_latlng?.length === 2) {
+        const prBadge = e.pr_rank === 1 ? '🥇 ' : e.pr_rank === 2 ? '🥈 ' : e.pr_rank === 3 ? '🥉 ' : '';
         const icon = L.divIcon({
           className: '',
-          html: `<div style="
-            background:${color};color:#fff;font-size:9px;font-weight:800;
-            padding:2px 5px;border-radius:4px;white-space:nowrap;
-            box-shadow:0 2px 6px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.3);
-            max-width:120px;overflow:hidden;text-overflow:ellipsis;
-          ">${escHtml(seg.name)}</div>`,
+          html: `<div style="background:${color};color:#fff;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.3);max-width:130px;overflow:hidden;text-overflow:ellipsis">${prBadge}${escHtml(e.name)}</div>`,
           iconAnchor: [0, 10],
         });
-        L.marker(seg.start_latlng, { icon })
-          .bindPopup(segmentPopup(seg, catLabel, distKm, grade, color))
+        L.marker(e.start_latlng, { icon })
+          .bindPopup(segmentPopup(e, catLabel, distKm, grade, color))
           .addTo(segmentsLayer);
       }
     });
 
-    showToast(`${segments.length} segmento${segments.length !== 1 ? 's' : ''} Strava cargado${segments.length !== 1 ? 's' : ''}`, 'success');
+    showToast(`${efforts.length} segmento${efforts.length !== 1 ? 's' : ''} completado${efforts.length !== 1 ? 's' : ''} en esta ruta`, 'success');
   } catch(e) {
     showToast(e.message, 'error');
     segmentsOn = false;
@@ -2109,23 +2109,35 @@ async function loadStravaSegments() {
     btn.disabled = false;
     const active = segmentsOn && segmentsLayer;
     btn.innerHTML = '<i class="fab fa-strava"></i><span class="btn-label"> Segmentos</span>';
-    btn.classList.toggle('btn-primary', active);
+    btn.classList.toggle('btn-primary',   active);
     btn.classList.toggle('btn-secondary', !active);
   }
 }
 
-function segmentPopup(seg, catLabel, distKm, grade, color) {
-  const stravaUrl = `https://www.strava.com/segments/${seg.id}`;
-  return `<div style="min-width:160px;font-family:inherit">
-    <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#111">${escHtml(seg.name)}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-      <span style="background:${color};color:#fff;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700">${catLabel}</span>
-      <span style="font-size:11px;color:#555"><i class="fas fa-ruler"></i> ${distKm} km</span>
-      <span style="font-size:11px;color:#555"><i class="fas fa-mountain"></i> ${grade}</span>
+function formatSegTime(secs) {
+  if (!secs) return '?';
+  const m = Math.floor(secs / 60), s = secs % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+function segmentPopup(e, catLabel, distKm, grade, color) {
+  const stravaUrl = `https://www.strava.com/segments/${e.segment_id}`;
+  const prLabel = e.pr_rank === 1 ? '<span style="background:#F59E0B;color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;margin-left:4px">PR 🥇</span>'
+                : e.pr_rank === 2 ? '<span style="background:#94a3b8;color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;margin-left:4px">2º PR</span>'
+                : e.pr_rank === 3 ? '<span style="background:#b45309;color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;margin-left:4px">3º PR</span>' : '';
+  const komLabel = e.kom_rank === 1 ? '<span style="background:#FC4C02;color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;margin-left:4px">KOM 👑</span>' : '';
+  return `<div style="min-width:170px;font-family:inherit">
+    <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#111">${escHtml(e.name)}${prLabel}${komLabel}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-bottom:8px;font-size:11px;color:#444">
+      <span><span style="background:${color};color:#fff;padding:1px 5px;border-radius:8px;font-size:9px;font-weight:700">${catLabel}</span></span>
+      <span>⏱ ${formatSegTime(e.elapsed_time)}</span>
+      <span>📏 ${distKm} km</span>
+      <span>📐 ${grade}</span>
+      ${e.avg_watts ? `<span>⚡ ${Math.round(e.avg_watts)} W</span>` : ''}
+      ${e.avg_hr    ? `<span>❤ ${Math.round(e.avg_hr)} bpm</span>` : ''}
     </div>
     <a href="${stravaUrl}" target="_blank" rel="noopener"
-       style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
-              color:#FC4C02;text-decoration:none">
+       style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#FC4C02;text-decoration:none">
       <i class="fab fa-strava"></i> Ver en Strava
     </a>
   </div>`;
