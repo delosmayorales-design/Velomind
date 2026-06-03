@@ -2973,11 +2973,13 @@ async function loadRoutes() {
 }
 
 function filterRoutes(type, btn) {
-  activeFilter = type;
+  activeFilter = type || 'all';
   document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('routes-list').style.display = '';
-  document.getElementById('bp-panel').classList.remove('visible');
+  const list = document.getElementById('routes-list');
+  if (list) list.style.display = '';
+  const bpPanel = document.getElementById('bp-panel');
+  if (bpPanel) bpPanel.classList.remove('visible');
   renderRouteList();
 }
 
@@ -3058,7 +3060,10 @@ function routePreviewSvg(route) {
 
 function renderRouteList() {
   const list     = document.getElementById('routes-list');
-  const filtered = activeFilter === 'all' ? allRoutes : allRoutes.filter(r => r.type === activeFilter);
+  const filter   = (activeFilter || 'all').toLowerCase();
+  const filtered = filter === 'all'
+    ? allRoutes
+    : allRoutes.filter(r => String(r.type || '').toLowerCase() === filter);
   if (!filtered.length) {
     list.innerHTML = `<div class="empty-routes">
       <i class="fas fa-route" style="font-size:28px;opacity:0.25;display:block;margin-bottom:10px"></i>
