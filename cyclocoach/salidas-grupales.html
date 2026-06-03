@@ -1455,9 +1455,20 @@
       slot.innerHTML = '<div class="weather-nodata">Pronóstico no disponible para esta fecha.</div>';
       return;
     }
+
+    // Caché en sessionStorage: clave por coordenadas (2 decimales) + hora de salida
+    const cacheKey = `velo_wx_${(+lat).toFixed(2)}_${(+lng).toFixed(2)}_${depDate.toISOString().slice(0, 13)}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) { slot.innerHTML = cached; return; }
+
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${(+lat).toFixed(4)}&longitude=${(+lng).toFixed(4)}&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m&timezone=UTC&forecast_days=16`;
       const res = await fetch(url);
+      if (res.status === 429) {
+        slot.innerHTML = '<div class="weather-nodata">Límite de peticiones al servicio meteorológico. Inténtalo en unos minutos.</div>';
+        return;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json();
       if (!d.hourly) throw new Error('sin datos');
       const depHour = depDate.toISOString().slice(0, 13);
@@ -1465,7 +1476,7 @@
       if (idx === -1) idx = 0;
       const w = _wmoGrp(d.hourly.weather_code[idx]);
       const windDir = _wdirGrp(d.hourly.wind_direction_10m[idx]);
-      slot.innerHTML = `<div class="weather-card">
+      const html = `<div class="weather-card">
         <div class="weather-icon">${w.i}</div>
         <div class="weather-body">
           <div class="weather-desc">${w.d}</div>
@@ -1476,6 +1487,8 @@
           </div>
         </div>
       </div>`;
+      try { sessionStorage.setItem(cacheKey, html); } catch(_) {}
+      slot.innerHTML = html;
     } catch(_) {
       slot.innerHTML = '<div class="weather-nodata">No se pudo cargar el pronóstico.</div>';
     }
