@@ -51,6 +51,41 @@ router.post('/', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/routes/:id — obtener ruta propia o adjunta a una salida grupal accesible
+router.get('/:id', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const routeId = req.params.id;
+
+    // 1. Intentar con ruta propia
+    const { data: own } = await supabase
+      .from('routes').select('*').eq('id', routeId).eq('user_id', userId).single();
+    if (own) return res.json(own);
+
+    // 2. Verificar que esté adjunta a una salida grupal que el usuario puede ver
+    //    (pública o es participante confirmado)
+    const { data: ride } = await supabase
+      .from('group_rides')
+      .select('id, is_public, group_ride_participants!inner(user_id, status)')
+      .eq('route_id', routeId)
+      .limit(1)
+      .maybeSingle();
+
+    const accessible = ride && (
+      ride.is_public ||
+      ride.group_ride_participants?.some(p => p.user_id === userId && p.status === 'confirmed')
+    );
+    if (!accessible) return res.status(403).json({ error: 'Sin acceso a esta ruta' });
+
+    const { data: route, error } = await supabase
+      .from('routes').select('*').eq('id', routeId).single();
+    if (error || !route) return res.status(404).json({ error: 'Ruta no encontrada' });
+    res.json(route);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // PATCH /api/routes/:id — actualizar (nombre, favorito, notas)
 router.patch('/:id', requireAuth, async (req, res) => {
   try {

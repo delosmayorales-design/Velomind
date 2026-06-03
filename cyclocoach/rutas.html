@@ -3004,7 +3004,18 @@ async function loadRoutes() {
     allRoutes = await res.json();
     renderRouteList();
     const paramId = new URLSearchParams(location.search).get('route');
-    if (paramId && allRoutes.find(r => r.id === paramId)) openRouteOnMap(paramId);
+    if (!paramId) return;
+    if (allRoutes.find(r => r.id === paramId)) {
+      openRouteOnMap(paramId);
+    } else {
+      // Ruta de otro usuario adjunta a una salida grupal — intentar fetch directo
+      const r = await Auth.apiFetch(`${API_BASE}/routes/${paramId}`);
+      if (r.ok) {
+        const sharedRoute = await r.json();
+        allRoutes.push(sharedRoute);
+        openRouteOnMap(paramId);
+      }
+    }
   } catch {
     document.getElementById('routes-list').innerHTML =
       '<div class="empty-routes"><i class="fas fa-exclamation-circle"></i><br>No se pudieron cargar las rutas</div>';
