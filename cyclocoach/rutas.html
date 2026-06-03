@@ -3000,6 +3000,8 @@ async function loadRoutes() {
     if (!res.ok) throw new Error();
     allRoutes = await res.json();
     renderRouteList();
+    const paramId = new URLSearchParams(location.search).get('route');
+    if (paramId && allRoutes.find(r => r.id === paramId)) openRouteOnMap(paramId);
   } catch {
     document.getElementById('routes-list').innerHTML =
       '<div class="empty-routes"><i class="fas fa-exclamation-circle"></i><br>No se pudieron cargar las rutas</div>';
