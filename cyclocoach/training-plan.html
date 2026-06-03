@@ -1910,32 +1910,33 @@ function _buildRaceCoachPlan(ftp, athlete, metrics, isC, event) {
       if (s.type === 'climb') {
         const climbIF   = Math.min(flatIF + 0.12, 1.05);
         const climbW    = Math.round(ftp * climbIF);
-        const climbWLo  = Math.round(ftp * (climbIF - 0.02));
-        const climbWHi  = Math.round(ftp * (climbIF + 0.02));
+        const climbWLo  = Math.max(80, Math.round(ftp * (climbIF - 0.02)));
+        const climbWHi  = Math.max(climbWLo + 5, Math.round(ftp * (climbIF + 0.02)));
         const minEst    = s.elevation_m ? Math.round(s.elevation_m / vmpm(climbW)) : null;
         const grade     = s.avg_grade ? `${s.avg_grade}%` : '';
+        const fatigueBias = tsb < -5 ? 'conserva 10-15W más de lo habitual' : tsb < 0 ? 'mantén ritmo estable y no te vayas en el primer kilómetro' : 'puedes apretar el ritmo sin perder control';
         return {
           emoji: '🏔️', label: s.name || `Puerto km ${s.km_start}`,
-          meta: [len && `${len} km`, s.elevation_m && `+${s.elevation_m}m`, grade].filter(Boolean).join(' · '),
+          meta: [len && `${len} km`, s.elevation_m && `+${s.elevation_m}m`, grade, `km ${s.km_start}`].filter(Boolean).join(' · '),
           watts: `${climbWLo}-${climbWHi}W`,
-          tip: `Empieza ${Math.round(ftp*0.04)}W por debajo del objetivo los primeros 2 km. IF ~${climbIF.toFixed(2)}.${minEst?` Tiempo est. ~${minEst} min.`:''}`,
+          tip: `Para ${s.name || 'este puerto'}: empieza ${Math.max(8, Math.round(ftp * 0.04))}W por debajo de tu objetivo los primeros 2 km, sube a ${climbWLo}-${climbWHi}W y ${fatigueBias}.${minEst ? ` Tiempo estimado ~${minEst} min.` : ''}`,
         };
       } else {
         const fW    = Math.round(ftp * (s.isFinal ? flatIF+0.04 : flatIF));
-        const fWLo  = Math.round(ftp * (s.isFinal ? flatIF+0.01 : flatIF-0.03));
-        const fWHi  = Math.round(ftp * (s.isFinal ? flatIF+0.07 : flatIF+0.03));
+        const fWLo  = Math.max(70, Math.round(ftp * (s.isFinal ? flatIF+0.01 : flatIF-0.03)));
+        const fWHi  = Math.max(fWLo + 5, Math.round(ftp * (s.isFinal ? flatIF+0.07 : flatIF+0.03)));
         const spd   = flatSpeedKmh(fW);
         const minEst = Math.round((len / spd) * 60);
         const feedsHere = feeds.filter(f => f >= s.km_start && f <= s.km_end);
-        const feedTip = feedsHere.length ? ` · Avituallamiento km ${feedsHere.join(', ')}: reposta agua y come.` : '';
+        const feedTip = feedsHere.length ? ` · Avituallamiento real km ${feedsHere.join(', ')}: reposta 150-250 ml, 1 gel o 1 bar si vas a pasar >45 min hasta el siguiente.` : '';
         return {
           emoji: s.isFinal ? '🏁' : '⬆️',
           label: s.isFinal ? `Tramo final (km ${s.km_start}-${s.km_end})` : `Km ${s.km_start}-${s.km_end}`,
           meta: `${len} km · ~${minEst} min`,
           watts: `${fWLo}-${fWHi}W`,
           tip: s.isFinal
-            ? `Si has gestionado bien la energía, sube progresivamente desde km ${s.km_start+Math.round(len*0.6)} y vacía al final.`
-            : `Rueda en el pelotón si puedes.${feedTip}`,
+            ? `En el tramo final, mantén ${fWLo}-${fWHi}W y sube progresivamente desde km ${s.km_start + Math.max(1, Math.round(len * 0.6))} si vas bien. Si sientes fatiga, baja 10-15W y protege la última subida.`
+            : `Rueda en el pelotón si puedes y no te quedes fuera del ritmo. ${feedTip}`,
         };
       }
     });
@@ -1947,10 +1948,10 @@ function _buildRaceCoachPlan(ftp, athlete, metrics, isC, event) {
     nutrition = { totalMin, gelsNeeded, feeds,
       startTime: event.start_time || null,
       tips: [
-        `Desayuna 2-3 h antes con carbohidratos de fácil digestión`,
-        gelsNeeded > 0 ? `Planifica ${gelsNeeded} gel${gelsNeeded>1?'s':''} (~${Math.round(totalMin/gelsNeeded)} min de separación)` : 'Prueba < 90 min: hidratación suficiente sin geles',
-        feeds.length ? `Aprovecha los avituallamientos km ${feeds.join(', ')} para reponer y comer` : 'Sin avituallamientos oficiales — lleva todo lo necesario',
-        `Bebe cada 15-20 min aunque no tengas sed`,
+        `Con tu FTP ${ftp}W y TSB ${tsb}, la estrategia ideal es salir 5-8% más suave que tu ritmo real de los últimos 20 min y no gastar el depósito en los primeros 30 km.`,
+        `Desayuna 2-3 h antes con carbohidratos de fácil digestión; si vas a pasar más de 90 min, usa ${gelsNeeded || 1} gel${gelsNeeded > 1 ? 's' : ''} y 500-700 ml de agua en total durante la carrera.`,
+        feeds.length ? `Los avituallamientos reales están en km ${feeds.join(', ')}: reposta 150-250 ml, 1 gel o 1 bar y no te detengas más de 20-30 s.` : 'Sin avituallamientos oficiales — lleva todo lo necesario y planifica paradas cortas.',
+        `Si TSB < 0, protege la salida y evita ataques. Si TSB >= 0, puedes subir a ${Math.max(80, Math.round(ftp * (flatIF + 0.05)))}W en los puertos y soltar en la bajada.`,
       ]
     };
   }
