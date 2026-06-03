@@ -1755,7 +1755,14 @@ Devuelve SOLO este JSON (sin texto adicional):
       }
       return res.status(500).json({ error: 'La IA no devolvió una recomendación válida.' });
     }
-    
+
+    // Override determinista de duración para salidas libres con km especificados
+    // La IA no sabe hacer esta conversión de forma fiable — la hacemos nosotros
+    if (kmMatch) {
+      const kmCalculatedMin = Math.round(parseFloat(kmMatch[1].replace(',', '.')) / 28 * 60);
+      result.duracion_min = kmCalculatedMin;
+    }
+
     // Capping determinista ±25% TSS — la IA no puede sobrepasar este límite
     if (result.recomendacion !== 'descanso') {
       if (result.tss_estimado > tssMax) result.tss_estimado = tssMax;
