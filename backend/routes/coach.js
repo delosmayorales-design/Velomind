@@ -2789,7 +2789,47 @@ Si un campo no es legible, usa null o [].`;
   }
 
   try {
-    // ── 1. OpenAI GPT-4o (visión) ──
+    // ── 1. Google Gemini (visión, muy fiable para imágenes) ──
+    if (hasGoogle) {
+      const geminiModels = [...new Set([
+        (process.env.GEMINI_MODEL || '').trim(),
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-1.5-pro',
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-latest',
+      ])].filter(Boolean);
+
+      for (const model of geminiModels) {
+        try {
+          const b64 = imageBase64.replace(/^data:[^;]+;base64,/, '');
+          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': googleKey },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [
+                { text: prompt },
+                { inlineData: { mimeType: parsed.mime, data: b64 } },
+              ]}],
+              generationConfig: { temperature: 0, maxOutputTokens: 1024 },
+            }),
+          });
+          const data = await resp.json();
+          if (!resp.ok) {
+            if (resp.status === 404) continue;
+            console.log('[race-profile] Gemini error:', data.error || resp.status);
+            continue;
+          }
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const parsedData = extractRaceJSON(text);
+          if (parsedData) return res.json(parsedData);
+        } catch (e) {
+          console.log('[race-profile] Gemini exception:', e.message);
+        }
+      }
+    }
+
+    // ── 2. OpenAI GPT-4o (visión) ──
     if (hasOpenAI) {
       const resp = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -2816,7 +2856,7 @@ Si un campo no es legible, usa null o [].`;
       console.log('[race-profile] OpenAI falló o devolvió respuesta vacía');
     }
 
-    // ── 2. Anthropic Claude ──
+    // ── 3. Anthropic Claude ──
     if (hasAnthropic) {
       const b64 = imageBase64.replace(/^data:[^;]+;base64,/, '');
       const aiClient = new Anthropic({ apiKey: anthropicKey });

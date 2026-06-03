@@ -5819,7 +5819,7 @@ async function runRaceAnalysis(dk, isC) {
       <i class="fas fa-spinner fa-spin" style="font-size:18px"></i> Analizando perfil del recorrido con IA...
     </div>`;
     try {
-      const API = window.API_URL;
+      const API = (window.API_URL || API_URL || 'https://velomind-backend.onrender.com/api');
       const res = await fetch(`${API}/coach/analyze-race-profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
@@ -5902,7 +5902,7 @@ function loadRaceProfileImage(input, sdk) {
     </div>`;
 
     try {
-      const API = window.API_URL;
+      const API = (window.API_URL || API_URL || 'https://velomind-backend.onrender.com/api');
       const res = await fetch(`${API}/coach/analyze-race-profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
