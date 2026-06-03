@@ -2996,17 +2996,16 @@ Usa ## para secciones y - para listas. No generes tablas markdown.`;
             if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Groq (${model})`); break; }
           } else {
             const err = await resp.json().catch(() => ({}));
-            console.log(`[race-day] Groq ${resp.status}:`, err?.error?.message);
-            if (err?.error?.code === 'model_decommissioned') continue;
-            break;
+            console.log(`[race-day] Groq (${model}) ${resp.status}:`, err?.error?.message);
+            continue; // siempre probar el siguiente modelo
           }
-        } catch (e) { console.log('[race-day] Groq exception:', e.message); break; }
+        } catch (e) { console.log('[race-day] Groq exception:', e.message); continue; }
       }
     }
 
     // ── 2. Google Gemini ──
     if (!strategyText && hasGoogle) {
-      const geminiModels = [...new Set([(process.env.GEMINI_MODEL||'').trim(),'gemini-1.5-flash','gemini-2.0-flash','gemini-2.5-flash'])].filter(Boolean);
+      const geminiModels = [...new Set([(process.env.GEMINI_MODEL||'').trim(),'gemini-1.5-flash','gemini-2.0-flash','gemini-2.5-flash','gemini-1.5-pro'])].filter(Boolean);
       for (const model of geminiModels) {
         try {
           const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -3015,7 +3014,10 @@ Usa ## para secciones y - para listas. No generes tablas markdown.`;
             body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 2048 } }),
           });
           const data = await resp.json();
-          if (!resp.ok) { console.log(`[race-day] Gemini ${resp.status}:`, data?.error?.message); if (resp.status === 404 || resp.status === 400) continue; break; }
+          if (!resp.ok) {
+            console.log(`[race-day] Gemini (${model}) ${resp.status}:`, data?.error?.message);
+            continue; // siempre probar el siguiente modelo
+          }
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
           if (text.length > 200) { strategyText = text; console.log(`[race-day] OK Gemini (${model})`); break; }
         } catch (e) { console.log('[race-day] Gemini exception:', e.message); }
