@@ -1025,7 +1025,7 @@ const TrainingPlanGenerator = {
         { day: 'Martes',   type: 'recovery', name: 'Pedaleo de activación', description: 'Mover piernas sin fatigarse en absoluto.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
         { day: 'Miércoles',type: 'endurance', name: 'Z2 con sprints cortos', description: 'Sprints al final para mantener agudeza neuromuscular.', tssShare: 0.10, ifTarget: 0.62, emoji: '🔵' },
         { day: 'Jueves',   isRest: true,  description: 'Descanso. Carga de carbohidratos: 8-10g/kg' },
-        { day: 'Viernes',  type: 'race',  name: 'Activación pre-carrera', description: 'Despierta las piernas sin vaciar los depósitos.', tssShare: 0.07, ifTarget: 0.65, emoji: '🏁' },
+        { day: 'Viernes',  type: 'z2', isPreRaceB: true, name: 'Activación pre-carrera', description: 'Despierta las piernas sin vaciar los depósitos.', tssShare: 0.07, ifTarget: 0.65, emoji: '🚴' },
         { day: 'Sábado',   type: 'race',  name: '🏁 DÍA DE CARRERA', description: 'Ejecuta tu plan de carrera. ¡A darlo todo!', tssShare: 0.30, ifTarget: 0.85, emoji: '🏁' },
         { day: 'Domingo',  isRest: true,  description: 'Recuperación post-carrera. Come bien y descansa' },
       ];

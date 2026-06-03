@@ -1958,6 +1958,17 @@ function renderPlan(plan, athlete) {
   const metrics = AppState.getCurrentMetrics();
   const ftp = athlete.ftp || 200;
 
+  // Retrocompatibilidad: planes guardados con type:'race' en la activación pre-carrera
+  (plan.sessions || []).forEach(s => {
+    if (s.type === 'race' && !s.isRest && (
+      (s.name||'').toLowerCase().includes('pre-carrera') ||
+      (s.name||'').toLowerCase().includes('activación pre')
+    )) {
+      s.type = 'z2';
+      s.isPreRaceB = true;
+    }
+  });
+
   // Normalizar emoji de cada sesión — sobrescribe lo que venga del plan guardado
   const _renderTodayIdx = (new Date().getDay() + 6) % 7;
   (plan.sessions || []).forEach((s, i) => {
