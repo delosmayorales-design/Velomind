@@ -2968,7 +2968,11 @@ ${climbsText}
 5 frases máximo: cómo llega el ciclista, dónde se gana la carrera, qué debe evitar, qué debe hacer.
 
 ## DIAGNÓSTICO DEL ESTADO DE FORMA
-CTL ${ctl}, ATL ${atl}, TSB ${tsb >= 0 ? '+' : ''}${tsb}. Explica qué significa cada dato y cómo afectará. Clasifica con emoji (🟢🟡🟠🔴) y justifica.
+Definiciones exactas (NO las cambies ni confundas):
+- CTL ${ctl} = Carga Crónica de Entrenamiento = nivel de FITNESS acumulado (promedio 42 días). Un CTL alto significa buena base aeróbica. NO es la forma actual.
+- ATL ${atl} = Carga Aguda de Entrenamiento = nivel de FATIGA reciente (promedio 7 días). Un ATL alto significa cansancio acumulado reciente. NO es el fitness.
+- TSB ${tsb >= 0 ? '+' : ''}${tsb} = Training Stress Balance = CTL − ATL = FORMA ACTUAL. Positivo → fresco. Negativo → fatigado.
+Clasifica la forma con emoji (🟢🟡🟠🔴) y explica cómo afectará a la carrera de hoy.
 
 ## ESTRATEGIA GLOBAL
 Divide en: Salida · Primer tercio · Parte central · Momento decisivo · Final. Qué hacer exactamente en cada fase con vatios concretos.
