@@ -177,26 +177,19 @@ router.get('/recommendations', async (req, res) => {
   const nutrition = buildNutritionRecommendation({ ftp, weight, goal, phase, form,
     avgTSS, training, user });
 
-  try {
-    const userOverride = req.query.override ? JSON.parse(req.query.override) : {};
-    const weeklyPlan = recalculateWeeklyPlan(acts, ftp, userOverride);
-    res.json({
-      summary: {
-        rides: acts.length,
-        avgTSS, totalTSS, avgDurMin, avgDistKm, avgNP, wkg,
-        phase, form,
-        pmc: { ctl: Math.round(ctl), atl: Math.round(atl), tsb: Math.round(tsb) },
-        zones: { z1: zonePct[1], z2: zonePct[2], z3: zonePct[3], z4: zonePct[4], z5: zonePct[5], z6: zonePct[6], z7: zonePct[7], data_quality: zoneDataQuality },
-        polarization: { low: lowPct, mid: midPct, high: hiPct },
-        trend: { tssGrowth, recentAvgTSS, prevAvgTSS },
-      },
-      training,
-      nutrition,
-      weeklyPlan,
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
+  res.json({
+    summary: {
+      rides: acts.length,
+      avgTSS, totalTSS, avgDurMin, avgDistKm, avgNP, wkg,
+      phase, form,
+      pmc: { ctl: Math.round(ctl), atl: Math.round(atl), tsb: Math.round(tsb) },
+      zones: { z1: zonePct[1], z2: zonePct[2], z3: zonePct[3], z4: zonePct[4], z5: zonePct[5], z6: zonePct[6], z7: zonePct[7], data_quality: zoneDataQuality },
+      polarization: { low: lowPct, mid: midPct, high: hiPct },
+      trend: { tssGrowth, recentAvgTSS, prevAvgTSS },
+    },
+    training,
+    nutrition,
+  });
 });
 
 // ── GET /api/coach/power-curve ────────────────────────────────
