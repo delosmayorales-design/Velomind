@@ -73,11 +73,23 @@ router.get('/', async (req, res) => {
 
   if (bikesErr) return res.status(500).json({ error: bikesErr.message });
 
+  const TUBELESS_ELIGIBLE = new Set(['gravel', 'mtb_full', 'mtb_hardtail']);
+
   // Mapear al formato que espera el frontend (garaje.html)
   const mappedBikes = await Promise.all((bikes || []).map(async bike => {
-    const { data: comps } = await supabase
+    const { data: compsRaw } = await supabase
       .from('bike_components').select('*')
       .eq('bike_id', bike.id).eq('is_active', true);
+
+    // Auto-crear sellante tubeless en bicis elegibles que no lo tengan aún
+    let comps = compsRaw || [];
+    if (TUBELESS_ELIGIBLE.has(bike.type) && !comps.some(c => c.component_type === 'tubeless_sealant')) {
+      const { data: newComp } = await supabase.from('bike_components').insert({
+        bike_id: bike.id, component_type: 'tubeless_sealant',
+        name: 'Sellante Tubeless', km_remaining: 0, hours_remaining: 0, is_active: true,
+      }).select().single();
+      if (newComp) comps = [...comps, newComp];
+    }
 
     const TYPE_MAP = {
       brakes_pad:  'brake_pads_front',
