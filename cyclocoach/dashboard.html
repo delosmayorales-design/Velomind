@@ -616,7 +616,9 @@
       font-size: 12px; color: var(--text-muted);
       transition: all .2s;
     }
+    .wk-day-dot i { font-size: 11px; line-height: 1; }
     .wk-day-dot.done { background: rgba(16,185,129,.18); border-color: rgba(16,185,129,.5); color: #10b981; }
+    .wk-day-dot.done i { color: #10b981 !important; }
     .wk-day-dot.today { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-glow); }
     .wk-day-dot.done.today { background: rgba(158,214,43,.15); border-color: var(--primary); color: var(--primary); }
     .wk-day-dot.rest { opacity: .28; }
@@ -1865,7 +1867,28 @@ function renderWeek(plan) {
   // Línea 3: impacto
   const line3 = `<div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${impactMsg()}</div>`;
 
-  // Círculos de días
+  // Mapa icono FA + color por tipo de sesión
+  const _SI = {
+    recovery:  { fa:'fa-bed',           color:'#6B7280' },
+    endurance: { fa:'fa-bicycle',        color:'#3B82F6' },
+    tempo:     { fa:'fa-wind',           color:'#10B981' },
+    threshold: { fa:'fa-gauge',          color:'#F59E0B' },
+    vo2max:    { fa:'fa-fire',           color:'#EF4444' },
+    sprint:    { fa:'fa-bolt',           color:'#8B5CF6' },
+    long:      { fa:'fa-road',           color:'#06B6D4' },
+    race:      { fa:'fa-flag-checkered', color:'#EC4899' },
+    strength:  { fa:'fa-dumbbell',       color:'#A855F7' },
+    gym:       { fa:'fa-dumbbell',       color:'#F97316' },
+  };
+  function _sessIcon(s) {
+    if (s.isRest) return { fa: null, color: null };
+    const nm = (s.name || '').toLowerCase();
+    if (nm.includes('cuesta') || nm.includes('hill') || nm.includes('subida') || nm.includes('montaña'))
+      return { fa:'fa-mountain', color:'#EF4444' };
+    return _SI[s.type] || { fa:'fa-bicycle', color:'var(--text-muted)' };
+  }
+
+  // Círculos de días con icono de tipo de sesión
   const cols = plan.sessions.map((s, i) => {
     const has = activeDays.has(i), isToday = i === todayIdx;
     let dotCls = '';
@@ -1873,13 +1896,20 @@ function renderWeek(plan) {
     else if (has)            dotCls = 'done';
     else if (isToday)        dotCls = 'today';
     else if (s.isRest)       dotCls = 'rest';
-    const icon = has
-      ? '<i class="fas fa-check" style="font-size:10px"></i>'
-      : isToday
-        ? '<span style="width:5px;height:5px;border-radius:50%;background:var(--primary);display:inline-block"></span>'
-        : '';
+
+    let innerHtml, borderStyle = '';
+    if (has) {
+      innerHtml = '<i class="fas fa-check"></i>';
+    } else if (!s.isRest) {
+      const si = _sessIcon(s);
+      innerHtml  = si.fa ? `<i class="fas ${si.fa}" style="color:${si.color}"></i>` : '';
+      borderStyle = `border-color:${si.color}40`;   // borde de color sutil
+    } else {
+      innerHtml = '';
+    }
+
     return `<div class="week-day-col">
-      <div class="wk-day-dot ${dotCls}">${icon}</div>
+      <div class="wk-day-dot ${dotCls}" style="${borderStyle}">${innerHtml}</div>
       <span class="week-day-name ${isToday?'today':''}">${DAY_NAMES[i]}</span>
     </div>`;
   }).join('');
