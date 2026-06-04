@@ -84,11 +84,15 @@ router.get('/', async (req, res) => {
     // Auto-crear sellante tubeless en bicis elegibles que no lo tengan aún
     let comps = compsRaw || [];
     if (TUBELESS_ELIGIBLE.has(bike.type) && !comps.some(c => c.component_type === 'tubeless_sealant')) {
-      const { data: newComp } = await supabase.from('bike_components').insert({
+      const { error: insErr } = await supabase.from('bike_components').insert({
         bike_id: bike.id, component_type: 'tubeless_sealant',
         name: 'Sellante Tubeless', km_remaining: 0, hours_remaining: 0, is_active: true,
-      }).select().single();
-      if (newComp) comps = [...comps, newComp];
+      });
+      if (insErr) console.error('[garage] tubeless insert error:', insErr.message);
+      // Re-consultar siempre para que el componente aparezca en esta misma respuesta
+      const { data: compsRefresh } = await supabase
+        .from('bike_components').select('*').eq('bike_id', bike.id).eq('is_active', true);
+      comps = compsRefresh || comps;
     }
 
     const TYPE_MAP = {
@@ -451,6 +455,27 @@ router.post('/sync-strava', async (req, res) => {
     await supabase.from('bike_components').update({ km_remaining: (c.km_remaining || 0) - (activity_km || 0) }).eq('id', c.id);
   }
   res.json({ message: 'Kilómetros actualizados', bike_id: bike.id, km_added: activity_km });
+});
+
+// POST /api/garage/sync-components — añade componentes por defecto faltantes en bicis existentes
+router.post('/sync-components', async (req, res) => {
+  const uid = req.user.id;
+  const TUBELESS_TYPES = new Set(['gravel', 'mtb_full', 'mtb_hardtail']);
+  const { data: bikes } = await supabase.from('bikes').select('id, type').eq('user_id', uid).eq('is_active', true);
+  let added = 0;
+  for (const bike of bikes || []) {
+    if (!TUBELESS_TYPES.has(bike.type)) continue;
+    const { data: existing } = await supabase.from('bike_components')
+      .select('id').eq('bike_id', bike.id).eq('component_type', 'tubeless_sealant').eq('is_active', true).maybeSingle();
+    if (existing) continue;
+    const { error } = await supabase.from('bike_components').insert({
+      bike_id: bike.id, component_type: 'tubeless_sealant',
+      name: 'Sellante Tubeless', km_remaining: 0, hours_remaining: 0, is_active: true,
+    });
+    if (!error) added++;
+    else console.error('[sync-components] insert error:', error.message);
+  }
+  res.json({ added, message: `${added} componente(s) añadido(s)` });
 });
 
 // --- Helpers ---

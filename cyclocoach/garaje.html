@@ -597,6 +597,9 @@
       <button class="btn btn-secondary btn-sm" onclick="G.syncActivities()">
         <i class="fas fa-sync-alt"></i><span class="btn-label"> Actualizar km</span>
       </button>
+      <button class="btn btn-secondary btn-sm" id="btn-sync-comps" onclick="G.syncComponents()" title="Añadir componentes nuevos a bicis existentes">
+        <i class="fas fa-puzzle-piece"></i><span class="btn-label"> Sincronizar componentes</span>
+      </button>
       <button class="btn btn-ghost btn-sm" onclick="G.exportPDF()" title="Informe de mantenimiento">
         <i class="fas fa-file-pdf"></i><span class="btn-label"> Informe PDF</span>
       </button>
@@ -1410,6 +1413,31 @@ const G = (() => {
       });
     });
     return anyMatched;
+  }
+
+  async function syncComponents() {
+    const btn = document.getElementById('btn-sync-comps');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+    try {
+      const r = await fetch(`${window.API_URL}/garage/sync-components`, {
+        method: 'POST', headers: Auth.getHeaders(),
+      });
+      const data = await r.json();
+      if (!r.ok) { toast('red', 'Error', data.error || 'No se pudo sincronizar'); return; }
+      if (data.added > 0) {
+        await BackendSync.loadGarage();
+        try { st = JSON.parse(localStorage.getItem('velomind_garage') || 'null'); } catch(e) {}
+        if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
+        recalc(); render();
+        toast('green', '✅ Componentes añadidos', `${data.added} componente(s) nuevo(s) sincronizado(s).`);
+      } else {
+        toast('info', 'Sin cambios', 'Todas las bicis ya tienen sus componentes al día.');
+      }
+    } catch(e) {
+      toast('red', 'Error', 'Sin conexión con el servidor');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-puzzle-piece"></i><span class="btn-label"> Sincronizar componentes</span>'; }
+    }
   }
 
   async function syncActivities() {
