@@ -624,6 +624,10 @@
     .wk-day-dot.rest { opacity: .28; }
     .week-day-name { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
     .week-day-name.today { color: var(--primary); }
+    .wk-day-lbl {
+      font-size: 8px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .2px; line-height: 1; margin-top: -2px;
+    }
     /* Narrativa */
     .wk-narrative {
       font-size: 12px; color: var(--text-secondary); line-height: 1.55;
@@ -1880,6 +1884,21 @@ function renderWeek(plan) {
     strength:  { fa:'fa-dumbbell',       color:'#A855F7' },
     gym:       { fa:'fa-dumbbell',       color:'#F97316' },
   };
+  // Categoría de alto nivel: qué tipo de esfuerzo es el día
+  const _CAT = {
+    series: { bg:'rgba(239,68,68,.13)',  border:'rgba(239,68,68,.4)',  lbl:'Series', clr:'#EF4444' },
+    rodaje: { bg:'rgba(59,130,246,.10)', border:'rgba(59,130,246,.3)', lbl:'Rodaje', clr:'#3B82F6' },
+    gym:    { bg:'rgba(249,115,22,.10)', border:'rgba(249,115,22,.3)', lbl:'Gym',    clr:'#F97316' },
+  };
+  const _RODAJE_TYPES = new Set(['recovery','endurance','long','tempo']);
+  function _sessCategory(s) {
+    if (s.isRest) return null;
+    const nm = (s.name || '').toLowerCase();
+    if (s.type === 'gym') return 'gym';
+    if (nm.includes('cuesta') || nm.includes('hill') || nm.includes('subida')) return 'series';
+    if (_RODAJE_TYPES.has(s.type)) return 'rodaje';
+    return 'series'; // threshold, vo2max, sprint, race, strength → series
+  }
   function _sessIcon(s) {
     if (s.isRest) return { fa: null, color: null };
     const nm = (s.name || '').toLowerCase();
@@ -1888,7 +1907,7 @@ function renderWeek(plan) {
     return _SI[s.type] || { fa:'fa-bicycle', color:'var(--text-muted)' };
   }
 
-  // Círculos de días con icono de tipo de sesión
+  // Círculos de días con icono + categoría rodaje/series
   const cols = plan.sessions.map((s, i) => {
     const has = activeDays.has(i), isToday = i === todayIdx;
     let dotCls = '';
@@ -1897,20 +1916,27 @@ function renderWeek(plan) {
     else if (isToday)        dotCls = 'today';
     else if (s.isRest)       dotCls = 'rest';
 
-    let innerHtml, borderStyle = '';
+    let innerHtml = '', circleStyle = '';
     if (has) {
       innerHtml = '<i class="fas fa-check"></i>';
     } else if (!s.isRest) {
-      const si = _sessIcon(s);
-      innerHtml  = si.fa ? `<i class="fas ${si.fa}" style="color:${si.color}"></i>` : '';
-      borderStyle = `border-color:${si.color}40`;   // borde de color sutil
-    } else {
-      innerHtml = '';
+      const si  = _sessIcon(s);
+      const cat = _sessCategory(s);
+      const cs  = _CAT[cat] || {};
+      innerHtml   = si.fa ? `<i class="fas ${si.fa}" style="color:${si.color}"></i>` : '';
+      circleStyle = cs.bg ? `background:${cs.bg};border-color:${cs.border}` : '';
     }
 
+    const cat = !has && !s.isRest ? _sessCategory(s) : null;
+    const cs  = cat ? _CAT[cat] : null;
+    const catLbl = cs
+      ? `<span class="wk-day-lbl" style="color:${cs.clr}">${cs.lbl}</span>`
+      : (s.isRest ? `<span class="wk-day-lbl" style="color:var(--text-muted);opacity:.4">Des.</span>` : '');
+
     return `<div class="week-day-col">
-      <div class="wk-day-dot ${dotCls}" style="${borderStyle}">${innerHtml}</div>
+      <div class="wk-day-dot ${dotCls}" style="${circleStyle}">${innerHtml}</div>
       <span class="week-day-name ${isToday?'today':''}">${DAY_NAMES[i]}</span>
+      ${catLbl}
     </div>`;
   }).join('');
 
