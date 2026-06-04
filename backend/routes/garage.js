@@ -73,7 +73,7 @@ router.get('/', async (req, res) => {
 
   if (bikesErr) return res.status(500).json({ error: bikesErr.message });
 
-  const TUBELESS_ELIGIBLE = new Set(['gravel', 'mtb_full', 'mtb_hardtail']);
+  const TUBELESS_ELIGIBLE = new Set(['road', 'carretera', 'gravel', 'mtb_full', 'mtb_hardtail']);
 
   // Mapear al formato que espera el frontend (garaje.html)
   const mappedBikes = await Promise.all((bikes || []).map(async bike => {
@@ -460,7 +460,7 @@ router.post('/sync-strava', async (req, res) => {
 // POST /api/garage/sync-components — añade componentes por defecto faltantes en bicis existentes
 router.post('/sync-components', async (req, res) => {
   const uid = req.user.id;
-  const TUBELESS_TYPES = new Set(['gravel', 'mtb_full', 'mtb_hardtail']);
+  const TUBELESS_TYPES = new Set(['road', 'carretera', 'gravel', 'mtb_full', 'mtb_hardtail']);
   const { data: bikes } = await supabase.from('bikes').select('id, type').eq('user_id', uid).eq('is_active', true);
   let added = 0;
   for (const bike of bikes || []) {

@@ -1236,26 +1236,25 @@ const G = (() => {
     recalc();
   }
 
-  const _TUBELESS_ELIGIBLE = new Set(['gravel', 'mtb_full', 'mtb_hardtail']);
+  const _TUBELESS_ELIGIBLE = new Set(['road', 'carretera', 'gravel', 'mtb_full', 'mtb_hardtail']);
 
   async function _ensureTubeless() {
-    if (!st?.bikes?.length) return;
+    if (!st?.bikes?.length) return false;
     const missing = st.bikes.filter(b =>
       _TUBELESS_ELIGIBLE.has(b.type) &&
       !b.components.some(c => c.type === 'tubeless_sealant')
     );
-    if (!missing.length) return;
-
+    if (!missing.length) return false;
     try {
       const r = await fetch(`${window.API_URL}/garage/sync-components`, {
         method: 'POST', headers: Auth.getHeaders(),
       });
-      if (r.ok) {
-        await BackendSync.loadGarage();
-        try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) {}
-        if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
-      }
-    } catch(e) { /* sin conexión, se reintentará en la siguiente carga */ }
+      if (!r.ok) return false;
+      await BackendSync.loadGarage();
+      try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) {}
+      if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
+      return true;
+    } catch(e) { return false; }
   }
 
   function save() {
@@ -2374,18 +2373,21 @@ const G = (() => {
     showOverview();
 
     // Refresh desde backend en background: cargar garaje Y actividades en paralelo
-    // para que los km de componentes siempre estén al día al entrar en la página
     if (typeof BackendSync !== 'undefined') {
       Promise.all([
         BackendSync.autoSyncIfNeeded().catch(() => null),
         BackendSync.loadGarage().catch(() => null),
         BackendSync.loadActivities().catch(() => null),
-      ]).then(() => {
+      ]).then(async () => {
         try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) {}
         try { hist = JSON.parse(localStorage.getItem(HK) || '[]'); } catch(e) { hist = []; }
         if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
         rebuildFromLocalActivities();
         recalc(); render(); save();
+
+        // Crear sellante tubeless en bicis que no lo tengan todavía
+        const synced = await _ensureTubeless();
+        if (synced) { recalc(); render(); }
       }).catch(() => {});
     }
   }
