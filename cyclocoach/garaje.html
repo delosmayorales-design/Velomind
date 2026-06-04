@@ -1220,21 +1220,42 @@ const G = (() => {
 
   // ─── Storage ──────────────────────────────────────────────
   async function load() {
-    // Intentar cargar del backend primero
     if (typeof BackendSync !== 'undefined') {
       await BackendSync.loadGarage();
     }
 
     try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) { st = null; }
-    
-    // Si no hay datos en absoluto (primera vez), inicializamos estructura vacía
-    // para que aparezca el mensaje de "Tu garaje está vacío" en lugar de bicis demo
-    if (!st || !Array.isArray(st.bikes)) { 
-      st = { version: 2, bikes: [], processed_ids: [] }; 
+    if (!st || !Array.isArray(st.bikes)) {
+      st = { version: 2, bikes: [], processed_ids: [] };
     }
+
+    // Garantizar componente sellante en bicis elegibles que aún no lo tengan
+    await _ensureTubeless();
 
     try { hist = JSON.parse(localStorage.getItem(HK) || '[]'); } catch(e) { hist = []; }
     recalc();
+  }
+
+  const _TUBELESS_ELIGIBLE = new Set(['gravel', 'mtb_full', 'mtb_hardtail']);
+
+  async function _ensureTubeless() {
+    if (!st?.bikes?.length) return;
+    const missing = st.bikes.filter(b =>
+      _TUBELESS_ELIGIBLE.has(b.type) &&
+      !b.components.some(c => c.type === 'tubeless_sealant')
+    );
+    if (!missing.length) return;
+
+    try {
+      const r = await fetch(`${window.API_URL}/garage/sync-components`, {
+        method: 'POST', headers: Auth.getHeaders(),
+      });
+      if (r.ok) {
+        await BackendSync.loadGarage();
+        try { st = JSON.parse(localStorage.getItem(SK) || 'null'); } catch(e) {}
+        if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
+      }
+    } catch(e) { /* sin conexión, se reintentará en la siguiente carga */ }
   }
 
   function save() {
