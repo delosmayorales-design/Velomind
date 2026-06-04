@@ -563,63 +563,81 @@
     /* ─────────────────────────────────────────────────────────
        SEMANA
     ───────────────────────────────────────────────────────── */
-    .week-header {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      margin-bottom: 16px;
+    /* ── Tu Semana — hero rediseñado ─────────────────────── */
+    .wk-hero {
+      display: flex; align-items: center;
+      gap: 16px; margin-bottom: 18px;
     }
-    .week-pct {
+    .wk-ring-wrap {
+      position: relative; width: 88px; height: 88px; flex-shrink: 0;
+    }
+    .wk-ring-svg { width: 88px; height: 88px; display: block; }
+    .wk-ring-inner {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .wk-ring-num {
       font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 36px;
-      font-weight: 800;
-      line-height: 1;
+      font-size: 20px; font-weight: 800; line-height: 1;
     }
-    .week-pct-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-    .week-sessions-done {
+    .wk-ring-lbl {
+      font-size: 8px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--text-muted); margin-top: 2px;
+    }
+    .wk-stats-grid {
+      flex: 1; display: grid;
+      grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    .wk-stat {
+      background: var(--bg-input); border-radius: 10px;
+      padding: 10px 6px; text-align: center;
+    }
+    .wk-stat-val {
       font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 22px;
-      font-weight: 700;
-      text-align: right;
+      font-size: 17px; font-weight: 800; line-height: 1.1; color: var(--text);
     }
-    .week-sessions-sub { font-size: 11px; color: var(--text-muted); text-align: right; }
+    .wk-stat-of { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+    .wk-stat-lbl {
+      font-size: 9px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .4px; color: var(--text-muted); margin-top: 3px;
+    }
+    /* Días — círculos */
     .week-days-row {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 6px;
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 8px; margin-bottom: 14px;
     }
-    .week-day-col {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 5px;
+    .week-day-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .wk-day-dot {
+      width: 100%; aspect-ratio: 1 / 1; min-height: 34px;
+      border-radius: 50%; background: var(--bg-input);
+      border: 2px solid transparent;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--text-muted);
+      transition: all .2s;
     }
-    .week-day-bar-outer {
-      width: 100%;
-      height: 44px;
-      border-radius: 8px;
-      background: var(--bg-input);
-      position: relative;
-      overflow: hidden;
-    }
-    .week-day-bar-outer.done   { background: rgba(16,185,129,.25); border: 1px solid rgba(16,185,129,.4); }
-    .week-day-bar-outer.today  { border: 2px solid var(--primary); }
-    .week-day-bar-outer.rest   { opacity: .35; }
-    .week-day-bar-inner {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: #10b981;
-      transition: height .5s ease;
-    }
-    .week-day-name {
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-    }
+    .wk-day-dot.done { background: rgba(16,185,129,.18); border-color: rgba(16,185,129,.5); color: #10b981; }
+    .wk-day-dot.today { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-glow); }
+    .wk-day-dot.done.today { background: rgba(158,214,43,.15); border-color: var(--primary); color: var(--primary); }
+    .wk-day-dot.rest { opacity: .28; }
+    .week-day-name { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
     .week-day-name.today { color: var(--primary); }
+    /* Narrativa */
+    .wk-narrative {
+      font-size: 12px; color: var(--text-secondary); line-height: 1.55;
+      padding: 10px 13px; background: var(--bg-input); border-radius: 10px;
+      border-left: 3px solid var(--primary); margin-bottom: 12px;
+    }
+    /* Barra TSS */
+    .wk-tss-wrap { margin-top: 8px; }
+    .wk-tss-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 5px; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted);
+    }
+    .wk-tss-track { height: 6px; background: var(--bg-input); border-radius: 4px; overflow: hidden; }
+    .wk-tss-fill  { height: 100%; border-radius: 4px; transition: width .7s ease; }
+    .wk-tss-foot  { text-align: right; margin-top: 4px; font-size: 10px; color: var(--text-muted); }
 
     /* ─────────────────────────────────────────────────────────
        ÚLTIMA ACTIVIDAD
@@ -761,12 +779,12 @@
     html.light-theme .ftp-banner-title,
     html.light-theme .ftp-banner-msg { color: var(--text-secondary) !important; }
 
-    html.light-theme .week-pct { color: inherit; }
-    html.light-theme .week-pct-sub,
-    html.light-theme .week-sessions-sub,
+    html.light-theme .wk-stat    { background: #edf0f2 !important; }
+    html.light-theme .wk-day-dot { background: #e2e6ea !important; }
+    html.light-theme .wk-day-dot.done { background: rgba(5,150,105,.14) !important; border-color: rgba(5,150,105,.45) !important; }
+    html.light-theme .wk-narrative { background: #edf0f2 !important; }
+    html.light-theme .wk-tss-track { background: #e2e6ea !important; }
     html.light-theme .week-day-name { color: var(--text-muted) !important; }
-    html.light-theme .week-day-bar-outer { background: var(--bg-input) !important; }
-    html.light-theme .week-day-bar-outer.done { background: rgba(5,150,105,.18) !important; border-color: rgba(5,150,105,.35) !important; }
 
     html.light-theme .last-act-metric { background: var(--bg-input) !important; }
     html.light-theme .last-act-metric .val { color: var(--text-primary) !important; }
@@ -813,9 +831,15 @@
       .ftp-banner-title { font-size: 14px; }
       .ftp-banner-msg   { font-size: 12px; }
 
-      .week-pct           { font-size: 28px; }
-      .week-sessions-done { font-size: 18px; }
-      .week-day-bar-outer { height: 32px; border-radius: 6px; }
+      .wk-hero       { gap: 12px; }
+      .wk-ring-wrap,
+      .wk-ring-svg   { width: 76px; height: 76px; }
+      .wk-ring-num   { font-size: 16px; }
+      .wk-stat       { padding: 8px 5px; }
+      .wk-stat-val   { font-size: 14px; }
+      .wk-stats-grid { gap: 6px; }
+      .week-days-row { gap: 6px; }
+      .wk-day-dot    { min-height: 30px; font-size: 11px; }
 
       .last-act-metrics { gap: 6px; }
       .last-act-metric  { padding: 8px 8px; }
@@ -1841,12 +1865,21 @@ function renderWeek(plan) {
   // Línea 3: impacto
   const line3 = `<div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${impactMsg()}</div>`;
 
-  // Barras de días
+  // Círculos de días
   const cols = plan.sessions.map((s, i) => {
     const has = activeDays.has(i), isToday = i === todayIdx;
-    let cls = has ? 'done' : (s.isRest && !isToday) ? 'rest' : isToday ? 'today' : '';
+    let dotCls = '';
+    if      (has && isToday) dotCls = 'done today';
+    else if (has)            dotCls = 'done';
+    else if (isToday)        dotCls = 'today';
+    else if (s.isRest)       dotCls = 'rest';
+    const icon = has
+      ? '<i class="fas fa-check" style="font-size:10px"></i>'
+      : isToday
+        ? '<span style="width:5px;height:5px;border-radius:50%;background:var(--primary);display:inline-block"></span>'
+        : '';
     return `<div class="week-day-col">
-      <div class="week-day-bar-outer ${cls}">${has?`<div class="week-day-bar-inner" style="height:100%"></div>`:''}</div>
+      <div class="wk-day-dot ${dotCls}">${icon}</div>
       <span class="week-day-name ${isToday?'today':''}">${DAY_NAMES[i]}</span>
     </div>`;
   }).join('');
@@ -1888,22 +1921,58 @@ function renderWeek(plan) {
       </div>`;
   }
 
+  // Anillo SVG de progreso TSS
+  const _arc = tgtTSS ? (Math.min(tssPct, 100) / 100 * 201.1).toFixed(1) : '0';
+  const _ringFill = tgtTSS
+    ? `<circle cx="40" cy="40" r="32" fill="none" stroke="${tssBarColor}" stroke-width="7"
+         stroke-linecap="round" stroke-dasharray="${_arc} 201.1"
+         transform="rotate(-90 40 40)"/>`
+    : '';
+
   el.innerHTML = `
-    <div style="margin-bottom:10px;padding:10px 12px;background:var(--bg-input);border-radius:10px;border:1px solid var(--border)">
-      ${line1}${line2}${line3}
+    <div class="wk-hero">
+      <div class="wk-ring-wrap">
+        <svg viewBox="0 0 80 80" class="wk-ring-svg">
+          <circle cx="40" cy="40" r="32" fill="none" stroke="var(--bg-input)" stroke-width="7"/>
+          ${_ringFill}
+        </svg>
+        <div class="wk-ring-inner">
+          <div class="wk-ring-num" style="color:${tgtTSS ? tssBarColor : 'var(--primary)'}">
+            ${tgtTSS ? tssPct + '%' : doneIdxs.length + '/' + plannedIdxs.length}
+          </div>
+          <div class="wk-ring-lbl">${tgtTSS ? 'del TSS' : 'sesiones'}</div>
+        </div>
+      </div>
+      <div class="wk-stats-grid">
+        <div class="wk-stat">
+          <div class="wk-stat-val">${doneIdxs.length}<span class="wk-stat-of">/${plannedIdxs.length}</span></div>
+          <div class="wk-stat-lbl">Sesiones</div>
+        </div>
+        <div class="wk-stat">
+          <div class="wk-stat-val">${weekHours}h</div>
+          <div class="wk-stat-lbl">En bici</div>
+        </div>
+        <div class="wk-stat">
+          <div class="wk-stat-val" style="${tgtTSS ? 'color:' + tssBarColor : ''}">${weekTSS || '—'}</div>
+          <div class="wk-stat-lbl">TSS</div>
+        </div>
+      </div>
     </div>
     <div class="week-days-row">${cols}</div>
+    <div class="wk-narrative">${impactMsg()}</div>
     ${adherenceAlert}
     ${tgtTSS ? `
-    <div style="margin-top:10px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
-        <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Carga semanal</span>
-        <span style="font-size:11px;color:var(--text-secondary)">${weekTSS} <span style="color:var(--text-muted)">/ ${tgtTSS} TSS</span></span>
+    <div class="wk-tss-wrap">
+      <div class="wk-tss-head">
+        <span>Carga semanal</span>
+        <span style="color:${tssBarColor};font-weight:800">${weekTSS}
+          <span style="color:var(--text-muted);font-weight:400">/ ${tgtTSS} TSS</span>
+        </span>
       </div>
-      <div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden">
-        <div style="height:100%;width:${Math.min(tssPct,100)}%;background:${tssBarColor};border-radius:4px;transition:width .7s ease"></div>
+      <div class="wk-tss-track">
+        <div class="wk-tss-fill" style="width:${Math.min(tssPct,100)}%;background:${tssBarColor}"></div>
       </div>
-      ${tgtHours ? `<div style="text-align:right;margin-top:4px"><span style="font-size:10px;color:var(--text-muted)">${weekHours}h / ${tgtHours}h objetivo</span></div>` : ''}
+      ${tgtHours ? `<div class="wk-tss-foot">${weekHours}h de ${tgtHours}h objetivo</div>` : ''}
     </div>` : ''}`;
 }
 

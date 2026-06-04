@@ -933,7 +933,7 @@
 <!-- ═══════ MODAL: CHECK-IN ═══════════════════════════════════ -->
 <div id="m-checkin" class="g-modal">
   <div class="modal-panel">
-    <h2>✅ Componente Reemplazado</h2>
+    <h2 id="checkin-title">✅ Componente Reemplazado</h2>
     <p class="modal-sub">El contador se reinicia a 0 y el uso anterior queda guardado en el historial.</p>
     <div class="ci-summary" id="ci-summary"></div>
     <div class="fg-row">
@@ -1173,6 +1173,7 @@ const G = (() => {
     rotor_front:       { road:15000, gravel:10000,mtb_hardtail:7000, mtb_full:5000,  _unit:'km' },
     rotor_rear:        { road:12000, gravel:8000, mtb_hardtail:6000, mtb_full:4500,  _unit:'km' },
     brake_fluid:       { road:  365, gravel: 365, mtb_hardtail: 365, mtb_full: 365,  _unit:'days' },
+    tubeless_sealant:  { road: null, gravel:  90, mtb_hardtail:  75, mtb_full:  75,  _unit:'days' },
     tire_front:        { road: 5000, gravel:3500, mtb_hardtail:2500, mtb_full:2500,  _unit:'km' },
     tire_rear:         { road: 4000, gravel:2500, mtb_hardtail:2000, mtb_full:2000,  _unit:'km' },
     fork_service:      { road: null, gravel: 200, mtb_hardtail: 100, mtb_full:  50,  _unit:'h'  },
@@ -1192,7 +1193,8 @@ const G = (() => {
     tire_front:       { name:'Cubierta Delantera',   icon:'🛞', fa:'fa-circle',       cat:'contact'      },
     tire_rear:        { name:'Cubierta Trasera',     icon:'🛞', fa:'fa-circle',       cat:'contact'      },
     fork_service:     { name:'Servicio Horquilla',   icon:'🔧', fa:'fa-wrench',       cat:'suspension'   },
-    shock_service:    { name:'Servicio Amortiguador',icon:'🔧', fa:'fa-wrench',       cat:'suspension'   }
+    shock_service:    { name:'Servicio Amortiguador',icon:'🔧', fa:'fa-wrench',       cat:'suspension'   },
+    tubeless_sealant: { name:'Sellante Tubeless',    icon:'🫧', fa:'fa-tint',         cat:'contact'      }
   };
 
   const CATS = {
@@ -1206,7 +1208,7 @@ const G = (() => {
     chain:'transmission', cassette:'transmission', chainring:'transmission', jockey_wheels:'transmission',
     brakes_pad:'brakes', brake_pads_front:'brakes', brake_pads_rear:'brakes',
     brake_rotor:'brakes', rotor_front:'brakes', rotor_rear:'brakes', brake_fluid:'brakes',
-    tire_front:'contact', tire_rear:'contact',
+    tire_front:'contact', tire_rear:'contact', tubeless_sealant:'contact',
     fork:'suspension', fork_service:'suspension', shock:'suspension', shock_service:'suspension',
   };
 
@@ -1256,9 +1258,9 @@ const G = (() => {
 
   function compTypes(bikeType) {
     const base = ['chain','cassette','chainring','brake_pads_front','brake_pads_rear','rotor_front','rotor_rear','brake_fluid','tire_front','tire_rear'];
-    if (bikeType === 'gravel')       return [...base, 'fork_service'];
-    if (bikeType === 'mtb_hardtail') return [...base, 'fork_service'];
-    if (bikeType === 'mtb_full')     return [...base, 'fork_service', 'shock_service'];
+    if (bikeType === 'gravel')       return [...base, 'fork_service', 'tubeless_sealant'];
+    if (bikeType === 'mtb_hardtail') return [...base, 'fork_service', 'tubeless_sealant'];
+    if (bikeType === 'mtb_full')     return [...base, 'fork_service', 'shock_service', 'tubeless_sealant'];
     return base;
   }
 
@@ -1279,6 +1281,22 @@ const G = (() => {
     });
   }
 
+  // ─── Seasonal threshold for tubeless sealant ─────────────
+  function getSeasonalDays(bikeType) {
+    const m = new Date().getMonth(); // 0=Jan … 11=Dec
+    const season = (m >= 5 && m <= 7) ? 'summer'
+                 : (m >= 8 && m <= 10) ? 'autumn'
+                 : (m === 11 || m <= 1) ? 'winter'
+                 : 'spring';
+    const TBL = {
+      summer:  { gravel: 60,  mtb_hardtail: 45,  mtb_full: 45  },
+      autumn:  { gravel: 90,  mtb_hardtail: 75,  mtb_full: 75  },
+      winter:  { gravel: 150, mtb_hardtail: 120, mtb_full: 120 },
+      spring:  { gravel: 90,  mtb_hardtail: 75,  mtb_full: 75  },
+    };
+    return TBL[season]?.[bikeType] || 90;
+  }
+
   // ─── Status ───────────────────────────────────────────────
   function pct(comp) {
     if (comp.threshold_hours && comp.threshold_hours > 0) return (comp.current_hours / comp.threshold_hours) * 100;
@@ -1296,6 +1314,7 @@ const G = (() => {
     if (!st) return;
     const today = new Date();
     st.bikes.forEach(bike => bike.components.forEach(comp => {
+      if (comp.type === 'tubeless_sealant') comp.threshold_days = getSeasonalDays(bike.type);
       if (comp.threshold_days && comp.installed_date) {
         comp.installed_days_ago = Math.floor((today - new Date(comp.installed_date)) / 86400000);
       }
@@ -1318,7 +1337,11 @@ const G = (() => {
       const remH = Math.max(0, comp.threshold_hours - used);
       return `<span style="color:var(--text)">${used}h usadas</span> <span style="color:var(--text-muted)">·</span> <span style="color:var(--accent)">${remH}h restantes</span>`;
     }
-    if (comp.threshold_days) return `${comp.installed_days_ago} / ${comp.threshold_days} días`;
+    if (comp.threshold_days) {
+      const used = comp.installed_days_ago || 0;
+      const rem  = Math.max(0, comp.threshold_days - used);
+      return `<span style="color:var(--text)">${used} días</span> <span style="color:var(--text-muted)">·</span> <span style="color:var(--accent)">${rem} días restantes</span>`;
+    }
     if (comp.threshold_km) {
       const used  = Math.round(comp.current_km || 0);
       const remKm = Math.max(0, comp.threshold_km - used);
@@ -1596,7 +1619,7 @@ const G = (() => {
 
   // ─── Render Component Card ────────────────────────────────
   function renderCompCard(comp) {
-    const hasKm = (comp.current_km > 0) || (comp.current_hours > 0);
+    const hasKm = !!(comp.threshold_days) || (comp.current_km > 0) || (comp.current_hours > 0);
     if (!hasKm) {
       const bm = [comp.brand, comp.model].filter(Boolean).join(' ');
       return `
@@ -1655,7 +1678,7 @@ const G = (() => {
       ${shopHtml}
       <div class="comp-actions">
         <button class="btn-checkin" onclick="G.openCheckin('${comp.id}','${comp.bike_id}')">
-          <i class="fas fa-check-circle"></i> Cambiado
+          <i class="fas ${comp.threshold_days ? 'fa-fill-drip' : 'fa-check-circle'}"></i> ${comp.threshold_days ? 'Rellenado' : 'Cambiado'}
         </button>
         <button class="btn-hist" onclick="G.openHistory('${comp.id}')" title="Historial${hc?' ('+hc+')':''}">
           <i class="fas fa-history"></i>${hc ? ` <span style="font-size:10px">${hc}</span>` : ''}
@@ -1679,6 +1702,8 @@ const G = (() => {
         <div class="ci-stat"><div class="ci-stat-val">${fmtVal(comp)}</div><div class="ci-stat-lbl">Uso acumulado</div></div>
         <div class="ci-stat"><div class="ci-stat-val" style="color:var(--success)">0</div><div class="ci-stat-lbl">Resetear a</div></div>
       </div>`;
+    const isFluid = !!(comp.threshold_days);
+    document.getElementById('checkin-title').textContent = isFluid ? '💧 Rellenar / Cambiar Líquido' : '🔄 Cambiar Componente';
     document.getElementById('ci-brand').value = comp.brand || '';
     document.getElementById('ci-model').value = comp.model || '';
     document.getElementById('ci-name').value = comp.name;
@@ -1714,9 +1739,28 @@ const G = (() => {
     comp.installed_days_ago = 0; comp.installed_date = date;
     comp.status = 'green';
     save();
+
+    // Para componentes por fecha (sellante, líquido), llamar al backend para
+    // crear un nuevo registro con created_at = hoy; así el timer persiste tras recarga.
+    if (comp.threshold_days && comp.id && comp.id.length === 36) {
+      fetch(`${window.API_URL}/garage/${bikeId}/components/${comp.id}/change`, {
+        method: 'POST',
+        headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: notes || 'Relleno/cambio', new_name: newName, new_brand: brand || null, new_model: model || null, new_notes: notes || null }),
+      }).then(async r => {
+        if (r.ok && typeof BackendSync !== 'undefined') {
+          await BackendSync.loadGarage().catch(() => {});
+          try { st = JSON.parse(localStorage.getItem('velomind_garage') || 'null'); } catch(e) {}
+          if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
+          recalc(); render();
+        }
+      }).catch(() => {});
+    }
+
     closeModal('m-checkin');
     pendCI = null;
-    toast('green', '✅ Registrado', `${newName} reseteado a 0. Historial guardado.`);
+    const isFluid = comp.threshold_days;
+    toast('green', isFluid ? '💧 Relleno registrado' : '✅ Registrado', `${newName} reseteado a 0. Historial guardado.`);
     render();
   }
 

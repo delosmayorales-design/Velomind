@@ -3,6 +3,29 @@ const webpush  = require('web-push');
 const supabase = require('../db');
 const { getTSBStatus } = require('../utils/training');
 
+// ── Constantes de mantenimiento ──────────────────────────────────
+const MAINT_KM_LIFE = { chain:3000, cassette:9000, chainring:15000, jockey_wheels:15000, brakes_pad:3000, brake_rotor:10000, tire_front:5000, tire_rear:4000 };
+const MAINT_HR_LIFE = { fork:200, shock:100 };
+const MAINT_HOUR_TYPES = new Set(['fork','shock']);
+const MAINT_DATE_TYPES = new Set(['brake_fluid','tubeless_sealant']);
+const MAINT_LABELS = {
+  chain:'Cadena', cassette:'Cassette', chainring:'Platos', jockey_wheels:'Roldanas',
+  brakes_pad:'Pastillas', brake_rotor:'Disco', tire_front:'Cubierta Del.', tire_rear:'Cubierta Tras.',
+  fork:'Horquilla', shock:'Amortiguador', brake_fluid:'Líquido de Frenos', tubeless_sealant:'Sellante Tubeless',
+};
+
+function seasonalDaysTubeless(bikeType) {
+  const m = new Date().getMonth();
+  const season = m >= 5 && m <= 7 ? 'summer' : m >= 8 && m <= 10 ? 'autumn' : m === 11 || m <= 1 ? 'winter' : 'spring';
+  const TBL = {
+    summer:  { gravel:60,  mtb_hardtail:45,  mtb_full:45  },
+    autumn:  { gravel:90,  mtb_hardtail:75,  mtb_full:75  },
+    winter:  { gravel:150, mtb_hardtail:120, mtb_full:120 },
+    spring:  { gravel:90,  mtb_hardtail:75,  mtb_full:75  },
+  };
+  return TBL[season]?.[bikeType] || 90;
+}
+
 function realSub(sub) {
   // Extract only the WebPush fields (strip our custom notify_types field)
   return { endpoint: sub.subscription.endpoint, keys: sub.subscription.keys, expirationTime: sub.subscription.expirationTime ?? null };
@@ -135,6 +158,76 @@ async function sendReminders() {
           }
         }
       } catch {}
+    }
+
+    // ── Alerta mantenimiento garaje (09:00 hora local, una sola vez por umbral) ──
+    const maintUtc = localHourUtcMin(sub, 9);
+    if (currentMin === maintUtc && notifAllowed(sub, 'maintenance')) {
+      try {
+        const { data: bikes } = await supabase
+          .from('bikes').select('id, name, type, total_km, total_hours')
+          .eq('user_id', uid).eq('is_active', true);
+
+        for (const bike of bikes || []) {
+          const { data: comps } = await supabase
+            .from('bike_components').select('*')
+            .eq('bike_id', bike.id).eq('is_active', true);
+
+          const newRed    = []; // cruzaron 100% y aún no notificados
+          const newYellow = []; // cruzaron 70% y aún no notificados
+          const markRed   = []; // IDs a marcar notified_red = true
+          const markYellow= []; // IDs a marcar notified_yellow = true
+
+          for (const c of comps || []) {
+            let pct = 0;
+            const label = MAINT_LABELS[c.component_type] || c.component_type;
+
+            if (MAINT_DATE_TYPES.has(c.component_type)) {
+              const days = Math.floor((Date.now() - new Date(c.created_at)) / 86400000);
+              const threshold = c.component_type === 'tubeless_sealant'
+                ? seasonalDaysTubeless(bike.type) : 365;
+              pct = Math.min(Math.round((days / threshold) * 100), 110);
+            } else if (MAINT_HOUR_TYPES.has(c.component_type)) {
+              const lifespan = MAINT_HR_LIFE[c.component_type];
+              if (!lifespan) continue;
+              pct = Math.round(((lifespan - (c.hours_remaining || lifespan)) / lifespan) * 100);
+            } else {
+              const lifespan = MAINT_KM_LIFE[c.component_type];
+              if (!lifespan) continue;
+              pct = Math.round(((lifespan - (c.km_remaining || lifespan)) / lifespan) * 100);
+            }
+
+            if (pct >= 100 && !c.notified_red) {
+              newRed.push({ label, pct });
+              markRed.push(c.id);
+            } else if (pct >= 70 && !c.notified_yellow) {
+              newYellow.push({ label, pct });
+              markYellow.push(c.id);
+            }
+          }
+
+          // Persistir flags antes de enviar para no re-enviar si el push falla
+          if (markRed.length)
+            await supabase.from('bike_components').update({ notified_red: true }).in('id', markRed);
+          if (markYellow.length)
+            await supabase.from('bike_components').update({ notified_yellow: true }).in('id', markYellow);
+
+          const allNew = [...newRed, ...newYellow];
+          if (!allNew.length) continue;
+
+          allNew.sort((a, b) => b.pct - a.pct);
+          const hasUrgent = newRed.length > 0;
+          const body = allNew.slice(0, 3).map(a => `${a.label} ${a.pct}%`).join(' · ');
+          await pushTo(sub, {
+            title: hasUrgent
+              ? `🔴 Mantenimiento urgente — ${bike.name}`
+              : `🔧 Revisa tu ${bike.name}`,
+            body,
+            tag: `mantenimiento-${bike.id}`,
+            url: './garaje.html',
+          }, expired);
+        }
+      } catch(e) { console.error('[push] maintenance', e.message); }
     }
   }
 

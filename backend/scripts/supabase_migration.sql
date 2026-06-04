@@ -105,8 +105,14 @@ CREATE TABLE IF NOT EXISTS bike_components (
   hours_remaining NUMERIC DEFAULT 0,
   is_active       BOOLEAN DEFAULT true,
   notes           TEXT,
-  created_at      TIMESTAMPTZ DEFAULT NOW()
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  notified_yellow BOOLEAN DEFAULT false,
+  notified_red    BOOLEAN DEFAULT false
 );
+
+-- Añadir columnas a tablas existentes si ya existen
+ALTER TABLE bike_components ADD COLUMN IF NOT EXISTS notified_yellow BOOLEAN DEFAULT false;
+ALTER TABLE bike_components ADD COLUMN IF NOT EXISTS notified_red    BOOLEAN DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS component_history (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

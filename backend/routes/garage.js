@@ -11,7 +11,8 @@ const BIKE_TYPES = {
 const COMPONENT_LABELS = {
   chain:'Cadena', cassette:'Cassette', chainring:'Platos', brakes_pad:'Pastillas',
   brake_rotor:'Disco', brake_fluid:'Líquido Frenos', tire_front:'Cubierta Delantera',
-  tire_rear:'Cubierta Trasera', fork:'Horquilla', shock:'Amortiguador'
+  tire_rear:'Cubierta Trasera', fork:'Horquilla', shock:'Amortiguador',
+  tubeless_sealant:'Sellante Tubeless'
 };
 
 // GET /api/garage/debug  — diagnóstico completo
@@ -85,9 +86,12 @@ router.get('/', async (req, res) => {
       shock:       'shock_service',
     };
     const HOUR_BASED_TYPES = new Set(['fork', 'shock', 'fork_service', 'shock_service']);
+    const DATE_BASED_TYPES = new Set(['brake_fluid', 'tubeless_sealant']);
     const KM_LIFE_FE = { chain:3000, cassette:9000, chainring:15000, jockey_wheels:15000,
                          brakes_pad:3000, brake_rotor:10000, tire_front:5000, tire_rear:4000 };
     const HR_LIFE_FE = { fork:200, fork_service:200, shock:100, shock_service:100 };
+    // Vida base en días (el frontend aplica el ajuste estacional sobre tubeless_sealant)
+    const DAYS_LIFE_FE = { brake_fluid:365, tubeless_sealant:90 };
 
     const typeCount = {};
       const components = (comps || []).map(c => {
@@ -95,7 +99,8 @@ router.get('/', async (req, res) => {
         let feType = TYPE_MAP[c.component_type] || c.component_type;
         if (c.component_type === 'brakes_pad'  && typeCount['brakes_pad']  > 1) feType = 'brake_pads_rear';
         if (c.component_type === 'brake_rotor' && typeCount['brake_rotor'] > 1) feType = 'rotor_rear';
-        const isHours = HOUR_BASED_TYPES.has(c.component_type);
+        const isHours    = HOUR_BASED_TYPES.has(c.component_type);
+        const isDateBased = DATE_BASED_TYPES.has(c.component_type);
 
         // current_km = km recorridos DESDE que se instaló el componente
         const odometer_at_install = c.km_installed || 0;
@@ -112,10 +117,12 @@ router.get('/', async (req, res) => {
           name:          c.name || COMPONENT_LABELS[c.component_type] || c.component_type,
           brand:         c.brand || '',
           model:         c.model || '',
-          current_km:    isHours ? 0 : km_since_install,
+          installed_date:  isDateBased ? (c.created_at?.split('T')[0] || null) : null,
+          threshold_days:  isDateBased ? (DAYS_LIFE_FE[c.component_type] || 365) : null,
+          current_km:    (isHours || isDateBased) ? 0 : km_since_install,
           current_hours: isHours ? hours_used : 0,
-          km_remaining:  isHours ? 0 : Math.max(0, c.km_remaining || 0),
-          threshold_km:    isHours ? null : lifespan_km,
+          km_remaining:  (isHours || isDateBased) ? 0 : Math.max(0, c.km_remaining || 0),
+          threshold_km:    (isHours || isDateBased) ? null : lifespan_km,
           threshold_hours: isHours ? lifespan_h : null,
           status: 'green',
         };
@@ -458,9 +465,9 @@ async function createDefaultComponents(bikeId, type, bikeTotalKm = 0, bikeTotalH
   const defaults = {
     road:         baseComps,
     carretera:    baseComps,
-    gravel:       baseComps,
-    mtb_full:     [...baseComps, { type:'fork', name:'Horquilla' }, { type:'shock', name:'Amortiguador' }],
-    mtb_hardtail: [...baseComps, { type:'fork', name:'Horquilla' }],
+    gravel:       [...baseComps, { type:'tubeless_sealant', name:'Sellante Tubeless' }],
+    mtb_full:     [...baseComps, { type:'fork', name:'Horquilla' }, { type:'shock', name:'Amortiguador' }, { type:'tubeless_sealant', name:'Sellante Tubeless' }],
+    mtb_hardtail: [...baseComps, { type:'fork', name:'Horquilla' }, { type:'tubeless_sealant', name:'Sellante Tubeless' }],
   };
   // Componentes medidos en horas (horquilla, amortiguador)
   const HOUR_BASED = new Set(['fork', 'shock']);
