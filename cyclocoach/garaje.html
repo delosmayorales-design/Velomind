@@ -368,7 +368,29 @@
     @media (max-width: 768px) {
       .garage-grid, .comp-grid { grid-template-columns: 1fr; }
       .fg-row { grid-template-columns: 1fr; }
-      .bike-detail-header { flex-direction: column; align-items: flex-start; }
+      .bike-card { padding: 16px; }
+      .bike-detail-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 16px;
+      }
+      .bike-detail-emoji { font-size: 44px; }
+      .bike-detail-name { font-size: 18px; }
+      .bike-detail-stats { gap: 12px; }
+      .bike-stat-val { font-size: 17px; }
+      .bike-detail-actions {
+        align-items: stretch !important;
+        width: 100% !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+      }
+      .bike-detail-actions .btn-add-km-sm,
+      .bike-detail-actions .bike-config-btn { flex: 1 1 auto; justify-content: center; }
+      .bike-detail-actions .strava-badge { align-self: center; }
+      .comp-actions { flex-wrap: wrap; gap: 6px; }
+      .comp-actions .btn-checkin,
+      .comp-actions .btn-hist { font-size: 12px; padding: 9px 10px; }
       .ci-stats { grid-template-columns: 1fr 1fr 1fr; }
       header.page-header .header-actions { display: none !important; }
       #garage-side-tab    { display: flex !important; }
@@ -1639,7 +1661,7 @@ const G = (() => {
           <div class="bike-stat"><div class="bike-stat-val" style="color:var(--warning)">${bike.components.filter(c=>c.status==='yellow').length}</div><div class="bike-stat-lbl">Revisar</div></div>
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+      <div class="bike-detail-actions" style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
         ${strTag}
         <button class="btn-add-km-sm" onclick="G.openAddKm('${bike.id}')"><i class="fas fa-plus"></i> Añadir km</button>
         <button class="bike-config-btn" onclick="G.openEditBike('${bike.id}')"><i class="fas fa-cog"></i> Config</button>

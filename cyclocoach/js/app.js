@@ -3045,11 +3045,28 @@ document.addEventListener('DOMContentLoaded', () => {
       .sidebar .sidebar-logo {
         padding: 22px 22px 18px !important;
       }
-      /* Footer */
+      /* Footer — Tarjeta de perfil ciclista */
       .sidebar .sidebar-footer {
-        padding: 16px 22px !important;
+        padding: 12px 16px !important;
       }
-      .sidebar .athlete-info .name { font-size: 15px !important; }
+      .sidebar .athlete-card {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 10px !important;
+        background: rgba(158,214,43,0.07) !important;
+        border: 1px solid rgba(158,214,43,0.18) !important;
+        border-radius: 14px !important;
+        padding: 16px 12px !important;
+      }
+      .sidebar .athlete-avatar {
+        width: 64px !important;
+        height: 64px !important;
+        font-size: 24px !important;
+        box-shadow: 0 0 22px rgba(158,214,43,0.42) !important;
+      }
+      .sidebar .athlete-info { text-align: center !important; }
+      .sidebar .athlete-info .name { font-size: 15px !important; font-weight: 700 !important; }
       .sidebar .athlete-info .ftp  { font-size: 12px !important; }
       /* Light theme */
       html.light-theme .sidebar .nav-item { color: #1a2e18 !important; border-bottom-color: rgba(0,0,0,0.06) !important; }
