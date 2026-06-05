@@ -1610,17 +1610,24 @@ function renderRiderProfile(acts, athlete, curve) {
   if (riderRadarChart) { riderRadarChart.destroy(); riderRadarChart = null; }
   var ctx = document.getElementById('rider-radar-canvas');
   if (!ctx) return;
+  var isLight = document.documentElement.classList.contains('light-theme');
+  var gridColor    = isLight ? 'rgba(0,0,0,0.12)'   : 'rgba(255,255,255,0.13)';
+  var labelColor   = isLight ? '#374151'             : '#9CA3AF';
+  var fillOpacity  = isLight ? '55'                  : '40';
   riderRadarChart = new Chart(ctx, {
     type: 'radar',
     data: {
       labels: ['Resistencia', 'Escalada', 'Sprint', 'Regularidad', 'Umbral'],
       datasets: [{
         data: [s.resistencia, s.escalada, s.sprint, s.regularidad, s.umbral],
-        backgroundColor: p.color + '28',
+        backgroundColor: p.color + fillOpacity,
         borderColor: p.color,
-        borderWidth: 2,
+        borderWidth: 2.5,
         pointBackgroundColor: p.color,
-        pointRadius: 3,
+        pointBorderColor: isLight ? '#fff' : '#0a0b0f',
+        pointBorderWidth: 1.5,
+        pointRadius: 4,
+        pointHoverRadius: 6,
       }]
     },
     options: {
@@ -1630,14 +1637,21 @@ function renderRiderProfile(acts, athlete, curve) {
         r: {
           min: 0, max: 100,
           ticks: { display: false, stepSize: 25 },
-          grid: { color: 'rgba(255,255,255,0.07)' },
-          angleLines: { color: 'rgba(255,255,255,0.07)' },
-          pointLabels: { color: '#9CA3AF', font: { size: 9 } }
+          grid: { color: gridColor },
+          angleLines: { color: gridColor },
+          pointLabels: { color: labelColor, font: { size: 10, weight: '600' } }
         }
       }
     }
   });
 }
+
+// Redibujar radar cuando cambia el tema claro/oscuro
+new MutationObserver(function() {
+  if (typeof riderRadarChart !== 'undefined' && riderRadarChart) {
+    try { renderRiderProfile(state.activities, state.athlete || {}, null); } catch(e) {}
+  }
+}).observe(document.documentElement, { attributeFilter: ['class'] });
 
 // ─── BOOT ─────────────────────────────────────────────────────
 // NOTA: renderZones() y loadPowerCurve() usan constantes definidas más abajo
