@@ -1492,6 +1492,7 @@ async function renderBestEfforts(acts, ftp) {
 
 // ─── RIDER PROFILE ────────────────────────────────────────────
 var riderRadarChart = null;
+var _lastRiderCurve = null;
 
 function computeRiderProfile(acts, athlete, curve) {
   var ftp    = Number(athlete && athlete.ftp) || 0;
@@ -1606,6 +1607,9 @@ function renderRiderProfile(acts, athlete, curve) {
     statsEl.innerHTML = html;
   }
 
+  // Guardar curva para re-renders por cambio de tema
+  if (curve != null) _lastRiderCurve = curve;
+
   // Radar chart
   if (riderRadarChart) { riderRadarChart.destroy(); riderRadarChart = null; }
   var ctx = document.getElementById('rider-radar-canvas');
@@ -1646,12 +1650,18 @@ function renderRiderProfile(acts, athlete, curve) {
   });
 }
 
-// Redibujar radar cuando cambia el tema claro/oscuro
+// Redibujar radar cuando cambia el tema (usa curva cacheada para Sprint correcto)
+function _reRenderRadar() {
+  try { renderRiderProfile(state.activities, state.athlete || AppState?.athlete || {}, _lastRiderCurve); } catch(e) {}
+}
 new MutationObserver(function() {
-  if (typeof riderRadarChart !== 'undefined' && riderRadarChart) {
-    try { renderRiderProfile(state.activities, state.athlete || {}, null); } catch(e) {}
-  }
+  if (riderRadarChart) _reRenderRadar();
 }).observe(document.documentElement, { attributeFilter: ['class'] });
+
+// Re-render tras carga completa para aplicar colores del tema inicial correctamente
+window.addEventListener('load', function() {
+  setTimeout(_reRenderRadar, 80);
+}, { once: true });
 
 // ─── BOOT ─────────────────────────────────────────────────────
 // NOTA: renderZones() y loadPowerCurve() usan constantes definidas más abajo
