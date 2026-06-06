@@ -823,10 +823,18 @@ function render() {
   // PMC metric cards — los valores son siempre HOY (acumulado),
   // el delta refleja el cambio en el período seleccionado
   if (state.pmc.length) {
-    var daysNum = (period.mode === 'ytd' ? 365 : parseInt(days, 10)) || 90;
     var last = state.pmc[state.pmc.length - 1];
-    var prevIdx = state.pmc.length > daysNum ? state.pmc.length - 1 - daysNum : 0;
-    var prevPeriod = state.pmc[prevIdx];
+    var prevPeriod, ago;
+    if (period.mode === 'ytd') {
+      var jan1Str = new Date().getFullYear() + '-01-01';
+      prevPeriod = state.pmc.find(function(p) { return p.date >= jan1Str; }) || state.pmc[0];
+      ago = 'vs 1 ene';
+    } else {
+      var daysNum = parseInt(days, 10) || 90;
+      var prevIdx = state.pmc.length > daysNum ? state.pmc.length - 1 - daysNum : 0;
+      prevPeriod = state.pmc[prevIdx];
+      ago = 'vs hace ' + daysNum + 'd';
+    }
     var form = getFormStatus(last.tsb);
     document.getElementById('ctl').textContent = Math.round(last.ctl);
     document.getElementById('atl').textContent = Math.round(last.atl);
@@ -834,7 +842,6 @@ function render() {
     var ctlD = Math.round(last.ctl - prevPeriod.ctl);
     var atlD = Math.round(last.atl - prevPeriod.atl);
     var tsbD = Math.round(last.tsb - prevPeriod.tsb);
-    var ago = 'vs hace ' + daysNum + 'd';
 
     function deltaPill(d, positiveIsGood) {
       var cls = d === 0 ? 'neu' : (d > 0 === positiveIsGood ? 'up' : 'down');
