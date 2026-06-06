@@ -167,7 +167,7 @@ router.get('/recommendations', async (req, res) => {
 
   const phase = detectPhase(pmc);
   const form  = formState(tsb);
-  const wkg   = avgNP && weight ? Math.round(avgNP / weight * 100) / 100 : 0;
+  const wkg   = ftp && weight ? Math.round(ftp / weight * 100) / 100 : 0;
 
   // ── Generar recomendación de entrenamiento ──
   const training = buildTrainingRecommendation({ tsb, ctl, atl, ftp, weight, goal, phase, form,
