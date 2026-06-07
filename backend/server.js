@@ -88,6 +88,7 @@ app.use('/api/routes',      require('./routes/routes'));
 app.use('/api/group-rides', require('./routes/groupRides'));
 app.use('/api/push',        require('./routes/push'));
 app.use('/api/wellness',   require('./routes/wellness'));
+app.use('/api/feedback',   require('./routes/feedback'));
 
 // ─────────────────────────────────────────
 // HEALTH (usado por el keepalive y monitoreo externo)
