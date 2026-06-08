@@ -315,8 +315,8 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       const typeStr = a.sport_type || a.type || '';
       const type = stravaToAppType(typeStr);
 
-      // Solo ciclismo y fuerza/gym
-      if (type !== 'cycling' && type !== 'strength') continue;
+      // Solo actividades relevantes (ciclismo, fuerza, running, caminata)
+      if (!['cycling', 'strength', 'running', 'walking'].includes(type)) continue;
 
       // Calcular TSS e Intensity Factor (IF)
       const np = a.weighted_average_watts || 0;
@@ -335,8 +335,8 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         tss = Math.round((duration * a.average_heartrate * hrIF) / (lthr * 3600) * 100);
         finalNp = Math.round(ifValue * ftp);
       } else if (duration > 0) {
-        // Gym sin FC: IF más bajo que ciclismo (≈30 TSS/hora de gym moderado)
-        ifValue = type === 'strength' ? 0.55 : 0.65;
+        // Sin FC ni potencia: IF estimado según tipo de actividad
+        ifValue = type === 'strength' ? 0.55 : type === 'running' ? 0.70 : type === 'walking' ? 0.45 : 0.65;
         tss = Math.round((duration * ifValue * ifValue) / 3600 * 100);
         finalNp = Math.round(ifValue * ftp);
       }
