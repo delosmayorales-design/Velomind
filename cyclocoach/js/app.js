@@ -632,7 +632,7 @@ const TrainingPlanGenerator = {
       const seg = (this._activeSegments && this._activeSegments[0]) || { name: 'una subida corta de ~1 min', km: 1, grad: 5 };
       t = ` ⚡ Terreno ideal: ${seg.name}${seg.km && seg.grad && !seg.name.includes('~') ? ` (${seg.km} km / ${seg.grad}%)` : ''} — arranca en la entrada y da todo.`;
     } else if (type === 'vo2max') {
-      const repDur = (intervals || []).find(iv => iv.label.includes('VO₂') || iv.label.includes('Series'))?.dur;
+      const repDur = (intervals || []).find(iv => iv.label.includes('VO₂') || iv.label.includes('Series') || iv.label.includes('Micro-intervalos'))?.dur;
       const mins = repDur ? parseFloat(repDur) : 4;
       const seg = this._pickSegment(mins, 'minVO2');
       t = seg.name.includes('~')
