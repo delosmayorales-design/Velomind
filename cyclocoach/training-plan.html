@@ -2068,6 +2068,9 @@ function renderPlan(plan, athlete) {
         s.description     = TrainingPlanGenerator._buildDesc(s.intervals);
         s.alt_description = TrainingPlanGenerator._buildDesc(s.alt_intervals);
       }
+      if (TrainingPlanGenerator._buildTerrain) {
+        s.terrain = TrainingPlanGenerator._buildTerrain(s.type, s.intervals);
+      }
     });
   }
 
