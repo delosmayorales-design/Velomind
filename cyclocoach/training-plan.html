@@ -774,7 +774,7 @@
     .top-card-config-grid .params-field label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; display: block; margin-bottom: 2px; }
     .top-card-config-grid .params-input { height: 26px; font-size: 11px; padding: 0 7px; width: 100% !important; }
 
-    /* ── Cross-training pills ─────────────────── */
+    /* ── Cross-training selects ───────────────── */
     .xtr-section {
       grid-column: 1/-1;
       border-top: 1px solid rgba(255,255,255,.07);
@@ -784,27 +784,25 @@
       font-size: 9px; font-weight: 700; color: var(--text-muted);
       text-transform: uppercase; letter-spacing: .5px; margin-bottom: 7px;
     }
-    .xtr-rows { display: flex; flex-direction: column; gap: 5px; }
-    .xtr-row { display: flex; align-items: center; gap: 8px; }
-    .xtr-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; line-height: 1; }
-    .xtr-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); flex: 1; min-width: 60px; }
-    .xtr-pills { display: flex; gap: 4px; }
-    .xtr-pill {
-      height: 24px; min-width: 32px; padding: 0 9px;
-      background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: 7px; font-size: 11px; font-weight: 700;
-      color: var(--text-muted); cursor: pointer; font-family: inherit;
-      transition: background .15s, color .15s, border-color .15s;
+    .xtr-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .xtr-item { display: flex; flex-direction: column; gap: 3px; }
+    .xtr-item-label {
+      font-size: 9px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .4px;
+      display: flex; align-items: center; gap: 4px; white-space: nowrap;
     }
-    .xtr-pill:hover { border-color: rgba(196,239,68,.35); color: var(--text-primary); }
-    .xtr-pill.xtr-active { background: rgba(196,239,68,.14); border-color: rgba(196,239,68,.55); color: var(--primary); }
+    .xtr-icon { font-size: 13px; line-height: 1; }
     .cfg-span2 { grid-column: span 2; }
     .cfg-span3 { grid-column: 1/-1; }
+
+    /* ── Tarjeta eventos (alargada) ───────────── */
+    .events-card { width: 100%; }
+    .events-card .top-card-body { padding: 10px 12px; }
 
     @media (max-width: 600px) {
       .top-card-config-grid { grid-template-columns: 1fr 1fr; }
       .cfg-span2 { grid-column: span 2; }
-      .xtr-pill { height: 30px; min-width: 38px; font-size: 12px; }
+      .xtr-grid { grid-template-columns: 1fr; gap: 5px; }
     }
 
     /* Modo claro overrides para nuevos elementos */
@@ -1031,102 +1029,93 @@
               <input type="number" id="adj-initial-ctl" class="params-input" placeholder="0" min="0" max="200" title="Punto de partida para el PMC cuando no tienes historial. Si ya tienes +6 semanas de actividades sincronizadas, el CTL se calcula automáticamente desde ellas y este valor no afecta al resultado.">
             </div>
 
-            <!-- Entrenamiento complementario: pills -->
+            <!-- Entrenamiento complementario: selectores alineados -->
             <div class="xtr-section">
-              <div class="xtr-section-label">Entrenamiento complementario · días/semana</div>
-              <div class="xtr-rows">
-                <div class="xtr-row">
-                  <span class="xtr-icon">🏋️</span>
-                  <span class="xtr-name">Gimnasio</span>
-                  <div class="xtr-pills" data-field="adj-gym-days">
-                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-gym-days',0)">—</button>
-                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-gym-days',1)">1</button>
-                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-gym-days',2)">2</button>
-                  </div>
+              <div class="xtr-section-label">Entrenamiento complementario · días / semana</div>
+              <div class="xtr-grid">
+                <div class="xtr-item">
+                  <label class="xtr-item-label"><span class="xtr-icon">🏋️</span> Gimnasio</label>
+                  <select id="adj-gym-days" class="params-input params-select">
+                    <option value="0">Sin días</option>
+                    <option value="1">1 día / sem</option>
+                    <option value="2">2 días / sem</option>
+                  </select>
                 </div>
-                <div class="xtr-row">
-                  <span class="xtr-icon">🏃</span>
-                  <span class="xtr-name">Running</span>
-                  <div class="xtr-pills" data-field="adj-running-days">
-                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-running-days',0)">—</button>
-                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-running-days',1)">1</button>
-                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-running-days',2)">2</button>
-                  </div>
+                <div class="xtr-item">
+                  <label class="xtr-item-label"><span class="xtr-icon">🏃</span> Running</label>
+                  <select id="adj-running-days" class="params-input params-select">
+                    <option value="0">Sin días</option>
+                    <option value="1">1 día / sem</option>
+                    <option value="2">2 días / sem</option>
+                  </select>
                 </div>
-                <div class="xtr-row">
-                  <span class="xtr-icon">🚶</span>
-                  <span class="xtr-name">Caminata</span>
-                  <div class="xtr-pills" data-field="adj-walking-days">
-                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-walking-days',0)">—</button>
-                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-walking-days',1)">1</button>
-                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-walking-days',2)">2</button>
-                  </div>
+                <div class="xtr-item">
+                  <label class="xtr-item-label"><span class="xtr-icon">🚶</span> Caminata</label>
+                  <select id="adj-walking-days" class="params-input params-select">
+                    <option value="0">Sin días</option>
+                    <option value="1">1 día / sem</option>
+                    <option value="2">2 días / sem</option>
+                  </select>
                 </div>
-              </div>
-              <input type="hidden" id="adj-gym-days"     value="0">
-              <input type="hidden" id="adj-running-days" value="0">
-              <input type="hidden" id="adj-walking-days" value="0">
-            </div>
-            <div class="params-field" style="grid-column:1/-1">
-              <!-- Acordeón eventos -->
-              <div id="adj-events-accordion" onclick="toggleEventsAccordion()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;user-select:none">
-                <i class="fas fa-calendar-alt" style="color:var(--primary);font-size:12px;flex-shrink:0"></i>
-                <span style="font-size:12px;font-weight:600;color:var(--text-primary);flex:1">Eventos / Carreras objetivo</span>
-                <span id="adj-events-summary" style="font-size:11px;color:var(--text-muted)">Sin eventos</span>
-                <i id="adj-events-chev" class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);transition:transform .2s"></i>
-              </div>
-              <div id="adj-events-body" style="display:none;padding-top:8px;display:none">
-                <div id="adj-events-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:7px"></div>
-                <div id="adj-add-event-form" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:9px;flex-direction:column;gap:8px;margin-bottom:6px">
-                  <!-- Campos básicos -->
-                  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end">
-                    <input type="text" id="adj-new-ev-name" class="params-input" placeholder="Nombre del evento" style="flex:1;min-width:120px">
-                    <input type="date" id="adj-new-ev-date" class="params-input" style="width:135px">
-                    <select id="adj-new-ev-priority" class="params-input params-select" style="width:88px">
-                      <option value="A">A — Principal</option>
-                      <option value="B" selected>B — Secundario</option>
-                      <option value="C">C — Menor</option>
-                    </select>
-                  </div>
-                  <!-- Perfil del recorrido (colapsable) -->
-                  <div style="border-top:1px solid rgba(255,255,255,.07);padding-top:7px">
-                    <button type="button" onclick="toggleRouteProfileForm()" id="rp-toggle-btn" style="background:none;border:none;color:var(--text-muted);font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0;font-family:inherit">
-                      <i class="fas fa-route" style="color:var(--primary)"></i> Perfil del recorrido (opcional)
-                      <i class="fas fa-chevron-down" id="rp-chev" style="font-size:9px;transition:transform .2s"></i>
-                    </button>
-                    <div id="adj-route-profile" style="display:none;margin-top:8px;display:flex;flex-direction:column;gap:8px;display:none">
-                      <!-- Datos generales -->
-                      <div style="display:flex;flex-wrap:wrap;gap:6px">
-                        <input type="number" id="adj-ev-distance" class="params-input" placeholder="Distancia (km)" style="width:120px" min="1" max="999" step="1">
-                        <input type="number" id="adj-ev-elevation" class="params-input" placeholder="Desnivel total (m)" style="width:140px" min="0" max="9999" step="10">
-                        <input type="time" id="adj-ev-start-time" class="params-input" style="width:100px" title="Hora de salida">
-                      </div>
-                      <!-- Puertos -->
-                      <div>
-                        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Puertos</div>
-                        <div id="adj-climbs-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:5px"></div>
-                        <button type="button" onclick="addClimbEntry()" style="background:rgba(158,214,43,.1);border:1px dashed rgba(158,214,43,.3);border-radius:6px;padding:4px 10px;color:var(--primary);font-size:11px;cursor:pointer;font-family:inherit;width:100%">+ Añadir puerto</button>
-                      </div>
-                      <!-- Avituallamientos -->
-                      <div>
-                        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Avituallamientos · km (separados por coma)</div>
-                        <input type="text" id="adj-ev-feed-zones" class="params-input" placeholder="Ej: 40, 90, 130" style="width:100%">
-                      </div>
-                    </div>
-                  </div>
-                  <button class="params-apply-btn" style="margin:0;padding:6px 16px;font-size:11px;align-self:flex-start" onclick="addAdjEvent()"><i class="fas fa-check"></i> Añadir evento</button>
-                </div>
-                <button id="adj-add-ev-btn" onclick="toggleAddEventForm()" style="background:rgba(158,214,43,.12);border:1px solid rgba(158,214,43,.3);border-radius:7px;padding:5px 13px;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;width:auto">
-                  <i class="fas fa-plus"></i> Añadir evento
-                </button>
               </div>
             </div>
+
             <button class="params-apply-btn top-card-update-btn" onclick="applyAdjustments()">
               <i class="fas fa-sync-alt"></i> Actualizar
             </button>
           </div>
         </div>
 
+      </div>
+
+      <!-- Tarjeta eventos (alargada, ancho completo) -->
+      <div class="top-card events-card">
+        <div class="top-card-hd">
+          <i class="fas fa-calendar-alt" style="color:var(--primary)"></i> Eventos / Carreras objetivo
+          <span id="adj-events-summary" style="font-size:11px;color:var(--text-muted);margin-left:auto;font-weight:400;text-transform:none;letter-spacing:0">Sin eventos</span>
+        </div>
+        <div class="top-card-body" style="padding:10px 12px">
+          <div id="adj-events-body">
+            <div id="adj-events-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+            <div id="adj-add-event-form" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:9px;flex-direction:column;gap:8px;margin-bottom:8px">
+              <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end">
+                <input type="text" id="adj-new-ev-name" class="params-input" placeholder="Nombre del evento" style="flex:1;min-width:120px">
+                <input type="date" id="adj-new-ev-date" class="params-input" style="width:135px">
+                <select id="adj-new-ev-priority" class="params-input params-select" style="width:88px">
+                  <option value="A">A — Principal</option>
+                  <option value="B" selected>B — Secundario</option>
+                  <option value="C">C — Menor</option>
+                </select>
+              </div>
+              <div style="border-top:1px solid rgba(255,255,255,.07);padding-top:7px">
+                <button type="button" onclick="toggleRouteProfileForm()" id="rp-toggle-btn" style="background:none;border:none;color:var(--text-muted);font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0;font-family:inherit">
+                  <i class="fas fa-route" style="color:var(--primary)"></i> Perfil del recorrido (opcional)
+                  <i class="fas fa-chevron-down" id="rp-chev" style="font-size:9px;transition:transform .2s"></i>
+                </button>
+                <div id="adj-route-profile" style="display:none;margin-top:8px;flex-direction:column;gap:8px">
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <input type="number" id="adj-ev-distance" class="params-input" placeholder="Distancia (km)" style="width:120px" min="1" max="999" step="1">
+                    <input type="number" id="adj-ev-elevation" class="params-input" placeholder="Desnivel total (m)" style="width:140px" min="0" max="9999" step="10">
+                    <input type="time" id="adj-ev-start-time" class="params-input" style="width:100px" title="Hora de salida">
+                  </div>
+                  <div>
+                    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Puertos</div>
+                    <div id="adj-climbs-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:5px"></div>
+                    <button type="button" onclick="addClimbEntry()" style="background:rgba(158,214,43,.1);border:1px dashed rgba(158,214,43,.3);border-radius:6px;padding:4px 10px;color:var(--primary);font-size:11px;cursor:pointer;font-family:inherit;width:100%">+ Añadir puerto</button>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Avituallamientos · km (separados por coma)</div>
+                    <input type="text" id="adj-ev-feed-zones" class="params-input" placeholder="Ej: 40, 90, 130" style="width:100%">
+                  </div>
+                </div>
+              </div>
+              <button class="params-apply-btn" style="margin:0;padding:6px 16px;font-size:11px;align-self:flex-start" onclick="addAdjEvent()"><i class="fas fa-check"></i> Añadir evento</button>
+            </div>
+            <button id="adj-add-ev-btn" onclick="toggleAddEventForm()" style="background:rgba(158,214,43,.12);border:1px solid rgba(158,214,43,.3);border-radius:7px;padding:5px 13px;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">
+              <i class="fas fa-plus"></i> Añadir evento
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Diagnóstico Coach (oculto hasta tener contenido) -->
@@ -1688,13 +1677,9 @@ function fillAdjustmentForm() {
   if (document.getElementById('adj-initial-ctl')) document.getElementById('adj-initial-ctl').value = a.initial_ctl || '';
   if (document.getElementById('adj-max-hr')) document.getElementById('adj-max-hr').value = a.max_hr || '';
   if (document.getElementById('adj-lthr')) document.getElementById('adj-lthr').value = a.lthr || '';
-  // Inicializar pills de entrenamiento complementario
-  [['adj-gym-days', a.gym_days], ['adj-running-days', a.running_days], ['adj-walking-days', a.walking_days]].forEach(([id, rawVal]) => {
-    const val = parseInt(rawVal) || 0;
-    if (document.getElementById(id)) document.getElementById(id).value = val;
-    const pills = document.querySelectorAll(`.xtr-pills[data-field="${id}"] .xtr-pill`);
-    pills.forEach((p, i) => p.classList.toggle('xtr-active', i === val));
-  });
+  if (document.getElementById('adj-gym-days'))     document.getElementById('adj-gym-days').value     = a.gym_days     || 0;
+  if (document.getElementById('adj-running-days')) document.getElementById('adj-running-days').value = a.running_days || 0;
+  if (document.getElementById('adj-walking-days')) document.getElementById('adj-walking-days').value = a.walking_days || 0;
 }
 
 function renderWeekDates() {
