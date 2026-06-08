@@ -740,7 +740,8 @@
     }
     .top-card-hd {
       display: flex; align-items: center; gap: 6px;
-      padding: 6px 10px;
+      padding: 6px 10px 6px 9px;
+      border-left: 3px solid var(--primary);
       font-size: 10px; font-weight: 700; text-transform: uppercase;
       letter-spacing: .5px; color: var(--text-muted);
       border-bottom: 1px solid var(--border);
@@ -762,11 +763,49 @@
       height: 22px; font-size: 10px; padding: 0 6px; width: 100% !important;
     }
     .top-card-update-btn {
-      grid-column: span 2; height: 24px; font-size: 10px;
-      justify-content: center; width: 100%; margin-top: 1px;
+      grid-column: 1/-1; height: 28px; font-size: 10px;
+      justify-content: center; width: 100%; margin-top: 2px;
     }
     /* Estado de forma: quita padding extra heredado */
     #form-state-content.top-card-body { padding: 8px 10px; }
+
+    /* ── Config grid: 3 cols para compactación ─── */
+    .top-card-config-grid { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .top-card-config-grid .params-field label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; display: block; margin-bottom: 2px; }
+    .top-card-config-grid .params-input { height: 26px; font-size: 11px; padding: 0 7px; width: 100% !important; }
+
+    /* ── Cross-training pills ─────────────────── */
+    .xtr-section {
+      grid-column: 1/-1;
+      border-top: 1px solid rgba(255,255,255,.07);
+      padding-top: 8px; margin-top: 2px;
+    }
+    .xtr-section-label {
+      font-size: 9px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .5px; margin-bottom: 7px;
+    }
+    .xtr-rows { display: flex; flex-direction: column; gap: 5px; }
+    .xtr-row { display: flex; align-items: center; gap: 8px; }
+    .xtr-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; line-height: 1; }
+    .xtr-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); flex: 1; min-width: 60px; }
+    .xtr-pills { display: flex; gap: 4px; }
+    .xtr-pill {
+      height: 24px; min-width: 32px; padding: 0 9px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 7px; font-size: 11px; font-weight: 700;
+      color: var(--text-muted); cursor: pointer; font-family: inherit;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .xtr-pill:hover { border-color: rgba(196,239,68,.35); color: var(--text-primary); }
+    .xtr-pill.xtr-active { background: rgba(196,239,68,.14); border-color: rgba(196,239,68,.55); color: var(--primary); }
+    .cfg-span2 { grid-column: span 2; }
+    .cfg-span3 { grid-column: 1/-1; }
+
+    @media (max-width: 600px) {
+      .top-card-config-grid { grid-template-columns: 1fr 1fr; }
+      .cfg-span2 { grid-column: span 2; }
+      .xtr-pill { height: 30px; min-width: 38px; font-size: 12px; }
+    }
 
     /* Modo claro overrides para nuevos elementos */
     html[data-theme="light"] .top-card,
@@ -947,6 +986,8 @@
             <i class="fas fa-sliders-h" style="color:var(--primary)"></i> Configuración
           </div>
           <div id="config-body" class="top-card-body top-card-config-grid">
+
+            <!-- Fila 1: Horas · FTP · Peso -->
             <div class="params-field">
               <label>Horas / sem</label>
               <input type="number" id="adj-hours" class="params-input" value="8">
@@ -956,6 +997,12 @@
               <input type="number" id="adj-ftp" class="params-input" placeholder="200">
             </div>
             <div class="params-field">
+              <label>Peso (kg)</label>
+              <input type="number" id="adj-weight" class="params-input" placeholder="70">
+            </div>
+
+            <!-- Fila 2: Objetivo (2 cols) · FC máx -->
+            <div class="params-field cfg-span2">
               <label>Objetivo</label>
               <select id="adj-goal" class="params-input params-select">
                 <option value="resistencia">Resistencia</option>
@@ -970,44 +1017,55 @@
               </select>
             </div>
             <div class="params-field">
-              <label>Peso (kg)</label>
-              <input type="number" id="adj-weight" class="params-input" placeholder="70">
-            </div>
-            <div class="params-field">
               <label>FC máx (bpm)</label>
               <input type="number" id="adj-max-hr" class="params-input" placeholder="185" min="100" max="220">
             </div>
+
+            <!-- Fila 3: FC Umbral · CTL (2 cols) -->
             <div class="params-field">
               <label>FC Umbral (bpm)</label>
               <input type="number" id="adj-lthr" class="params-input" placeholder="165" min="100" max="210">
             </div>
-            <div class="params-field">
+            <div class="params-field cfg-span2">
               <label>CTL inicial</label>
               <input type="number" id="adj-initial-ctl" class="params-input" placeholder="0" min="0" max="200" title="Punto de partida para el PMC cuando no tienes historial. Si ya tienes +6 semanas de actividades sincronizadas, el CTL se calcula automáticamente desde ellas y este valor no afecta al resultado.">
             </div>
-            <div class="params-field">
-              <label>Días de gimnasio</label>
-              <select id="adj-gym-days" class="params-input params-select" title="El plan reservará esos días para fuerza en sala, sustituyendo sesiones de recuperación o Z2.">
-                <option value="0">Sin gimnasio</option>
-                <option value="1">1 día / semana</option>
-                <option value="2">2 días / semana</option>
-              </select>
-            </div>
-            <div class="params-field">
-              <label>Días de running 🏃</label>
-              <select id="adj-running-days" class="params-input params-select" title="El plan reservará esos días para carrera a pie fácil (Z2), sustituyendo sesiones de recuperación o Z2 en bici.">
-                <option value="0">Sin running</option>
-                <option value="1">1 día / semana</option>
-                <option value="2">2 días / semana</option>
-              </select>
-            </div>
-            <div class="params-field">
-              <label>Días de caminata 🚶</label>
-              <select id="adj-walking-days" class="params-input params-select" title="El plan reservará esos días para caminata de recuperación activa, preferentemente en días de descanso.">
-                <option value="0">Sin caminata</option>
-                <option value="1">1 día / semana</option>
-                <option value="2">2 días / semana</option>
-              </select>
+
+            <!-- Entrenamiento complementario: pills -->
+            <div class="xtr-section">
+              <div class="xtr-section-label">Entrenamiento complementario · días/semana</div>
+              <div class="xtr-rows">
+                <div class="xtr-row">
+                  <span class="xtr-icon">🏋️</span>
+                  <span class="xtr-name">Gimnasio</span>
+                  <div class="xtr-pills" data-field="adj-gym-days">
+                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-gym-days',0)">—</button>
+                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-gym-days',1)">1</button>
+                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-gym-days',2)">2</button>
+                  </div>
+                </div>
+                <div class="xtr-row">
+                  <span class="xtr-icon">🏃</span>
+                  <span class="xtr-name">Running</span>
+                  <div class="xtr-pills" data-field="adj-running-days">
+                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-running-days',0)">—</button>
+                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-running-days',1)">1</button>
+                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-running-days',2)">2</button>
+                  </div>
+                </div>
+                <div class="xtr-row">
+                  <span class="xtr-icon">🚶</span>
+                  <span class="xtr-name">Caminata</span>
+                  <div class="xtr-pills" data-field="adj-walking-days">
+                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-walking-days',0)">—</button>
+                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-walking-days',1)">1</button>
+                    <button type="button" class="xtr-pill" onclick="setXtrDays(this,'adj-walking-days',2)">2</button>
+                  </div>
+                </div>
+              </div>
+              <input type="hidden" id="adj-gym-days"     value="0">
+              <input type="hidden" id="adj-running-days" value="0">
+              <input type="hidden" id="adj-walking-days" value="0">
             </div>
             <div class="params-field" style="grid-column:1/-1">
               <!-- Acordeón eventos -->
@@ -1630,9 +1688,13 @@ function fillAdjustmentForm() {
   if (document.getElementById('adj-initial-ctl')) document.getElementById('adj-initial-ctl').value = a.initial_ctl || '';
   if (document.getElementById('adj-max-hr')) document.getElementById('adj-max-hr').value = a.max_hr || '';
   if (document.getElementById('adj-lthr')) document.getElementById('adj-lthr').value = a.lthr || '';
-  if (document.getElementById('adj-gym-days'))     document.getElementById('adj-gym-days').value     = a.gym_days     || 0;
-  if (document.getElementById('adj-running-days')) document.getElementById('adj-running-days').value = a.running_days || 0;
-  if (document.getElementById('adj-walking-days')) document.getElementById('adj-walking-days').value = a.walking_days || 0;
+  // Inicializar pills de entrenamiento complementario
+  [['adj-gym-days', a.gym_days], ['adj-running-days', a.running_days], ['adj-walking-days', a.walking_days]].forEach(([id, rawVal]) => {
+    const val = parseInt(rawVal) || 0;
+    if (document.getElementById(id)) document.getElementById(id).value = val;
+    const pills = document.querySelectorAll(`.xtr-pills[data-field="${id}"] .xtr-pill`);
+    pills.forEach((p, i) => p.classList.toggle('xtr-active', i === val));
+  });
 }
 
 function renderWeekDates() {
@@ -4332,6 +4394,11 @@ function _updateEventsSummary() {
   const dateFmt = new Date(aEvent.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
   const color = aEvent.priority === 'A' ? '#9ED62B' : '#FFC800';
   el.innerHTML = `<span style="color:${color};font-weight:700">🏁 ${dateFmt}</span><span style="color:var(--text-muted)"> · en ${days}d</span>`;
+}
+
+function setXtrDays(btn, fieldId, val) {
+  document.getElementById(fieldId).value = val;
+  btn.closest('.xtr-pills').querySelectorAll('.xtr-pill').forEach((p, i) => p.classList.toggle('xtr-active', i === val));
 }
 
 function toggleEventsAccordion(forceOpen) {
