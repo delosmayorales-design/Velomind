@@ -993,6 +993,22 @@
                 <option value="2">2 días / semana</option>
               </select>
             </div>
+            <div class="params-field">
+              <label>Días de running 🏃</label>
+              <select id="adj-running-days" class="params-input params-select" title="El plan reservará esos días para carrera a pie fácil (Z2), sustituyendo sesiones de recuperación o Z2 en bici.">
+                <option value="0">Sin running</option>
+                <option value="1">1 día / semana</option>
+                <option value="2">2 días / semana</option>
+              </select>
+            </div>
+            <div class="params-field">
+              <label>Días de caminata 🚶</label>
+              <select id="adj-walking-days" class="params-input params-select" title="El plan reservará esos días para caminata de recuperación activa, preferentemente en días de descanso.">
+                <option value="0">Sin caminata</option>
+                <option value="1">1 día / semana</option>
+                <option value="2">2 días / semana</option>
+              </select>
+            </div>
             <div class="params-field" style="grid-column:1/-1">
               <!-- Acordeón eventos -->
               <div id="adj-events-accordion" onclick="toggleEventsAccordion()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;user-select:none">
@@ -1614,7 +1630,9 @@ function fillAdjustmentForm() {
   if (document.getElementById('adj-initial-ctl')) document.getElementById('adj-initial-ctl').value = a.initial_ctl || '';
   if (document.getElementById('adj-max-hr')) document.getElementById('adj-max-hr').value = a.max_hr || '';
   if (document.getElementById('adj-lthr')) document.getElementById('adj-lthr').value = a.lthr || '';
-  if (document.getElementById('adj-gym-days')) document.getElementById('adj-gym-days').value = a.gym_days || 0;
+  if (document.getElementById('adj-gym-days'))     document.getElementById('adj-gym-days').value     = a.gym_days     || 0;
+  if (document.getElementById('adj-running-days')) document.getElementById('adj-running-days').value = a.running_days || 0;
+  if (document.getElementById('adj-walking-days')) document.getElementById('adj-walking-days').value = a.walking_days || 0;
 }
 
 function renderWeekDates() {
@@ -2232,7 +2250,7 @@ function renderPlan(plan, athlete) {
 
     const typeColors = {
       recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D',
-      threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899', gym: '#F97316'
+      threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899', gym: '#F97316', running: '#EF4444', walking: '#10B981'
     };
     const sessionStructureTitle = 'Estructura detallada de la sesión';
     const color  = typeColors[sess.type] || 'var(--text-secondary)';
@@ -2322,9 +2340,10 @@ function renderPlan(plan, athlete) {
 
     const isPastOrToday = i <= todayIdx;
     const objective     = SESSION_OBJECTIVES[sess.type] || 'Entrenamiento';
-    const wkSummary     = sess.isGym
-      ? '🦵 Tren inferior · 💪 Tren superior · 🧘 Core'
-      : buildWorkoutSummary(sess.description, durMin, _cardMainIv);
+    const wkSummary     = sess.isGym     ? '🦵 Tren inferior · 💪 Tren superior · 🧘 Core'
+                        : sess.isRunning ? '🏃 Carrera fácil Z2 · Ritmo conversacional · 170-180 ppm cadencia'
+                        : sess.isWalking ? '🚶 Caminata Z1 · Recuperación activa · Ritmo tranquilo'
+                        : buildWorkoutSummary(sess.description, durMin, _cardMainIv);
 
     // Banner de adaptación automática (visible cuando la sesión fue ajustada)
     const adaptBanner = sess._adapted && sess.advice ? `
@@ -2344,7 +2363,7 @@ function renderPlan(plan, athlete) {
       </div>` : '');
 
     const _garminConn = localStorage.getItem('velomind_garmin_connected') === '1';
-    const actionButtons = (!sess.isRest && !sess.isGym) ? `
+    const actionButtons = (!sess.isRest && !sess.isGym && !sess.isRunning && !sess.isWalking) ? `
       <div class="sess-actions">
         <div class="sess-export-section">
           <span class="sess-export-lbl"><i class="fas fa-download"></i> Exportar:</span>
@@ -2529,8 +2548,8 @@ function renderPlan(plan, athlete) {
               <div class="session-meta" style="align-items:center; width:100%; flex-wrap:wrap;">
               ${tssVal > 0 ? `<span class="meta-tag meta-tag-tss"><i class="fas fa-star" style="color:${color}"></i> TSS ${tssVal}</span>` : ''}
               ${durMin > 0 ? `<span class="meta-tag"><i class="fas fa-clock"></i> ${durMin} min</span>` : ''}
-              ${(!sess.isGym && ifVal > 0) ? `<span class="meta-tag meta-tag-if"><i class="fas fa-bolt" style="color:var(--primary)"></i> IF ${ifVal.toFixed(2)}</span>` : ''}
-              ${(!sess.isGym && _cardWatts > 0) ? `<span class="meta-tag"><i class="fas fa-tachometer-alt"></i> ~${_cardWatts}W</span>` : ''}
+              ${(!sess.isGym && !sess.isRunning && !sess.isWalking && ifVal > 0) ? `<span class="meta-tag meta-tag-if"><i class="fas fa-bolt" style="color:var(--primary)"></i> IF ${ifVal.toFixed(2)}</span>` : ''}
+              ${(!sess.isGym && !sess.isRunning && !sess.isWalking && _cardWatts > 0) ? `<span class="meta-tag"><i class="fas fa-tachometer-alt"></i> ~${_cardWatts}W</span>` : ''}
               ${(() => {
                 const lthr = AppState.athlete?.lthr || (AppState.athlete?.max_hr ? Math.round(AppState.athlete.max_hr * 0.88) : 0);
                 if (!lthr || !ifVal) return '';
@@ -3874,8 +3893,74 @@ function showSessionDetail(idx, showAlt = false) {
           <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">Psoas · Isquiotibiales · Gemelos · Movilidad de cadera y tobillo. Clave para recuperar la posición en bici.</div>
         </div>
       </div>`;
+  } else if (sess.isRunning) {
+    const color = '#EF4444';
+    document.getElementById('modal-title').textContent = `🏃 ${sess.name || 'Running'}`;
+    document.getElementById('modal-content').innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">Running — Carrera fácil Z2</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <span style="background:rgba(239,68,68,.12);color:#EF4444;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px"><i class="fas fa-clock"></i> ${sess.durationMin || 45} min</span>
+        <span style="background:rgba(239,68,68,.12);color:#EF4444;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px"><i class="fas fa-star"></i> ~${sess.tss || 38} TSS</span>
+        <span style="background:rgba(239,68,68,.12);color:#EF4444;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px">RPE 4-5 · Ritmo conversacional</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🏁 Estructura de la sesión</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
+            <div style="display:flex;justify-content:space-between"><span>Calentamiento andando</span><span style="color:var(--text-muted);font-weight:600">5 min</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Carrera fácil Z2 (ritmo conversacional)</span><span style="color:var(--text-muted);font-weight:600">30-35 min</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Vuelta a la calma andando</span><span style="color:var(--text-muted);font-weight:600">5 min</span></div>
+          </div>
+        </div>
+        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">📊 Referencias de intensidad</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
+            <div style="display:flex;justify-content:space-between"><span>Frecuencia cardíaca</span><span style="color:var(--text-muted);font-weight:600">Z2 · 60-75% FCmáx</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Cadencia de zancada</span><span style="color:var(--text-muted);font-weight:600">170-180 ppm</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Test de conversación</span><span style="color:var(--text-muted);font-weight:600">Debes poder hablar cómodamente</span></div>
+          </div>
+        </div>
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🧘 Estiramientos post-carrera — 5 min</div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">Cuádriceps · Isquiotibiales · Gemelos · Psoas-ilíaco. Ayuda a reducir rigidez y acelerar la recuperación entre sesiones de bici.</div>
+        </div>
+      </div>`;
+  } else if (sess.isWalking) {
+    const color = '#10B981';
+    document.getElementById('modal-title').textContent = `🚶 ${sess.name || 'Caminata'}`;
+    document.getElementById('modal-content').innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">Caminata — Recuperación activa</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <span style="background:rgba(16,185,129,.12);color:#10B981;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px"><i class="fas fa-clock"></i> ${sess.durationMin || 40} min</span>
+        <span style="background:rgba(16,185,129,.12);color:#10B981;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px"><i class="fas fa-star"></i> ~${sess.tss || 15} TSS</span>
+        <span style="background:rgba(16,185,129,.12);color:#10B981;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px">RPE 2-3 · Zona 1</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🌿 Objetivo de la sesión</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.6">Caminata de recuperación activa al aire libre. Ritmo tranquilo y constante, sin superar la zona 1. Ideal para activar la circulación, reducir rigidez muscular y favorecer la recuperación sin añadir estrés adicional.</div>
+        </div>
+        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">📊 Referencias</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
+            <div style="display:flex;justify-content:space-between"><span>Intensidad</span><span style="color:var(--text-muted);font-weight:600">Z1 · &lt; 60% FCmáx</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Duración</span><span style="color:var(--text-muted);font-weight:600">30-45 min</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Terreno</span><span style="color:var(--text-muted);font-weight:600">Llano o suave, al aire libre</span></div>
+          </div>
+        </div>
+        <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">💡 Consejo</div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">Aprovecha para desconectar, escuchar un podcast o simplemente disfrutar del entorno. El descanso activo también entrena la mente.</div>
+        </div>
+      </div>`;
   } else {
-    const typeColors = { recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D', threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899', gym: '#F97316' };
+    const typeColors = { recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D', threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899', gym: '#F97316', running: '#EF4444', walking: '#10B981' };
     const color = typeColors[sess.type] || 'var(--text-secondary)';
     document.getElementById('modal-title').textContent = `${sess.emoji} ${sess.name || 'Sesión'}`;
     const _ma = Object.assign({}, AppState.athlete || {weight:70,height:175,age:30,ftp:200,goal:'resistencia',experience:'intermedio'});
@@ -4432,8 +4517,12 @@ async function applyAdjustments() {
     if (ftp        !== null && !isNaN(ftp)        && ftp        >= 50)  updates.ftp = ftp;
     if (weight     !== null && !isNaN(weight)     && weight     > 0)    updates.weight = weight;
     if (initialCTL !== null && !isNaN(initialCTL) && initialCTL >= 0)  updates.initial_ctl = initialCTL;
-    const gymDaysVal = parseInt(document.getElementById('adj-gym-days')?.value) || 0;
-    updates.gym_days = gymDaysVal;
+    const gymDaysVal     = parseInt(document.getElementById('adj-gym-days')?.value)     || 0;
+    const runningDaysVal = parseInt(document.getElementById('adj-running-days')?.value) || 0;
+    const walkingDaysVal = parseInt(document.getElementById('adj-walking-days')?.value) || 0;
+    updates.gym_days     = gymDaysVal;
+    updates.running_days = runningDaysVal;
+    updates.walking_days = walkingDaysVal;
     if (maxHR      !== null && !isNaN(maxHR)      && maxHR      >= 100) updates.max_hr = maxHR;
     if (lthr       !== null && !isNaN(lthr)        && lthr       >= 100) updates.lthr = lthr;
     if (goal)  updates.goal = goal;
@@ -4556,7 +4645,7 @@ function _renderNextWeekSummary() {
     + ' – ' + nextSunday.toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' });
 
   const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  const TYPE_ICON = { recovery:'😴', endurance:'🚴', long:'🏔️', tempo:'📈', threshold:'⚡', sweet_spot:'🎯', vo2max:'🔥', sprint:'💥', strength:'💪', gym:'🏋️' };
+  const TYPE_ICON = { recovery:'😴', endurance:'🚴', long:'🏔️', tempo:'📈', threshold:'⚡', sweet_spot:'🎯', vo2max:'🔥', sprint:'💥', strength:'💪', gym:'🏋️', running:'🏃', walking:'🚶' };
   const PHASE_LABEL = { base:'Base', build:'Build', peak:'Peak', recovery:'Recuperación', race:'Carrera' };
   const PHASE_COLOR = { base:'#00D4FF', build:'#FF6B35', peak:'#FFC800', recovery:'#00C882', race:'#EC4899' };
   const phaseLabel = PHASE_LABEL[nextPlan.phase] || nextPlan.phase || '';

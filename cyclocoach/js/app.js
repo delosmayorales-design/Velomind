@@ -29,6 +29,8 @@ const WORKOUT_TYPES = {
   race:      { label: 'Activación Carrera',  color: '#EC4899', emoji: '🏁' },
   strength:  { label: 'Fuerza (Baja cadencia)',color:'#A855F7',emoji: '💪' },
   gym:       { label: 'Gimnasio / Fuerza',     color:'#F97316',emoji: '🏋️' },
+  running:   { label: 'Running',               color:'#EF4444',emoji: '🏃' },
+  walking:   { label: 'Caminata Activa',       color:'#10B981',emoji: '🚶' },
 };
 
 /* Normalización de objetivos entre pantallas y motor */
@@ -420,10 +422,18 @@ const TrainingPlanGenerator = {
     if (nextBEvent) targetTSS = Math.round(targetTSS * 0.85);
 
     const advice = this._getAdvice(tsb, ctl, effectivePhase);
-    const gymDays = Math.max(0, Math.min(3, parseInt(athlete.gym_days) || 0));
-    const sessions = this._injectGymSessions(
-      this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle, events),
-      gymDays
+    const gymDays     = Math.max(0, Math.min(3, parseInt(athlete.gym_days)     || 0));
+    const runningDays = Math.max(0, Math.min(3, parseInt(athlete.running_days) || 0));
+    const walkingDays = Math.max(0, Math.min(3, parseInt(athlete.walking_days) || 0));
+    const sessions = this._injectWalkingSessions(
+      this._injectRunningSessions(
+        this._injectGymSessions(
+          this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle, events),
+          gymDays
+        ),
+        runningDays
+      ),
+      walkingDays
     );
 
     // Tasa de progresión: ΔCTLsemana ≈ (carga_diaria - CTL) × (1 - e^(-7/42)) ≈ × 0.154
@@ -564,6 +574,53 @@ const TrainingPlanGenerator = {
     const total = result.reduce((s, r) => s + (r.tssShare || 0), 0);
     if (total > 0 && Math.abs(total - 1) > 0.01)
       result.forEach(s => { if (s.tssShare) s.tssShare = s.tssShare / total; });
+    return result;
+  },
+
+  // Inyecta días de running reemplazando slots de menor prioridad
+  _injectRunningSessions(sessions, runningDays) {
+    if (!runningDays || runningDays <= 0) return sessions;
+    const result = sessions.map(s => ({ ...s }));
+    const DAY_SCORE = { 'Lunes':0, 'Miércoles':1, 'Martes':2, 'Jueves':3, 'Viernes':4, 'Sábado':5, 'Domingo':6 };
+    const typeScore = s => s.isRest ? 0 : ({ recovery:1, endurance:2 }[s.type] ?? 99);
+    const candidates = result
+      .map((s, i) => ({ i, ts: typeScore(s), ds: DAY_SCORE[s.day] ?? 6 }))
+      .filter(c => c.ts < 99)
+      .sort((a, b) => a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
+      .slice(0, runningDays);
+    for (const { i } of candidates) {
+      result[i] = {
+        day: result[i].day, type: 'running', emoji: '🏃',
+        name: 'Running — Carrera fácil Z2',
+        description: 'Carrera a ritmo fácil aeróbico (Z2). Mantén una conversación cómoda durante toda la sesión. Cadencia 170-180 ppm. Finaliza con 5 min de estiramientos de piernas.',
+        isRunning: true, isRest: false, tss: 38, durationMin: 45, tssShare: 0, ifTarget: null, intervals: null,
+      };
+    }
+    const total = result.reduce((s, r) => s + (r.tssShare || 0), 0);
+    if (total > 0 && Math.abs(total - 1) > 0.01)
+      result.forEach(s => { if (s.tssShare) s.tssShare = s.tssShare / total; });
+    return result;
+  },
+
+  // Inyecta días de caminata en días de descanso o recuperación
+  _injectWalkingSessions(sessions, walkingDays) {
+    if (!walkingDays || walkingDays <= 0) return sessions;
+    const result = sessions.map(s => ({ ...s }));
+    const DAY_SCORE = { 'Lunes':0, 'Miércoles':1, 'Viernes':2, 'Martes':3, 'Jueves':4, 'Sábado':5, 'Domingo':6 };
+    const typeScore = s => ({ isRest: 0, recovery: 1 }[s.isRest ? 'isRest' : s.type] ?? (s.isRest ? 0 : 99));
+    const candidates = result
+      .map((s, i) => ({ i, ts: s.isRest ? 0 : (s.type === 'recovery' ? 1 : 99), ds: DAY_SCORE[s.day] ?? 6 }))
+      .filter(c => c.ts < 99)
+      .sort((a, b) => a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
+      .slice(0, walkingDays);
+    for (const { i } of candidates) {
+      result[i] = {
+        day: result[i].day, type: 'walking', emoji: '🚶',
+        name: 'Caminata — Recuperación activa',
+        description: 'Caminata de recuperación activa al aire libre. Ritmo tranquilo sin superar Z1. Ideal para activar la circulación, reducir rigidez y despejar la mente. 30-45 min.',
+        isWalking: true, isRest: false, tss: 15, durationMin: 40, tssShare: 0, ifTarget: null, intervals: null,
+      };
+    }
     return result;
   },
 
