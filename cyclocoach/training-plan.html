@@ -2308,6 +2308,7 @@ function renderPlan(plan, athlete) {
     const durMin = Number.isFinite(sess.durationMin) ? sess.durationMin : (sess.ifTarget ? Math.round(tssVal / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
     const targetWatts = sess.ifTarget ? Math.round(ftp * sess.ifTarget) : (Number.isFinite(sess.targetWatts) ? sess.targetWatts : null);
     const ifVal = sess.ifTarget || 0;
+    const _cardMainIv = _findMainInterval(sess.intervals);
     const _cardWatts = targetWatts;
 
     // ── Execution badge: compara actividad real de ese día vs planificado ──
