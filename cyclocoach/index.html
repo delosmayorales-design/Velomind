@@ -764,12 +764,17 @@ async function saveAndGo() {
   if (data.height) localStorage.setItem('velomind_height', data.height.toString());
 
   try {
+    const profileFields = {
+      name: data.name, age: data.age, sex: data.sex, weight: data.weight,
+      height: data.height, ftp: data.ftp, max_hr: data.max_hr, lthr: data.lthr,
+      experience: data.experience, goal: data.goal, weekly_hours: data.weekly_hours,
+      days_per_week: data.days_per_week, event_date: data.event_date,
+      initial_ctl: data.initial_ctl, target_events: data.target_events,
+    };
     const session = JSON.parse(localStorage.getItem('velomind_user')||'{}');
-    if (data.name) session.name = data.name;
-    if (data.ftp) session.ftp = data.ftp;
-    if (data.weight) session.weight = data.weight;
-    localStorage.setItem('velomind_user', JSON.stringify(session));
-    if (window.Auth && Auth.updateUI) Auth.updateUI(session);
+    const merged = { ...session, ...profileFields };
+    localStorage.setItem('velomind_user', JSON.stringify(merged));
+    if (window.Auth && Auth.updateUI) Auth.updateUI(merged);
   } catch(e){}
 
   // Guardar peso inicial
@@ -851,10 +856,15 @@ let _isEditing = false;
   try {
     let a = JSON.parse(localStorage.getItem('velomind_athlete')||'null');
 
+    // Sembrar AppState con datos locales ANTES de loadProfile, para que el merge preserve
+    // cambios pendientes de sincronizar (e.g. ajustados en training-plan sin navegar todavía)
+    if (a && window.AppState) AppState.athlete = a;
+
     // Forzar carga de datos actualizados desde el servidor
     if (Auth.isAuthenticated() && typeof BackendSync !== 'undefined') {
-      const profile = await BackendSync.loadProfile();
-      if (profile) a = profile;
+      await BackendSync.loadProfile();
+      // Usar el resultado mergeado de AppState (que ya consideró timestamps) en vez del valor crudo del backend
+      if (AppState.athlete) a = AppState.athlete;
     }
 
     if (!a) return;

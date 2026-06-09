@@ -251,7 +251,14 @@ const AppState = {
 
   saveAthlete(data) {
     this.athlete = { ...this.athlete, ...data };
+    this.athlete._local_updated_at = Date.now();
     localStorage.setItem('velomind_athlete', JSON.stringify(this.athlete));
+    // Mantener velomind_user sincronizado inmediatamente (sin esperar al backend)
+    try {
+      const { _local_updated_at, id, createdAt, ...profileFields } = data;
+      const session = JSON.parse(localStorage.getItem('velomind_user') || '{}');
+      localStorage.setItem('velomind_user', JSON.stringify({ ...session, ...profileFields }));
+    } catch (e) {}
     if ('initial_ctl' in data || 'ftp' in data) {
       this.pmcData = PMC.compute(this.activities, 120, this.athlete?.initial_ctl || 0);
     }

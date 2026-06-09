@@ -68,12 +68,25 @@ function isLegacyDemoActivity(a) {
     try {
       const data = await apiFetch('/auth/verify');
       if (data.user) {
-        AppState.athlete = { ...AppState.athlete, ...data.user };
+        // Comparar timestamp local vs backend para no sobreescribir cambios pendientes de sincronizar
+        const localTs  = AppState.athlete?._local_updated_at || 0;
+        const serverTs = new Date(data.user.updated_at || 0).getTime();
+
+        if (localTs > serverTs) {
+          // Hay cambios locales más nuevos que el servidor: local gana en campos que se solapan
+          AppState.athlete = { ...data.user, ...AppState.athlete };
+        } else {
+          // El servidor es autoritativo
+          AppState.athlete = { ...AppState.athlete, ...data.user };
+          delete AppState.athlete._local_updated_at;
+        }
+
         localStorage.setItem('velomind_athlete', JSON.stringify(AppState.athlete));
-        
+
         // Sincronizar también la sesión de Auth
+        const { _local_updated_at, ...athleteForUser } = AppState.athlete;
         const currentUser = JSON.parse(localStorage.getItem('velomind_user') || '{}');
-        const updatedUser = { ...currentUser, ...data.user };
+        const updatedUser = { ...currentUser, ...athleteForUser };
         localStorage.setItem('velomind_user', JSON.stringify(updatedUser));
         if (window.Auth && Auth.updateUI) Auth.updateUI(updatedUser);
       }
@@ -93,8 +106,10 @@ function isLegacyDemoActivity(a) {
       });
       if (data.user) {
         AppState.athlete = { ...AppState.athlete, ...data.user };
+        // El servidor confirmó el guardado: limpiar flag de cambios pendientes locales
+        delete AppState.athlete._local_updated_at;
         localStorage.setItem('velomind_athlete', JSON.stringify(AppState.athlete));
-        
+
         // Sincronizar también la sesión de Auth
         const currentUser = JSON.parse(localStorage.getItem('velomind_user') || '{}');
         const updatedUser = { ...currentUser, ...data.user };
