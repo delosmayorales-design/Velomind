@@ -233,16 +233,29 @@
           <i class="fas fa-chevron-down garmin-tip-arrow" style="color:var(--text-muted);font-size:11px"></i>
         </div>
         <div class="hidden" style="padding:14px 16px;background:var(--bg-input);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm)">
-          <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px">Garmin permite exportar todo tu historial de una vez. Sigue estos pasos:</p>
-          <ol style="font-size:12px;color:var(--text-secondary);margin:0 0 12px;padding-left:18px;line-height:2">
-            <li>Haz clic en el enlace de abajo e inicia sesión en tu cuenta Garmin</li>
-            <li>Pulsa <strong>"Solicitar exportación de datos"</strong></li>
-            <li>Recibirás un correo con un enlace de descarga — <strong>puede tardar entre 48 h y 30 días</strong> según la carga de Garmin</li>
-            <li>Descarga el ZIP, extráelo y arrastra todos los archivos <strong>.fit</strong> a la zona de importación de arriba (puedes seleccionarlos todos a la vez)</li>
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px">Si tus entrenamientos se graban con un ciclocomputador Garmin Edge o un reloj, el centro de gestión de datos de Garmin te permite descargar el "bruto" original de toda tu vida deportiva.</p>
+          <ol style="font-size:12px;color:var(--text-secondary);margin:0 0 14px;padding-left:18px;line-height:1">
+            <li style="margin-bottom:10px">Entra <strong>desde el ordenador</strong> a la web de <strong>Gestión de Datos de Garmin</strong>:<br>
+              <a href="https://www.garmin.com/account/datamanagement" target="_blank" rel="noopener" style="color:#4b9fff;font-size:11px">garmin.com/account/datamanagement</a> e inicia sesión.</li>
+            <li style="margin-bottom:10px">Haz clic en el botón <strong>"Exportar sus datos"</strong>.</li>
+            <li style="margin-bottom:10px">Selecciona <strong>"Solicitar exportación de datos"</strong>.</li>
+            <li>¡Listo! Garmin tardará un tiempo (a veces unas pocas horas, a veces un par de días si tienes muchísimos años de entrenamientos) en preparar el paquete. <strong>Te llegará un correo</strong> con un enlace de descarga.</li>
           </ol>
-          <a href="https://www.garmin.com/es-ES/account/datamanagement/exportdata" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4b9fff;text-decoration:none" onmouseenter="this.style.textDecoration='underline'" onmouseleave="this.style.textDecoration='none'">
+          <div style="background:rgba(0,112,255,0.06);border:1px solid rgba(0,112,255,0.18);border-radius:8px;padding:10px 12px;margin-bottom:14px">
+            <div style="font-size:11px;font-weight:700;color:#4b9fff;margin-bottom:6px">📁 Dónde buscar los <code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px">.fit</code></div>
+            <div style="font-size:11px;color:var(--text-secondary);line-height:1.7">
+              Cuando descargues y descomprimas el <code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px">.zip</code>, entra en la carpeta
+              <code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px">DI_CONNECT</code> →
+              <code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px">DI-Connect-Fitness-Uploaded-Files</code>.
+              Ahí dentro verás otro archivo <code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px">.zip</code>
+              (tipo <em>UploadedFiles_0.zip</em>). Lo abres y… ¡boom! Ahí tienes todos tus archivos
+              <code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px">.fit</code> originales.
+              Selecciónalos todos y arrástralos a la zona de importación de arriba.
+            </div>
+          </div>
+          <a href="https://www.garmin.com/account/datamanagement" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4b9fff;text-decoration:none" onmouseenter="this.style.textDecoration='underline'" onmouseleave="this.style.textDecoration='none'">
             <i class="fas fa-external-link-alt" style="font-size:10px"></i>
-            Ir a exportación de datos de Garmin
+            Ir a Gestión de Datos de Garmin
           </a>
         </div>
       </div>

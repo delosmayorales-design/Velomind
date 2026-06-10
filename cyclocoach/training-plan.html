@@ -774,6 +774,37 @@
     .top-card-config-grid .params-field label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; display: block; margin-bottom: 2px; }
     .top-card-config-grid .params-input { height: 26px; font-size: 11px; padding: 0 7px; width: 100% !important; }
 
+    /* ── Evento / Puertos — responsive ─────────── */
+    .ev-header-row { display:flex; flex-wrap:wrap; gap:6px; align-items:flex-end; }
+    .ev-header-row .ev-name  { flex:1; min-width:140px; }
+    .ev-header-row .ev-date  { width:135px; }
+    .ev-header-row .ev-pri   { width:88px; }
+    .rp-fields { display:flex; flex-wrap:wrap; gap:6px; }
+    .rp-fields .rp-dist  { width:120px; }
+    .rp-fields .rp-elev  { width:140px; }
+    .rp-fields .rp-time  { width:100px; }
+    .climb-row {
+      display: grid;
+      grid-template-columns: 1fr 72px 68px 80px 28px;
+      gap: 4px; align-items: center;
+      background: rgba(255,255,255,.03); border-radius:6px; padding:5px;
+    }
+    .climb-row input, .climb-row button { width:100% !important; box-sizing:border-box; }
+    @media (max-width: 520px) {
+      .ev-header-row .ev-date { width:100%; flex:1 1 100%; }
+      .ev-header-row .ev-pri  { width:100%; flex:1 1 100%; }
+      .rp-fields .rp-dist, .rp-fields .rp-elev, .rp-fields .rp-time { width:100%; flex:1 1 100%; }
+      .climb-row {
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas: "name name" "km len" "elev btn";
+      }
+      .climb-row .cn { grid-area: name; }
+      .climb-row .ck { grid-area: km; }
+      .climb-row .cl { grid-area: len; }
+      .climb-row .ce { grid-area: elev; }
+      .climb-row .cb { grid-area: btn; justify-self:end; width:auto !important; }
+    }
+
     /* ── Cross-training selects ───────────────── */
     .xtr-section {
       grid-column: 1/-1;
@@ -784,7 +815,7 @@
       font-size: 9px; font-weight: 700; color: var(--text-muted);
       text-transform: uppercase; letter-spacing: .5px; margin-bottom: 7px;
     }
-    .xtr-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .xtr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
     .xtr-item { display: flex; flex-direction: column; gap: 3px; }
     .xtr-item-label {
       font-size: 9px; font-weight: 700; color: var(--text-muted);
@@ -802,7 +833,7 @@
     @media (max-width: 600px) {
       .top-card-config-grid { grid-template-columns: 1fr 1fr; }
       .cfg-span2 { grid-column: span 2; }
-      .xtr-grid { grid-template-columns: 1fr; gap: 5px; }
+      .xtr-grid { grid-template-columns: 1fr 1fr; gap: 5px; }
     }
 
     /* Modo claro overrides para nuevos elementos */
@@ -1086,10 +1117,10 @@
           <div id="adj-events-body">
             <div id="adj-events-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
             <div id="adj-add-event-form" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:9px;flex-direction:column;gap:8px;margin-bottom:8px">
-              <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end">
-                <input type="text" id="adj-new-ev-name" class="params-input" placeholder="Nombre del evento" style="flex:1;min-width:120px">
-                <input type="date" id="adj-new-ev-date" class="params-input" style="width:135px">
-                <select id="adj-new-ev-priority" class="params-input params-select" style="width:88px">
+              <div class="ev-header-row">
+                <input type="text" id="adj-new-ev-name" class="params-input ev-name" placeholder="Nombre del evento">
+                <input type="date" id="adj-new-ev-date" class="params-input ev-date">
+                <select id="adj-new-ev-priority" class="params-input params-select ev-pri">
                   <option value="A">A — Principal</option>
                   <option value="B" selected>B — Secundario</option>
                   <option value="C">C — Menor</option>
@@ -1101,10 +1132,10 @@
                   <i class="fas fa-chevron-down" id="rp-chev" style="font-size:9px;transition:transform .2s"></i>
                 </button>
                 <div id="adj-route-profile" style="display:none;margin-top:8px;flex-direction:column;gap:8px">
-                  <div style="display:flex;flex-wrap:wrap;gap:6px">
-                    <input type="number" id="adj-ev-distance" class="params-input" placeholder="Distancia (km)" style="width:120px" min="1" max="999" step="1">
-                    <input type="number" id="adj-ev-elevation" class="params-input" placeholder="Desnivel total (m)" style="width:140px" min="0" max="9999" step="10">
-                    <input type="time" id="adj-ev-start-time" class="params-input" style="width:100px" title="Hora de salida">
+                  <div class="rp-fields">
+                    <input type="number" id="adj-ev-distance" class="params-input rp-dist" placeholder="Distancia (km)" min="1" max="999" step="1">
+                    <input type="number" id="adj-ev-elevation" class="params-input rp-elev" placeholder="Desnivel total (m)" min="0" max="9999" step="10">
+                    <input type="time" id="adj-ev-start-time" class="params-input rp-time" title="Hora de salida">
                   </div>
                   <div>
                     <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Puertos</div>
@@ -4372,13 +4403,13 @@ function addClimbEntry() {
   const list = document.getElementById('adj-climbs-list');
   const row = document.createElement('div');
   row.id = `climb-row-${idx}`;
-  row.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:rgba(255,255,255,.03);border-radius:6px;padding:5px';
+  row.className = 'climb-row';
   row.innerHTML = `
-    <input data-ci="${idx}" data-f="name" type="text" class="params-input" placeholder="Nombre" style="flex:1;min-width:100px;font-size:11px" oninput="_climbField(this)">
-    <input data-ci="${idx}" data-f="km_start" type="number" class="params-input" placeholder="Km inicio" style="width:75px;font-size:11px" min="0" oninput="_climbField(this)">
-    <input data-ci="${idx}" data-f="length_km" type="number" class="params-input" placeholder="Long. km" style="width:72px;font-size:11px" min="0.5" step="0.5" oninput="_climbField(this)">
-    <input data-ci="${idx}" data-f="elevation_m" type="number" class="params-input" placeholder="Desnivel m" style="width:82px;font-size:11px" min="10" oninput="_climbField(this)">
-    <button type="button" onclick="_removeClimb(${idx})" style="background:rgba(239,68,68,.15);border:none;border-radius:5px;padding:3px 7px;color:#ef4444;cursor:pointer;font-size:11px">✕</button>`;
+    <input data-ci="${idx}" data-f="name" type="text" class="params-input cn" placeholder="Nombre del puerto" style="font-size:11px" oninput="_climbField(this)">
+    <input data-ci="${idx}" data-f="km_start" type="number" class="params-input ck" placeholder="Km inicio" style="font-size:11px" min="0" oninput="_climbField(this)">
+    <input data-ci="${idx}" data-f="length_km" type="number" class="params-input cl" placeholder="Long. km" style="font-size:11px" min="0.5" step="0.5" oninput="_climbField(this)">
+    <input data-ci="${idx}" data-f="elevation_m" type="number" class="params-input ce" placeholder="Desnivel m" style="font-size:11px" min="10" oninput="_climbField(this)">
+    <button type="button" class="cb" onclick="_removeClimb(${idx})" style="background:rgba(239,68,68,.15);border:none;border-radius:5px;padding:3px 6px;color:#ef4444;cursor:pointer;font-size:11px;height:26px">✕</button>`;
   list.appendChild(row);
 }
 
