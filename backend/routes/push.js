@@ -141,7 +141,7 @@ router.post('/cron', async (req, res) => {
     const { data: bikes } = await supabase.from('bikes').select('id, name, user_id').eq('is_active', true);
     diag.bikes = bikes?.length || 0;
     for (const bike of bikes || []) {
-      const { data: comps } = await supabase.from('bike_components').select('component_type, km_remaining, notified_yellow, notified_red').eq('bike_id', bike.id).eq('is_active', true);
+      const { data: comps } = await supabase.from('bike_components').select('component_type, current_km, threshold_km, current_hours, threshold_hours, installed_days_ago, threshold_days, notified_yellow, notified_red').eq('bike_id', bike.id).eq('is_active', true);
       for (const c of comps || []) {
         let pct = 0;
         if (c.threshold_hours > 0)     pct = Math.round((c.current_hours      / c.threshold_hours) * 100);
