@@ -119,6 +119,12 @@ router.post('/cron', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   try {
+    // ?reset=1 → resetea todos los flags antes de enviar (útil para pruebas)
+    if (req.query.reset === '1') {
+      await supabase.from('bike_components')
+        .update({ notified_yellow: false, notified_red: false })
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+    }
     const scheduler = require('../services/pushScheduler');
     await scheduler.sendReminders();
     res.json({ ok: true, ts: new Date().toISOString() });
