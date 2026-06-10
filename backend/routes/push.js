@@ -94,6 +94,23 @@ router.post('/test', requireAuth, async (req, res) => {
   }
 });
 
+// Resetea los flags de notificación de mantenimiento para re-enviar alertas
+router.post('/reset-maintenance-flags', requireAuth, async (req, res) => {
+  try {
+    const uid = String(req.user.id);
+    const { data: bikes } = await supabase.from('bikes').select('id').eq('user_id', uid).eq('is_active', true);
+    const bikeIds = (bikes || []).map(b => b.id);
+    if (bikeIds.length) {
+      await supabase.from('bike_components')
+        .update({ notified_yellow: false, notified_red: false })
+        .in('bike_id', bikeIds);
+    }
+    res.json({ ok: true, bikes: bikeIds.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Endpoint para cron externo (cron-job.org) — despierta Render y dispara notificaciones
 // Protegido por CRON_SECRET para evitar llamadas no autorizadas
 router.post('/cron', async (req, res) => {
