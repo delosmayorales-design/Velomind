@@ -191,19 +191,14 @@ async function sendReminders({ force = false } = {}) {
             let pct = 0;
             const label = MAINT_LABELS[c.component_type] || c.component_type;
 
-            if (MAINT_DATE_TYPES.has(c.component_type)) {
-              const days = Math.floor((Date.now() - new Date(c.created_at)) / 86400000);
-              const threshold = c.component_type === 'tubeless_sealant'
-                ? seasonalDaysTubeless(bike.type) : 365;
-              pct = Math.min(Math.round((days / threshold) * 100), 110);
-            } else if (MAINT_HOUR_TYPES.has(c.component_type)) {
-              const lifespan = MAINT_HR_LIFE[c.component_type];
-              if (!lifespan) continue;
-              pct = Math.round(((lifespan - (c.hours_remaining || lifespan)) / lifespan) * 100);
+            if (c.threshold_hours > 0) {
+              pct = Math.min(Math.round((c.current_hours / c.threshold_hours) * 100), 110);
+            } else if (c.threshold_days > 0) {
+              pct = Math.min(Math.round((c.installed_days_ago / c.threshold_days) * 100), 110);
+            } else if (c.threshold_km > 0) {
+              pct = Math.min(Math.round((c.current_km / c.threshold_km) * 100), 110);
             } else {
-              const lifespan = MAINT_KM_LIFE[c.component_type];
-              if (!lifespan) continue;
-              pct = Math.round(((lifespan - (c.km_remaining || lifespan)) / lifespan) * 100);
+              continue;
             }
 
             if (pct >= 100 && !c.notified_red) {

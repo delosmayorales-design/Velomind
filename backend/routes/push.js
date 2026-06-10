@@ -143,10 +143,11 @@ router.post('/cron', async (req, res) => {
     for (const bike of bikes || []) {
       const { data: comps } = await supabase.from('bike_components').select('component_type, km_remaining, notified_yellow, notified_red').eq('bike_id', bike.id).eq('is_active', true);
       for (const c of comps || []) {
-        const LIFE = { chain:3000, cassette:9000, chainring:15000, jockey_wheels:15000, brakes_pad:3000, brake_rotor:10000, tire_front:5000, tire_rear:4000 };
-        const life = LIFE[c.component_type];
-        if (!life) continue;
-        const pct = Math.round(((life - (c.km_remaining || life)) / life) * 100);
+        let pct = 0;
+        if (c.threshold_hours > 0)     pct = Math.round((c.current_hours      / c.threshold_hours) * 100);
+        else if (c.threshold_days > 0) pct = Math.round((c.installed_days_ago / c.threshold_days)  * 100);
+        else if (c.threshold_km > 0)   pct = Math.round((c.current_km         / c.threshold_km)    * 100);
+        else continue;
         if (pct >= 70) diag.alertComponents.push({ bike: bike.name, type: c.component_type, pct, notified_yellow: c.notified_yellow, notified_red: c.notified_red });
       }
     }
