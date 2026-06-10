@@ -1,7 +1,10 @@
 const cron     = require('node-cron');
 const webpush  = require('web-push');
+const sgMail   = require('@sendgrid/mail');
 const supabase = require('../db');
 const { getTSBStatus } = require('../utils/training');
+
+if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // ── Constantes de mantenimiento ──────────────────────────────────
 const MAINT_KM_LIFE = { chain:3000, cassette:9000, chainring:15000, jockey_wheels:15000, brakes_pad:3000, brake_rotor:10000, tire_front:5000, tire_rear:4000 };
@@ -164,19 +167,25 @@ async function sendReminders() {
     const maintUtc = localHourUtcMin(sub, 9);
     if (currentMin === maintUtc && notifAllowed(sub, 'maintenance')) {
       try {
+        const { data: userRow } = await supabase
+          .from('users').select('email, name').eq('id', uid).single();
+        const userEmail = userRow?.email;
+
         const { data: bikes } = await supabase
           .from('bikes').select('id, name, type, total_km, total_hours')
           .eq('user_id', uid).eq('is_active', true);
+
+        const emailAlerts = []; // acumula alertas de todas las bicis para el email resumen
 
         for (const bike of bikes || []) {
           const { data: comps } = await supabase
             .from('bike_components').select('*')
             .eq('bike_id', bike.id).eq('is_active', true);
 
-          const newRed    = []; // cruzaron 100% y aún no notificados
-          const newYellow = []; // cruzaron 70% y aún no notificados
-          const markRed   = []; // IDs a marcar notified_red = true
-          const markYellow= []; // IDs a marcar notified_yellow = true
+          const newRed    = [];
+          const newYellow = [];
+          const markRed   = [];
+          const markYellow= [];
 
           for (const c of comps || []) {
             let pct = 0;
@@ -206,7 +215,6 @@ async function sendReminders() {
             }
           }
 
-          // Persistir flags antes de enviar para no re-enviar si el push falla
           if (markRed.length)
             await supabase.from('bike_components').update({ notified_red: true }).in('id', markRed);
           if (markYellow.length)
@@ -217,15 +225,50 @@ async function sendReminders() {
 
           allNew.sort((a, b) => b.pct - a.pct);
           const hasUrgent = newRed.length > 0;
-          const body = allNew.slice(0, 3).map(a => `${a.label} ${a.pct}%`).join(' · ');
+          const pushBody = allNew.slice(0, 3).map(a => `${a.label} ${a.pct}%`).join(' · ');
+
           await pushTo(sub, {
             title: hasUrgent
               ? `🔴 Mantenimiento urgente — ${bike.name}`
               : `🔧 Revisa tu ${bike.name}`,
-            body,
+            body: pushBody,
             tag: `mantenimiento-${bike.id}`,
             url: './garaje.html',
           }, expired);
+
+          if (userEmail) emailAlerts.push({ bike: bike.name, items: allNew, hasUrgent });
+        }
+
+        // Enviar email resumen si hay alertas y SendGrid está configurado
+        if (emailAlerts.length && userEmail && process.env.SENDGRID_API_KEY) {
+          const hasAnyUrgent = emailAlerts.some(a => a.hasUrgent);
+          const rows = emailAlerts.map(a => {
+            const items = a.items.map(i =>
+              `<tr><td style="padding:6px 12px;border-bottom:1px solid #2a2a2a">${i.label}</td>` +
+              `<td style="padding:6px 12px;border-bottom:1px solid #2a2a2a;text-align:right;font-weight:700;color:${i.pct>=100?'#ef4444':'#f59e0b'}">${i.pct}%</td></tr>`
+            ).join('');
+            return `<p style="margin:12px 0 4px;font-weight:700;color:#9ed62b">${a.bike}</p>
+              <table width="100%" style="border-collapse:collapse;background:#1a1a1a;border-radius:8px;overflow:hidden">${items}</table>`;
+          }).join('');
+
+          await sgMail.send({
+            from: { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || 'info@velomind.org' },
+            to: userEmail,
+            subject: hasAnyUrgent
+              ? '🔴 Mantenimiento urgente en tu garaje — VeloMind'
+              : '🔧 Componentes con desgaste elevado — VeloMind',
+            html: `<div style="background:#111;color:#eee;font-family:sans-serif;padding:24px;max-width:520px;margin:0 auto;border-radius:12px">
+              <h2 style="color:#9ed62b;margin:0 0 8px">🔧 Alerta de mantenimiento</h2>
+              <p style="color:#aaa;margin:0 0 20px;font-size:14px">
+                ${hasAnyUrgent ? 'Hay componentes que necesitan cambio inmediato.' : 'Hay componentes con desgaste elevado que conviene revisar pronto.'}
+              </p>
+              ${rows}
+              <div style="margin-top:24px;text-align:center">
+                <a href="https://www.velomind.org/garaje.html" style="background:#9ed62b;color:#111;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Abrir Garaje</a>
+              </div>
+              <p style="color:#555;font-size:11px;margin-top:20px;text-align:center">VeloMind · <a href="https://www.velomind.org" style="color:#555">velomind.org</a></p>
+            </div>`,
+          }).catch(e => console.error('[email] maintenance', e.message));
         }
       } catch(e) { console.error('[push] maintenance', e.message); }
     }
