@@ -56,7 +56,7 @@ async function pushTo(sub, payload, expiredSet) {
   }
 }
 
-async function sendReminders() {
+async function sendReminders({ force = false } = {}) {
   const now        = new Date();
   const currentMin = now.getHours() * 60 + now.getMinutes();
   const todayStr   = now.toISOString().split('T')[0];
@@ -165,7 +165,7 @@ async function sendReminders() {
 
     // ── Alerta mantenimiento garaje (09:00 hora local, una sola vez por umbral) ──
     const maintUtc = localHourUtcMin(sub, 9);
-    if (currentMin === maintUtc && notifAllowed(sub, 'maintenance')) {
+    if ((force || currentMin === maintUtc) && notifAllowed(sub, 'maintenance')) {
       try {
         const { data: userRow } = await supabase
           .from('users').select('email, name').eq('id', uid).single();

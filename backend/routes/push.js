@@ -126,7 +126,7 @@ router.post('/cron', async (req, res) => {
         .neq('id', '00000000-0000-0000-0000-000000000000');
     }
     const scheduler = require('../services/pushScheduler');
-    await scheduler.sendReminders();
+    await scheduler.sendReminders({ force: req.query.reset === '1' });
     res.json({ ok: true, ts: new Date().toISOString() });
   } catch (e) {
     console.error('[push/cron]', e.message);
