@@ -119,15 +119,41 @@ router.post('/cron', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   try {
-    // ?reset=1 → resetea todos los flags antes de enviar (útil para pruebas)
+    const diag = {
+      ts: new Date().toISOString(),
+      vapid: !!process.env.VAPID_PUBLIC_KEY,
+      sendgrid: !!process.env.SENDGRID_API_KEY,
+      subs: 0, bikes: 0, alertComponents: [], emailsSent: 0, pushSent: 0,
+    };
+
     if (req.query.reset === '1') {
       await supabase.from('bike_components')
         .update({ notified_yellow: false, notified_red: false })
         .neq('id', '00000000-0000-0000-0000-000000000000');
+      diag.flagsReset = true;
     }
+
+    // Diagnóstico: cuántas suscripciones activas hay
+    const { data: subs } = await supabase.from('push_subscriptions').select('user_id').eq('active', true);
+    diag.subs = subs?.length || 0;
+
+    // Diagnóstico: bicis y componentes con desgaste ≥ 70%
+    const { data: bikes } = await supabase.from('bikes').select('id, name, user_id').eq('is_active', true);
+    diag.bikes = bikes?.length || 0;
+    for (const bike of bikes || []) {
+      const { data: comps } = await supabase.from('bike_components').select('component_type, km_remaining, notified_yellow, notified_red').eq('bike_id', bike.id).eq('is_active', true);
+      for (const c of comps || []) {
+        const LIFE = { chain:3000, cassette:9000, chainring:15000, jockey_wheels:15000, brakes_pad:3000, brake_rotor:10000, tire_front:5000, tire_rear:4000 };
+        const life = LIFE[c.component_type];
+        if (!life) continue;
+        const pct = Math.round(((life - (c.km_remaining || life)) / life) * 100);
+        if (pct >= 70) diag.alertComponents.push({ bike: bike.name, type: c.component_type, pct, notified_yellow: c.notified_yellow, notified_red: c.notified_red });
+      }
+    }
+
     const scheduler = require('../services/pushScheduler');
     await scheduler.sendReminders({ force: req.query.reset === '1' });
-    res.json({ ok: true, ts: new Date().toISOString() });
+    res.json(diag);
   } catch (e) {
     console.error('[push/cron]', e.message);
     res.status(500).json({ error: e.message });
