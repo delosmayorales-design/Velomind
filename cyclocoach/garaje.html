@@ -1518,10 +1518,18 @@ const G = (() => {
 
   // ─── Alerts ───────────────────────────────────────────────
   function checkAlerts() {
-    st.bikes.forEach(bike => bike.components.forEach(comp => {
-      const p = pct(comp);
-      if (p >= 100) toast('red', `🔴 ${bike.name}`, `${CM[comp.type]?.name} — ¡Cambio urgente! ${fmtVal(comp)}`);
-    }));
+    st.bikes.forEach(bike => {
+      const urgent = [], warning = [];
+      bike.components.forEach(comp => {
+        const p = pct(comp);
+        if (p >= 100) urgent.push(CM[comp.type]?.name || comp.type);
+        else if (p >= 80) warning.push(`${CM[comp.type]?.name || comp.type} (${Math.round(p)}%)`);
+      });
+      if (urgent.length)
+        toast('red', `🔴 ${bike.name} — Cambio urgente`, urgent.join(' · '));
+      if (warning.length)
+        toast('yellow', `⚠️ ${bike.name} — Desgaste elevado`, warning.join(' · '));
+    });
   }
 
   // ─── Views ────────────────────────────────────────────────
@@ -2407,6 +2415,7 @@ const G = (() => {
         if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
         rebuildFromLocalActivities();
         recalc(); render(); save();
+        setTimeout(checkAlerts, 800);
 
         // Crear sellante tubeless en bicis que no lo tengan todavía
         const synced = await _ensureTubeless();
