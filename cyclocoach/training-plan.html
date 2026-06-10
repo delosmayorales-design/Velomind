@@ -1057,6 +1057,14 @@
                     <option value="2">2 días / sem</option>
                   </select>
                 </div>
+                <div class="xtr-item">
+                  <label class="xtr-item-label"><span class="xtr-icon">⚡</span> Otros</label>
+                  <select id="adj-other-days" class="params-input params-select">
+                    <option value="0">Sin días</option>
+                    <option value="1">1 día / sem</option>
+                    <option value="2">2 días / sem</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -1680,6 +1688,7 @@ function fillAdjustmentForm() {
   if (document.getElementById('adj-gym-days'))     document.getElementById('adj-gym-days').value     = a.gym_days     || 0;
   if (document.getElementById('adj-running-days')) document.getElementById('adj-running-days').value = a.running_days || 0;
   if (document.getElementById('adj-walking-days')) document.getElementById('adj-walking-days').value = a.walking_days || 0;
+  if (document.getElementById('adj-other-days'))   document.getElementById('adj-other-days').value   = a.other_days   || 0;
 }
 
 function renderWeekDates() {
@@ -2300,7 +2309,7 @@ function renderPlan(plan, athlete) {
 
     const typeColors = {
       recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D',
-      threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899', gym: '#F97316', running: '#EF4444', walking: '#10B981'
+      threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899', gym: '#F97316', running: '#EF4444', walking: '#10B981', other: '#A78BFA'
     };
     const sessionStructureTitle = 'Estructura detallada de la sesión';
     const color  = typeColors[sess.type] || 'var(--text-secondary)';
@@ -2392,6 +2401,7 @@ function renderPlan(plan, athlete) {
     const wkSummary     = sess.isGym     ? '🦵 Tren inferior · 💪 Tren superior · 🧘 Core'
                         : sess.isRunning ? '🏃 Carrera fácil Z2 · Ritmo conversacional · 170-180 ppm cadencia'
                         : sess.isWalking ? '🚶 Caminata Z1 · Recuperación activa · Ritmo tranquilo'
+                        : sess.isOther   ? `⚡ ${sess.name || 'Otro deporte'} · Actividad complementaria`
                         : buildWorkoutSummary(sess.description, durMin, _cardMainIv);
 
     // Banner de adaptación automática (visible cuando la sesión fue ajustada)
@@ -2412,7 +2422,7 @@ function renderPlan(plan, athlete) {
       </div>` : '');
 
     const _garminConn = localStorage.getItem('velomind_garmin_connected') === '1';
-    const actionButtons = (!sess.isRest && !sess.isGym && !sess.isRunning && !sess.isWalking) ? `
+    const actionButtons = (!sess.isRest && !sess.isGym && !sess.isRunning && !sess.isWalking && !sess.isOther) ? `
       <div class="sess-actions">
         <div class="sess-export-section">
           <span class="sess-export-lbl"><i class="fas fa-download"></i> Exportar:</span>
@@ -2597,8 +2607,8 @@ function renderPlan(plan, athlete) {
               <div class="session-meta" style="align-items:center; width:100%; flex-wrap:wrap;">
               ${tssVal > 0 ? `<span class="meta-tag meta-tag-tss"><i class="fas fa-star" style="color:${color}"></i> TSS ${tssVal}</span>` : ''}
               ${durMin > 0 ? `<span class="meta-tag"><i class="fas fa-clock"></i> ${durMin} min</span>` : ''}
-              ${(!sess.isGym && !sess.isRunning && !sess.isWalking && ifVal > 0) ? `<span class="meta-tag meta-tag-if"><i class="fas fa-bolt" style="color:var(--primary)"></i> IF ${ifVal.toFixed(2)}</span>` : ''}
-              ${(!sess.isGym && !sess.isRunning && !sess.isWalking && _cardWatts > 0) ? `<span class="meta-tag"><i class="fas fa-tachometer-alt"></i> ~${_cardWatts}W</span>` : ''}
+              ${(!sess.isGym && !sess.isRunning && !sess.isWalking && !sess.isOther && ifVal > 0) ? `<span class="meta-tag meta-tag-if"><i class="fas fa-bolt" style="color:var(--primary)"></i> IF ${ifVal.toFixed(2)}</span>` : ''}
+              ${(!sess.isGym && !sess.isRunning && !sess.isWalking && !sess.isOther && _cardWatts > 0) ? `<span class="meta-tag"><i class="fas fa-tachometer-alt"></i> ~${_cardWatts}W</span>` : ''}
               ${(() => {
                 const lthr = AppState.athlete?.lthr || (AppState.athlete?.max_hr ? Math.round(AppState.athlete.max_hr * 0.88) : 0);
                 if (!lthr || !ifVal) return '';
@@ -4008,8 +4018,39 @@ function showSessionDetail(idx, showAlt = false) {
           <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">Aprovecha para desconectar, escuchar un podcast o simplemente disfrutar del entorno. El descanso activo también entrena la mente.</div>
         </div>
       </div>`;
+  } else if (sess.isOther) {
+    const color = '#A78BFA';
+    document.getElementById('modal-title').textContent = `⚡ ${sess.name || 'Otro deporte'}`;
+    document.getElementById('modal-content').innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">${sess.name || 'Otro deporte'} — Actividad complementaria</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <span style="background:rgba(167,139,250,.12);color:#A78BFA;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px"><i class="fas fa-clock"></i> ${sess.durationMin || 60} min</span>
+        <span style="background:rgba(167,139,250,.12);color:#A78BFA;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px"><i class="fas fa-star"></i> ~${sess.tss || 40} TSS</span>
+        <span style="background:rgba(167,139,250,.12);color:#A78BFA;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px">Deporte complementario</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">⚡ Objetivo de la sesión</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.6">Sesión de otro deporte (escalada, karate, natación, padel…). El TSS estimado se contabiliza en tu carga semanal total. Adapta la intensidad y duración a tu nivel y al contexto de la semana de entrenamiento.</div>
+        </div>
+        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">📊 Carga estimada</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
+            <div style="display:flex;justify-content:space-between"><span>TSS estimado</span><span style="color:var(--text-muted);font-weight:600">~${sess.tss || 40} pts</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Duración</span><span style="color:var(--text-muted);font-weight:600">${sess.durationMin || 60} min</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Intensidad</span><span style="color:var(--text-muted);font-weight:600">Moderada · RPE 5-6</span></div>
+          </div>
+        </div>
+        <div style="background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">💡 Consejo</div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">Registra la actividad manualmente en la sección Actividades con el TSS real que hayas percibido. Así el plan se ajustará con mayor precisión a tu carga real.</div>
+        </div>
+      </div>`;
   } else {
-    const typeColors = { recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D', threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899', gym: '#F97316', running: '#EF4444', walking: '#10B981' };
+    const typeColors = { recovery: '#A8E6CF', endurance: '#88D8B0', tempo: '#FFD93D', threshold: '#FF6B35', vo2max: '#FF4757', sprint: '#A855F7', long: '#00D4FF', race: '#EC4899', gym: '#F97316', running: '#EF4444', walking: '#10B981', other: '#A78BFA' };
     const color = typeColors[sess.type] || 'var(--text-secondary)';
     document.getElementById('modal-title').textContent = `${sess.emoji} ${sess.name || 'Sesión'}`;
     const _ma = Object.assign({}, AppState.athlete || {weight:70,height:175,age:30,ftp:200,goal:'resistencia',experience:'intermedio'});
@@ -4574,9 +4615,11 @@ async function applyAdjustments() {
     const gymDaysVal     = parseInt(document.getElementById('adj-gym-days')?.value)     || 0;
     const runningDaysVal = parseInt(document.getElementById('adj-running-days')?.value) || 0;
     const walkingDaysVal = parseInt(document.getElementById('adj-walking-days')?.value) || 0;
+    const otherDaysVal   = parseInt(document.getElementById('adj-other-days')?.value)   || 0;
     updates.gym_days     = gymDaysVal;
     updates.running_days = runningDaysVal;
     updates.walking_days = walkingDaysVal;
+    updates.other_days   = otherDaysVal;
     if (maxHR      !== null && !isNaN(maxHR)      && maxHR      >= 100) updates.max_hr = maxHR;
     if (lthr       !== null && !isNaN(lthr)        && lthr       >= 100) updates.lthr = lthr;
     if (goal)  updates.goal = goal;
@@ -4699,7 +4742,7 @@ function _renderNextWeekSummary() {
     + ' – ' + nextSunday.toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' });
 
   const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  const TYPE_ICON = { recovery:'😴', endurance:'🚴', long:'🏔️', tempo:'📈', threshold:'⚡', sweet_spot:'🎯', vo2max:'🔥', sprint:'💥', strength:'💪', gym:'🏋️', running:'🏃', walking:'🚶' };
+  const TYPE_ICON = { recovery:'😴', endurance:'🚴', long:'🏔️', tempo:'📈', threshold:'⚡', sweet_spot:'🎯', vo2max:'🔥', sprint:'💥', strength:'💪', gym:'🏋️', running:'🏃', walking:'🚶', other:'⚡' };
   const PHASE_LABEL = { base:'Base', build:'Build', peak:'Peak', recovery:'Recuperación', race:'Carrera' };
   const PHASE_COLOR = { base:'#00D4FF', build:'#FF6B35', peak:'#FFC800', recovery:'#00C882', race:'#EC4899' };
   const phaseLabel = PHASE_LABEL[nextPlan.phase] || nextPlan.phase || '';

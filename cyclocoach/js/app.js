@@ -432,15 +432,19 @@ const TrainingPlanGenerator = {
     const gymDays     = Math.max(0, Math.min(3, parseInt(athlete.gym_days)     || 0));
     const runningDays = Math.max(0, Math.min(3, parseInt(athlete.running_days) || 0));
     const walkingDays = Math.max(0, Math.min(3, parseInt(athlete.walking_days) || 0));
-    const sessions = this._injectWalkingSessions(
-      this._injectRunningSessions(
-        this._injectGymSessions(
-          this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle, events),
-          gymDays
+    const otherDays   = Math.max(0, Math.min(3, parseInt(athlete.other_days)   || 0));
+    const sessions = this._injectOtherSessions(
+      this._injectWalkingSessions(
+        this._injectRunningSessions(
+          this._injectGymSessions(
+            this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle, events),
+            gymDays
+          ),
+          runningDays
         ),
-        runningDays
+        walkingDays
       ),
-      walkingDays
+      otherDays
     );
 
     // Tasa de progresión: ΔCTLsemana ≈ (carga_diaria - CTL) × (1 - e^(-7/42)) ≈ × 0.154
@@ -628,6 +632,30 @@ const TrainingPlanGenerator = {
         isWalking: true, isRest: false, tss: 15, durationMin: 40, tssShare: 0, ifTarget: null, intervals: null,
       };
     }
+    return result;
+  },
+
+  // Inyecta días de otro deporte (escalada, karate, etc.) en slots de menor carga
+  _injectOtherSessions(sessions, otherDays) {
+    if (!otherDays || otherDays <= 0) return sessions;
+    const result = sessions.map(s => ({ ...s }));
+    const DAY_SCORE = { 'Martes':0, 'Jueves':1, 'Lunes':2, 'Miércoles':3, 'Viernes':4, 'Sábado':5, 'Domingo':6 };
+    const candidates = result
+      .map((s, i) => ({ i, ts: s.isRest ? 0 : (s.type === 'recovery' ? 1 : (s.type === 'endurance' ? 2 : 99)), ds: DAY_SCORE[s.day] ?? 6 }))
+      .filter(c => c.ts < 99)
+      .sort((a, b) => a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
+      .slice(0, otherDays);
+    for (const { i } of candidates) {
+      result[i] = {
+        day: result[i].day, type: 'other', emoji: '⚡',
+        name: 'Otro deporte — Actividad complementaria',
+        description: 'Sesión de deporte complementario (escalada, karate, natación, padel…). Intensidad moderada, RPE 5-6. Registra el TSS real en la sección Actividades para que el plan lo contabilice.',
+        isOther: true, isRest: false, tss: 40, durationMin: 60, tssShare: 0, ifTarget: null, intervals: null,
+      };
+    }
+    const total = result.reduce((s, r) => s + (r.tssShare || 0), 0);
+    if (total > 0 && Math.abs(total - 1) > 0.01)
+      result.forEach(s => { if (s.tssShare) s.tssShare = s.tssShare / total; });
     return result;
   },
 

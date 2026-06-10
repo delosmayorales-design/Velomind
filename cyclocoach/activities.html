@@ -271,6 +271,7 @@
         <div id="manual-form" class="hidden" style="margin-top:12px;padding:16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md)">
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
             <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Nombre</label><input type="text" id="m-name" class="form-input form-input--sm" placeholder="Rodaje Z2"></div>
+            <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Deporte</label><select id="m-sport" class="form-select form-input--sm"><option value="cycling">🚴 Ciclismo</option><option value="running">🏃 Carrera</option><option value="climbing">🧗 Escalada</option><option value="swimming">🏊 Natación</option><option value="strength">🏋️ Fuerza</option><option value="other">⚡ Otro</option></select></div>
             <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Fecha</label><input type="date" id="m-date" class="form-input form-input--sm"></div>
             <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Duración (min)</label><input type="number" id="m-duration" class="form-input form-input--sm" placeholder="90"></div>
             <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Distancia (km)</label><input type="number" id="m-dist" class="form-input form-input--sm" placeholder="50"></div>
@@ -279,6 +280,13 @@
             <div class="form-group" style="margin:0"><label class="form-label form-label--xs">FC Media (bpm)</label><input type="number" id="m-hr" class="form-input form-input--sm" placeholder="138"></div>
             <div class="form-group" style="margin:0"><label class="form-label form-label--xs">FC Máx (bpm)</label><input type="number" id="m-maxhr" class="form-input form-input--sm" placeholder="178"></div>
             <div class="form-group" style="margin:0"><label class="form-label form-label--xs">Cadencia (rpm)</label><input type="number" id="m-cadence" class="form-input form-input--sm" placeholder="85"></div>
+          </div>
+          <div style="background:rgba(158,214,43,0.06);border:1px solid rgba(158,214,43,0.25);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:12px">
+            <div style="flex:1">
+              <label class="form-label form-label--xs" style="margin-bottom:4px">TSS directo <span style="font-weight:400;color:var(--text-muted)">(opcional — escalada, gym, otros deportes)</span></label>
+              <input type="number" id="m-tss" class="form-input form-input--sm" placeholder="p.ej. 65" style="max-width:120px" min="1" max="500">
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);max-width:200px;line-height:1.4">Si introduces un TSS aquí, se usará tal cual sin calcularlo desde la potencia. Ideal para deportes sin potenciómetro.</div>
           </div>
           <div style="display:flex;justify-content:flex-end;gap:8px">
             <button class="btn btn-ghost btn-sm" onclick="toggleManualEntry()">Cancelar</button>
@@ -785,7 +793,11 @@ function toggleManualEntry() {
   const isOpen = !form.classList.contains('hidden');
   form.classList.toggle('hidden');
   if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
-  if (!isOpen) document.getElementById('m-date').value = new Date().toISOString().substring(0, 10);
+  if (!isOpen) {
+    document.getElementById('m-date').value = new Date().toISOString().substring(0, 10);
+    document.getElementById('m-tss').value = '';
+    document.getElementById('m-sport').value = 'cycling';
+  }
 }
 
 async function saveManualActivity() {
@@ -794,14 +806,17 @@ async function saveManualActivity() {
   const avgPower = parseFloat(document.getElementById('m-power').value) || 0;
   const np = avgPower;
   const ifValue = ftp > 0 ? Math.round((np / ftp) * 100) / 100 : 0;
-  const tss = ftp > 0 && durationSec > 0 ? Math.round((durationSec / 3600) * Math.pow(ifValue, 2) * 100) : 0;
+  const tssCalculated = ftp > 0 && durationSec > 0 ? Math.round((durationSec / 3600) * Math.pow(ifValue, 2) * 100) : 0;
+  const tssManual = parseFloat(document.getElementById('m-tss').value) || 0;
+  const tss = tssManual > 0 ? tssManual : tssCalculated;
+  const sport = document.getElementById('m-sport').value || 'cycling';
   const activity = {
     date: document.getElementById('m-date').value,
     name: document.getElementById('m-name').value || 'Entrenamiento Manual',
-    type: 'cycling',
+    type: sport,
     duration: durationSec,
     distance: (parseFloat(document.getElementById('m-dist').value) || 0) * 1000,
-    tss, avg_power: avgPower, np, if_value: ifValue,
+    tss, avg_power: avgPower, np, if_value: tssManual > 0 ? 0 : ifValue,
     avg_hr: parseFloat(document.getElementById('m-hr').value) || 0,
     max_hr: parseFloat(document.getElementById('m-maxhr').value) || 0,
     max_power: parseFloat(document.getElementById('m-maxpower').value) || 0,
