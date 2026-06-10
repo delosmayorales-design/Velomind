@@ -94,4 +94,21 @@ router.post('/test', requireAuth, async (req, res) => {
   }
 });
 
+// Endpoint para cron externo (cron-job.org) — despierta Render y dispara notificaciones
+// Protegido por CRON_SECRET para evitar llamadas no autorizadas
+router.post('/cron', async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers['x-cron-secret'] !== secret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const scheduler = require('../services/pushScheduler');
+    await scheduler.sendReminders();
+    res.json({ ok: true, ts: new Date().toISOString() });
+  } catch (e) {
+    console.error('[push/cron]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

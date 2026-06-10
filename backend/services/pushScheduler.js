@@ -256,4 +256,4 @@ function start() {
   console.log('🔔 Push scheduler iniciado (cada minuto)');
 }
 
-module.exports = { start };
+module.exports = { start, sendReminders };
