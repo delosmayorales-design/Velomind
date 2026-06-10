@@ -141,13 +141,23 @@ router.post('/cron', async (req, res) => {
     const { data: bikes } = await supabase.from('bikes').select('id, name, user_id').eq('is_active', true);
     diag.bikes = bikes?.length || 0;
     for (const bike of bikes || []) {
-      const { data: comps } = await supabase.from('bike_components').select('component_type, current_km, threshold_km, current_hours, threshold_hours, installed_days_ago, threshold_days, notified_yellow, notified_red').eq('bike_id', bike.id).eq('is_active', true);
+      const { data: comps } = await supabase.from('bike_components').select('component_type, km_installed, hours_installed, created_at, notified_yellow, notified_red').eq('bike_id', bike.id).eq('is_active', true);
+      const KM_LIFE  = { chain:3000, cassette:9000, chainring:15000, jockey_wheels:15000, brakes_pad:3000, brake_rotor:10000, tire_front:5000, tire_rear:4000 };
+      const HR_LIFE  = { fork:200, shock:100 };
+      const DAY_TYPES = new Set(['brake_fluid','tubeless_sealant']);
+      const HR_TYPES  = new Set(['fork','shock']);
       for (const c of comps || []) {
         let pct = 0;
-        if (c.threshold_hours > 0)     pct = Math.round((c.current_hours      / c.threshold_hours) * 100);
-        else if (c.threshold_days > 0) pct = Math.round((c.installed_days_ago / c.threshold_days)  * 100);
-        else if (c.threshold_km > 0)   pct = Math.round((c.current_km         / c.threshold_km)    * 100);
-        else continue;
+        if (DAY_TYPES.has(c.component_type)) {
+          const days = Math.floor((Date.now() - new Date(c.created_at)) / 86400000);
+          pct = Math.round((days / (c.component_type === 'tubeless_sealant' ? 90 : 365)) * 100);
+        } else if (HR_TYPES.has(c.component_type)) {
+          const life = HR_LIFE[c.component_type]; if (!life) continue;
+          pct = Math.round((Math.max(0, (bike.total_hours || 0) - (c.hours_installed || 0)) / life) * 100);
+        } else {
+          const life = KM_LIFE[c.component_type]; if (!life) continue;
+          pct = Math.round((Math.max(0, (bike.total_km || 0) - (c.km_installed || 0)) / life) * 100);
+        }
         if (pct >= 70) diag.alertComponents.push({ bike: bike.name, type: c.component_type, pct, notified_yellow: c.notified_yellow, notified_red: c.notified_red });
       }
     }
