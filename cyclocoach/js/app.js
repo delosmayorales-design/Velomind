@@ -1753,8 +1753,16 @@ const TrainingPlanGenerator = {
         cool = Math.max(10, Math.round(durMin * 0.10));
         main = durMin - warm - cool;
         intervals.push({ label: 'Calentamiento', dur: `${warm} min`, watts: `${pct(0.50)}–${pct(0.60)} W`, rpm: '85-90 rpm', desc: 'Activación suave.' });
-        
-        if (variant === 'main') {
+
+        if (ifTarget >= 0.70 && type === 'endurance' && main >= 30) {
+          // Z2 + 2 bloques sweetspot: estructura para sesiones de endurance con componente de calidad
+          const ssBlock = 10;
+          const ssRec   = Math.max(3, Math.round(main * 0.10));
+          const z2Block = Math.max(10, main - ssBlock * 2 - ssRec);
+          intervals.push({ label: 'Bloque Z2 aeróbico', dur: `${z2Block} min`, watts: `${pct(0.60)}–${pct(0.70)} W`, rpm: '85-90 rpm', desc: 'Base aeróbica estable antes de la calidad.' });
+          intervals.push({ label: 'Sweetspot (×2 repeticiones)', dur: `${ssBlock} min c/u`, watts: `${pct(0.88)}–${pct(0.93)} W`, rpm: '88-92 rpm', desc: 'Esfuerzo "comfortably hard". Respiración elevada pero rítmica.' });
+          intervals.push({ label: 'Recuperación Z2 (×1 repeticiones)', dur: `${ssRec} min c/u`, watts: `${pct(0.60)}–${pct(0.68)} W`, rpm: '90 rpm', desc: 'Recuperación parcial entre bloques sweetspot.' });
+        } else if (variant === 'main') {
           intervals.push({ label: 'Bloque Z2 principal', dur: `${main} min`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: '85-92 rpm', desc: 'Esfuerzo aeróbico continuo.' });
         } else {
           let blocks = Math.floor(main / 20);
