@@ -158,7 +158,7 @@ function generateWorkoutFIT(workoutName, steps) {
     { num: 254, size: 2,  bt: BT.UINT16 }, // message_index (orden del paso)
     { num: 0,   size: 16, bt: BT.STRING }, // wkt_step_name
     { num: 1,   size: 1,  bt: BT.ENUM   }, // duration_type: 0=time, 5=open
-    { num: 2,   size: 4,  bt: BT.UINT32 }, // duration_value (segundos si type=time)
+    { num: 2,   size: 4,  bt: BT.UINT32 }, // duration_value (ms si type=time; scale=1000 → FIT spec)
     { num: 3,   size: 1,  bt: BT.ENUM   }, // target_type: 2=open/none, 4=power (FIT WktStepTarget enum)
     { num: 4,   size: 4,  bt: BT.UINT32 }, // target_value (0=custom range, >0=zona)
     { num: 5,   size: 4,  bt: BT.UINT32 }, // custom_target_value_low (vatios)
@@ -176,15 +176,22 @@ function generateWorkoutFIT(workoutName, steps) {
                   : s.intensity === 1 ? 'rest'
                   : 'active';
 
+    // Garmin: valores < 1000 = % FTP, valores >= 1000 = vatios + 1000 (e.g. 200W → 1200)
+    // Además, low debe ser <= high — invertir si la rampa es descendente (ej. cooldown)
+    const rawLo = s.lo || 0;
+    const rawHi = s.hi || 0;
+    const loW = hasPow ? Math.min(rawLo, rawHi) + 1000 : 0;
+    const hiW = hasPow ? Math.max(rawLo, rawHi) + 1000 : 0;
+
     w.hdr(3);
     w.u16(i);
     w.str(toAscii(s.name || 'Paso').slice(0, 15), 16);
     w.u8(durType);
     w.u32(durMs);
     w.u8(tgtType);
-    w.u32(0);               // target_value=0 → usar rango personalizado
-    w.u32(s.lo || 0);       // custom_target_value_low
-    w.u32(s.hi || 0);       // custom_target_value_high
+    w.u32(0);    // target_value=0 → rango personalizado
+    w.u32(loW);  // custom_target_value_low  (watts + 1000)
+    w.u32(hiW);  // custom_target_value_high (watts + 1000)
     w.u8(FIT_INTENSITY[intKey]);
   });
 
