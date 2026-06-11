@@ -134,7 +134,7 @@ function generateWorkoutFIT(workoutName, steps) {
     { num: 4,  size: 1,  bt: BT.ENUM    }, // sport
     { num: 8,  size: 50, bt: BT.STRING  }, // wkt_name (50 bytes, como Garmin)
     { num: 9,  size: 1,  bt: BT.ENUM    }, // sub_sport
-    { num: 11, size: 1,  bt: BT.UINT8   }, // unknown field
+    { num: 11, size: 1,  bt: BT.ENUM    }, // unknown field
     { num: 13, size: 1,  bt: BT.ENUM    }, // unknown field
     { num: 15, size: 1,  bt: BT.ENUM    }, // unknown field
   ]);
@@ -172,7 +172,7 @@ function generateWorkoutFIT(workoutName, steps) {
     { num: 1,   size: 1,   bt: BT.ENUM   }, // duration_type: 0=time, 5=open
     { num: 3,   size: 1,   bt: BT.ENUM   }, // target_type: 2=open, 4=power
     { num: 7,   size: 1,   bt: BT.ENUM   }, // intensity
-    { num: 9,   size: 1,   bt: BT.UINT8  }, // equipment
+    { num: 9,   size: 1,   bt: BT.ENUM   }, // equipment
     { num: 15,  size: 1,   bt: BT.UINT8  }, // unknown
     { num: 16,  size: 1,   bt: BT.UINT8  }, // unknown
     { num: 17,  size: 1,   bt: BT.ENUM   }, // unknown
