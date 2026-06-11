@@ -1148,7 +1148,7 @@
                   </div>
                 </div>
               </div>
-              <button class="params-apply-btn" style="margin:0;padding:6px 16px;font-size:11px;align-self:flex-start" onclick="addAdjEvent()"><i class="fas fa-check"></i> Añadir evento</button>
+              <button class="params-apply-btn" id="adj-ev-submit-btn" style="margin:0;padding:6px 16px;font-size:11px;align-self:flex-start" onclick="addAdjEvent()"><i class="fas fa-check"></i> Añadir evento</button>
             </div>
             <button id="adj-add-ev-btn" onclick="toggleAddEventForm()" style="background:rgba(158,214,43,.12);border:1px solid rgba(158,214,43,.3);border-radius:7px;padding:5px 13px;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">
               <i class="fas fa-plus"></i> Añadir evento
@@ -4387,6 +4387,7 @@ function _sanitizePlanSessions(plan) {
 // ── Gestor de eventos múltiples ──────────────────────────────────
 let _adjEvents = [];
 let _adjNewClimbs = [];
+let _editingEventIdx = null;
 
 function toggleRouteProfileForm() {
   const panel = document.getElementById('adj-route-profile');
@@ -4424,6 +4425,25 @@ function _removeClimb(idx) {
   _adjNewClimbs[idx] = null;
   const row = document.getElementById(`climb-row-${idx}`);
   if (row) row.remove();
+}
+
+function _renderClimbs() {
+  const list = document.getElementById('adj-climbs-list');
+  if (!list) return;
+  list.innerHTML = '';
+  _adjNewClimbs.forEach((c, idx) => {
+    if (!c) return;
+    const row = document.createElement('div');
+    row.id = `climb-row-${idx}`;
+    row.className = 'climb-row';
+    row.innerHTML = `
+      <input data-ci="${idx}" data-f="name" type="text" class="params-input cn" placeholder="Nombre del puerto" style="font-size:11px" oninput="_climbField(this)" value="${c.name || ''}">
+      <input data-ci="${idx}" data-f="km_start" type="number" class="params-input ck" placeholder="Km inicio" style="font-size:11px" min="0" oninput="_climbField(this)" value="${c.km_start ?? ''}">
+      <input data-ci="${idx}" data-f="length_km" type="number" class="params-input cl" placeholder="Long. km" style="font-size:11px" min="0.5" step="0.5" oninput="_climbField(this)" value="${c.length_km ?? ''}">
+      <input data-ci="${idx}" data-f="elevation_m" type="number" class="params-input ce" placeholder="Desnivel m" style="font-size:11px" min="10" oninput="_climbField(this)" value="${c.elevation_m ?? ''}">
+      <button type="button" class="cb" onclick="_removeClimb(${idx})" style="background:rgba(239,68,68,.15);border:none;border-radius:5px;padding:3px 6px;color:#ef4444;cursor:pointer;font-size:11px;height:26px">✕</button>`;
+    list.appendChild(row);
+  });
 }
 
 function _resetRouteForm() {
@@ -4495,7 +4515,8 @@ function renderAdjEventsList() {
           <div style="font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.name || 'Sin nombre'}</div>
           <div style="font-size:10px;color:var(--text-muted)">${dateFmt} · ${daysFmt}</div>
         </div>
-        <button onclick="removeAdjEvent(${origIdx})" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:2px 8px;color:#ef4444;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">✕</button>
+        <button onclick="editAdjEvent(${origIdx})" title="Editar" style="background:rgba(158,214,43,.10);border:1px solid rgba(158,214,43,.25);border-radius:6px;padding:2px 8px;color:var(--primary);font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">✏</button>
+        <button onclick="removeAdjEvent(${origIdx})" title="Eliminar" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:2px 8px;color:#ef4444;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">✕</button>
       </div>
       ${(ev.distance_km || ev.elevation_m || (ev.climbs?.length)) ? `<div style="font-size:10px;color:var(--text-muted);padding:2px 0 0 4px;display:flex;gap:10px;flex-wrap:wrap">
         ${ev.distance_km ? `<span>📍 ${ev.distance_km} km</span>` : ''}
@@ -4512,10 +4533,50 @@ function toggleAddEventForm() {
   if (!form) return;
   const visible = form.style.display === 'flex';
   form.style.display = visible ? 'none' : 'flex';
-  if (visible) _resetRouteForm();
+  if (visible) {
+    _resetRouteForm();
+    _editingEventIdx = null;
+    const submitBtn = document.getElementById('adj-ev-submit-btn');
+    if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-check"></i> Añadir evento';
+  }
   document.getElementById('adj-add-ev-btn').innerHTML = visible
     ? '<i class="fas fa-plus"></i> Añadir evento'
     : '<i class="fas fa-times"></i> Cancelar';
+}
+
+function editAdjEvent(idx) {
+  const ev = _adjEvents[idx];
+  if (!ev) return;
+  _editingEventIdx = idx;
+
+  document.getElementById('adj-new-ev-name').value     = ev.name     || '';
+  document.getElementById('adj-new-ev-date').value     = ev.date     || '';
+  document.getElementById('adj-new-ev-priority').value = ev.priority || 'B';
+  document.getElementById('adj-ev-distance').value     = ev.distance_km  || '';
+  document.getElementById('adj-ev-elevation').value    = ev.elevation_m  || '';
+  document.getElementById('adj-ev-start-time').value   = ev.start_time   || '';
+  document.getElementById('adj-ev-feed-zones').value   = (ev.feed_zones_km || []).join(', ');
+
+  // Mostrar formulario
+  const form = document.getElementById('adj-add-event-form');
+  form.style.display = 'flex';
+  document.getElementById('adj-add-ev-btn').innerHTML = '<i class="fas fa-times"></i> Cancelar';
+  const submitBtn = document.getElementById('adj-ev-submit-btn');
+  if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save"></i> Guardar cambios';
+
+  // Expandir perfil de recorrido si tiene datos
+  if (ev.distance_km || ev.elevation_m || ev.start_time || ev.feed_zones_km?.length || ev.climbs?.length) {
+    const rp = document.getElementById('adj-route-profile');
+    const chev = document.getElementById('rp-chev');
+    if (rp) rp.style.display = 'flex';
+    if (chev) chev.style.transform = 'rotate(180deg)';
+  }
+
+  // Repoblar puertos
+  _adjNewClimbs = ev.climbs ? ev.climbs.map(c => ({...c})) : [];
+  _renderClimbs();
+
+  form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function addAdjEvent() {
@@ -4541,11 +4602,23 @@ function addAdjEvent() {
     ...(feed_zones_km.length ? { feed_zones_km } : {}),
   };
 
-  if (priority === 'A') {
-    _adjEvents = _adjEvents.filter(e => e.priority !== 'A');
-    _adjEvents.unshift(ev);
+  if (_editingEventIdx !== null) {
+    // Modo edición: conservar el id original
+    ev.id = _adjEvents[_editingEventIdx]?.id || ev.id;
+    if (priority === 'A') {
+      _adjEvents = _adjEvents.filter((e, i) => i === _editingEventIdx || e.priority !== 'A');
+    }
+    _adjEvents[_editingEventIdx] = ev;
+    _editingEventIdx = null;
+    const submitBtn = document.getElementById('adj-ev-submit-btn');
+    if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-check"></i> Añadir evento';
   } else {
-    _adjEvents.push(ev);
+    if (priority === 'A') {
+      _adjEvents = _adjEvents.filter(e => e.priority !== 'A');
+      _adjEvents.unshift(ev);
+    } else {
+      _adjEvents.push(ev);
+    }
   }
   document.getElementById('adj-new-ev-name').value = '';
   document.getElementById('adj-new-ev-date').value = '';
