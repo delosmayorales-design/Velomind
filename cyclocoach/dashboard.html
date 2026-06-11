@@ -674,6 +674,88 @@
       margin-top: 2px;
     }
 
+    /* ── Barra de zonas + detalle métricas ──────────────────── */
+    .last-act-zone-wrap {
+      margin: 14px 0 4px;
+    }
+    .last-act-zone-bar {
+      display: flex;
+      height: 9px;
+      border-radius: 5px;
+      overflow: hidden;
+      gap: 1px;
+    }
+    .last-act-zone-seg {
+      height: 100%;
+      transition: flex .4s ease;
+      border-radius: 2px;
+    }
+    .last-act-zone-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+      padding: 0 1px;
+    }
+    .last-act-zone-lbl {
+      font-size: 9px;
+      font-weight: 700;
+      opacity: .75;
+    }
+    .last-act-if-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .last-act-if-badge {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .last-act-detail {
+      display: flex;
+      gap: 0;
+      margin: 10px 0 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .last-act-detail-item {
+      flex: 1;
+      text-align: center;
+      padding: 8px 4px;
+      border-right: 1px solid var(--border);
+    }
+    .last-act-detail-item:last-child { border-right: none; }
+    .last-act-detail-val {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .last-act-detail-lbl {
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+    @media (max-width: 480px) {
+      .last-act-zone-labels { display: none; }   /* labels demasiado juntos en móvil */
+      .last-act-if-pill     { margin-top: 5px; }
+      .last-act-detail-val  { font-size: 11px; }
+      .last-act-detail-item { padding: 7px 2px; }
+    }
+    /* En móvil muy pequeño, limitar detalle a 4 ítems visibles */
+    @media (max-width: 360px) {
+      .last-act-detail-item:nth-child(n+5) { display: none; }
+    }
+
     /* ─────────────────────────────────────────────────────────
        EMPTY STATE
     ───────────────────────────────────────────────────────── */
@@ -2034,6 +2116,44 @@ function renderWeek(plan) {
 }
 
 /* ── ÚLTIMA ACTIVIDAD ────────────────────────────────────── */
+/* Estima distribución de zonas (Z1-Z5) desde métricas resumen.
+   Usa una distribución gaussiana centrada en la zona del IF,
+   ensanchada por el Variability Index (NP/avg_power). */
+function _estimateZoneDist(np, avgPow, ftp) {
+  const ZONE_MIDS  = [0.28, 0.655, 0.825, 0.975, 1.13]; // centro de Z1-Z5 en ratio ftp
+  const ZONE_COLS  = ['#6B7280','#3B82F6','#10B981','#F59E0B','#EF4444'];
+  const ZONE_NAMES = ['Z1','Z2','Z3','Z4','Z5'];
+
+  const IF = (np && ftp) ? np / ftp : null;
+  const VI = (np && avgPow) ? np / Math.max(avgPow, 1) : 1.0;
+
+  if (!IF) {
+    // Sin potencia: distribución plana centrada en Z2
+    return ZONE_MIDS.map((_, i) => ({ pct: [5,45,30,15,5][i], color: ZONE_COLS[i], name: ZONE_NAMES[i] }));
+  }
+
+  const spread = 0.10 + (VI - 1.0) * 0.30; // más variable = más ancho
+  const raw = ZONE_MIDS.map(mid => Math.exp(-Math.pow((IF - mid) / spread, 2) / 2));
+  const total = raw.reduce((s, w) => s + w, 0);
+  const pcts  = raw.map(w => Math.max(1, Math.round(w / total * 100)));
+
+  // Ajuste de redondeo para sumar 100
+  const diff = 100 - pcts.reduce((s, p) => s + p, 0);
+  pcts[pcts.indexOf(Math.max(...pcts))] += diff;
+
+  return pcts.map((pct, i) => ({ pct, color: ZONE_COLS[i], name: ZONE_NAMES[i] }));
+}
+
+function _ifLabel(IF) {
+  if (!IF) return null;
+  if (IF < 0.55) return { text: 'Recuperación',  color: '#6B7280' };
+  if (IF < 0.70) return { text: 'Resistencia Z2', color: '#3B82F6' };
+  if (IF < 0.80) return { text: 'Tempo',          color: '#10B981' };
+  if (IF < 0.90) return { text: 'Sweet Spot',     color: '#10B981' };
+  if (IF < 1.05) return { text: 'Umbral FTP',     color: '#F59E0B' };
+  return                 { text: 'VO₂ Max',        color: '#EF4444' };
+}
+
 function renderLastAct() {
   const el = document.getElementById('last-act-content');
   if (!AppState.activities?.length) return;
@@ -2043,19 +2163,76 @@ function renderLastAct() {
     .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
   const act = sorted[0];
   if (!act) return;
+
+  const ftp     = AppState.athlete?.ftp || 0;
+  const np      = act.np || act.avg_power || 0;
+  const avgPow  = act.avg_power || 0;
+  const avgHr   = act.avg_hr || 0;
+  const avgSpd  = act.avg_speed || 0;
+  const avgCad  = act.avg_cadence || 0;
+  const elev    = act.elevation_gain_m || act.total_elevation_gain || 0;
+  const IF      = (np && ftp) ? np / ftp : null;
+
   const daysAgo = Utils.daysAgo(act.date?.substring(0,10));
-  const when = daysAgo===0?'Hoy':daysAgo===1?'Ayer':`Hace ${daysAgo} días`;
-  const url  = (act.id||act.strava_id) ? `activities.html?id=${act.id||act.strava_id}` : 'activities.html';
+  const when    = daysAgo===0?'Hoy':daysAgo===1?'Ayer':`Hace ${daysAgo} días`;
+  const url     = (act.id||act.strava_id) ? `activities.html?id=${act.id||act.strava_id}` : 'activities.html';
+
+  // Barra de zonas
+  const zones   = _estimateZoneDist(np, avgPow, ftp);
+  const ifMeta  = _ifLabel(IF);
+  const zoneBar = zones.map(z =>
+    `<div class="last-act-zone-seg" style="flex:${z.pct};background:${z.color}" title="${z.name}: ~${z.pct}%"></div>`
+  ).join('');
+  const zoneLabels = zones.map(z =>
+    `<span class="last-act-zone-lbl" style="color:${z.color}">${z.name} ${z.pct}%</span>`
+  ).join('');
+
+  // Fila de detalle — solo mostrar campos disponibles
+  const detailItems = [];
+  if (np || avgPow)  detailItems.push({ val: (np || avgPow) + 'W',            lbl: np ? 'NP' : 'Potencia', color: '#F59E0B' });
+  if (avgHr)         detailItems.push({ val: avgHr + ' bpm',                  lbl: 'FC media',  color: '#EF4444' });
+  if (avgSpd)        detailItems.push({ val: avgSpd.toFixed(1) + ' km/h',     lbl: 'Vel. media',color: '#3B82F6' });
+  if (avgCad)        detailItems.push({ val: avgCad + ' rpm',                 lbl: 'Cadencia',  color: '#10B981' });
+  if (elev)          detailItems.push({ val: Math.round(elev) + ' m',         lbl: 'D+',        color: '#8B5CF6' });
+  if (act.max_power) detailItems.push({ val: act.max_power + 'W',             lbl: 'Máx potencia', color: '#FF6B35' });
+
+  const detailHTML = detailItems.length ? `
+    <div class="last-act-detail">
+      ${detailItems.map(d => `
+        <div class="last-act-detail-item">
+          <div class="last-act-detail-val" style="color:${d.color}">${d.val}</div>
+          <div class="last-act-detail-lbl">${d.lbl}</div>
+        </div>`).join('')}
+    </div>` : '';
+
+  const ifHTML = ifMeta ? `
+    <div class="last-act-if-pill">
+      <span class="last-act-if-badge" style="background:${ifMeta.color}22;color:${ifMeta.color};border:1px solid ${ifMeta.color}44">
+        ${ifMeta.text}
+      </span>
+      ${IF ? `<span>IF ${IF.toFixed(2)}</span>` : ''}
+      <span style="margin-left:auto;font-size:9px;opacity:.5">zonas estimadas</span>
+    </div>` : '';
+
   el.innerHTML = `
     <a href="${url}" style="display:block;text-decoration:none;color:inherit">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
         <div>
           <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700">${act.name||'Actividad'}</div>
           <div style="font-size:12px;color:var(--text-muted)">${when} · ${Utils.formatDate(act.date?.substring(0,10))}</div>
         </div>
-        <span style="font-size:12px;color:var(--primary);font-weight:600">Ver actividad <i class="fas fa-arrow-right"></i></span>
+        <span style="font-size:12px;color:var(--primary);font-weight:600">Ver <i class="fas fa-arrow-right"></i></span>
       </div>
-      <div class="last-act-metrics">
+
+      <div class="last-act-zone-wrap">
+        <div class="last-act-zone-bar">${zoneBar}</div>
+        <div class="last-act-zone-labels">${zoneLabels}</div>
+        ${ifHTML}
+      </div>
+
+      ${detailHTML}
+
+      <div class="last-act-metrics" style="margin-top:10px">
         <div class="last-act-metric"><div class="val">${Utils.formatDistance(act.distance)}</div><div class="lbl">Distancia</div></div>
         <div class="last-act-metric"><div class="val">${Utils.formatDuration(act.duration)}</div><div class="lbl">Duración</div></div>
         <div class="last-act-metric"><div class="val">${act.tss?Math.round(act.tss):'--'}</div><div class="lbl">TSS</div></div>
