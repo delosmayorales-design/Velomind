@@ -158,6 +158,62 @@
     }
     .fb-delete:hover { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.5); }
 
+    /* ── Reply button (admin only) ──────────────────────────── */
+    .fb-reply-btn {
+      background: none; border: 1px solid rgba(158,214,43,.25);
+      color: var(--primary); border-radius: 8px; padding: 5px 10px;
+      font-size: 11px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; gap: 5px;
+      transition: background .2s, border-color .2s;
+    }
+    .fb-reply-btn:hover { background: rgba(158,214,43,.08); border-color: rgba(158,214,43,.5); }
+
+    /* ── Reply block (visible to all) ───────────────────────── */
+    .fb-reply-block {
+      margin-top: 12px; padding: 10px 14px;
+      background: rgba(158,214,43,.04);
+      border: 1px solid rgba(158,214,43,.14);
+      border-left: 3px solid var(--primary);
+      border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    }
+    .fb-reply-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 7px;
+    }
+    .fb-reply-avatar {
+      width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+      background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 900; color: #0a0b0f; letter-spacing: -.5px;
+    }
+    .fb-reply-name { font-size: 12px; font-weight: 700; color: var(--primary); }
+    .fb-reply-date { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+    .fb-reply-msg  { font-size: 13px; color: var(--text); line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+
+    /* ── Inline reply form (admin only) ─────────────────────── */
+    .fb-reply-form { margin-top: 12px; }
+    .fb-reply-textarea {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,.04); border: 1.5px solid rgba(158,214,43,.3);
+      border-radius: var(--radius-lg); color: var(--text); font-family: inherit;
+      font-size: 12px; line-height: 1.5; padding: 10px 12px; resize: vertical; min-height: 80px;
+      transition: border-color .2s;
+    }
+    html[data-theme="light"] .fb-reply-textarea { background: rgba(0,0,0,.04); }
+    .fb-reply-textarea:focus { outline: none; border-color: var(--primary); }
+    .fb-reply-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .fb-reply-send {
+      background: var(--primary); border: none; border-radius: 8px;
+      color: #0a0b0f; font-family: inherit; font-size: 12px; font-weight: 700;
+      padding: 7px 16px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+      transition: opacity .2s;
+    }
+    .fb-reply-send:disabled { opacity: .5; cursor: not-allowed; }
+    .fb-reply-cancel {
+      background: none; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-muted); font-family: inherit; font-size: 12px;
+      padding: 7px 14px; cursor: pointer;
+    }
+
     /* ── Empty state ─────────────────────────────────────────── */
     .fb-empty {
       text-align: center; padding: 40px 20px;
@@ -481,10 +537,28 @@
             </div>
             <div class="fb-card-actions">
               ${f.rating ? `<div class="fb-card-rating">${starsHtml(f.rating)}</div>` : ''}
+              ${isAdmin ? `<button class="fb-reply-btn" onclick="window._fbReply('${f.id}')"><i class="fas fa-reply"></i> ${f.reply ? 'Editar' : 'Responder'}</button>` : ''}
               ${canDelete ? `<button class="fb-delete" onclick="window._fbDelete('${f.id}')"><i class="fas fa-trash-alt"></i> Eliminar</button>` : ''}
             </div>
           </div>
           <div class="fb-card-message">${escHtml(f.message)}</div>
+          ${f.reply ? `
+          <div class="fb-reply-block">
+            <div class="fb-reply-header">
+              <div class="fb-reply-avatar">VM</div>
+              <span class="fb-reply-name">Equipo VeloMind</span>
+              <span class="fb-reply-date">${timeAgo(f.reply_at)}</span>
+            </div>
+            <div class="fb-reply-msg">${escHtml(f.reply)}</div>
+          </div>` : ''}
+          ${isAdmin ? `
+          <div class="fb-reply-form" id="fb-reply-form-${f.id}" style="display:none">
+            <textarea class="fb-reply-textarea" id="fb-reply-ta-${f.id}" placeholder="Escribe tu respuesta como Equipo VeloMind...">${escHtml(f.reply || '')}</textarea>
+            <div class="fb-reply-actions">
+              <button class="fb-reply-send" id="fb-reply-send-${f.id}" onclick="window._fbSubmitReply('${f.id}')"><i class="fas fa-check"></i> Publicar</button>
+              <button class="fb-reply-cancel" onclick="window._fbHideReply('${f.id}')">Cancelar</button>
+            </div>
+          </div>` : ''}
         </div>`;
     }).join('')}</div>`;
   }
@@ -499,6 +573,47 @@
 
   window._fbDelete = deleteFeedback;
 
+  // ── Reply (admin) ─────────────────────────────────────────────────
+  function showReplyForm(id) {
+    const form = document.getElementById(`fb-reply-form-${id}`);
+    if (!form) return;
+    form.style.display = '';
+    document.getElementById(`fb-reply-ta-${id}`)?.focus();
+  }
+
+  function hideReplyForm(id) {
+    const form = document.getElementById(`fb-reply-form-${id}`);
+    if (form) form.style.display = 'none';
+  }
+
+  async function submitReply(id) {
+    const ta  = document.getElementById(`fb-reply-ta-${id}`);
+    const btn = document.getElementById(`fb-reply-send-${id}`);
+    const reply = ta?.value.trim();
+    if (!reply) return;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>'; }
+    try {
+      const r = await fetch(`${API}/feedback/${id}/reply`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ reply })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Error al guardar');
+      const idx = feedbackItems.findIndex(f => f.id === id);
+      if (idx !== -1) { feedbackItems[idx].reply = data.feedback.reply; feedbackItems[idx].reply_at = data.feedback.reply_at; }
+      renderList();
+      toast('Respuesta publicada');
+    } catch (e) {
+      toast(e.message, false);
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Publicar'; }
+    }
+  }
+
+  window._fbReply       = showReplyForm;
+  window._fbHideReply   = hideReplyForm;
+  window._fbSubmitReply = submitReply;
+
   // ── Load ──────────────────────────────────────────────────────────
   try {
     const r = await fetch(`${API}/feedback`, {
@@ -507,7 +622,7 @@
     if (!r.ok) throw new Error('No autorizado');
     const data = await r.json();
     feedbackItems = data.feedback || [];
-    isAdmin = data.isAdmin || false;
+    isAdmin = data.isAdmin || (typeof Auth !== 'undefined' && Auth.isAdmin()) || false;
 
     // Leer userId del JWT payload
     const t = token();

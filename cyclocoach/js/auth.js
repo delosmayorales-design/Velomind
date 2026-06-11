@@ -62,6 +62,11 @@ const Auth = (() => {
     return !!getToken();
   }
 
+  function isAdmin() {
+    const u = getUser();
+    return !!(u && u.isAdmin);
+  }
+
   // ─── Headers para fetch con Authorization ───────────────────
   function getHeaders(extra = {}) {
     let token = getToken();
@@ -341,6 +346,20 @@ const Auth = (() => {
         }
       });
       ftpEls.forEach(el => el.textContent = `FTP: ${user.ftp || '--'} W`);
+
+      // Badge "VeloMind Admin" bajo el nombre en el sidebar (solo para el admin)
+      if (user.isAdmin) {
+        nameEls.forEach(el => {
+          const parent = el.parentElement;
+          if (parent && !parent.querySelector('.sidebar-admin-badge')) {
+            const badge = document.createElement('div');
+            badge.className = 'sidebar-admin-badge';
+            badge.style.cssText = 'font-size:9px;font-weight:700;color:#9ed62b;text-transform:uppercase;letter-spacing:.6px;margin-top:2px;opacity:.9';
+            badge.textContent = 'VeloMind Admin';
+            el.insertAdjacentElement('afterend', badge);
+          }
+        });
+      }
     }
 
     // Botón de logout
@@ -501,6 +520,7 @@ const Auth = (() => {
     getUser,
     getHeaders,
     isAuthenticated,
+    isAdmin,
     isPremium,
     apiFetch,
     showPremiumPrompt,

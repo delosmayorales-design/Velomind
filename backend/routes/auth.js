@@ -7,6 +7,7 @@ const supabase = require('../db'); // Ahora db es el cliente de Supabase
 const { requireAuth, signToken } = require('../middleware/auth');
 const { recalculatePMC } = require('../services/pmc');
 const router  = express.Router();
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -268,6 +269,7 @@ function safeUser(u) {
   if (!u) return null;
   const { password, strava_token, strava_refresh, garmin_token, garmin_refresh,
           fitbit_token, fitbit_refresh, ...safe } = u;
+  safe.isAdmin = !!(ADMIN_EMAIL && u.email === ADMIN_EMAIL);
   return safe;
 }
 
