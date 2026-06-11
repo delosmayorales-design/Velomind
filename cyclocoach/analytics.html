@@ -41,7 +41,8 @@
       .power-table-td { padding: 12px 8px !important; font-size: 12px !important; }
       .power-table-th { padding: 8px 8px !important; font-size: 10px !important; }
       #power-table { min-width: 100%; }
-      .grid-2col { grid-template-columns: 1fr !important; }
+      /* Excluir #zones-tables para que pueda deslizarse horizontalmente */
+      .grid-2col:not(#zones-tables) { grid-template-columns: 1fr !important; }
       #power-curve-chart-wrap { height: 180px; }
       #btn-auto-zones {
         width: 100%;
@@ -62,6 +63,15 @@
         margin: 8px auto !important;
         align-self: center !important;
       }
+
+      /* Zonas: scroll horizontal en móvil */
+      #zones-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      #zones-tables { min-width: 500px; }
+    }
+
+    /* Header: ocultar texto de botones en pantallas muy pequeñas, solo icono */
+    @media (max-width: 480px) {
+      .header-actions .btn-label { display: none; }
     }
   </style>
 </head>
@@ -110,8 +120,8 @@
       <p id="data-status" style="font-size:12px;color:var(--text-muted);margin:0">Cargando...</p>
     </div>
     <div class="header-actions">
-      <button onclick="toggleHelp()" class="btn btn-secondary btn-sm" title="¿Qué significa cada métrica?"><i class="fas fa-question-circle"></i> Ayuda</button>
-      <button id="btn-recalc" onclick="recalculate()" class="btn btn-secondary btn-sm">⟳ Actualizar</button>
+      <button onclick="toggleHelp()" class="btn btn-secondary btn-sm" title="¿Qué significa cada métrica?"><i class="fas fa-question-circle"></i><span class="btn-label"> Ayuda</span></button>
+      <button id="btn-recalc" onclick="recalculate()" class="btn btn-secondary btn-sm">⟳<span class="btn-label"> Actualizar</span></button>
       <select id="period" onchange="render()" class="header-select">
         <option value="30" selected>30 días</option>
         <option value="60">60 días</option>
@@ -420,6 +430,7 @@
         <button onclick="autoEstimateZones()" class="btn btn-secondary btn-sm" id="btn-auto-zones"><i class="fas fa-magic"></i> Autocalcular desde actividades</button>
       </div>
       <div id="zones-info-bar" style="display:none;padding:10px 16px;background:rgba(59,130,246,0.08);border-radius:8px;font-size:12px;color:var(--text-muted);margin-bottom:16px"></div>
+      <div id="zones-scroll-wrap">
       <div class="grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="zones-tables">
         <div>
           <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;color:var(--text-primary)"><i class="fas fa-bolt" style="color:#F59E0B;margin-right:4px"></i> Zonas de Potencia</div>
@@ -432,6 +443,7 @@
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Basado en LTHR (Umbral Láctico FC). Usa <em>Autocalcular desde actividades</em> para actualizar.</div>
         </div>
     </div></div>
+      </div><!-- /zones-scroll-wrap -->
     </div>
 
     <!-- ROW 8: Desacoplamiento Aeróbico -->
