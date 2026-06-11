@@ -65,7 +65,7 @@ async function requireAuth(req, res, next) {
       });
     }
 
-    req.user = { ...user, isAdmin: !!(ADMIN_EMAIL && user.email === ADMIN_EMAIL) };
+    req.user = { ...user, isAdmin: !!(ADMIN_EMAIL && user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) };
     next();
   } catch (e) {
     console.error('[Auth] Error validando JWT:', e.message);

@@ -80,6 +80,16 @@ router.get('/verify', requireAuth, async (req, res) => {
   res.json({ valid: true, user: safeUser(user) });
 });
 
+// Diagnóstico de admin — abre esta URL en el navegador para verificar tu rol
+router.get('/whoami', requireAuth, (req, res) => {
+  res.json({
+    email:        req.user.email,
+    isAdmin:      req.user.isAdmin,
+    adminEmail:   ADMIN_EMAIL ? `${ADMIN_EMAIL.slice(0,3)}***` : '(no configurado)',
+    match:        req.user.isAdmin ? '✅ Eres admin' : '❌ No eres admin',
+  });
+});
+
 // Perfil GET
 router.get('/profile', requireAuth, async (req, res) => {
   const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
@@ -269,7 +279,7 @@ function safeUser(u) {
   if (!u) return null;
   const { password, strava_token, strava_refresh, garmin_token, garmin_refresh,
           fitbit_token, fitbit_refresh, ...safe } = u;
-  safe.isAdmin = !!(ADMIN_EMAIL && u.email === ADMIN_EMAIL);
+  safe.isAdmin = !!(ADMIN_EMAIL && u.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase());
   return safe;
 }
 
