@@ -170,11 +170,16 @@
 
     /* ── Reply block (visible to all) ───────────────────────── */
     .fb-reply-block {
-      margin-top: 12px; padding: 10px 14px;
-      background: rgba(158,214,43,.04);
-      border: 1px solid rgba(158,214,43,.14);
+      margin-top: 12px; padding: 12px 14px;
+      background: rgba(158,214,43,.11);
+      border: 1px solid rgba(158,214,43,.28);
       border-left: 3px solid var(--primary);
       border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    }
+    html[data-theme="light"] .fb-reply-block {
+      background: rgba(158,214,43,.14);
+      border-color: rgba(100,150,10,.3);
+      border-left-color: var(--primary);
     }
     .fb-reply-header {
       display: flex; align-items: center; gap: 8px; margin-bottom: 7px;
