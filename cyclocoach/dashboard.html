@@ -674,159 +674,30 @@
       margin-top: 2px;
     }
 
-    /* ── Gráfico actividad estilo intervals.iq ─────────────── */
-    .last-act-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 12px;
+    .last-act-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
     }
-    .last-act-title-txt {
+    .last-act-metric {
+      background: var(--bg-input);
+      border-radius: 10px;
+      padding: 11px 12px;
+      text-align: center;
+    }
+    .last-act-metric .val {
       font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: 16px;
       font-weight: 700;
     }
-    .last-act-date-txt {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-    .last-act-ver-lnk {
-      font-size: 12px;
-      color: var(--primary);
-      font-weight: 600;
-      white-space: nowrap;
-      margin-left: 12px;
-    }
-    .last-act-chart-wrap {
-      margin-bottom: 10px;
-      border-radius: 8px;
-      overflow: hidden;
-      background: rgba(255,255,255,.03);
-    }
-    .last-act-time-axis {
-      display: flex;
-      justify-content: space-between;
-      font-size: 9px;
-      color: var(--text-muted);
-      padding: 3px 4px 2px;
-    }
-    .last-act-body {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      margin-bottom: 10px;
-    }
-    .last-act-zones-tbl {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .last-act-zone-row {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .last-act-zdot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .last-act-znm {
-      font-size: 10px;
-      font-weight: 700;
-      width: 18px;
-      flex-shrink: 0;
-    }
-    .last-act-zbg {
-      flex: 1;
-      height: 6px;
-      background: rgba(255,255,255,.07);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .last-act-zfill {
-      height: 100%;
-      border-radius: 3px;
-      opacity: .85;
-    }
-    .last-act-zdur {
-      font-size: 9px;
-      color: var(--text-muted);
-      width: 26px;
-      text-align: right;
-      flex-shrink: 0;
-    }
-    .last-act-zpct {
-      font-size: 9px;
-      font-weight: 700;
-      width: 26px;
-      text-align: right;
-      flex-shrink: 0;
-    }
-    .last-act-mcol {
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 90px;
-    }
-    .last-act-mrow {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 6px;
-    }
-    .last-act-mlbl {
-      font-size: 9px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: .3px;
-      white-space: nowrap;
-    }
-    .last-act-mval {
-      font-size: 12px;
-      font-weight: 800;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    .last-act-chips {
-      display: flex;
-      gap: 8px;
-    }
-    .last-act-chip {
-      flex: 1;
-      background: var(--surface-2, rgba(255,255,255,.05));
-      border-radius: 8px;
-      padding: 8px 6px;
-      text-align: center;
-      border: 1px solid var(--border);
-    }
-    .last-act-chip .cv {
-      font-size: 15px;
-      font-weight: 800;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    .last-act-chip .cl {
+    .last-act-metric .lbl {
       font-size: 9px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .5px;
       color: var(--text-muted);
       margin-top: 2px;
-    }
-    @media (max-width: 480px) {
-      .last-act-mcol    { min-width: 76px; }
-      .last-act-mlbl    { font-size: 8px; }
-      .last-act-mval    { font-size: 10px; }
-      .last-act-zdur    { display: none; }
-      .last-act-chip .cv { font-size: 13px; }
-    }
-    @media (max-width: 360px) {
-      .last-act-body    { gap: 8px; }
-      .last-act-mcol    { min-width: 64px; }
     }
 
     /* ─────────────────────────────────────────────────────────
@@ -947,11 +818,9 @@
     html.light-theme .wk-tss-track { background: #e2e6ea !important; }
     html.light-theme .week-day-name { color: var(--text-muted) !important; }
 
-    html.light-theme .last-act-chip  { background: var(--bg-input) !important; }
-    html.light-theme .last-act-chip .cv { color: var(--text-primary) !important; }
-    html.light-theme .last-act-chip .cl { color: var(--text-muted) !important; }
-    html.light-theme .last-act-zbg  { background: rgba(0,0,0,.08) !important; }
-    html.light-theme .last-act-chart-wrap { background: rgba(0,0,0,.04) !important; }
+    html.light-theme .last-act-metric { background: var(--bg-input) !important; }
+    html.light-theme .last-act-metric .val { color: var(--text-primary) !important; }
+    html.light-theme .last-act-metric .lbl { color: var(--text-muted) !important; }
 
     /* ─────────────────────────────────────────────────────────
        RESPONSIVE — móvil primero
@@ -1004,9 +873,9 @@
       .week-days-row { gap: 6px; }
       .wk-day-dot    { min-height: 30px; font-size: 11px; }
 
-      .last-act-chips  { gap: 6px; }
-      .last-act-chip   { padding: 8px 6px; }
-      .last-act-chip .cv { font-size: 13px; }
+      .last-act-metrics { gap: 6px; }
+      .last-act-metric  { padding: 8px 8px; }
+      .last-act-metric .val { font-size: 14px; }
     }
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
@@ -2194,67 +2063,6 @@ function renderWeek(plan) {
 /* Estima distribución de zonas (Z1-Z5) desde métricas resumen.
    Usa una distribución gaussiana centrada en la zona del IF,
    ensanchada por el Variability Index (NP/avg_power). */
-function _estimateZoneDist(np, avgPow, ftp) {
-  const ZONE_MIDS  = [0.28, 0.655, 0.825, 0.975, 1.13];
-  const ZONE_COLS  = ['#6B7280','#3B82F6','#10B981','#F59E0B','#EF4444'];
-  const ZONE_NAMES = ['Z1','Z2','Z3','Z4','Z5'];
-  const IF = (np && ftp) ? np / ftp : null;
-  const VI = (np && avgPow) ? np / Math.max(avgPow, 1) : 1.0;
-  if (!IF) return ZONE_MIDS.map((_, i) => ({ pct: [5,45,30,15,5][i], color: ZONE_COLS[i], name: ZONE_NAMES[i] }));
-  const spread = 0.10 + (VI - 1.0) * 0.30;
-  const raw    = ZONE_MIDS.map(mid => Math.exp(-Math.pow((IF - mid) / spread, 2) / 2));
-  const total  = raw.reduce((s, w) => s + w, 0);
-  const pcts   = raw.map(w => Math.max(1, Math.round(w / total * 100)));
-  const diff   = 100 - pcts.reduce((s, p) => s + p, 0);
-  pcts[pcts.indexOf(Math.max(...pcts))] += diff;
-  return pcts.map((pct, i) => ({ pct, color: ZONE_COLS[i], name: ZONE_NAMES[i] }));
-}
-
-function _buildActSVG(act, ftp) {
-  const np     = act.np || act.avg_power || 0;
-  const avgPow = act.avg_power || 0;
-  const VI     = (np && avgPow) ? np / avgPow : 1.0;
-  const dur    = act.duration || 3600;
-  let IF_val;
-  if (np && ftp)         IF_val = np / ftp;
-  else if (act.tss && dur) IF_val = Math.sqrt(act.tss / Math.max(100 * (dur / 3600), 0.01));
-  else                    IF_val = 0.68;
-  const W = 300, H = 64;
-  const yRef  = ftp > 0 ? ftp : (avgPow > 0 ? avgPow * 1.4 : 200);
-  const yMax  = yRef * 1.55;
-  const base  = IF_val * yRef;
-  const amp   = (VI - 1.0) * base * 3.0;
-  const freq  = VI > 1.08 ? 5 : 2.2;
-  function zColor(pow) {
-    const r = ftp > 0 ? pow / ftp : pow / yRef;
-    if (r < 0.55) return '#6B7280';
-    if (r < 0.75) return '#3B82F6';
-    if (r < 0.87) return '#10B981';
-    if (r < 1.00) return '#F59E0B';
-    if (r < 1.20) return '#EF4444';
-    return '#8B5CF6';
-  }
-  const N = 50;
-  let rects = '';
-  for (let i = 0; i < N; i++) {
-    const t = (i + 0.5) / N;
-    let taper = 1.0;
-    if (t < 0.12)      taper = 0.45 + (t / 0.12) * 0.55;
-    else if (t > 0.88) taper = 1.0 - ((t - 0.88) / 0.12) * 0.45;
-    const pow  = Math.max(0, base * taper + amp * Math.sin(t * Math.PI * 2 * freq));
-    const barH = Math.min((pow / yMax) * H, H);
-    const x    = (i / N * W).toFixed(1);
-    const bw   = (W / N - 0.8).toFixed(1);
-    rects += `<rect x="${x}" y="${(H - barH).toFixed(1)}" width="${bw}" height="${barH.toFixed(1)}" fill="${zColor(pow)}" rx="0.8"/>`;
-  }
-  let ftpLine = '';
-  if (ftp > 0) {
-    const fy = (H - (ftp / yMax) * H).toFixed(1);
-    ftpLine = `<line x1="0" y1="${fy}" x2="${W}" y2="${fy}" stroke="#F59E0B" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.55"/>`;
-  }
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:60px;display:block">${rects}${ftpLine}</svg>`;
-}
-
 function renderLastAct() {
   const el = document.getElementById('last-act-content');
   if (!AppState.activities?.length) return;
@@ -2264,82 +2072,22 @@ function renderLastAct() {
     .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
   const act = sorted[0];
   if (!act) return;
-
-  const ftp    = AppState.athlete?.ftp || 0;
-  const np     = act.np || act.avg_power || 0;
-  const avgPow = act.avg_power || 0;
-  const avgHr  = act.avg_hr || 0;
-  const avgSpd = act.avg_speed || 0;
-  const elev   = act.elevation_gain_m || act.total_elevation_gain || 0;
-  const VI     = (np && avgPow) ? np / avgPow : null;
-  const dur    = act.duration || 0;
-
   const daysAgo = Utils.daysAgo(act.date?.substring(0,10));
-  const when    = daysAgo===0?'Hoy':daysAgo===1?'Ayer':`Hace ${daysAgo} días`;
-  const url     = (act.id||act.strava_id) ? `activities.html?id=${act.id||act.strava_id}` : 'activities.html';
-  const durFmt  = Utils.formatDuration(dur);
-
-  // Gráfico SVG sintético
-  const svgChart = _buildActSVG(act, ftp);
-
-  // Tabla de distribución de zonas
-  const zones    = _estimateZoneDist(np, avgPow, ftp);
-  const zoneRows = zones.map(z => {
-    const secs = dur > 0 ? Math.round(z.pct / 100 * dur) : 0;
-    const mStr = secs > 0 ? Math.floor(secs / 60) + 'm' : '--';
-    return `<div class="last-act-zone-row">
-      <span class="last-act-zdot" style="background:${z.color}"></span>
-      <span class="last-act-znm" style="color:${z.color}">${z.name}</span>
-      <div class="last-act-zbg"><div class="last-act-zfill" style="width:${z.pct}%;background:${z.color}"></div></div>
-      <span class="last-act-zdur">${mStr}</span>
-      <span class="last-act-zpct" style="color:${z.color}">${z.pct}%</span>
-    </div>`;
-  }).join('');
-
-  // Columna de métricas
-  const workKJ = (np && dur) ? Math.round(np * dur / 1000) : (avgPow && dur) ? Math.round(avgPow * dur / 1000) : null;
-  const metrics = [];
-  if (np)      metrics.push({ lbl:'NP',      val: np + 'W',                    color:'#F59E0B' });
-  if (avgPow && avgPow !== np) metrics.push({ lbl:'Media', val: avgPow + 'W',  color:'#3B82F6' });
-  if (VI)      metrics.push({ lbl:'VI',      val: VI.toFixed(2),               color:'#10B981' });
-  if (workKJ)  metrics.push({ lbl:'Trabajo', val: workKJ + ' kJ',             color:'#8B5CF6' });
-  if (act.tss) metrics.push({ lbl:'TSS',     val: Math.round(act.tss),         color:'#EF4444' });
-  if (!np && avgHr)  metrics.push({ lbl:'FC media', val: avgHr + ' bpm',       color:'#EF4444' });
-  if (!np && avgSpd) metrics.push({ lbl:'Vel',       val: avgSpd.toFixed(1)+' km/h', color:'#3B82F6' });
-  if (!np && elev)   metrics.push({ lbl:'D+',        val: Math.round(elev)+' m',     color:'#8B5CF6' });
-  if (!np && act.tss) metrics.push({ lbl:'TSS',      val: Math.round(act.tss),       color:'#EF4444' });
-
-  const metricsHTML = metrics.map(m =>
-    `<div class="last-act-mrow">
-      <span class="last-act-mlbl">${m.lbl}</span>
-      <span class="last-act-mval" style="color:${m.color}">${m.val}</span>
-    </div>`
-  ).join('');
-
+  const when = daysAgo===0?'Hoy':daysAgo===1?'Ayer':`Hace ${daysAgo} días`;
+  const url  = (act.id||act.strava_id) ? `activities.html?id=${act.id||act.strava_id}` : 'activities.html';
   el.innerHTML = `
     <a href="${url}" style="display:block;text-decoration:none;color:inherit">
-      <div class="last-act-header">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
         <div>
-          <div class="last-act-title-txt">${act.name||'Actividad'}</div>
-          <div class="last-act-date-txt">${when} · ${Utils.formatDate(act.date?.substring(0,10))}</div>
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700">${act.name||'Actividad'}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${when} · ${Utils.formatDate(act.date?.substring(0,10))}</div>
         </div>
-        <span class="last-act-ver-lnk">Ver <i class="fas fa-arrow-right"></i></span>
+        <span style="font-size:12px;color:var(--primary);font-weight:600">Ver actividad <i class="fas fa-arrow-right"></i></span>
       </div>
-
-      <div class="last-act-chart-wrap">
-        ${svgChart}
-        <div class="last-act-time-axis"><span>0:00</span><span>${durFmt}</span></div>
-      </div>
-
-      <div class="last-act-body">
-        <div class="last-act-zones-tbl">${zoneRows}</div>
-        <div class="last-act-mcol">${metricsHTML}</div>
-      </div>
-
-      <div class="last-act-chips">
-        <div class="last-act-chip"><div class="cv">${Utils.formatDistance(act.distance)}</div><div class="cl">Distancia</div></div>
-        <div class="last-act-chip"><div class="cv">${durFmt}</div><div class="cl">Duración</div></div>
-        <div class="last-act-chip"><div class="cv">${act.tss?Math.round(act.tss):'--'}</div><div class="cl">TSS</div></div>
+      <div class="last-act-metrics">
+        <div class="last-act-metric"><div class="val">${Utils.formatDistance(act.distance)}</div><div class="lbl">Distancia</div></div>
+        <div class="last-act-metric"><div class="val">${Utils.formatDuration(act.duration)}</div><div class="lbl">Duración</div></div>
+        <div class="last-act-metric"><div class="val">${act.tss?Math.round(act.tss):'--'}</div><div class="lbl">TSS</div></div>
       </div>
     </a>`;
 }
