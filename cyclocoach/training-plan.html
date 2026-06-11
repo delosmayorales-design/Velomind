@@ -4553,11 +4553,28 @@ function addAdjEvent() {
   renderAdjEventsList();
   toggleAddEventForm();
   toggleEventsAccordion(true);
+  // Guardar inmediatamente — sin esto el evento solo existe en memoria y se pierde al recargar
+  _saveEventsNow();
 }
 
 function removeAdjEvent(idx) {
   _adjEvents.splice(idx, 1);
   renderAdjEventsList();
+  _saveEventsNow();
+}
+
+function _saveEventsNow() {
+  const aEvent = (_adjEvents || []).find(e => e.priority === 'A');
+  const payload = {
+    event_date:    aEvent?.date || null,
+    target_events: JSON.stringify(_adjEvents || []),
+  };
+  AppState.saveAthlete(payload);
+  if (typeof BackendSync !== 'undefined') {
+    BackendSync.saveProfile(payload)
+      .then(() => showToast('✅ Evento guardado', 'var(--accent-green)'))
+      .catch(() => showToast('Sin conexión — el evento se guardará cuando vuelva la red', '#F59E0B'));
+  }
 }
 
 function clearEventDate() {
@@ -4675,7 +4692,9 @@ async function applyAdjustments() {
           generatePlan();
           renderAthleteSidebar();
         }
-      }).catch(() => {});
+      }).catch(() => {
+        showToast('⚠️ No se pudo guardar en el servidor. Comprueba tu conexión o vuelve a entrar.', '#EF4444');
+      });
     }
   } else {
     AppState.athlete = {
