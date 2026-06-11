@@ -2,38 +2,32 @@
 /**
  * VeloMind – FIT Workout Generator
  *
- * Genera archivos .fit binarios válidos para Garmin Edge/Forerunner/Connect.
- * Basado en la especificación FIT Protocol Rev 2.3 de Garmin.
- *
- * Mensajes incluidos (obligatorios + recomendados):
- *   FILE_ID (global 0)        — tipo, fabricante, producto, timestamp
- *   FILE_CREATOR (global 49)  — versión de software
- *   WORKOUT (global 26)       — deporte, nombre, número de pasos
- *   WORKOUT_STEP (global 27)  — cada paso con potencia objetivo e intensidad
- *
- * Notas de implementación:
- *   - duration_value para tipo TIME se almacena en MILISEGUNDOS (FIT Profile scale=1000, units=s)
- *   - CRC-16 según algoritmo oficial de Garmin (polinomio 0x1021 / tabla de 16 entradas)
- *   - Strings FIT: nulo-terminadas, rellenas de 0x00 hasta la longitud del campo
+ * Estructura replicada del archivo .fit exportado por Garmin Connect (referencia validada).
+ * Todos los mensajes reutilizan local=0, redefiniéndolo antes de cada uso.
  */
 
-// FIT Epoch: 00:00:00 UTC del 31-12-1989 = Unix epoch 631065600
-const FIT_EPOCH_OFFSET = 631065600;
+const FIT_EPOCH_OFFSET = 631065600; // 1989-12-31 00:00:00 UTC en Unix epoch
 
-// Base types del perfil FIT (FIT Protocol Rev 2.3, §3 Base Types)
 const BT = {
   ENUM:    0x00,
   UINT8:   0x02,
   UINT16:  0x84,
   UINT32:  0x86,
-  UINT32Z: 0x8C,  // uint32z — valor inválido = 0x00000000 (no 0x8E que es sint64)
+  UINT32Z: 0x8C,
   STRING:  0x07,
 };
 
-// Intensidades FIT para WORKOUT_STEP (campo 7)
 const FIT_INTENSITY = { active: 0, rest: 1, warmup: 2, cooldown: 3 };
 
-// CRC-16 oficial Garmin (FIT Protocol §3)
+// Valores inválidos por tipo (FIT Protocol §3)
+const INV = {
+  ENUM:    0xFF,
+  UINT8:   0xFF,
+  UINT16:  0xFFFF,
+  UINT32:  0xFFFFFFFF,
+  UINT32Z: 0x00000000,
+};
+
 function fitCRC(buf) {
   const T = [
     0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401,
@@ -48,7 +42,6 @@ function fitCRC(buf) {
   return crc & 0xFFFF;
 }
 
-// Transliteración a ASCII puro (sin acentos, sin caracteres > 0x7E)
 function toAscii(s) {
   return (s || '')
     .replace(/[áàâä]/gi, 'a').replace(/[éèêë]/gi, 'e')
@@ -57,7 +50,6 @@ function toAscii(s) {
     .replace(/[^\x20-\x7E]/g, '').trim();
 }
 
-// Escribe una string FIT de tamaño fijo (nulo-terminada, rellena con 0x00)
 function writeStr(buf, offset, s, fieldBytes) {
   const safe = toAscii(s || '').slice(0, fieldBytes - 1);
   for (let i = 0; i < safe.length; i++) buf[offset + i] = safe.charCodeAt(i);
@@ -77,140 +69,166 @@ class FITBuffer {
     this._chunks.push(b);
   }
 
-  // Definition message (local type 0-15 → global message num, fields)
-  def(localType, globalMsgNum, fields) {
-    this.u8(0x40 | (localType & 0xF)); // definition header: bit6=1
-    this.u8(0x00);                      // reserved
-    this.u8(0x00);                      // architecture: little-endian
+  // Redefine local=0 con un nuevo mensaje global
+  def(globalMsgNum, fields) {
+    this.u8(0x40); // definition header para local=0
+    this.u8(0x00); // reserved
+    this.u8(0x00); // little-endian
     this.u16(globalMsgNum);
     this.u8(fields.length);
     for (const f of fields) { this.u8(f.num); this.u8(f.size); this.u8(f.bt); }
   }
 
-  // Data message header (localType)
-  hdr(localType) { this.u8(localType & 0xF); }
+  hdr() { this.u8(0x00); } // data header para local=0
 
   build() { return Buffer.concat(this._chunks); }
 }
 
-/**
- * Genera un archivo .fit de workout válido para Garmin.
- *
- * @param {string} workoutName  Nombre del workout (máx 15 chars)
- * @param {Array}  steps        Pasos generados por buildSteps() en el cliente:
- *   { name, sec, intensity, lo, hi, open, isAlert }
- *   intensity: 0=active, 1=rest, 2=warmup, 3=cooldown
- *   lo/hi: vatios objetivo (0 = sin objetivo de potencia)
- *   open:  true = paso abierto (el atleta avanza manualmente)
- * @returns {Buffer} Bytes del archivo .fit listo para descargar
- */
 function generateWorkoutFIT(workoutName, steps) {
   if (!Array.isArray(steps) || steps.length === 0) {
     throw new Error('Se necesita al menos un paso para generar el workout');
   }
 
   const fitNow = Math.floor(Date.now() / 1000) - FIT_EPOCH_OFFSET;
-  const name   = toAscii(workoutName || 'VeloMind').slice(0, 15);
+  const name   = toAscii(workoutName || 'VeloMind').slice(0, 49);
   const w      = new FITBuffer();
 
-  // ── FILE_ID (global=0, local=0) ─────────────────────────────────────────
-  // Campos obligatorios para que el dispositivo reconozca el archivo
-  w.def(0, 0, [
-    { num: 0, size: 1, bt: BT.ENUM    }, // type
-    { num: 1, size: 2, bt: BT.UINT16  }, // manufacturer
-    { num: 2, size: 2, bt: BT.UINT16  }, // product (garmin_product)
+  // ── FILE_ID (global=0) — estructura idéntica a Garmin Connect ───────────
+  w.def(0, [
     { num: 3, size: 4, bt: BT.UINT32Z }, // serial_number
     { num: 4, size: 4, bt: BT.UINT32  }, // time_created
+    { num: 7, size: 4, bt: BT.UINT32  }, // unknown field (Garmin export includes it)
+    { num: 1, size: 2, bt: BT.UINT16  }, // manufacturer
+    { num: 2, size: 2, bt: BT.UINT16  }, // product
+    { num: 5, size: 2, bt: BT.UINT16  }, // garmin_product
+    { num: 0, size: 1, bt: BT.ENUM    }, // type
   ]);
-  w.hdr(0);
-  w.u8(5);        // type=5 (workout)
-  w.u16(1);       // manufacturer=1 (Garmin)
-  w.u16(65534);   // product=65534 (Garmin Connect)
-  w.u32(0);       // serial_number=0 (no físico)
-  w.u32(fitNow);  // time_created: timestamp FIT actual
+  w.hdr();
+  w.u32(0);           // serial_number = 0
+  w.u32(fitNow);      // time_created
+  w.u32(INV.UINT32);  // field 7 = invalid
+  w.u16(1);           // manufacturer = 1 (Garmin)
+  w.u16(65534);       // product = 65534 (Garmin Connect)
+  w.u16(INV.UINT16);  // garmin_product = invalid
+  w.u8(5);            // type = 5 (workout)
 
-  // ── FILE_CREATOR (global=49, local=1) ────────────────────────────────────
-  // Recomendado: algunos dispositivos lo requieren para confiar en el archivo
-  w.def(1, 49, [
-    { num: 0, size: 2, bt: BT.UINT16 }, // software_version
-    { num: 1, size: 1, bt: BT.UINT8  }, // hardware_version
+  // ── FILE_CREATOR (global=49) ─────────────────────────────────────────────
+  w.def(49, [
+    { num: 2, size: 20, bt: BT.STRING }, // app_name
+    { num: 0, size: 2,  bt: BT.UINT16 }, // software_version
+    { num: 1, size: 1,  bt: BT.UINT8  }, // hardware_version
   ]);
-  w.hdr(1);
-  w.u16(100);  // software_version
-  w.u8(0xFF);  // hardware_version (0xFF = no aplicable)
+  w.hdr();
+  w.str('', 20);   // app_name = empty
+  w.u16(100);      // software_version
+  w.u8(INV.UINT8); // hardware_version = invalid
 
-  // ── WORKOUT (global=26, local=2) ─────────────────────────────────────────
-  w.def(2, 26, [
-    { num: 4, size: 1,  bt: BT.ENUM    }, // sport
-    { num: 5, size: 4,  bt: BT.UINT32Z }, // capabilities (field 5, no field 1)
-    { num: 6, size: 2,  bt: BT.UINT16  }, // num_valid_steps
-    { num: 8, size: 16, bt: BT.STRING  }, // wkt_name
+  // ── WORKOUT (global=26) ──────────────────────────────────────────────────
+  w.def(26, [
+    { num: 5,  size: 4,  bt: BT.UINT32Z }, // capabilities
+    { num: 10, size: 4,  bt: BT.UINT32  }, // pool_length (invalid for cycling)
+    { num: 6,  size: 2,  bt: BT.UINT16  }, // num_valid_steps
+    { num: 7,  size: 2,  bt: BT.UINT16  }, // unknown field
+    { num: 12, size: 2,  bt: BT.UINT16  }, // unknown field
+    { num: 14, size: 2,  bt: BT.UINT16  }, // unknown field
+    { num: 4,  size: 1,  bt: BT.ENUM    }, // sport
+    { num: 8,  size: 50, bt: BT.STRING  }, // wkt_name (50 bytes, como Garmin)
+    { num: 9,  size: 1,  bt: BT.ENUM    }, // sub_sport
+    { num: 11, size: 1,  bt: BT.UINT8   }, // unknown field
+    { num: 13, size: 1,  bt: BT.ENUM    }, // unknown field
+    { num: 15, size: 1,  bt: BT.ENUM    }, // unknown field
   ]);
-  w.hdr(2);
-  w.u8(2);             // sport=2 (cycling)
-  w.u32(0);            // capabilities=0
-  w.u16(steps.length); // num_valid_steps
-  w.str(name, 16);     // wkt_name
+  w.hdr();
+  w.u32(INV.UINT32Z); // capabilities = 0 (invalid para UINT32Z)
+  w.u32(INV.UINT32);  // pool_length = invalid
+  w.u16(steps.length);// num_valid_steps
+  w.u16(INV.UINT16);  // field 7 = invalid
+  w.u16(INV.UINT16);  // field 12 = invalid
+  w.u16(INV.UINT16);  // field 14 = invalid
+  w.u8(2);            // sport = 2 (cycling)
+  w.str(name, 50);    // wkt_name
+  w.u8(INV.ENUM);     // sub_sport = invalid (255), igual que Garmin Connect
+  w.u8(INV.UINT8);    // field 11 = invalid
+  w.u8(INV.ENUM);     // field 13 = invalid
+  w.u8(INV.ENUM);     // field 15 = invalid
 
-  // ── WORKOUT_STEP (global=27, local=3) ────────────────────────────────────
-  // duration_value para TIME: valor RAW en milisegundos (Profile scale=1000, units=s)
-  w.def(3, 27, [
-    { num: 254, size: 2,  bt: BT.UINT16 }, // message_index (orden del paso)
-    { num: 0,   size: 16, bt: BT.STRING }, // wkt_step_name
-    { num: 1,   size: 1,  bt: BT.ENUM   }, // duration_type: 0=time, 5=open
-    { num: 2,   size: 4,  bt: BT.UINT32 }, // duration_value (ms si type=time; scale=1000 → FIT spec)
-    { num: 3,   size: 1,  bt: BT.ENUM   }, // target_type: 2=open/none, 4=power (FIT WktStepTarget enum)
-    { num: 4,   size: 4,  bt: BT.UINT32 }, // target_value (0=custom range, >0=zona)
-    { num: 5,   size: 4,  bt: BT.UINT32 }, // custom_target_value_low (vatios)
-    { num: 6,   size: 4,  bt: BT.UINT32 }, // custom_target_value_high (vatios)
-    { num: 7,   size: 1,  bt: BT.ENUM   }, // intensity
+  // ── WORKOUT_STEP (global=27) — estructura idéntica a Garmin Connect ──────
+  // Orden de campos replicado exactamente del archivo de referencia:
+  //   nombre, dur_val, tgt_val, tgt_low, tgt_high, notes(200), msg_idx,
+  //   campos extra UINT16, dur_type, tgt_type, intensity, campos extra UINT8
+  w.def(27, [
+    { num: 0,   size: 16,  bt: BT.STRING }, // wkt_step_name
+    { num: 2,   size: 4,   bt: BT.UINT32 }, // duration_value (ms para type=TIME)
+    { num: 4,   size: 4,   bt: BT.UINT32 }, // target_value (0 = custom range)
+    { num: 5,   size: 4,   bt: BT.UINT32 }, // custom_target_value_low (watts)
+    { num: 6,   size: 4,   bt: BT.UINT32 }, // custom_target_value_high (watts)
+    { num: 8,   size: 200, bt: BT.STRING }, // notes (vacío pero presente)
+    { num: 254, size: 2,   bt: BT.UINT16 }, // message_index
+    { num: 10,  size: 2,   bt: BT.UINT16 }, // exercise_category
+    { num: 11,  size: 2,   bt: BT.UINT16 }, // exercise_name
+    { num: 12,  size: 2,   bt: BT.UINT16 }, // exercise_weight
+    { num: 13,  size: 2,   bt: BT.UINT16 }, // weight_display_unit
+    { num: 14,  size: 2,   bt: BT.UINT16 }, // secondary_target_value
+    { num: 1,   size: 1,   bt: BT.ENUM   }, // duration_type: 0=time, 5=open
+    { num: 3,   size: 1,   bt: BT.ENUM   }, // target_type: 2=open, 4=power
+    { num: 7,   size: 1,   bt: BT.ENUM   }, // intensity
+    { num: 9,   size: 1,   bt: BT.UINT8  }, // equipment
+    { num: 15,  size: 1,   bt: BT.UINT8  }, // unknown
+    { num: 16,  size: 1,   bt: BT.UINT8  }, // unknown
+    { num: 17,  size: 1,   bt: BT.ENUM   }, // unknown
+    { num: 18,  size: 1,   bt: BT.ENUM   }, // unknown
   ]);
 
   steps.forEach((s, i) => {
     const durType = s.open ? 5 : 0;
-    const durMs   = s.open ? 0 : Math.max(0, s.sec | 0) * 1000; // ms (Profile scale=1000)
+    const durMs   = s.open ? 0 : Math.max(0, s.sec | 0) * 1000;
     const hasPow  = (s.lo > 0 || s.hi > 0);
-    const tgtType = hasPow ? 4 : 2; // 4=power, 2=open/sin objetivo (FIT WktStepTarget)
+    const tgtType = hasPow ? 4 : 2;
     const intKey  = s.intensity === 2 ? 'warmup'
                   : s.intensity === 3 ? 'cooldown'
                   : s.intensity === 1 ? 'rest'
                   : 'active';
+    // raw watts directos, sin offset ni sort — confirmado por archivo Garmin real
+    // (cooldown tiene lo > hi intencionalmente para representar rampa descendente)
+    const loW = hasPow ? (s.lo || 0) : 0;
+    const hiW = hasPow ? (s.hi || 0) : 0;
 
-    // Garmin: valores < 1000 = % FTP, valores >= 1000 = vatios + 1000 (e.g. 200W → 1200)
-    // Además, low debe ser <= high — invertir si la rampa es descendente (ej. cooldown)
-    const rawLo = s.lo || 0;
-    const rawHi = s.hi || 0;
-    const loW = hasPow ? Math.min(rawLo, rawHi) + 1000 : 0;
-    const hiW = hasPow ? Math.max(rawLo, rawHi) + 1000 : 0;
-
-    w.hdr(3);
-    w.u16(i);
+    w.hdr();
     w.str(toAscii(s.name || 'Paso').slice(0, 15), 16);
-    w.u8(durType);
     w.u32(durMs);
+    w.u32(0);              // target_value = 0 (custom range)
+    w.u32(loW);            // custom_target_value_low
+    w.u32(hiW);            // custom_target_value_high
+    w.str('', 200);        // notes = vacío
+    w.u16(i);              // message_index
+    w.u16(INV.UINT16);     // exercise_category = invalid
+    w.u16(INV.UINT16);     // exercise_name = invalid
+    w.u16(INV.UINT16);     // exercise_weight = invalid
+    w.u16(INV.UINT16);     // weight_display_unit = invalid
+    w.u16(INV.UINT16);     // secondary_target_value = invalid
+    w.u8(durType);
     w.u8(tgtType);
-    w.u32(0);    // target_value=0 → rango personalizado
-    w.u32(loW);  // custom_target_value_low  (watts + 1000)
-    w.u32(hiW);  // custom_target_value_high (watts + 1000)
     w.u8(FIT_INTENSITY[intKey]);
+    w.u8(INV.UINT8);       // equipment = invalid
+    w.u8(INV.UINT8);       // unknown = invalid
+    w.u8(INV.UINT8);       // unknown = invalid
+    w.u8(INV.ENUM);        // unknown = invalid
+    w.u8(INV.ENUM);        // unknown = invalid
   });
 
-  // ── Ensamblar archivo: cabecera 14 bytes + datos + CRC final ─────────────
+  // ── Ensamblar: cabecera 14 bytes + datos + CRC ───────────────────────────
   const data = w.build();
 
   const header = Buffer.alloc(14);
-  header[0] = 14;    // header_size
-  header[1] = 0x10;  // protocol_version 1.0
-  header.writeUInt16LE(2132, 2); // profile_version 2132 (0x0854)
-  header.writeUInt32LE(data.length, 4); // data_size
-  header.write('.FIT', 8, 'ascii'); // data_type signature
-  const hdrCRC = fitCRC(header.slice(0, 12));
-  header.writeUInt16LE(hdrCRC, 12);
+  header[0] = 14;
+  header[1] = 0x10;                         // protocol_version 1.0
+  header.writeUInt16LE(2195, 2);            // profile_version = 2195 (igual que Garmin)
+  header.writeUInt32LE(data.length, 4);
+  header.write('.FIT', 8, 'ascii');
+  header.writeUInt16LE(fitCRC(header.slice(0, 12)), 12);
 
-  // El CRC del archivo cubre solo los registros de datos (NO la cabecera)
-  const dataCRC = fitCRC(data);
-  const crcBuf  = Buffer.alloc(2);
-  crcBuf.writeUInt16LE(dataCRC, 0);
+  const crcBuf = Buffer.alloc(2);
+  crcBuf.writeUInt16LE(fitCRC(data), 0);
 
   return Buffer.concat([header, data, crcBuf]);
 }
