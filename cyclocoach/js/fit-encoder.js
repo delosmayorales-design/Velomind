@@ -380,7 +380,7 @@ ${stepsXml}
       const durType  = s.open ? 5 : 0;
       const durValMs = s.open ? 0 : (s.sec | 0) * 1000; // convert seconds → milliseconds
       const hasPow   = s.lo > 0 || s.hi > 0;
-      const tgtType  = hasPow ? 3 : 0;  // 3=power, 0=none
+      const tgtType  = hasPow ? 4 : 2;  // 4=power, 2=open/none (FIT WktStepTarget enum)
       const intEnum  = s.intensity === 2 ? 2 : s.intensity === 3 ? 3 : s.intensity === 1 ? 1 : 0;
 
       out.push(0x02);

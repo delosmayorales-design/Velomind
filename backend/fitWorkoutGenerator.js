@@ -12,7 +12,7 @@
  *   WORKOUT_STEP (global 27)  — cada paso con potencia objetivo e intensidad
  *
  * Notas de implementación:
- *   - duration_value para tipo TIME se almacena en SEGUNDOS (FIT Protocol §WORKOUT_STEP)
+ *   - duration_value para tipo TIME se almacena en MILISEGUNDOS (FIT Profile scale=1000, units=s)
  *   - CRC-16 según algoritmo oficial de Garmin (polinomio 0x1021 / tabla de 16 entradas)
  *   - Strings FIT: nulo-terminadas, rellenas de 0x00 hasta la longitud del campo
  */
@@ -159,8 +159,8 @@ function generateWorkoutFIT(workoutName, steps) {
     { num: 0,   size: 16, bt: BT.STRING }, // wkt_step_name
     { num: 1,   size: 1,  bt: BT.ENUM   }, // duration_type: 0=time, 5=open
     { num: 2,   size: 4,  bt: BT.UINT32 }, // duration_value (segundos si type=time)
-    { num: 3,   size: 1,  bt: BT.ENUM   }, // target_type: 0=none, 3=power
-    { num: 4,   size: 4,  bt: BT.UINT32 }, // target_value (0=custom, >0=zona)
+    { num: 3,   size: 1,  bt: BT.ENUM   }, // target_type: 2=open/none, 4=power (FIT WktStepTarget enum)
+    { num: 4,   size: 4,  bt: BT.UINT32 }, // target_value (0=custom range, >0=zona)
     { num: 5,   size: 4,  bt: BT.UINT32 }, // custom_target_value_low (vatios)
     { num: 6,   size: 4,  bt: BT.UINT32 }, // custom_target_value_high (vatios)
     { num: 7,   size: 1,  bt: BT.ENUM   }, // intensity
@@ -170,7 +170,7 @@ function generateWorkoutFIT(workoutName, steps) {
     const durType = s.open ? 5 : 0;
     const durMs   = s.open ? 0 : Math.max(0, s.sec | 0) * 1000; // ms (Profile scale=1000)
     const hasPow  = (s.lo > 0 || s.hi > 0);
-    const tgtType = hasPow ? 3 : 0; // 3=power, 0=sin objetivo
+    const tgtType = hasPow ? 4 : 2; // 4=power, 2=open/sin objetivo (FIT WktStepTarget)
     const intKey  = s.intensity === 2 ? 'warmup'
                   : s.intensity === 3 ? 'cooldown'
                   : s.intensity === 1 ? 'rest'
