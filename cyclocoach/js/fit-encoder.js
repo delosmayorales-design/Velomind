@@ -41,10 +41,13 @@ const FITWorkoutEncoder = (() => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  // Build structured workout steps from a TrainingPlanGenerator session
+  // Build structured workout steps from a TrainingPlanGenerator session.
+  // Replicates the EXACT same duration/rep calculations as _buildIntervals() in app.js
+  // so that the exported FIT matches what VeloMind shows on screen.
   function buildSteps(session, ftp) {
     if (!ftp || ftp < 50) ftp = 200;
-    const w = (lo, hi) => ({ lo: Math.round(ftp * lo), hi: Math.round(ftp * hi) });
+    const p  = (r) => Math.round(ftp * r);
+    const w  = (lo, hi) => ({ lo: p(lo), hi: p(hi) });
 
     if (session.isRest) {
       return [{ name:'Descanso', open:true, intensity:1, lo:0, hi:0 }];
@@ -52,81 +55,205 @@ const FITWorkoutEncoder = (() => {
 
     const type    = session.type || 'endurance';
     const durMin  = Math.max(30, session.durationMin || 60);
-    const warmMin = Math.min(15, Math.round(durMin * 0.2));
-    const coolMin = Math.min(10, Math.round(durMin * 0.15));
-    const mainMin = Math.max(20, durMin - warmMin - coolMin);
+    const variant = session.intervalVariant || 'main';
+    const ifTgt   = session.ifTarget || 0.75;
 
-    const warmup   = (min) => ({ name:'Calentamiento', sec:min*60, intensity:2, ...w(0.50,0.55) });
-    const cooldown = (min) => ({ name:'Enfriamiento',  sec:min*60, intensity:3, ...w(0.55,0.45) });
-    const rest     = (min) => ({ name:'Recuperacion',  sec:min*60, intensity:1, ...w(0.45,0.55) });
+    // Mirror _buildIntervals warm/cool/main calculation
+    let warm = Math.max(10, Math.round(durMin * 0.2));
+    let cool = Math.max(10, Math.round(durMin * 0.15));
+    let main = Math.max(0, durMin - warm - cool);
+
+    if (main < 10 && type !== 'recovery') {
+      return [{ name:'Rodaje', sec:durMin*60, intensity:0, ...w(0.55,0.70) }];
+    }
+
+    const warmup   = (min) => ({ name:'Calentamiento', sec:min*60, intensity:2, ...w(0.55,0.70) });
+    const cooldown = (min) => ({ name:'Enfriamiento',  sec:Math.max(1,min)*60, intensity:3, ...w(0.45,0.60) });
+    const rest     = (min) => ({ name:'Recuperacion',  sec:Math.max(1,min)*60, intensity:1, ...w(0.45,0.55) });
 
     const steps = [];
 
-    if (type === 'recovery') {
-      steps.push({ name:'Recuperacion activa', sec:durMin*60, intensity:0, ...w(0.40,0.55) });
+    switch (type) {
 
-    } else if (type === 'endurance' || type === 'long') {
-      steps.push(warmup(warmMin));
-      steps.push({ name:'Z2 Endurance', sec:mainMin*60, intensity:0, ...w(0.56,0.75) });
-      steps.push(cooldown(coolMin));
+      case 'recovery':
+        if (variant === 'main') {
+          steps.push({ name:'Pedaleo Z1', sec:durMin*60, intensity:0, ...w(0.45,0.55) });
+        } else {
+          steps.push({ name:'Pedaleo Z1', sec:Math.max(1,durMin-5)*60, intensity:0, ...w(0.45,0.55) });
+          for (let i = 0; i < 3; i++) {
+            steps.push({ name:'Aceleracion', sec:10, intensity:0, lo:0, hi:0 });
+            steps.push({ name:'Recuperacion', sec:50, intensity:1, ...w(0.40,0.50) });
+          }
+          steps.push({ name:'Vuelta calma', sec:2*60, intensity:3, ...w(0.40,0.50) });
+        }
+        break;
 
-    } else if (type === 'tempo') {
-      const b1 = Math.round(mainMin * 0.6), b2 = mainMin - b1;
-      steps.push(warmup(15));
-      steps.push({ name:'Sweet Spot',  sec:b1*60, intensity:0, ...w(0.76,0.88) });
-      steps.push({ name:'Tempo Z3-Z4', sec:b2*60, intensity:0, ...w(0.88,1.00) });
-      steps.push(cooldown(coolMin));
+      case 'endurance':
+      case 'long':
+        warm = Math.max(10, Math.round(durMin * 0.15));
+        cool = Math.max(10, Math.round(durMin * 0.10));
+        main = durMin - warm - cool;
+        steps.push(warmup(warm));
+        if (ifTgt >= 0.70 && type === 'endurance' && main >= 30) {
+          const ssBlock = 10;
+          const ssRec   = Math.max(3, Math.round(main * 0.10));
+          const z2Block = Math.max(10, main - ssBlock * 2 - ssRec);
+          steps.push({ name:'Z2 Aerobico', sec:z2Block*60, intensity:0, ...w(0.60,0.70) });
+          for (let i = 0; i < 2; i++) {
+            steps.push({ name:'Sweetspot', sec:ssBlock*60, intensity:0, ...w(0.88,0.93) });
+            if (i < 1) steps.push({ name:'Rec Z2', sec:ssRec*60, intensity:1, ...w(0.60,0.68) });
+          }
+        } else if (variant === 'main') {
+          steps.push({ name:'Z2 Endurance', sec:main*60, intensity:0, ...w(0.56,0.75) });
+        } else {
+          const blocks = Math.floor(main / 20);
+          if (blocks >= 2) {
+            for (let b = 0; b < blocks; b++) {
+              steps.push({ name:'Z2 Aerobico', sec:18*60, intensity:0, ...w(0.60,0.70) });
+              if (b < blocks - 1) steps.push({ name:'Rec', sec:2*60, intensity:1, ...w(0.50,0.55) });
+            }
+          } else {
+            steps.push({ name:'Z2 Endurance', sec:main*60, intensity:0, ...w(0.56,0.75) });
+          }
+        }
+        steps.push(cooldown(cool));
+        break;
 
-    } else if (type === 'threshold') {
-      const numReps = durMin > 70 ? 3 : 2;
-      const restMin = 5;
-      const workMin = Math.max(10, Math.round((mainMin - numReps * restMin) / numReps));
-      steps.push(warmup(15));
-      for (let i = 0; i < numReps; i++) {
-        steps.push({ name:`Umbral ${i+1}/${numReps}`, sec:workMin*60, intensity:0, ...w(0.93,1.03) });
-        if (i < numReps - 1) steps.push(rest(restMin));
+      case 'tempo':
+        steps.push(warmup(warm));
+        if (variant === 'main') {
+          if (main >= 25) {
+            const blockTime = Math.floor(main / 2.5);
+            const recTime   = main - blockTime * 2;
+            for (let i = 0; i < 2; i++) {
+              steps.push({ name:`Tempo ${i+1}/2`, sec:blockTime*60, intensity:0, ...w(0.76,0.88) });
+              if (i < 1) steps.push(rest(recTime));
+            }
+          } else {
+            steps.push({ name:'Sweet Spot', sec:main*60, intensity:0, ...w(0.76,0.88) });
+          }
+        } else {
+          const reps      = 4;
+          const blockTime = Math.floor((main * 0.8) / reps);
+          const recTime   = Math.floor((main * 0.2) / (reps - 1));
+          for (let i = 0; i < reps; i++) {
+            steps.push({ name:`Z3 ${i+1}/${reps}`, sec:blockTime*60, intensity:0, ...w(0.80,0.88) });
+            if (i < reps - 1) steps.push(rest(recTime));
+          }
+          cool += main - (reps * blockTime + (reps - 1) * recTime);
+        }
+        steps.push(cooldown(cool));
+        break;
+
+      case 'threshold':
+        steps.push(warmup(warm));
+        if (variant === 'main') {
+          let repsTh = main > 40 ? 3 : 2;
+          let workTh = Math.floor((main * 0.75) / repsTh);
+          let recTh  = Math.floor((main * 0.25) / (repsTh - 1));
+          if (workTh < 8) { repsTh = 1; workTh = main; recTh = 0; }
+          cool += main - (repsTh * workTh + (repsTh > 1 ? repsTh - 1 : 0) * recTh);
+          for (let i = 0; i < repsTh; i++) {
+            steps.push({ name:`Umbral ${i+1}/${repsTh}`, sec:workTh*60, intensity:0, ...w(0.93,1.03) });
+            if (i < repsTh - 1) steps.push(rest(recTh));
+          }
+        } else {
+          const repsOU    = 3;
+          const blockTime = Math.floor((main * 0.75) / repsOU);
+          const recTime   = Math.floor((main * 0.25) / (repsOU - 1));
+          cool += main - (repsOU * blockTime + (repsOU - 1) * recTime);
+          for (let i = 0; i < repsOU; i++) {
+            const ouLow  = Math.round(blockTime * 2 / 3);
+            const ouHigh = blockTime - ouLow;
+            steps.push({ name:`OU ${i+1}/${repsOU} base`, sec:ouLow*60,  intensity:0, ...w(0.90,0.90) });
+            steps.push({ name:`OU ${i+1}/${repsOU} pico`, sec:ouHigh*60, intensity:0, ...w(1.05,1.05) });
+            if (i < repsOU - 1) steps.push(rest(recTime));
+          }
+        }
+        steps.push(cooldown(cool));
+        break;
+
+      case 'vo2max':
+        steps.push(warmup(warm));
+        if (variant === 'main') {
+          let repWorkV = 4, repRestV = 4;
+          let repsV = Math.floor(main / (repWorkV + repRestV));
+          if (repsV < 3 && main >= 15) { repWorkV = 3; repRestV = 3; repsV = Math.floor(main / 6); }
+          if (repsV < 2) { repsV = 2; repWorkV = Math.floor(main / 4); repRestV = Math.floor(main / 4); }
+          cool += main - repsV * (repWorkV + repRestV);
+          for (let i = 0; i < repsV; i++) {
+            steps.push({ name:`VO2Max ${i+1}/${repsV}`, sec:repWorkV*60, intensity:0, ...w(1.06,1.20) });
+            steps.push(rest(repRestV));
+          }
+        } else {
+          // Micro-intervalos: 40s ON @ 115% / 20s OFF @ 50% en bloques de blockDur min
+          let blockDur = 8, restDur = 4;
+          let repsMicro = Math.floor(main / (blockDur + restDur));
+          if (repsMicro < 2) { repsMicro = 2; blockDur = 6; restDur = 3; }
+          cool += main - repsMicro * (blockDur + restDur);
+          const repsPerBlock = blockDur; // 1 rep = 40s+20s = 60s = 1 min
+          for (let i = 0; i < repsMicro; i++) {
+            for (let j = 0; j < repsPerBlock; j++) {
+              steps.push({ name:'ON 40s',  sec:40, intensity:0, ...w(1.15,1.15) });
+              steps.push({ name:'OFF 20s', sec:20, intensity:1, ...w(0.50,0.50) });
+            }
+            steps.push(rest(restDur));
+          }
+        }
+        steps.push(cooldown(cool));
+        break;
+
+      case 'sprint':
+        steps.push(warmup(warm));
+        if (variant === 'main') {
+          let sprintReps = Math.floor(main / 3);
+          if (sprintReps < 4)  sprintReps = 4;
+          if (sprintReps > 12) sprintReps = 12;
+          cool += main - sprintReps * 3;
+          for (let i = 0; i < sprintReps; i++) {
+            steps.push({ name:`Sprint ${i+1}/${sprintReps}`, sec:20, intensity:0, ...w(1.50,2.00) });
+            steps.push({ name:'Recuperacion', sec:160, intensity:1, ...w(0.40,0.55) }); // 2m40s
+          }
+        } else {
+          let sprintReps = Math.floor(main / 4);
+          if (sprintReps < 4)  sprintReps = 4;
+          if (sprintReps > 10) sprintReps = 10;
+          cool += main - sprintReps * 4;
+          for (let i = 0; i < sprintReps; i++) {
+            steps.push({ name:`Sprint ${i+1}/${sprintReps}`, sec:12, intensity:0, ...w(2.00,2.00) });
+            steps.push({ name:'Recuperacion', sec:228, intensity:1, ...w(0.40,0.55) }); // 3m48s
+          }
+        }
+        steps.push(cooldown(cool));
+        break;
+
+      case 'strength': {
+        steps.push(warmup(warm));
+        const repsS = variant === 'main' ? 4 : 3;
+        const workS = Math.floor((main * 0.8) / repsS);
+        const recS  = Math.floor((main * 0.2) / repsS);
+        const loS   = variant === 'main' ? 0.80 : 0.85;
+        const hiS   = variant === 'main' ? 0.95 : 1.00;
+        for (let i = 0; i < repsS; i++) {
+          steps.push({ name:`Fuerza ${i+1}/${repsS}`, sec:workS*60, intensity:0, ...w(loS,hiS) });
+          steps.push(rest(recS));
+        }
+        steps.push(cooldown(cool));
+        break;
       }
-      steps.push(cooldown(coolMin));
 
-    } else if (type === 'vo2max') {
-      const numReps = 4, workMin = 4, restMin = 4;
-      steps.push(warmup(20));
-      for (let i = 0; i < numReps; i++) {
-        steps.push({ name:`VO2Max ${i+1}/${numReps}`, sec:workMin*60, intensity:0, ...w(1.06,1.20) });
-        if (i < numReps - 1) steps.push(rest(restMin));
-      }
-      steps.push(cooldown(15));
+      case 'race':
+        steps.push({ name:'Activacion', sec:15*60, intensity:2, ...w(0.55,0.65) });
+        steps.push({ name:'Agudeza',    sec: 5*60, intensity:0, ...w(0.90,0.95) });
+        steps.push(cooldown(10));
+        break;
 
-    } else if (type === 'sprint') {
-      const numSprints = 6;
-      steps.push(warmup(20));
-      for (let i = 0; i < numSprints; i++) {
-        steps.push({ name:`Sprint ${i+1}/${numSprints}`, sec:20, intensity:0, ...w(1.50,2.00) });
-        steps.push(rest(3));
-      }
-      steps.push(cooldown(20));
-
-    } else if (type === 'strength') {
-      const numReps = 4;
-      const workMin = Math.max(8, Math.round(mainMin / (numReps * 2)));
-      steps.push(warmup(15));
-      for (let i = 0; i < numReps; i++) {
-        steps.push({ name:`Fuerza ${i+1}/${numReps}`, sec:workMin*60, intensity:0, ...w(0.80,0.95) });
-        if (i < numReps - 1) steps.push(rest(Math.round(workMin * 0.6)));
-      }
-      steps.push(cooldown(15));
-
-    } else if (type === 'race') {
-      steps.push({ name:'Activacion', sec:15*60, intensity:2, ...w(0.55,0.65) });
-      steps.push({ name:'Agudeza',    sec: 5*60, intensity:0, ...w(0.90,0.95) });
-      steps.push(cooldown(10));
-
-    } else {
-      steps.push(warmup(warmMin));
-      steps.push({ name:'Esfuerzo principal', sec:mainMin*60, intensity:0,
-                   lo: Math.round((session.targetWatts||ftp*0.65)*0.95),
-                   hi: Math.round((session.targetWatts||ftp*0.65)*1.05) });
-      steps.push(cooldown(coolMin));
+      default:
+        steps.push(warmup(warm));
+        steps.push({ name:'Esfuerzo principal', sec:main*60, intensity:0,
+                     lo: Math.round((session.targetWatts || p(0.65)) * 0.95),
+                     hi: Math.round((session.targetWatts || p(0.65)) * 1.05) });
+        steps.push(cooldown(cool));
     }
 
     return steps;
