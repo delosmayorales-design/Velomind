@@ -1921,18 +1921,76 @@ async function autoEstimateZones() {
 // ─── POWER CURVE ──────────────────────────────────────────────
 var powerCurveChart = null;
 
+// Fallback: calcula curva MMP aproximada desde actividades locales cuando la API
+// no devuelve datos. Usa "mejor potencia media de actividades con duración >= d".
+function _buildLocalPowerCurve(acts) {
+  var ftp  = Number((state.athlete || AppState?.athlete || {}).ftp) || 0;
+  var wgt  = Number((state.athlete || AppState?.athlete || {}).weight) || 0;
+  var DURS = [
+    { dur: 5,    label: '5s'   },
+    { dur: 30,   label: '30s'  },
+    { dur: 60,   label: '1min' },
+    { dur: 300,  label: '5min' },
+    { dur: 600,  label: '10min'},
+    { dur: 1200, label: '20min'},
+    { dur: 3600, label: '60min'},
+  ];
+  var withPower = acts.filter(function(a) {
+    return (a.np || a.avg_power) > 0 && (a.np || a.avg_power) < 3000 && a.duration > 0;
+  });
+  if (!withPower.length) return null;
+
+  var curve = [];
+  var prevPower = Infinity;
+  DURS.forEach(function(d) {
+    var eligible = withPower.filter(function(a) { return a.duration >= d.dur; });
+    if (!eligible.length) return;
+    var power = eligible.reduce(function(mx, a) {
+      return Math.max(mx, a.np || a.avg_power);
+    }, 0);
+    // Garantizar monotonía decreciente (MMP cae con la duración)
+    power = Math.min(power, prevPower);
+    prevPower = power;
+    curve.push({
+      dur:    d.dur,
+      label:  d.label,
+      power:  Math.round(power),
+      wkg:    wgt > 0 ? (power / wgt).toFixed(2) : '--',
+      pctFTP: ftp > 0  ? Math.round(power / ftp * 100) : null,
+    });
+  });
+  if (!curve.length) return null;
+  return {
+    curve,
+    ftp,
+    wkg_ftp: (ftp > 0 && wgt > 0) ? (ftp / wgt).toFixed(2) : '--',
+    source: 'local',
+  };
+}
+
 async function loadPowerCurve(days) {
   try {
     var url = window.API_URL + '/coach/power-curve';
     if (days) url += '?days=' + days;
     var res = await fetch(url, { headers: Auth.getHeaders() });
-    if (!res.ok) { console.warn('[PowerCurve] HTTP', res.status); return; }
-    var pc = await res.json();
-    if (!pc.curve || !pc.curve.length) { console.warn('[PowerCurve] Sin datos de curva'); return; }
-    renderPowerCurve(pc);
-    // Actualizar perfil de ciclista con la curva de potencia real (sprint más preciso)
-    try { renderRiderProfile(state.activities, state.athlete || AppState?.athlete || {}, pc.curve); } catch(e) {}
-  } catch(e) { console.warn('[PowerCurve]', e.message); }
+    if (!res.ok) { console.warn('[PowerCurve] HTTP', res.status); }
+    else {
+      var pc = await res.json();
+      if (pc.curve && pc.curve.length) {
+        renderPowerCurve(pc);
+        try { renderRiderProfile(state.activities, state.athlete || AppState?.athlete || {}, pc.curve); } catch(e) {}
+        return;
+      }
+    }
+  } catch(e) { console.warn('[PowerCurve] API:', e.message); }
+
+  // Fallback: calcular desde actividades locales
+  var localPc = _buildLocalPowerCurve(state.activities || []);
+  if (localPc) {
+    localPc._isEstimate = true;
+    renderPowerCurve(localPc);
+    try { renderRiderProfile(state.activities, state.athlete || AppState?.athlete || {}, localPc.curve); } catch(e) {}
+  }
 }
 
 async function applyAutoZoneValues() {
@@ -1974,8 +2032,11 @@ async function applyAutoZoneValues() {
 }
 
 function renderPowerCurve(pc) {
+  var estimateNote = pc._isEstimate
+    ? ' <span style="font-size:10px;color:#9CA3AF;font-weight:400">(estimado desde actividades — conecta potenciómetro para datos exactos)</span>'
+    : '';
   document.getElementById('power-ftp-label').innerHTML =
-    'FTP: <strong style="color:#FF6B35">' + (pc.ftp || '--') + 'W</strong> (' + (pc.wkg_ftp || '--') + ' W/kg)';
+    'FTP: <strong style="color:#FF6B35">' + (pc.ftp || '--') + 'W</strong> (' + (pc.wkg_ftp || '--') + ' W/kg)' + estimateNote;
 
   var ctx = document.getElementById('power-curve-chart');
   if (ctx) {

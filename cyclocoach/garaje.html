@@ -1342,9 +1342,9 @@ const G = (() => {
 
   // ─── Status ───────────────────────────────────────────────
   function pct(comp) {
-    if (comp.threshold_hours && comp.threshold_hours > 0) return (comp.current_hours / comp.threshold_hours) * 100;
-    if (comp.threshold_days  && comp.threshold_days > 0)  return (comp.installed_days_ago / comp.threshold_days) * 100;
-    if (comp.threshold_km    && comp.threshold_km > 0)    return (comp.current_km / comp.threshold_km) * 100;
+    if (comp.threshold_hours && comp.threshold_hours > 0) return ((comp.current_hours || 0) / comp.threshold_hours) * 100;
+    if (comp.threshold_days  && comp.threshold_days > 0)  return ((comp.installed_days_ago || 0) / comp.threshold_days) * 100;
+    if (comp.threshold_km    && comp.threshold_km > 0)    return ((comp.current_km || 0) / comp.threshold_km) * 100;
     return 0;
   }
 

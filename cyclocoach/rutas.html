@@ -2101,21 +2101,6 @@ function toggleCycleOverlay() {
 }
 
 // ── Strava Segments ──────────────────────────────────────────────
-// Decodifica polilínea con precisión 5 (formato estándar Strava/Google)
-function decodePolyline5(encoded) {
-  const coords = []; let idx = 0, lat = 0, lng = 0;
-  while (idx < encoded.length) {
-    let b, shift = 0, result = 0;
-    do { b = encoded.charCodeAt(idx++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
-    shift = 0; result = 0;
-    do { b = encoded.charCodeAt(idx++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
-    coords.push([lat / 1e5, lng / 1e5]);
-  }
-  return coords;
-}
-
 const SEGMENT_CAT = { 0: 'NC', 1: 'Cat 4', 2: 'Cat 3', 3: 'Cat 2', 4: 'Cat 1', 5: 'HC' };
 const SEGMENT_CAT_COLOR = { 0: '#94a3b8', 1: '#60a5fa', 2: '#4ade80', 3: '#fbbf24', 4: '#f97316', 5: '#ef4444' };
 
@@ -3257,6 +3242,22 @@ function openRouteOnMap(id) {
   } else {
     map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
   }
+  // Extraer altitud del GeoJSON para el perfil de elevación
+  const _rawCoords = routeCoordSegments(route.geojson).flat(); // [lng, lat, alt?]
+  const _rawAlts   = _rawCoords.map(c => c[2]);
+  const _hasAlt    = _rawAlts.length > 1 && _rawAlts.some(a => a != null && isFinite(a));
+  if (_hasAlt) {
+    // Relleno forward para nulos puntuales y muestreo a máx 350 puntos
+    let _last = _rawAlts.find(a => a != null && isFinite(a)) ?? 0;
+    const _filled = _rawAlts.map(a => { if (a != null && isFinite(a)) { _last = a; return a; } return _last; });
+    const _step   = Math.max(1, Math.floor(_filled.length / 350));
+    const _sampled = _filled.filter((_, i) => i % _step === 0);
+    if (_sampled[_sampled.length - 1] !== _filled[_filled.length - 1]) _sampled.push(_filled[_filled.length - 1]);
+    renderElevChart(_sampled);
+  } else {
+    currentRouteElevs = null;
+  }
+
   // Lanzar fetch y guardar en BD si no había dato (evita recalcular en cada apertura)
   _pendingElevFetch = fetchElevation(flatLatLngs).then(gain => {
     if (!gain) return;
