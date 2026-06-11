@@ -738,6 +738,22 @@
     #track-modal .trk-card-val { font-size: 20px; font-weight: 800; color: var(--primary); font-family:'Plus Jakarta Sans',sans-serif; }
     #track-modal .trk-card-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
 
+    /* ── Modal pre-inicio grabación ────────────────────────────── */
+    .trk-type-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px; margin-bottom: 4px;
+    }
+    .trk-type-btn {
+      background: var(--bg-input); border: 2px solid var(--border);
+      border-radius: 10px; padding: 12px 6px; text-align: center;
+      font-size: 12px; font-weight: 600; color: var(--text-primary);
+      cursor: pointer; transition: border-color .18s, background .18s, color .18s;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+    }
+    .trk-type-btn .trk-type-icon { font-size: 22px; line-height: 1; }
+    .trk-type-btn:hover { border-color: rgba(255,59,59,0.5); }
+    .trk-type-btn.active { background: rgba(255,59,59,0.12); border-color: #ff3b3b; color: #ff3b3b; }
+
     /* ── Leaflet override (z-index) ───────────────────────────── */
     .leaflet-control-layers { z-index: 400 !important; }
     body.routes-panel-open .leaflet-control-zoom,
@@ -1831,11 +1847,45 @@
         <option value="road">🚴 Road</option>
         <option value="gravel">🪨 Gravel</option>
         <option value="mtb">🏔️ MTB</option>
+        <option value="caminata">🥾 Caminata</option>
+        <option value="running">🏃 Running</option>
       </select>
       <div class="modal-row">
         <button class="modal-btn modal-btn-cancel" onclick="discardTracking()">Descartar</button>
         <button class="modal-btn modal-btn-save" onclick="saveTrackingActivity()" id="trk-save-btn">
           <i class="fas fa-check"></i> Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="trk-prestart-modal" style="display:none">
+  <div class="modal-overlay">
+    <div class="modal-box" style="width:340px">
+      <div class="modal-title"><i class="fas fa-circle" style="color:#ff3b3b;font-size:10px;vertical-align:middle;margin-right:4px"></i> Nueva actividad</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;text-align:center;line-height:1.5">Elige el tipo de actividad y pulsa <strong>Iniciar</strong> cuando estés listo</p>
+      <div class="trk-type-grid">
+        <button class="trk-type-btn active" data-type="road" onclick="selectTrkType(this)">
+          <span class="trk-type-icon">🚴</span>Road
+        </button>
+        <button class="trk-type-btn" data-type="mtb" onclick="selectTrkType(this)">
+          <span class="trk-type-icon">🚵</span>MTB
+        </button>
+        <button class="trk-type-btn" data-type="gravel" onclick="selectTrkType(this)">
+          <span class="trk-type-icon">🪨</span>Gravel
+        </button>
+        <button class="trk-type-btn" data-type="caminata" onclick="selectTrkType(this)">
+          <span class="trk-type-icon">🥾</span>Caminata
+        </button>
+        <button class="trk-type-btn" data-type="running" onclick="selectTrkType(this)">
+          <span class="trk-type-icon">🏃</span>Running
+        </button>
+      </div>
+      <div class="modal-row" style="margin-top:20px">
+        <button class="modal-btn modal-btn-cancel" onclick="document.getElementById('trk-prestart-modal').style.display='none'">Cancelar</button>
+        <button class="modal-btn modal-btn-save" onclick="_confirmStartTracking()">
+          <i class="fas fa-play"></i> Iniciar
         </button>
       </div>
     </div>
@@ -4861,8 +4911,10 @@ let _trkGpsLost     = false; // señal GPS perdida
 let _trkGpsRetry    = null;  // timeout para reintentar watchPosition
 let _trkBackupTimer = null;  // intervalo de backup en IndexedDB
 let _trkWakeLock    = null;  // Screen Wake Lock para evitar suspensión
-let _trkAltSmooth   = null;  // altitud suavizada (EMA) para evitar saltos de pantalla
-let _trkSegmentId   = 0;     // separa pausas/reconexiones para no dibujar rectas falsas
+let _trkAltSmooth    = null;  // altitud suavizada (EMA) para evitar saltos de pantalla
+let _trkSegmentId    = 0;     // separa pausas/reconexiones para no dibujar rectas falsas
+let _trkActiveSecs   = 0;     // segundos de tiempo activo (sin contar pausas) — para el display
+let _trkActivityType = 'road'; // tipo seleccionado antes de iniciar
 
 // ── IndexedDB backup ──────────────────────────────────────────────
 const _IDB_NAME = 'velotrack_v1';
@@ -4922,6 +4974,8 @@ async function _saveTrackBackup() {
     elevGain: _trkElevGain,
     maxSpeed: _trkMaxSpeed,
     movingTime: _trkMovingTime,
+    activeSecs: _trkActiveSecs,
+    activityType: _trkActivityType,
     savedAt: Date.now(),
   });
 }
@@ -4949,19 +5003,23 @@ async function recoverTrackSession() {
   const saved = await _idbGet();
   document.getElementById('trk-recover-banner')?.remove();
   if (!saved?.points?.length) return;
-  _trkPoints    = saved.points;
-  _trkStartTime = saved.startTime;
-  _trkDist      = saved.dist;
-  _trkElevGain  = saved.elevGain;
-  _trkMaxSpeed  = saved.maxSpeed;
-  _trkMovingTime = saved.movingTime;
-  const elapsed  = Math.floor((Date.now() - _trkStartTime) / 1000);
-  const distKm   = _trkDist / 1000;
-  const avgSpeed = _trkMovingTime > 0 ? distKm / (_trkMovingTime / 3600) : 0;
+  _trkPoints       = saved.points;
+  _trkStartTime    = saved.startTime;
+  _trkDist         = saved.dist;
+  _trkElevGain     = saved.elevGain;
+  _trkMaxSpeed     = saved.maxSpeed;
+  _trkMovingTime   = saved.movingTime;
+  _trkActiveSecs   = saved.activeSecs ?? Math.round(saved.movingTime || 0);
+  _trkActivityType = saved.activityType || 'road';
+  const elapsed    = _trkActiveSecs;
+  const distKm     = _trkDist / 1000;
+  const avgSpeed   = elapsed > 0 ? distKm / (elapsed / 3600) : 0;
   const now      = new Date();
   const dateStr  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   document.getElementById('trk-modal-name').value =
     `Salida ${now.toLocaleDateString('es', {weekday:'long'})} ${now.toLocaleDateString('es',{day:'numeric',month:'short'})}`;
+  const recoverTypeSelect = document.getElementById('trk-modal-type');
+  if (recoverTypeSelect) recoverTypeSelect.value = _trkActivityType;
   document.getElementById('trk-modal-summary').innerHTML = `
     <div class="trk-card"><div class="trk-card-val">${distKm.toFixed(2)}</div><div class="trk-card-lbl">km</div></div>
     <div class="trk-card"><div class="trk-card-val">${_fmtTime(elapsed)}</div><div class="trk-card-lbl">tiempo</div></div>
@@ -4998,8 +5056,20 @@ function toggleTracking() {
   if (_trkActive) {
     _stopTracking();
   } else {
-    _startTracking();
+    document.getElementById('trk-prestart-modal').style.display = '';
   }
+}
+
+function selectTrkType(btn) {
+  document.querySelectorAll('.trk-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function _confirmStartTracking() {
+  const selected = document.querySelector('#trk-prestart-modal .trk-type-btn.active');
+  _trkActivityType = selected ? selected.dataset.type : 'road';
+  document.getElementById('trk-prestart-modal').style.display = 'none';
+  _startTracking();
 }
 
 function _showTrackScreenWarning() {
@@ -5041,6 +5111,7 @@ function _startTracking() {
       _trkPauseCount = 0;
       _trkAltSmooth  = null;
       _trkSegmentId  = 0;
+      _trkActiveSecs = 0;
       _trkPolylines  = [];
       _trkStartTime  = Date.now();
       _resetSensorAccumulators();
@@ -5263,8 +5334,8 @@ function _trkTick() {
     _btData._hrAccum = { sum: 0, count: 0 };
   }
 
-  const elapsed = Math.floor((Date.now() - _trkStartTime) / 1000);
-  const timeStr = _fmtTime(elapsed);
+  if (!_trkPaused) _trkActiveSecs++;
+  const timeStr = _fmtTime(_trkActiveSecs);
   const distKm  = (_trkDist / 1000).toFixed(2);
   const avgSpeed = _trkMovingTime > 0
     ? ((_trkDist / 1000) / (_trkMovingTime / 3600)).toFixed(1)
@@ -5325,14 +5396,17 @@ function _stopTracking() {
   }
 
   // Armar resumen en el modal
-  const elapsed = Math.floor((Date.now() - _trkStartTime) / 1000);
-  const distKm  = _trkDist / 1000;
-  const avgSpeed = _trkMovingTime > 0 ? distKm / (_trkMovingTime / 3600) : 0;
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const elapsed  = _trkActiveSecs;  // tiempo activo (sin pausas)
+  const distKm   = _trkDist / 1000;
+  const avgSpeed = elapsed > 0 ? distKm / (elapsed / 3600) : 0;
+  const now      = new Date();
+  const dateStr  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
   document.getElementById('trk-modal-name').value =
     `Salida ${now.toLocaleDateString('es', {weekday:'long'})} ${now.toLocaleDateString('es',{day:'numeric',month:'short'})}`;
+  // Pre-rellenar el tipo seleccionado al inicio
+  const typeSelect = document.getElementById('trk-modal-type');
+  if (typeSelect) typeSelect.value = _trkActivityType;
 
   const _avgHrPrev  = _avg(_btData.hrSamples);
   const _avgPowPrev = _avg(_btData.powSamples);

@@ -69,9 +69,12 @@
       #zones-tables { min-width: 500px; }
     }
 
-    /* Header: ocultar texto de botones en pantallas muy pequeñas, solo icono */
+    /* Header en móvil: texto siempre visible, botones compactos */
     @media (max-width: 480px) {
-      .header-actions .btn-label { display: none; }
+      .header-actions { flex-wrap: wrap; gap: 6px; }
+      .header-actions .btn-sm { font-size: 12px; padding: 6px 10px; height: auto; }
+      .header-actions .btn-label { display: inline; }
+      .header-actions .header-select { min-width: 110px; font-size: 12px; }
     }
   </style>
 </head>
