@@ -1493,9 +1493,9 @@
       <!-- Toolbar dibujo (abajo del mapa) -->
       <div class="draw-toolbar" id="draw-toolbar">
         <div class="dt-types">
-          <button class="dt-btn dt-type active" id="dt-type-road"   onclick="setDrawType('road')"   title="Road — asfalto">🚴</button>
-          <button class="dt-btn dt-type"         id="dt-type-gravel" onclick="setDrawType('gravel')" title="Gravel — caminos">🪨</button>
-          <button class="dt-btn dt-type"         id="dt-type-mtb"    onclick="setDrawType('mtb')"    title="MTB — montaña">🏔</button>
+          <button class="dt-btn dt-type active" id="dt-type-road"   onclick="setDrawType('road')"   title="Road — asfalto">🚴 Road</button>
+          <button class="dt-btn dt-type"         id="dt-type-gravel" onclick="setDrawType('gravel')" title="Gravel — caminos"><i class="fas fa-mountain"></i> Gravel</button>
+          <button class="dt-btn dt-type"         id="dt-type-mtb"    onclick="setDrawType('mtb')"    title="MTB — montaña">🚵 MTB</button>
         </div>
         <div class="dt-sep-v"></div>
         <div class="dt-actions">
@@ -2465,7 +2465,8 @@ function _clearArrows() {
 
 function _drawRouteArrows(latLngs, color) {
   _clearArrows();
-  const pts = latLngs.flat ? latLngs.flat() : latLngs;
+  // Si latLngs es array de segmentos [[[lat,lng],...], ...] aplanar un nivel; si ya es [[lat,lng],...] no tocar
+  const pts = Array.isArray(latLngs?.[0]?.[0]) ? latLngs.flat(1) : latLngs;
   if (!pts || pts.length < 2) return;
   // Distribuir ~5 flechas a lo largo de la ruta, evitando inicio y final
   const count = 5;
