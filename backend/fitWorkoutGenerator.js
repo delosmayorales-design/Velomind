@@ -188,10 +188,10 @@ function generateWorkoutFIT(workoutName, steps) {
                   : s.intensity === 3 ? 'cooldown'
                   : s.intensity === 1 ? 'rest'
                   : 'active';
-    // raw watts directos, sin offset ni sort — confirmado por archivo Garmin real
-    // (cooldown tiene lo > hi intencionalmente para representar rampa descendente)
-    const loW = hasPow ? (s.lo || 0) : 0;
-    const hiW = hasPow ? (s.hi || 0) : 0;
+    // FIT protocol: potencia absoluta (W) = valor + 1000. Sin este offset el dispositivo
+    // interpreta los valores como %FTP en lugar de vatios.
+    const loW = hasPow ? (s.lo || 0) + 1000 : 0;
+    const hiW = hasPow ? (s.hi || 0) + 1000 : 0;
 
     w.hdr();
     w.str(toAscii(s.name || 'Paso').slice(0, 15), 16);
