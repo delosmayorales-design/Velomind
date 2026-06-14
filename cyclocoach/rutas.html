@@ -5218,9 +5218,11 @@ function _onTrkPos(pos) {
     const spd = speedKmh != null ? Math.min(speedKmh, calcSpd) : calcSpd;
 
     // ── Auto-pause ─────────────────────────────────────────────
+    // Solo autopausar si la pantalla está visible: evitar que el bloqueo
+    // de pantalla (GPS reporta speed=0 en background) congele la grabación.
     if (spd < 3.0) {
-      _trkPauseCount++;
-      if (_trkPauseCount >= 2 && !_trkPaused) {
+      if (!document.hidden) _trkPauseCount++;
+      if (_trkPauseCount >= 2 && !_trkPaused && !document.hidden) {
         _trkPaused = true;
         document.getElementById('tracking-hud')?.classList.add('paused');
         document.querySelector('.g-rec-dot')?.classList.add('g-paused');
@@ -5608,6 +5610,10 @@ document.addEventListener('DOMContentLoaded', () => setTimeout(_checkAndOfferRes
 // Re-adquirir wake lock y reiniciar GPS si la página vuelve al foco (llamada, cambio de app)
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState !== 'visible' || !_trkActive) return;
+
+  // Resetear contador de autopause: los conteos acumulados mientras la pantalla
+  // estaba bloqueada no deben disparar un pause inmediato al volver.
+  _trkPauseCount = 0;
 
   // Backup inmediato al volver — no esperar al próximo intervalo de 5s
   _saveTrackBackup();
