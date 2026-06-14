@@ -69,12 +69,24 @@
       #zones-tables { min-width: 500px; }
     }
 
-    /* Header en móvil: texto siempre visible, botones compactos */
+    /* Header en móvil: columna para evitar bug de Android con sticky + flex-wrap */
     @media (max-width: 480px) {
-      .header-actions { flex-wrap: wrap; gap: 6px; }
+      .page-header {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        padding: 6px 10px;
+        gap: 4px;
+      }
+      .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: flex-end;
+      }
       .header-actions .btn-sm { font-size: 12px; padding: 6px 10px; height: auto; }
       .header-actions .btn-label { display: inline; }
-      .header-actions .header-select { min-width: 110px; font-size: 12px; }
+      .header-actions .header-select { min-width: 100px; font-size: 12px; flex: 1; max-width: 160px; }
     }
   </style>
 </head>
