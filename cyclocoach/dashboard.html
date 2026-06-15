@@ -1898,13 +1898,11 @@ function renderWeek(plan) {
   monday.setHours(0,0,0,0);
   const sunday = new Date(monday); sunday.setDate(monday.getDate()+6); sunday.setHours(23,59,59,999);
 
-  const CYCLING_TYPES = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide','cycling','Cycling'];
   const activeDays = new Set();
   const weekActs = [];
   (AppState.activities||[]).forEach(a => {
     const d = new Date((a.date||'').slice(0,10)+'T00:00:00');
     if (isNaN(d) || d < monday || d > sunday) return;
-    if (!CYCLING_TYPES.includes(a.sport_type || a.type || '')) return;
     const idx = Math.round((d - monday) / 86400000);
     if (idx >= 0 && idx <= 6) { activeDays.add(idx); weekActs.push(a); }
   });
@@ -2170,9 +2168,7 @@ function renderWeek(plan) {
 function renderLastAct() {
   const el = document.getElementById('last-act-content');
   if (!AppState.activities?.length) return;
-  const CYCLING = ['Ride','VirtualRide','EBikeRide','MountainBikeRide','GravelRide','cycling','Cycling'];
   const sorted = [...AppState.activities]
-    .filter(a => CYCLING.includes(a.sport_type || a.type || ''))
     .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
   const act = sorted[0];
   if (!act) return;
@@ -2200,8 +2196,10 @@ function renderLastAct() {
 function _rebuildDashDescriptions(sessions) {
   if (!window.TrainingPlanGenerator?._buildIntervals || !window.TrainingPlanGenerator?._buildDesc) return;
   const ftp = AppState.athlete?.ftp || 200;
+  const _NON_CYCLING = new Set(['gym', 'running', 'walking']);
   (sessions || []).forEach(s => {
     if (s.isRest || !s.type) return;
+    if (s.isGym || s.isRunning || s.isWalking || s.isOther || _NON_CYCLING.has(s.type)) return;
     const sv    = s.intervalVariant || 'main';
     const svAlt = sv === 'main' ? 'alt' : 'main';
     s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, sv);
