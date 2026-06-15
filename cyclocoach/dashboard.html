@@ -2074,7 +2074,7 @@ function renderWeek(plan) {
   const twoWeeksAgo = new Date(monday); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 7);
   const recentActs = (AppState.activities||[]).filter(a => {
     const d = new Date((a.date||'').slice(0,10)+'T00:00:00');
-    return !isNaN(d) && d >= twoWeeksAgo && CYCLING_TYPES.includes(a.sport_type||a.type||'');
+    return !isNaN(d) && d >= twoWeeksAgo;
   });
   // Sesiones del plan esta semana que ya han pasado y no se hicieron
   const missedPast = missedIdxs.filter(i => i < todayIdx);
