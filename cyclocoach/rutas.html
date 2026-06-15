@@ -4914,6 +4914,8 @@ let _trkGpsLost     = false; // señal GPS perdida
 let _trkGpsRetry    = null;  // timeout para reintentar watchPosition
 let _trkBackupTimer = null;  // intervalo de backup en IndexedDB
 let _trkWakeLock    = null;  // Screen Wake Lock para evitar suspensión
+let _trkBgAudio     = null;  // AudioContext silencioso para evitar suspensión en background (Android)
+let _trkBgPing      = null;  // setInterval de keepalive periódico
 let _trkAltSmooth    = null;  // altitud suavizada (EMA) para evitar saltos de pantalla
 let _trkSegmentId    = 0;     // separa pausas/reconexiones para no dibujar rectas falsas
 let _trkActiveSecs   = 0;     // segundos de tiempo activo (sin contar pausas) — para el display
@@ -5077,20 +5079,34 @@ function _confirmStartTracking() {
 
 function _showTrackScreenWarning() {
   if (document.getElementById('trk-screen-warn')) return;
+  const isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const isAndroid = /Android/i.test(navigator.userAgent);
-  const isPwa = window.matchMedia('(display-mode: standalone)').matches;
-  let hint = '';
-  if (isAndroid && !isPwa) {
-    hint = ' En Android, instala la app (menú ⋮ → "Añadir a pantalla de inicio") para que el GPS siga activo con la pantalla apagada.';
+  const isPwa     = window.matchMedia('(display-mode: standalone)').matches;
+
+  let title = 'Mantén la pantalla encendida';
+  let body  = '';
+  let extra = '';
+
+  if (isIOS && !isPwa) {
+    title = 'iPhone: pantalla apagada corta el GPS';
+    body  = 'Safari suspende la app cuando la pantalla se apaga. <strong>No apagues la pantalla</strong> durante la grabación.';
+    extra = `<div style="margin-top:7px;padding:6px 8px;background:#1a2a00;border-radius:6px;font-size:11px;color:#9ED62B">
+      <strong>Consejo:</strong> Instala VeloMind como app:<br>
+      Safari → <i class="fas fa-arrow-up-from-bracket"></i> Compartir → <strong>Añadir a inicio</strong><br>
+      Así funciona mejor en background.
+    </div>`;
+  } else if (isAndroid && !isPwa) {
+    body  = 'En Android, instala la app (menú ⋮ → "Añadir a pantalla de inicio") para mejor grabación en background.';
   } else {
-    hint = ' Mantén la pantalla encendida manualmente o la grabación puede interrumpirse.';
+    body  = 'Mantén la pantalla encendida para asegurar la grabación continua.';
   }
+
   const banner = document.createElement('div');
   banner.id = 'trk-screen-warn';
   banner.style.cssText = 'position:fixed;bottom:82px;left:50%;transform:translateX(-50%);z-index:8500;background:#2a1800;border:1px solid #f5a623;border-radius:10px;padding:10px 14px;color:#eef2ff;font-size:12px;display:flex;align-items:flex-start;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.6);max-width:340px;width:90%';
   banner.innerHTML = `
-    <i class="fas fa-exclamation-triangle" style="color:#f5a623;font-size:14px;flex-shrink:0;margin-top:2px"></i>
-    <span><strong>Pantalla apagada = GPS cortado.</strong>${hint}</span>
+    <i class="fas fa-exclamation-triangle" style="color:#f5a623;font-size:16px;flex-shrink:0;margin-top:2px"></i>
+    <div style="flex:1"><strong>${title}.</strong> ${body}${extra}</div>
     <button onclick="this.parentElement.remove()" style="background:transparent;border:none;color:#aaa;font-size:18px;line-height:1;cursor:pointer;flex-shrink:0;padding:0 2px;margin-left:4px">×</button>`;
   document.body.appendChild(banner);
 }
@@ -5138,11 +5154,18 @@ function _startTracking() {
       // Backup en IndexedDB cada 5s (reducido para minimizar pérdida si el OS suspende la pestaña)
       _trkBackupTimer = setInterval(_saveTrackBackup, 5000);
 
+      // Keepalive: audio silencioso (Android) + ping periódico (relanza GPS si muere)
+      _startBgAudio();
+      _startBgPing();
+
       // Wake Lock: mantener pantalla activa durante la grabación
+      const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       if ('wakeLock' in navigator) {
         navigator.wakeLock.request('screen').then(wl => {
           _trkWakeLock = wl;
           _trkWakeLock.addEventListener('release', () => { _trkWakeLock = null; });
+          // En iOS mostramos el aviso siempre: el usuario puede pulsar Home o bloquearse la pantalla manualmente
+          if (_isIOS) _showTrackScreenWarning();
         }).catch(e => {
           console.warn('[Track] WakeLock no disponible:', e);
           _showTrackScreenWarning();
@@ -5368,6 +5391,93 @@ function _trkTick() {
   if (iframeDist) iframeDist.textContent = distKm;
 }
 
+// ── Background keepalive: audio silencioso para que el SO no suspenda el proceso ──
+// Android: Web Audio API oscillator (muy efectivo)
+// iOS: elemento <audio> con WAV silencioso generado en JS (mantiene sesión de audio activa)
+function _startBgAudio() {
+  // iOS: audio element con WAV silencioso generado dinámicamente
+  try {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+      // Generar WAV silencioso de 1s como Blob y reproducirlo en bucle
+      const rate = 8000, nSamples = rate;
+      const buf  = new ArrayBuffer(44 + nSamples * 2);
+      const v    = new DataView(buf);
+      const wr   = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+      wr(0,'RIFF'); v.setUint32(4, 36 + nSamples*2, true);
+      wr(8,'WAVE'); wr(12,'fmt '); v.setUint32(16,16,true);
+      v.setUint16(20,1,true); v.setUint16(22,1,true);
+      v.setUint32(24,rate,true); v.setUint32(28,rate*2,true);
+      v.setUint16(32,2,true); v.setUint16(34,16,true);
+      wr(36,'data'); v.setUint32(40,nSamples*2,true);
+      const blob = new Blob([buf], { type:'audio/wav' });
+      const url  = URL.createObjectURL(blob);
+      const el   = document.createElement('audio');
+      el.id = '_trk-bg-audio-el';
+      el.src    = url;
+      el.loop   = true;
+      el.volume = 0.001;   // casi inaudible pero sesión de audio ACTIVA
+      el.playsInline = true;
+      document.body.appendChild(el);
+      el.play().catch(()=>{});
+      _trkBgAudio = { el, url, ctx: null, src: null };
+      return;
+    }
+  } catch(_) {}
+
+  // Android / Chrome: Web Audio API oscillator silencioso
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const src = ctx.createBufferSource();
+    src.buffer = buf; src.loop = true;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.001;
+    src.connect(gain); gain.connect(ctx.destination);
+    src.start(0);
+    _trkBgAudio = { ctx, src, el: null };
+  } catch(e) {
+    console.warn('[Track] bg audio no disponible:', e);
+  }
+}
+
+function _stopBgAudio() {
+  if (_trkBgAudio) {
+    try {
+      if (_trkBgAudio.el) {
+        _trkBgAudio.el.pause();
+        _trkBgAudio.el.remove();
+        if (_trkBgAudio.url) URL.revokeObjectURL(_trkBgAudio.url);
+      }
+      if (_trkBgAudio.src) _trkBgAudio.src.stop();
+      if (_trkBgAudio.ctx) _trkBgAudio.ctx.close();
+    } catch(_) {}
+    _trkBgAudio = null;
+  }
+}
+
+// Ping cada 15s: fuerza un backup y mantiene el GPS activo aunque los timers se throttleen
+function _startBgPing() {
+  if (_trkBgPing) clearInterval(_trkBgPing);
+  _trkBgPing = setInterval(() => {
+    if (!_trkActive || _trkPaused) return;
+    _saveTrackBackup();
+    // Si watchPosition murió, relanzarlo
+    if (_trkWatchId === null) {
+      _trkGpsLost = true;
+      _trkWatchId = navigator.geolocation.watchPosition(_onTrkPos, _onTrkErr, {
+        enableHighAccuracy: true, maximumAge: 0, timeout: 20000,
+      });
+    }
+  }, 15000);
+}
+
+function _stopBgPing() {
+  if (_trkBgPing) { clearInterval(_trkBgPing); _trkBgPing = null; }
+}
+
 function _stopTracking() {
   if (_trkWatchId != null) {
     navigator.geolocation.clearWatch(_trkWatchId);
@@ -5377,8 +5487,11 @@ function _stopTracking() {
   if (_trkBackupTimer) { clearInterval(_trkBackupTimer); _trkBackupTimer = null; }
   clearTimeout(_trkGpsRetry); _trkGpsRetry = null;
   _trkGpsLost = false;
+  _stopBgAudio();
+  _stopBgPing();
   if (_trkWakeLock) { _trkWakeLock.release().catch(()=>{}); _trkWakeLock = null; }
   document.getElementById('trk-gps-lost-lbl')?.remove();
+  document.getElementById('trk-screen-warn')?.remove();
   _trkActive = false;
 
   document.getElementById('tracking-hud').classList.remove('visible');
@@ -5626,11 +5739,20 @@ document.addEventListener('visibilitychange', async () => {
     } catch(_) {}
   }
 
+  // Relanzar audio keepalive si fue suspendido
+  if (!_trkBgAudio) {
+    _startBgAudio();
+  } else if (_trkBgAudio.el) {
+    // iOS: el elemento <audio> puede haberse pausado al ir a background
+    _trkBgAudio.el.play().catch(() => { _stopBgAudio(); _startBgAudio(); });
+  } else if (_trkBgAudio.ctx && _trkBgAudio.ctx.state === 'suspended') {
+    // Android: AudioContext suspendido
+    _trkBgAudio.ctx.resume().catch(() => { _stopBgAudio(); _startBgAudio(); });
+  }
+
   // Reiniciar watchPosition si se perdió durante la interrupción
   if (_trkWatchId === null) {
     clearTimeout(_trkGpsRetry);
-    // Marcar GPS como perdido para que _onTrkPos cree un nuevo segmento
-    // y no dibuje una recta desde la última posición conocida
     _trkGpsLost = true;
     _trkWatchId = navigator.geolocation.watchPosition(_onTrkPos, _onTrkErr, {
       enableHighAccuracy: true,
