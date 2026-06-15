@@ -763,6 +763,12 @@ function saveActivity(activity) {
       activity.if_value = Math.round((activity.avg_hr / lthr) * 100) / 100;
     }
   }
+  // Último recurso: estimación por tipo de deporte y duración (solo actividades manuales)
+  if ((!activity.tss || activity.tss === 0) && activity.duration > 0 && activity.source === 'Manual') {
+    const TSS_PER_HOUR = { walking: 30, running: 60, swimming: 45, climbing: 50, strength: 40, gym: 40 };
+    const perHour = TSS_PER_HOUR[activity.type] || 0;
+    if (perHour) activity.tss = Math.round((activity.duration / 3600) * perHour);
+  }
   if (!activity.id) activity.id = 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
   AppState.saveActivity(activity);
   AppState.pmcData = window.PMC.compute(AppState.activities, 120);

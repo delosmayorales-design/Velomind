@@ -49,8 +49,7 @@ router.post('/', async (req, res) => {
     const a = req.body;
     if (!a.date) return res.status(400).json({ error: 'date es obligatorio' });
 
-    const isMeters = a.source !== 'Manual' && a.source !== 'CSV';
-    const distanceMeters = isMeters ? (Number(a.distance) || 0) : (Number(a.distance) * 1000 || 0);
+    const distanceMeters = Number(a.distance) || 0;
 
     const { data: user } = await supabase.from('users').select('ftp').eq('id', uid).single();
     const ftp = Math.max(1, user?.ftp || 200);
@@ -162,7 +161,7 @@ router.post('/batch', async (req, res) => {
         ifValue = calcIF(a.np, ftp);
         tss     = calcTSS(a.np, a.duration, ftp);
       }
-      const distMeters = (a.source === 'Manual' || a.source === 'CSV') ? (Number(a.distance) * 1000) : (Number(a.distance) || 0);
+      const distMeters = Number(a.distance) || 0;
       rows.push({
         id, user_id: uid, name: a.name || 'Actividad', date: a.date,
         source: a.source || 'Manual', type: a.type || 'cycling',
