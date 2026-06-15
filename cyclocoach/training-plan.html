@@ -1797,7 +1797,8 @@ function _sanitizeCyclingContent(plan) {
         s.tss = Math.round((minD / 60) * Math.pow(ifRef, 2) * 100);
       }
       // Reparar TSS = 0 en sesiones de ciclismo que tienen duración (sin importar tssShare)
-      if (!s.isWalking && !s.isRunning && !s.isGym && !s.isOther) {
+      const _isCycling = !s.isWalking && !s.isRunning && !s.isGym && !s.isOther && !['gym','running','walking'].includes(s.type);
+      if (_isCycling) {
         if (!s.ifTarget) s.ifTarget = DEFAULT_IF_SYNC[s.type] || 0.65;
         const computedTSS = Math.round((s.tssShare || 0) * (plan.targetTSS || 0));
         if ((!s.tss || s.tss === 0) && (computedTSS === 0)) {
@@ -2105,9 +2106,12 @@ function renderPlan(plan, athlete) {
   });
 
   // Reconstruir intervalos con FTP actual para que vatios mostrados sean siempre consistentes
+  // Solo para sesiones de ciclismo — gym/walking/running tienen su propia lógica de display
+  const _NON_CYCLING_TYPES = new Set(['gym', 'running', 'walking']);
   if (window.TrainingPlanGenerator) {
     (plan.sessions || []).forEach(s => {
       if (s.isRest || !s.type) return;
+      if (s.isGym || s.isRunning || s.isWalking || s.isOther || _NON_CYCLING_TYPES.has(s.type)) return;
       const sv    = s.intervalVariant || 'main';
       const svAlt = sv === 'main' ? 'alt' : 'main';
       s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, sv);
@@ -2357,7 +2361,8 @@ function renderPlan(plan, athlete) {
     const durMin = Number.isFinite(sess.durationMin) ? sess.durationMin : (sess.ifTarget ? Math.round(tssVal / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
     let ifVal = sess.ifTarget || 0;
     // Fallback para sesiones de ciclismo que carecen de TSS/IF (datos incompletos del plan)
-    if (!sess.isRest && !sess.isWalking && !sess.isRunning && !sess.isGym && durMin > 0) {
+    const _isCyclingDisp = !sess.isRest && !sess.isWalking && !sess.isRunning && !sess.isGym && !sess.isOther && !['gym','running','walking'].includes(sess.type);
+    if (_isCyclingDisp && durMin > 0) {
       if (!ifVal) ifVal = _DEFAULT_IF_DISP[sess.type] || 0.65;
       if (!tssVal) tssVal = Math.round((durMin / 60) * Math.pow(ifVal, 2) * 100);
     }

@@ -2103,7 +2103,20 @@ REGLAS DE LA APP (IMPORTANTES)
 ════════════════════════════════════
 * ${hoyRegla}
 * LÍMITE DE DÍAS (solo para HOY, índice ${todayIdx}): Si el usuario entrena HOY en un día de descanso, no superes ${totalTrainingDays} días de entrenamiento en total y convierte otro día futuro en descanso. Para días FUTUROS (índice > ${todayIdx}): el usuario puede cambiar un descanso a entrenamiento sin necesidad estricta de compensar, salvo que el total exceda ${totalTrainingDays + 1} días (margen de 1 extra permitido).
-* Mantener tipos válidos: "recovery","endurance","tempo","threshold","vo2max","sprint","long","race","strength"
+* Tipos válidos y su significado EXACTO (no usar otros):
+  - "recovery"  → Recuperación activa en Z1 (45-55% FTP, 90-100 rpm). Rodaje muy suave.
+  - "endurance" → Fondo aeróbico Z2 (56-75% FTP, 85-95 rpm). Esfuerzo aeróbico continuo.
+  - "tempo"     → Tempo Z3 (76-88% FTP, 85-90 rpm). "Comfortably hard".
+  - "threshold" → Umbral FTP Z4 (93-105% FTP, 85-90 rpm). Series al FTP.
+  - "vo2max"    → VO₂Max Z5 (106-120% FTP, 90-100 rpm). Intervalos cortos máximos.
+  - "sprint"    → Sprints neuromusculares (>150% FTP, 110-130+ rpm). 10-30 s máximos.
+  - "long"      → Fondón largo Z1-Z2 (50-70% FTP). >90 min de volumen aeróbico.
+  - "race"      → Activación precompetición (55-65% FTP). Preparación para la carrera.
+  - "strength"  → FUERZA EN BICI a baja cadencia (50-65 rpm, 80-95% FTP) en subidas.
+                  Es trabajo NEUROMUSCULAR EN LA BICICLETA, NO gimnasio ni pesas.
+                  Nombre correcto: "Fuerza — baja cadencia" o "Fuerza específica en subidas".
+                  Consejo correcto: hablar de vatios, cadencia (rpm), colina, torque — NUNCA pesas ni gym.
+* 🚫 PROHIBIDO en name y advice: pesas, gym, sala, mancuerna, sentadilla, peso adecuado, press, dominadas, remo, peso muerto, tren inferior, tren superior, core, reps, series de fuerza muscular. Esta app es de CICLISMO. Toda la terminología es sobre bicicleta.
 
 ════════════════════════════════════
 OUTPUT (JSON EXACTO)
@@ -2115,13 +2128,13 @@ OUTPUT (JSON EXACTO)
       "dayIndex": number,
       "changes": {
         "isRest": boolean,
-        "type": "string",
-        "name": "string",
+        "type": "string (uno de los tipos válidos de arriba)",
+        "name": "string — SOLO terminología ciclista. Ej: 'Fuerza baja cadencia', 'Z2 largo', 'Umbral progresivo'",
         "emoji": "string",
         "durationMin": number,
         "tss": number,
         "ifTarget": number,
-        "advice": "string breve sobre ciclismo (vatios, cadencia, carretera, rodillo). NUNCA menciones running, correr, tierra, rodillas ni nada ajeno al ciclismo."
+        "advice": "string breve sobre ciclismo (vatios, cadencia rpm, carretera, rodillo, subidas). NUNCA menciones gym, pesas, running, correr, tierra, rodillas ni nada ajeno a la bicicleta."
       }
     }
   ]
@@ -2133,6 +2146,9 @@ Si el plan ya es óptimo → devolver "modifications": []`;
     if (!result || !Array.isArray(result.modifications)) return res.status(500).json({ error: 'La IA no devolvió un plan válido.' });
 
     // Aplicar modificaciones respetando los días bloqueados
+    const GYM_RE = /\b(pesas?|gym|sala\s+de|mancuerna|sentadilla|press|dominadas|remo\s+con|peso\s+muerto|tren\s+inferior|tren\s+superior|peso\s+adecuado|reps?|repetici[oó]n|musculaci[oó]n)\b/i;
+    const STRENGTH_NAME_FALLBACK = 'Fuerza específica — baja cadencia';
+    const STRENGTH_ADVICE_FALLBACK = 'Fuerza neuromuscular en bici: sube a 50-65 rpm con 80-95% FTP. Siente cada pedalada. Cadencia baja = torque alto.';
     const newSessions = [...plan.sessions];
     for (const mod of result.modifications) {
       const idx = Number(mod.dayIndex);
@@ -2141,6 +2157,11 @@ Si el plan ya es óptimo → devolver "modifications": []`;
       if (allowed && idx < 7 && mod.changes) {
         // Nunca propagar flags de UI como 'completed' desde la IA
         const { completed: _c, ...safeChanges } = mod.changes;
+        // Sanear lenguaje de gimnasio que la IA puede colar en sesiones de fuerza ciclista
+        if (safeChanges.type === 'strength') {
+          if (!safeChanges.name || GYM_RE.test(safeChanges.name)) safeChanges.name = STRENGTH_NAME_FALLBACK;
+          if (!safeChanges.advice || GYM_RE.test(safeChanges.advice)) safeChanges.advice = STRENGTH_ADVICE_FALLBACK;
+        }
         newSessions[idx] = { ...newSessions[idx], ...safeChanges };
       }
     }
