@@ -1990,6 +1990,7 @@ function renderWeek(plan) {
   // Mapa icono FA + color por tipo de sesión
   const _SI = {
     recovery:  { fa:'fa-bed',              color:'#6B7280' },
+    z2:        { fa:'fa-bicycle',           color:'#3B82F6' },
     endurance: { fa:'fa-bicycle',           color:'#3B82F6' },
     tempo:     { fa:'fa-wind',              color:'#10B981' },
     threshold: { fa:'fa-gauge',             color:'#F59E0B' },
@@ -2004,27 +2005,33 @@ function renderWeek(plan) {
   };
   // Categoría de alto nivel: qué tipo de esfuerzo es el día
   const _CAT = {
-    series:   { bg:'rgba(239,68,68,.13)',  border:'rgba(239,68,68,.4)',  lbl:'Series',   clr:'#EF4444' },
-    rodaje:   { bg:'rgba(59,130,246,.10)', border:'rgba(59,130,246,.3)', lbl:'Rodaje',   clr:'#3B82F6' },
-    gym:      { bg:'rgba(249,115,22,.10)', border:'rgba(249,115,22,.3)', lbl:'Gym',      clr:'#F97316' },
-    walking:  { bg:'rgba(16,185,129,.10)', border:'rgba(16,185,129,.3)', lbl:'Caminata', clr:'#10B981' },
-    running:  { bg:'rgba(239,68,68,.10)',  border:'rgba(239,68,68,.3)',  lbl:'Running',  clr:'#EF4444' },
+    series:     { bg:'rgba(239,68,68,.13)',  border:'rgba(239,68,68,.4)',  lbl:'Series',     clr:'#EF4444' },
+    rodaje:     { bg:'rgba(59,130,246,.10)', border:'rgba(59,130,246,.3)', lbl:'Rodaje',     clr:'#3B82F6' },
+    gym:        { bg:'rgba(249,115,22,.10)', border:'rgba(249,115,22,.3)', lbl:'Gym',        clr:'#F97316' },
+    walking:    { bg:'rgba(16,185,129,.10)', border:'rgba(16,185,129,.3)', lbl:'Caminata',   clr:'#10B981' },
+    running:    { bg:'rgba(239,68,68,.10)',  border:'rgba(239,68,68,.3)',  lbl:'Running',    clr:'#EF4444' },
+    activacion: { bg:'rgba(236,72,153,.10)', border:'rgba(236,72,153,.3)', lbl:'Activación', clr:'#EC4899' },
+    carrera:    { bg:'rgba(236,72,153,.18)', border:'rgba(236,72,153,.6)', lbl:'Carrera',    clr:'#EC4899' },
   };
-  const _RODAJE_TYPES = new Set(['recovery','endurance','long','tempo']);
+  const _RODAJE_TYPES = new Set(['recovery','endurance','long','tempo','z2']);
   function _sessCategory(s) {
     if (s.isRest) return null;
     if (s.isWalking || s.type === 'walking') return 'walking';
     if (s.isRunning || s.type === 'running') return 'running';
+    if (s.type === 'race' || s.isRaceB || s.isRaceA) return 'carrera';
+    if (s.isPreRaceB || s.isPreRace) return 'activacion';
     const nm = (s.name || '').toLowerCase();
     if (s.type === 'gym' || s.isGym) return 'gym';
     if (nm.includes('cuesta') || nm.includes('hill') || nm.includes('subida')) return 'series';
     if (_RODAJE_TYPES.has(s.type)) return 'rodaje';
-    return 'series'; // threshold, vo2max, sprint, race, strength → series
+    return 'series'; // threshold, vo2max, sprint, strength → series
   }
   function _sessIcon(s) {
     if (s.isRest) return { fa: null, color: null };
     if (s.isWalking || s.type === 'walking') return _SI.walking;
     if (s.isRunning || s.type === 'running') return _SI.running;
+    if (s.type === 'race' || s.isRaceB || s.isRaceA) return _SI.race;
+    if (s.isPreRaceB || s.isPreRace) return { fa:'fa-flag-checkered', color:'#EC4899' };
     const nm = (s.name || '').toLowerCase();
     if (nm.includes('cuesta') || nm.includes('hill') || nm.includes('subida') || nm.includes('montaña'))
       return { fa:'fa-mountain', color:'#EF4444' };

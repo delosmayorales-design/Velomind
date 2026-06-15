@@ -499,7 +499,7 @@ const TrainingPlanGenerator = {
     return candidates.reduce((best, e) => e.date > best.date ? e : best).date;
   },
 
-  // Inyecta marcadores de carrera B/C en el array de sesiones de la semana actual
+  // Inyecta marcadores de carrera A/B/C en el array de sesiones de la semana actual
   _injectEventMarkers(sessions, events) {
     if (!events || !events.length) return sessions;
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -509,10 +509,41 @@ const TrainingPlanGenerator = {
     const result = sessions.map(s => ({ ...s }));
 
     for (const ev of events) {
-      if (ev.priority === 'A' || !ev.date) continue;
+      if (!ev.date) continue;
       const evDate = new Date(ev.date + 'T00:00:00');
       const dayIndex = Math.floor((evDate - monday) / 86400000);
       if (dayIndex < 0 || dayIndex > 6) continue;
+
+      // Carrera A: marcar el día aunque ya esté en el plan como 'race' o descanso
+      if (ev.priority === 'A') {
+        // Solo sobreescribir si el slot actual no tiene ya un 'race' del template
+        if (result[dayIndex].type !== 'race') {
+          result[dayIndex] = {
+            ...result[dayIndex], day: DAYS[dayIndex],
+            type: 'race', name: `🏁 ${ev.name || 'Carrera A — Evento Principal'}`,
+            description: 'Tu evento principal. Ejecuta el plan de carrera que has preparado. ¡A darlo todo!',
+            isRaceA: true, isRest: false, durationMin: result[dayIndex].durationMin || 180, targetTSS: null,
+          };
+        } else {
+          // El template ya tiene 'race' en ese día, solo marcar isRaceA
+          result[dayIndex] = { ...result[dayIndex], isRaceA: true };
+        }
+        // Marcar 1-2 días antes como activación (solo si no son descanso ya)
+        for (let pre = 1; pre <= 2; pre++) {
+          const idx = dayIndex - pre;
+          if (idx >= 0 && result[idx] && !result[idx].isRaceB && result[idx].type !== 'race') {
+            result[idx] = {
+              ...result[idx],
+              name: pre === 1 ? 'Activación pre-carrera A' : 'Rodada suave (pre-carrera A)',
+              description: `Sesión ligera previa a ${ev.name || 'la carrera A'}. Volumen mínimo, 4-6 aceleraciones cortas.`,
+              type: 'z2',
+              durationMin: Math.round((result[idx].durationMin || 60) * (pre === 1 ? 0.5 : 0.6)),
+              targetTSS: null, isPreRace: true, isRest: false,
+            };
+          }
+        }
+        continue;
+      }
 
       if (ev.priority === 'B') {
         result[dayIndex] = {
