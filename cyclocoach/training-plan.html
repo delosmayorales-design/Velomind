@@ -3598,6 +3598,29 @@ async function recalculateWeek(idx, isFuture = false) {
     return;
   }
 
+  // ── Detección determinista: "he hecho X minutos" → actualizar solo hoy, sin IA ──
+  const _minMatch = fbNorm.match(/\b(\d{1,3})\s*(?:min(?:utos?)?|')\b/);
+  const _heHecho  = /\b(he hecho|he caminado|he corrido|he rodado|he salido|he entrenado|hecho|camin[aé]|rod[eé]|corr[ií]|sal[ií]|entren[eé]|complet[eé]|termin[eé]|acab[eé]|hice|fueron|ha sido)\b/.test(fbNorm);
+  if (_minMatch && (_heHecho || !fbNorm.includes('no '))) {
+    const newMin = Math.max(10, Math.min(300, parseInt(_minMatch[1])));
+    const sess = currentPlan.sessions[idx];
+    if (sess && !sess.isRest) {
+      sess.durationMin  = newMin;
+      sess.completed    = true;
+      sess.feedback     = feedback;
+      // Recalcular TSS proporcional al tiempo (si el plan tenía tss y durationMin previos)
+      const prevMin = (sess._origDurationMin || sess.durationMin);
+      if (!sess._origDurationMin) sess._origDurationMin = prevMin;
+      if (sess.tss && prevMin > 0) sess.tss = Math.round(sess.tss * (newMin / prevMin));
+      renderPlan(currentPlan, AppState.athlete);
+      silentSavePlan();
+      if (result) { result.innerHTML = `<span style="color:#10b981"><i class="fas fa-check-circle"></i> Sesión actualizada a ${newMin} min. El resto del plan no cambia.</span>`; result.style.display = ''; }
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-wand-magic-sparkles" style="font-size:10px"></i> Adaptar';
+      return;
+    }
+  }
+
   btn.disabled = true;
   btn.innerHTML = isFuture ? '<i class="fas fa-spinner fa-spin"></i> Adaptando plan...' : '<i class="fas fa-spinner fa-spin"></i> Recalculando semana...';
   result.style.display = 'none';
@@ -4659,6 +4682,7 @@ function clearEventDate() {
   if (adjEvt) adjEvt.value = '';
   localStorage.removeItem('cyclocoach_plan_snapshot');
   localStorage.removeItem('cyclocoach_training_plan');
+  localStorage.removeItem('cyclocoach_plan_original');
   generatePlan();
   silentSavePlan();
   showToast('✅ Fecha de evento eliminada. Plan recalculado.', 'var(--accent-green)');
@@ -4689,14 +4713,35 @@ function swapDays(idx1, idx2) {
 }
 
 function regeneratePlan() {
-  // Siempre generar plan desde cero con los datos actuales de forma/fatiga.
-  // Preservar solo los estados "completado" de las sesiones actuales.
-  const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
+  // Si existe un plan original guardado, restaurarlo exactamente (preservando completados)
+  const originalRaw = localStorage.getItem('cyclocoach_plan_original');
+  if (originalRaw) {
+    try {
+      const original = JSON.parse(originalRaw);
+      const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
+      currentPlan = {
+        sessions:  original.sessions,
+        phase:     original.phase,
+        targetTSS: original.tss_target,
+        advice:    original.advice || {},
+        adaptation: null,
+      };
+      // Restaurar estados completados
+      currentPlan.sessions.forEach((s, i) => {
+        if (prevCompleted[i]) s.completed = true;
+      });
+      localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...original, savedAt: Date.now() }));
+      renderPlan(currentPlan, AppState.athlete);
+      silentSavePlan();
+      showToast('✅ Plan restaurado al original', 'var(--accent-green)');
+      return;
+    } catch(e) { /* fallback a regenerar */ }
+  }
 
-  // Limpiar snapshots cacheados para que el nuevo plan se guarde correctamente
+  // Sin original guardado: generar desde cero (primera vez o tras borrar evento)
+  const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
   localStorage.removeItem('cyclocoach_plan_snapshot');
   localStorage.removeItem('cyclocoach_training_plan');
-
   generatePlan();
   if (currentPlan?.sessions && prevCompleted.length) {
     let anyChange = false;
@@ -4780,6 +4825,7 @@ async function applyAdjustments() {
     };
   }
 
+  localStorage.removeItem('cyclocoach_plan_original'); // nuevo plan = nuevo original
   generatePlan();
   renderAthleteSidebar();
   silentSavePlan();
@@ -4938,6 +4984,10 @@ async function savePlan() {
     const withMeta = JSON.stringify({ ...planData, savedAt: Date.now() });
     localStorage.setItem('cyclocoach_training_plan', withMeta);
     localStorage.setItem('cyclocoach_plan_snapshot', withMeta);
+    // Guardar original SOLO si no existe aún (permite "Regenerar" volver al plan base)
+    if (!localStorage.getItem('cyclocoach_plan_original')) {
+      localStorage.setItem('cyclocoach_plan_original', withMeta);
+    }
 
     // Guardar en Supabase (persistencia permanente)
     const r = await fetch(`${window.API_URL}/plans/training`, {
