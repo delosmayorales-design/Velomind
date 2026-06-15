@@ -763,11 +763,28 @@ function saveActivity(activity) {
       activity.if_value = Math.round((activity.avg_hr / lthr) * 100) / 100;
     }
   }
-  // Último recurso: estimación por tipo de deporte y duración (solo actividades manuales)
+  // Último recurso: estimación por tipo y duración (solo actividades manuales)
   if ((!activity.tss || activity.tss === 0) && activity.duration > 0 && activity.source === 'Manual') {
-    const TSS_PER_HOUR = { walking: 30, running: 60, swimming: 45, climbing: 50, strength: 40, gym: 40 };
-    const perHour = TSS_PER_HOUR[activity.type] || 0;
-    if (perHour) activity.tss = Math.round((activity.duration / 3600) * perHour);
+    const durationH = activity.duration / 3600;
+    const weight = Math.max(40, Number(AppState.athlete?.weight) || 70);
+
+    if (activity.type === 'walking' && activity.distance > 0) {
+      // Caminata: TSS basado en MET × peso × duración (fórmula ACSM simplificada)
+      // MET ≈ 0.5 × velocidad_km/h + 2.0 (válido 3-8 km/h)
+      const speedKmh = (activity.distance / 1000) / durationH;
+      const MET = Math.min(8, Math.max(2.0, 0.5 * speedKmh + 2.0));
+      // K = 0.10 calibra kcal → TSS (caminar 1h moderado ~3.5 MET, 70kg → ~24 TSS)
+      activity.tss = Math.round(MET * weight * durationH * 0.10);
+    } else if (activity.type === 'running' && activity.distance > 0) {
+      // Running: MET basado en velocidad (fórmula ACSM)
+      const speedKmh = (activity.distance / 1000) / durationH;
+      const MET = Math.min(16, Math.max(6, 0.9 * speedKmh + 0.5));
+      activity.tss = Math.round(MET * weight * durationH * 0.08);
+    } else {
+      const TSS_PER_HOUR = { swimming: 45, climbing: 50, strength: 40, gym: 40 };
+      const perHour = TSS_PER_HOUR[activity.type] || 0;
+      if (perHour) activity.tss = Math.round(durationH * perHour);
+    }
   }
   if (!activity.id) activity.id = 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
   AppState.saveActivity(activity);
@@ -862,6 +879,11 @@ function generateCoachComment(act, pmcSnap, allActs) {
   const vi     = (act.np && act.avg_power) ? act.np / act.avg_power : null;
   const ctl    = typeof pmcSnap?.ctl === 'number' ? Math.round(pmcSnap.ctl) : null;
   const tsb    = typeof pmcSnap?.tsb === 'number' ? Math.round(pmcSnap.tsb) : null;
+  const actType = (act.type || 'cycling').toLowerCase();
+  const isWalking = actType === 'walking';
+  const isRunning = actType === 'running';
+  const isGym     = actType === 'strength' || actType === 'gym';
+  const distKm    = act.distance ? Math.round(act.distance / 100) / 10 : null;
 
   // ── Buscar sesión planificada para el día de la actividad ─────
   const _actDate   = String(act.date || '').substring(0, 10);
@@ -882,8 +904,10 @@ function generateCoachComment(act, pmcSnap, allActs) {
 
     if (planSess.isRest) {
       // Día de descanso en el plan
-      if (tss <= 30) {
-        parts.push(`Día de descanso en el plan y has rodado suave (${tss} TSS) — bien jugado, mueves las piernas sin acumular fatiga.`);
+      if (isWalking && tss <= 30) {
+        parts.push(`Día de descanso en el plan y has salido a caminar${distKm ? ' ('+distKm+' km)' : ''} — perfecta recuperación activa sin acumular fatiga.`);
+      } else if (tss <= 30) {
+        parts.push(`Día de descanso en el plan y has movido el cuerpo suave (${tss} TSS) — bien jugado, recuperas sin perder activación.`);
       } else {
         parts.push(`El plan pedía descanso hoy pero has entrenado con ${tss} TSS. Si el cuerpo lo pedía, vale — pero mañana asegúrate de recuperar de verdad.`);
       }
@@ -963,13 +987,29 @@ function generateCoachComment(act, pmcSnap, allActs) {
     if (!prevActs.length) {
       parts.push(`Primera actividad registrada en VeloMind — ya tienes algo con lo que construir.`);
     } else if (daysSince !== null && daysSince >= 4) {
-      parts.push(ifVal && ifVal >= 0.70
-        ? `Vuelta al trabajo después de ${daysSince} días, y has metido calidad directamente (IF ${ifVal.toFixed(2)}) — el cuerpo estaba listo.`
-        : `Primer día de vuelta tras ${daysSince} días de descanso: ${durMin} minutos controlados, exactamente lo que toca al volver.`);
+      if (isWalking) {
+        parts.push(`Vuelta al movimiento después de ${daysSince} días: ${durMin} minutos de caminata${distKm ? ' ('+distKm+' km)' : ''} — perfecta para reactivar sin sobrecargar.`);
+      } else if (isRunning) {
+        parts.push(`Vuelta al running después de ${daysSince} días: ${durMin} minutos${distKm ? ' y '+distKm+' km' : ''} — buena forma de retomar el ritmo progresivamente.`);
+      } else {
+        parts.push(ifVal && ifVal >= 0.70
+          ? `Vuelta al trabajo después de ${daysSince} días, y has metido calidad directamente (IF ${ifVal.toFixed(2)}) — el cuerpo estaba listo.`
+          : `Primer día de vuelta tras ${daysSince} días de descanso: ${durMin} minutos controlados, exactamente lo que toca al volver.`);
+      }
     } else if (tsb !== null && tsb < -20) {
       parts.push(`Sesión con fatiga acumulada alta (TSB ${tsb}) — esto es construir de verdad, aunque el cuerpo lo note.`);
     } else if (tss >= 100) {
       parts.push(`Día grande con ${tss} TSS en ${durMin} minutos — una de las cargas más altas del registro.`);
+    } else if (isWalking) {
+      parts.push(distKm
+        ? `Caminata de ${durMin} min y ${distKm} km — descanso activo que mantiene la circulación, acelera la recuperación muscular y suma al volumen semanal.`
+        : `Caminata de ${durMin} minutos — descanso activo que mantiene la circulación y acelera la recuperación.`);
+    } else if (isRunning) {
+      parts.push(distKm
+        ? `Running de ${durMin} min y ${distKm} km — complemento cardiovascular que refuerza la base aeróbica.`
+        : `Sesión de running de ${durMin} minutos — complemento cardiovascular sólido.`);
+    } else if (isGym) {
+      parts.push(`Sesión de fuerza de ${durMin} minutos — trabajo de prevención y potencia que se traduce en más vatios sobre la bici a largo plazo.`);
     } else if (ifVal && ifVal >= 0.78) {
       parts.push(`Trabajo de calidad con IF ${ifVal.toFixed(2)} durante ${durMin} minutos — zona de umbral, el tipo de estímulo que mueve el FTP.`);
     } else if (ifVal && ifVal >= 0.65) {
