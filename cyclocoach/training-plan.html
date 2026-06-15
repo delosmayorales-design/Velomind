@@ -1785,6 +1785,7 @@ function _sanitizeCyclingContent(plan) {
     strength:  '⛰️ Subida larga con cadencia baja para trabajo de fuerza.',
   };
   const MIN_DUR = { long: 90, endurance: 45, threshold: 40, vo2max: 35, tempo: 40, sweet_spot: 40, sprint: 30, recovery: 20 };
+  const DEFAULT_IF_SYNC = { z2: 0.62, long: 0.60, endurance: 0.65, recovery: 0.52, tempo: 0.82, threshold: 0.95, sweet_spot: 0.90, vo2max: 1.05, sprint: 0.90, strength: 0.80 };
   plan.sessions.forEach(s => {
     if (!s) return;
     // Reparar duración mínima y recalcular TSS para planes guardados con valores incorrectos
@@ -1792,10 +1793,16 @@ function _sanitizeCyclingContent(plan) {
       const minD = MIN_DUR[s.type] || 20;
       if (s.durationMin < minD) {
         s.durationMin = minD;
-        // IF de referencia por tipo cuando no está guardado en el plan
-        const DEFAULT_IF = { long: 0.60, endurance: 0.65, recovery: 0.52, tempo: 0.82, threshold: 0.95, sweet_spot: 0.90, vo2max: 1.05, sprint: 0.90, strength: 0.80 };
-        const ifRef = s.ifTarget || DEFAULT_IF[s.type] || 0.65;
+        const ifRef = s.ifTarget || DEFAULT_IF_SYNC[s.type] || 0.65;
         s.tss = Math.round((minD / 60) * Math.pow(ifRef, 2) * 100);
+      }
+      // Reparar TSS = 0 en sesiones de ciclismo que tienen duración (sin importar tssShare)
+      if (!s.isWalking && !s.isRunning && !s.isGym && !s.isOther) {
+        if (!s.ifTarget) s.ifTarget = DEFAULT_IF_SYNC[s.type] || 0.65;
+        const computedTSS = Math.round((s.tssShare || 0) * (plan.targetTSS || 0));
+        if ((!s.tss || s.tss === 0) && (computedTSS === 0)) {
+          s.tss = Math.round((s.durationMin / 60) * Math.pow(s.ifTarget, 2) * 100);
+        }
       }
     }
     // Limpiar terrain con lenguaje de running
@@ -2345,10 +2352,16 @@ function renderPlan(plan, athlete) {
     };
     const sessionStructureTitle = 'Estructura detallada de la sesión';
     const color  = typeColors[sess.type] || 'var(--text-secondary)';
-    const tssVal = Math.round((sess.tssShare || 0) * plan.targetTSS) || (Number.isFinite(sess.tss) ? sess.tss : 0);
+    const _DEFAULT_IF_DISP = { z2: 0.62, long: 0.60, endurance: 0.65, recovery: 0.52, tempo: 0.82, threshold: 0.95, sweet_spot: 0.90, vo2max: 1.05, sprint: 0.90, strength: 0.80 };
+    let tssVal = Math.round((sess.tssShare || 0) * (plan.targetTSS || 0)) || (Number.isFinite(sess.tss) ? sess.tss : 0);
     const durMin = Number.isFinite(sess.durationMin) ? sess.durationMin : (sess.ifTarget ? Math.round(tssVal / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
-    const targetWatts = sess.ifTarget ? Math.round(ftp * sess.ifTarget) : (Number.isFinite(sess.targetWatts) ? sess.targetWatts : null);
-    const ifVal = sess.ifTarget || 0;
+    let ifVal = sess.ifTarget || 0;
+    // Fallback para sesiones de ciclismo que carecen de TSS/IF (datos incompletos del plan)
+    if (!sess.isRest && !sess.isWalking && !sess.isRunning && !sess.isGym && durMin > 0) {
+      if (!ifVal) ifVal = _DEFAULT_IF_DISP[sess.type] || 0.65;
+      if (!tssVal) tssVal = Math.round((durMin / 60) * Math.pow(ifVal, 2) * 100);
+    }
+    const targetWatts = ifVal ? Math.round(ftp * ifVal) : (Number.isFinite(sess.targetWatts) ? sess.targetWatts : null);
     const _cardMainIv = _findMainInterval(sess.intervals);
     const _cardWatts = targetWatts;
 
