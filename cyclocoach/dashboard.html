@@ -1513,6 +1513,40 @@ function getClothing(temp, wind, precip, code, sess) {
     return items;
   }
 
+  // Sesión de caminata: ropa casual/outdoor, no de ciclismo
+  if (sess?.isWalking) {
+    const wc = temp - (wind > 20 ? (wind-20)*0.3 : 0);
+    const items = [];
+    if      (wc < 5)  items.push('🧥 Chaqueta térmica + camiseta interior');
+    else if (wc < 12) items.push('🧥 Forro polar o chaqueta ligera');
+    else if (wc < 18) items.push('👕 Camiseta técnica + cortavientos');
+    else              items.push('👕 Camiseta técnica transpirable');
+    if (wc < 10)      items.push('👖 Mallas o pantalón de trekking largo');
+    else              items.push('🩳 Pantalón corto o mallas ligeras');
+    items.push('👟 Zapatillas de running o trekking');
+    if (wc < 8)       items.push('🧤 Guantes ligeros');
+    if (wc < 6)       items.push('🎿 Gorro o buff');
+    if (isRain)       items.push('🌧️ Chubasquero o impermeable ligero');
+    return items;
+  }
+
+  // Sesión de running: ropa de running, no de ciclismo
+  if (sess?.isRunning) {
+    const wc = temp - (wind > 20 ? (wind-20)*0.3 : 0);
+    const items = [];
+    if      (wc < 5)  items.push('🧥 Camiseta térmica + chaqueta de running');
+    else if (wc < 12) items.push('👕 Camiseta manga larga técnica');
+    else if (wc < 18) items.push('👕 Camiseta manga corta + cortavientos');
+    else              items.push('👕 Camiseta de running manga corta');
+    if (wc < 10)      items.push('🩲 Mallas largas de running');
+    else              items.push('🩳 Short de running');
+    items.push('👟 Zapatillas de running');
+    if (wc < 8)       items.push('🧤 Guantes finos de running');
+    if (wc < 6)       items.push('🎿 Gorro o buff');
+    if (isRain)       items.push('🌧️ Cortavientos impermeable ligero');
+    return items;
+  }
+
   const wc = temp - (wind > 20 ? (wind-20)*0.3 : 0);
   const items = [];
   if      (wc < 5)  items.push('🧥 Maillot térmico + camiseta interior');
@@ -1541,6 +1575,37 @@ function getRouteRec(code, wind, precip, temp, sess) {
     if (isHot)
       return { icon:'🏋️', type:'Gimnasio — climatizado', color:'#F97316', msg:`${temp}°C fuera. El gym climatizado es la mejor opción para el trabajo de fuerza de hoy.` };
     return { icon:'🏋️', type:'Gimnasio', color:'#F97316', msg:'Sesión de fuerza y movilidad. Calienta bien antes de cargar y termina con 10 min de estiramientos.' };
+  }
+
+  // Sesión de caminata: zona de paseo, no ruta ciclista
+  if (sess?.isWalking) {
+    const isRain = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
+    const isHot  = temp > 28;
+    const cold   = temp < 2;
+    if (cold)
+      return { icon:'🏠', type:'Caminata en interior', color:'#10B981', msg:`${temp}°C — muy frío para caminar fuera. Centro comercial, galería cubierta o aplaza la caminata.` };
+    if (isRain)
+      return { icon:'🌧️', type:'Caminata corta', color:'#10B981', msg:'Lluvia hoy. Si salís, llevad chubasquero y reducid el tiempo. Un parque cubierto o zona urbana protegida es buena opción.' };
+    if (isHot)
+      return { icon:'🌳', type:'Zona con sombra', color:'#10B981', msg:`${temp}°C — sal temprano o al atardecer. Busca parques arbolados o zonas con sombra. Hidratación clave.` };
+    return { icon:'🚶', type:'Parque o sendero', color:'#10B981', msg:'Condiciones ideales para caminar. Un parque, sendero o zona verde te aportará descanso activo de calidad.' };
+  }
+
+  // Sesión de running: ruta de carrera, no ciclista
+  if (sess?.isRunning) {
+    const isRain  = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
+    const isHeavy = [65,82,95,96,99].includes(code) || precip > 2;
+    const isHot   = temp > 28;
+    const cold    = temp < 2;
+    if (cold)
+      return { icon:'🏠', type:'Cinta — interior', color:'#EF4444', msg:`${temp}°C — demasiado frío para running al aire libre. Cinta de correr o aplaza la sesión.` };
+    if (isHeavy)
+      return { icon:'🏠', type:'Cinta — interior', color:'#EF4444', msg:'Lluvia fuerte. La cinta es la opción más segura para no perder el entrenamiento.' };
+    if (isHot)
+      return { icon:'🌅', type:'Running temprano', color:'#EF4444', msg:`${temp}°C — sal antes de las 9h o después de las 19h. Evita el sol directo y lleva agua.` };
+    if (isRain)
+      return { icon:'🏃', type:'Running urbano', color:'#EF4444', msg:'Lluvia ligera. Ropa impermeable y rutas sin barro. El asfalto es tu aliado hoy.' };
+    return { icon:'🏃', type:'Running al aire libre', color:'#EF4444', msg:'Buenas condiciones para correr. Calienta 5 min caminando y termina con estiramientos.' };
   }
 
   const isRain   = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code) || precip > 0.5;
@@ -1729,7 +1794,11 @@ function _renderWeather(el, data) {
   const sess   = dashPlan?.sessions?.[todayIdx];
   const rec    = getRouteRec(code, wind, prec, temp, sess);
   const clothes = getClothing(temp, wind, prec, code, sess);
-  const isGymDay = !!sess?.isGym;
+  const isGymDay     = !!sess?.isGym;
+  const isWalkingDay = !!sess?.isWalking;
+  const isRunningDay = !!sess?.isRunning;
+  const recLabel   = isGymDay ? 'Sesión de hoy' : (isWalkingDay || isRunningDay) ? 'Zona recomendada' : 'Ruta recomendada';
+  const clothLabel = isGymDay ? 'Ropa de gimnasio' : (isWalkingDay ? 'Ropa para caminar' : isRunningDay ? 'Ropa de running' : 'Ropa para hoy');
   el.innerHTML = `
     <div class="wx-main">
       <div class="wx-icon" style="background:${wx.c}18;color:${wx.c}">
@@ -1745,12 +1814,12 @@ function _renderWeather(el, data) {
       <div class="wx-stat"><i class="fas fa-tint" style="color:#38bdf8"></i> ${prec.toFixed(1)} mm</div>
     </div>
     <div class="rec-box" style="border-color:${rec.color}35;background:${rec.color}0a;margin-bottom:10px">
-      <div class="rec-box-label" style="color:${rec.color}">${isGymDay ? 'Sesión de hoy' : 'Ruta recomendada'}</div>
+      <div class="rec-box-label" style="color:${rec.color}">${recLabel}</div>
       <div class="rec-box-title">${rec.icon} ${rec.type}</div>
       <div class="rec-box-desc">${rec.msg}</div>
     </div>
     <div class="clothes-box">
-      <div class="clothes-label">${isGymDay ? 'Ropa de gimnasio' : 'Ropa para hoy'}</div>
+      <div class="clothes-label">${clothLabel}</div>
       <div class="clothes-items">
         ${clothes.map(i => `<div class="clothes-item">${i}</div>`).join('')}
       </div>
