@@ -2213,7 +2213,9 @@ async function loadPlan() {
   const currentWeekStart = getMondayString();
   try {
     const local = JSON.parse(localStorage.getItem('cyclocoach_training_plan')||'{}');
-    if (local?.sessions && local.week_start === currentWeekStart) {
+    // Normalizar week_start: puede ser timestamp completo de Supabase ('2026-06-15T00:00:00+00:00')
+    const localWeekStart = (local?.week_start || '').slice(0, 10);
+    if (local?.sessions && (!localWeekStart || localWeekStart === currentWeekStart)) {
       dashPlan = { sessions:local.sessions, phase:local.phase, targetTSS:local.tss_target, advice:local.advice||{} };
       _rebuildDashDescriptions(dashPlan.sessions);
       renderToday(dashPlan, AppState.athlete);
@@ -2224,11 +2226,12 @@ async function loadPlan() {
   } catch {}
   try {
     const data = await fetch(`${window.API_URL}/plans/training`, { headers: Auth.getHeaders() }).then(r=>r.json());
-    if (data?.sessions && data.week_start === currentWeekStart) {
+    const remoteWeekStart = (data?.week_start || '').slice(0, 10);
+    if (data?.sessions && remoteWeekStart === currentWeekStart) {
       if (dashPlan?.sessions) data.sessions.forEach((s,i)=>{ if (dashPlan.sessions[i]?.completed) s.completed=true; if (dashPlan.sessions[i]?.manuallyUnmarked) s.manuallyUnmarked=true; });
       dashPlan = { sessions:data.sessions, phase:data.phase, targetTSS:data.tss_target, advice:data.advice||{} };
       _rebuildDashDescriptions(dashPlan.sessions);
-      localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ week_start:data.week_start||getMondayString(), sessions:data.sessions, tss_target:data.tss_target, phase:data.phase, advice:data.advice, savedAt:Date.now() }));
+      localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ week_start:remoteWeekStart||currentWeekStart, sessions:data.sessions, tss_target:data.tss_target, phase:data.phase, advice:data.advice, savedAt:Date.now() }));
       renderToday(dashPlan, AppState.athlete);
       renderWeek(dashPlan);
       renderHero(AppState.athlete, AppState.pmcData?.length ? AppState.getCurrentMetrics() : null, dashPlan);
