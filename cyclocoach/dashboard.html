@@ -1059,20 +1059,34 @@ const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
 /* Mapeo de tipo de sesión → icono FA + color */
 const SESSION_FA = {
-  z2:        { icon: 'fa-bicycle',      color: '#3B82F6' },
-  endurance: { icon: 'fa-bicycle',      color: '#3B82F6' },
-  long:      { icon: 'fa-route',        color: '#8B5CF6' },
-  tempo:     { icon: 'fa-fire',         color: '#F59E0B' },
-  threshold: { icon: 'fa-fire',         color: '#F59E0B' },
-  vo2max:    { icon: 'fa-bolt',         color: '#EF4444' },
-  sprint:    { icon: 'fa-forward-fast', color: '#EF4444' },
-  recovery:  { icon: 'fa-heart-pulse',  color: '#10B981' },
-  rest:      { icon: 'fa-bed',          color: '#6B7280' },
-  gym:       { icon: 'fa-dumbbell',     color: '#F97316' },
-  default:   { icon: 'fa-bicycle',      color: '#9ED62B' },
+  z2:        { icon: 'fa-bicycle',           color: '#3B82F6' },
+  endurance: { icon: 'fa-bicycle',           color: '#3B82F6' },
+  long:      { icon: 'fa-route',             color: '#8B5CF6' },
+  tempo:     { icon: 'fa-fire',              color: '#F59E0B' },
+  threshold: { icon: 'fa-fire',              color: '#F59E0B' },
+  vo2max:    { icon: 'fa-bolt',              color: '#EF4444' },
+  sprint:    { icon: 'fa-forward-fast',      color: '#EF4444' },
+  recovery:  { icon: 'fa-heart-pulse',       color: '#10B981' },
+  strength:  { icon: 'fa-bicycle',           color: '#A855F7' },
+  rest:      { icon: 'fa-bed',               color: '#6B7280' },
+  gym:       { icon: 'fa-dumbbell',          color: '#F97316' },
+  running:   { icon: 'fa-person-running',    color: '#EF4444' },
+  walking:   { icon: 'fa-person-walking',    color: '#10B981' },
+  race:      { icon: 'fa-flag-checkered',    color: '#EC4899' },
+  default:   { icon: 'fa-bicycle',           color: '#9ED62B' },
 };
-function sessFA(type) {
-  const k = Object.keys(SESSION_FA).find(k => (type||'').toLowerCase().includes(k)) || 'default';
+function sessFA(sess) {
+  // Chequear flags primero para mayor precisión
+  if (!sess) return SESSION_FA.default;
+  if (typeof sess === 'string') {
+    const k = Object.keys(SESSION_FA).find(k => sess.toLowerCase().includes(k)) || 'default';
+    return SESSION_FA[k];
+  }
+  if (sess.isWalking || sess.type === 'walking') return SESSION_FA.walking;
+  if (sess.isRunning || sess.type === 'running') return SESSION_FA.running;
+  if (sess.isGym    || sess.type === 'gym')     return SESSION_FA.gym;
+  if (sess.isRaceA || sess.isRaceB || sess.type === 'race') return SESSION_FA.race;
+  const k = Object.keys(SESSION_FA).find(k => (sess.type||'').toLowerCase().includes(k)) || 'default';
   return SESSION_FA[k];
 }
 
@@ -1125,7 +1139,7 @@ function renderHero(athlete, metrics, plan) {
     chips.push('<i class="fas fa-bed" style="color:#9ca3af"></i> Día de descanso');
   } else if (sess && !sess.isRest) {
     const wt   = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || {};
-    const fa   = sessFA(sess.type);
+    const fa   = sessFA(sess);
     chips.push(`<i class="fas ${fa.icon}" style="color:${fa.color}"></i> ${sess.name || wt.label || 'Sesión de hoy'}`);
   }
 
