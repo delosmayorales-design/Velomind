@@ -2384,6 +2384,24 @@ async function _renderLastActMapElev(act) {
       }
     }
 
+    // Si no hay mapa todavía (sin polyline en caché), crearlo desde streams
+    if (s.latlng?.length >= 2 && !_dashMap && window.L) {
+      const initType = _dashMapType || 'sat';
+      const initTile = _DASH_TILES[initType];
+      _dashMap = L.map(mapEl, {
+        zoomControl: false, attributionControl: false,
+        scrollWheelZoom: false, dragging: false, tap: false
+      });
+      _dashTileLayer = L.tileLayer(initTile.url, { ...initTile.opts, attribution: '' }).addTo(_dashMap);
+      _dashTrack = L.polyline(s.latlng, { color: LIME, weight: 3, opacity: 0.9 }).addTo(_dashMap);
+      L.circleMarker(s.latlng[0],                  { radius: 5, color: '#fff', weight: 1.5, fillColor: '#10b981', fillOpacity: 1 }).addTo(_dashMap);
+      L.circleMarker(s.latlng[s.latlng.length - 1],{ radius: 5, color: '#fff', weight: 1.5, fillColor: '#ef4444', fillOpacity: 1 }).addTo(_dashMap);
+      setTimeout(() => {
+        _dashMap.invalidateSize();
+        _dashMap.fitBounds(_dashTrack.getBounds(), { padding: [16, 16] });
+      }, 0);
+    }
+
     // Animación playback
     if (s.latlng?.length >= 2 && s.time?.length >= 2 && _dashMap) {
       _dashStreams = s;
