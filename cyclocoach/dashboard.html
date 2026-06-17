@@ -2193,7 +2193,7 @@ let _dashAnimPlaying = false;
 let _dashAnimOffset = 0;
 let _dashAnimT0 = null;
 let _dashStreams = null;
-const _DASH_SPEED = 50; // 50× velocidad real
+const _DASH_SPEED = 100; // 100× velocidad real
 
 function _dashDecodePolyline(enc) {
   const pts = [];
@@ -2375,7 +2375,7 @@ async function _renderLastActMapElev(act) {
           const btn = L.DomUtil.create('button');
           btn.id = 'dash-play-btn';
           btn.innerHTML = '<i class="fas fa-play"></i>';
-          btn.style.cssText = 'width:52px;height:52px;border-radius:50%;background:#AAFF00;color:#000;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;box-shadow:0 3px 12px rgba(0,0,0,0.7);outline:none;margin:8px';
+          btn.style.cssText = 'width:64px;height:64px;border-radius:50%;background:#AAFF00;color:#000;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;box-shadow:0 4px 16px rgba(0,0,0,0.8);outline:none;margin:8px';
           L.DomEvent.disableClickPropagation(btn);
           L.DomEvent.on(btn, 'click', _dashToggleAnim);
           return btn;
