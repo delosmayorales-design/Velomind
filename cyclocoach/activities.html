@@ -1698,14 +1698,7 @@ function renderStreamCharts(s, ftp, act) {
   // ── Crosshair sync + selección estilo Garmin Connect ────────────────
   const streamKeys = ['streamWatts','streamHR','streamSpeed','streamElev','streamCadence'];
 
-  function _setAllTooltips(enabled) {
-    streamKeys.forEach(k => {
-      const c = chartInsts[k];
-      if (!c) return;
-      c.options.plugins.tooltip.enabled = enabled;
-      c.update('none');
-    });
-  }
+  function _setAllTooltips(_enabled) { /* tooltip desactivado permanentemente */ }
 
   streamKeys.forEach(key => {
     const chart = chartInsts[key];
