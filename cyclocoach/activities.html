@@ -495,11 +495,26 @@ function _showIntervalStats() {
   const i1 = Math.max(0, Math.min(Math.round(_selA * step), origLen - 1));
   const i2 = Math.max(0, Math.min(Math.round(_selB * step), origLen - 1));
   const sl = arr => arr ? arr.slice(i1, i2 + 1) : [];
-  const tSl = sl(s.time), wSl = sl(s.watts);
 
-  const dur  = tSl.length >= 2 ? tSl[tSl.length - 1] - tSl[0] : 0;
-  const avgW = wSl.length ? Math.round(wSl.reduce((a, b) => a + b, 0) / wSl.length) : null;
-  const maxW = wSl.length ? Math.max(...wSl) : null;
+  const tSl   = sl(s.time);
+  const wSl   = sl(s.watts);
+  const hrSl  = sl(s.heartrate);
+  const spdSl = sl(s.velocity_smooth);
+  const cadSl = sl(s.cadence);
+  const altSl = sl(s.altitude);
+
+  const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+
+  const dur    = tSl.length >= 2 ? tSl[tSl.length - 1] - tSl[0] : 0;
+  const avgW   = wSl.length   ? Math.round(avg(wSl))   : null;
+  const avgHR  = hrSl.length  ? Math.round(avg(hrSl))  : null;
+  const avgSpd = spdSl.length ? Math.round(avg(spdSl) * 3.6 * 10) / 10 : null;
+  const cadNZ  = cadSl.filter(v => v > 0);
+  const avgCad = cadNZ.length ? Math.round(avg(cadNZ)) : null;
+
+  let elevGain = 0;
+  for (let i = 1; i < altSl.length; i++) { const d = altSl[i] - altSl[i - 1]; if (d > 0) elevGain += d; }
+
   let npW = null;
   if (wSl.length >= 30) {
     const wNZ = wSl.filter(v => v > 0); const ma = []; let sum = 0;
@@ -510,7 +525,7 @@ function _showIntervalStats() {
   const tip = document.getElementById('interval-mini-tooltip');
   if (!tip) return;
 
-  // Posicionar el tooltip flotante centrado sobre el tramo seleccionado
+  // Posicionar centrado sobre el tramo seleccionado
   const wChart = chartInsts.streamWatts;
   let tipLeft = window.innerWidth / 2, tipTop = 120;
   if (wChart) {
@@ -518,16 +533,28 @@ function _showIntervalStats() {
     const dpr  = wChart.canvas.width / rect.width;
     const x1   = wChart.scales.x.getPixelForValue(_selA) / dpr;
     const x2   = wChart.scales.x.getPixelForValue(_selB) / dpr;
-    tipLeft = Math.max(56, Math.min(window.innerWidth - 56, rect.left + (x1 + x2) / 2));
+    tipLeft = Math.max(80, Math.min(window.innerWidth - 80, rect.left + (x1 + x2) / 2));
     tipTop  = rect.top + wChart.chartArea.top / dpr + 10;
   }
 
+  const row = (icon, color, val, unit, extra) => val != null ? `
+    <div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <i class="${icon}" style="color:${color};width:12px;text-align:center;font-size:10px"></i>
+      <span style="font-size:14px;font-weight:700;color:#f1f5f9">${val}</span>
+      <span style="font-size:10px;color:rgba(255,255,255,0.4)">${unit}</span>
+      ${extra ? `<span style="font-size:10px;color:${color};margin-left:auto;opacity:.7">${extra}</span>` : ''}
+    </div>` : '';
+
   tip.innerHTML = `
-    <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${fmtTime(dur)}</div>
-    ${avgW != null ? `<div style="font-size:28px;font-weight:800;color:#9ED62B;line-height:1">${avgW}W</div><div style="font-size:8px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em">media</div>` : ''}
-    ${npW  != null ? `<div style="font-size:11px;font-weight:700;color:#9ED62B;margin-top:4px;opacity:.75">${npW}W <span style="font-weight:400;opacity:.7">NP</span></div>` : ''}
-    ${maxW != null ? `<div style="font-size:10px;color:rgba(239,68,68,0.85);margin-top:1px">máx ${maxW}W</div>` : ''}
-    <button onclick="clearStreamSelection()" style="margin-top:7px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:7px;color:rgba(255,255,255,0.45);cursor:pointer;font-size:10px;padding:3px 12px;line-height:1.8;width:100%">× cerrar</button>`;
+    <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;text-align:center">
+      <i class="fas fa-ruler-horizontal" style="margin-right:3px"></i>${fmtTime(dur)}
+    </div>
+    ${row('fas fa-bolt',        '#9ED62B', avgW,   'W',    npW ? 'NP '+npW+'W' : null)}
+    ${row('fas fa-heartbeat',   '#ef4444', avgHR,  'bpm',  null)}
+    ${row('fas fa-tachometer-alt','#38bdf8', avgSpd,'km/h', null)}
+    ${row('fas fa-sync-alt',    '#a78bfa', avgCad, 'rpm',  null)}
+    ${elevGain > 1 ? row('fas fa-mountain', '#94a3b8', '+'+Math.round(elevGain), 'm', null) : ''}
+    <button onclick="clearStreamSelection()" style="margin-top:7px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:rgba(255,255,255,0.4);cursor:pointer;font-size:10px;padding:3px 0;line-height:1.8;width:100%">× cerrar</button>`;
   tip.style.left = tipLeft + 'px';
   tip.style.top  = tipTop  + 'px';
   tip.style.display = '';
