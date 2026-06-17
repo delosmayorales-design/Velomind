@@ -2193,7 +2193,29 @@ let _dashAnimPlaying = false;
 let _dashAnimOffset = 0;
 let _dashAnimT0 = null;
 let _dashStreams = null;
-const _DASH_SPEED = 100; // 100× velocidad real
+let _dashTileLayer = null;
+let _dashMapType = 'sat';
+const _DASH_SPEED = 200; // 200× velocidad real
+
+const _DASH_TILES = {
+  sat:    { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', opts: { maxZoom: 19 } },
+  street: { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',                    opts: { maxZoom: 19 } },
+  dark:   { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',                               opts: { maxZoom: 19 } },
+};
+
+function _dashSetMapType(type) {
+  if (!_dashMap || !_DASH_TILES[type]) return;
+  _dashMapType = type;
+  if (_dashTileLayer) { _dashMap.removeLayer(_dashTileLayer); _dashTileLayer = null; }
+  const t = _DASH_TILES[type];
+  _dashTileLayer = L.tileLayer(t.url, { ...t.opts, attribution: '' }).addTo(_dashMap);
+  _dashTileLayer.bringToBack();
+  // Actualizar botones
+  document.querySelectorAll('.dash-map-type-btn').forEach(b => {
+    b.style.background = b.dataset.type === type ? '#AAFF00' : 'rgba(0,0,0,0.6)';
+    b.style.color      = b.dataset.type === type ? '#000'    : '#fff';
+  });
+}
 
 function _dashDecodePolyline(enc) {
   const pts = [];
@@ -2296,7 +2318,7 @@ async function _renderLastActMapElev(act) {
   _dashAnimPlaying = false; _dashAnimOffset = 0; _dashAnimT0 = null; _dashStreams = null;
   if (_dashMap)       { _dashMap.remove();       _dashMap = null; }
   if (_dashElevChart) { _dashElevChart.destroy(); _dashElevChart = null; }
-  _dashTrack = null; _dashAnimTrail = null; _dashAnimMarker = null;
+  _dashTrack = null; _dashAnimTrail = null; _dashAnimMarker = null; _dashTileLayer = null;
 
   const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
   const LIME   = '#AAFF00';
@@ -2309,10 +2331,9 @@ async function _renderLastActMapElev(act) {
         zoomControl: false, attributionControl: false,
         scrollWheelZoom: false, dragging: false, tap: false
       });
-      L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { maxZoom: 19, attribution: '' }
-      ).addTo(_dashMap);
+      const initType = _dashMapType || 'sat';
+      const initTile = _DASH_TILES[initType];
+      _dashTileLayer = L.tileLayer(initTile.url, { ...initTile.opts, attribution: '' }).addTo(_dashMap);
       _dashTrack = L.polyline(pts, { color: LIME, weight: 3, opacity: 0.9 });
       _dashTrack.addTo(_dashMap);
       _dashMap.fitBounds(_dashTrack.getBounds(), { padding: [16, 16] });
@@ -2370,6 +2391,7 @@ async function _renderLastActMapElev(act) {
         radius: 7, color: '#000', weight: 1.5, fillColor: LIME, fillOpacity: 1
       }).addTo(_dashMap);
 
+      // Botón Play
       const PlayCtrl = L.Control.extend({
         onAdd() {
           const btn = L.DomUtil.create('button');
@@ -2382,6 +2404,25 @@ async function _renderLastActMapElev(act) {
         }
       });
       new PlayCtrl({ position: 'bottomright' }).addTo(_dashMap);
+
+      // Selector de tipo de mapa
+      const MapTypeCtrl = L.Control.extend({
+        onAdd() {
+          const wrap = L.DomUtil.create('div');
+          wrap.style.cssText = 'display:flex;gap:4px;margin:8px';
+          const types = [{ k:'sat', label:'SAT' }, { k:'street', label:'VÍA' }, { k:'dark', label:'OSC' }];
+          types.forEach(({ k, label }) => {
+            const btn = L.DomUtil.create('button', 'dash-map-type-btn', wrap);
+            btn.dataset.type = k;
+            btn.textContent  = label;
+            btn.style.cssText = `padding:5px 9px;border-radius:20px;border:none;font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.6);outline:none;background:${k===_dashMapType?'#AAFF00':'rgba(0,0,0,0.6)'};color:${k===_dashMapType?'#000':'#fff'}`;
+            L.DomEvent.disableClickPropagation(btn);
+            L.DomEvent.on(btn, 'click', () => _dashSetMapType(k));
+          });
+          return wrap;
+        }
+      });
+      new MapTypeCtrl({ position: 'topleft' }).addTo(_dashMap);
     }
   } catch {}
 }
