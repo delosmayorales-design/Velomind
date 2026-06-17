@@ -70,7 +70,7 @@
     }
 
     /* Header en móvil: columna para evitar bug de Android con sticky + flex-wrap */
-    @media (max-width: 480px) {
+    @media (max-width: 768px) {
       .page-header {
         flex-direction: column;
         flex-wrap: nowrap;
@@ -78,15 +78,19 @@
         padding: 6px 10px;
         gap: 4px;
       }
+      /* justify-content:flex-start para que el overflow sea hacia la derecha,
+         nunca hacia la izquierda (que main-content oculta con overflow-x:hidden) */
       .header-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        justify-content: flex-end;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        justify-content: flex-start !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
       }
-      .header-actions .btn-sm { font-size: 12px; padding: 6px 10px; height: auto; }
-      .header-actions .btn-label { display: inline; }
-      .header-actions .header-select { min-width: 100px; font-size: 12px; flex: 1; max-width: 160px; }
+      .header-actions .btn-sm { font-size: 12px !important; padding: 6px 10px !important; height: auto !important; }
+      .header-actions .btn-label { display: none !important; }
+      .header-actions .header-select { min-width: 90px !important; font-size: 12px !important; flex: 1 1 auto !important; max-width: 160px !important; }
     }
   </style>
 </head>

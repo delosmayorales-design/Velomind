@@ -458,8 +458,9 @@ const _streamSelPlugin = {
       ctx.strokeStyle = '#9ED62B'; ctx.lineWidth = 1.5; ctx.setLineDash([]);
       ctx.beginPath(); ctx.moveTo(lx, chartArea.top); ctx.lineTo(lx, chartArea.bottom); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(rx, chartArea.top); ctx.lineTo(rx, chartArea.bottom); ctx.stroke();
-      // Handles arrastrables (círculos en los extremos)
-      const HR = 8, hy = chartArea.top + HR + 3;
+      // Handles arrastrables — más grandes en móvil para mejor toque
+      const HR = ('ontouchstart' in window || navigator.maxTouchPoints > 0) ? 13 : 8;
+      const hy = chartArea.top + HR + 3;
       [lx, rx].forEach(hx => {
         ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI * 2);
         ctx.fillStyle = '#9ED62B'; ctx.fill();
@@ -481,8 +482,8 @@ Chart.register(_streamSelPlugin);
 
 function clearStreamSelection() {
   _selA = null; _selB = null; _dragEndpoint = null;
-  const panel = document.getElementById('interval-stats-panel');
-  if (panel) panel.style.display = 'none';
+  const tip = document.getElementById('interval-mini-tooltip');
+  if (tip) tip.style.display = 'none';
   ['streamWatts','streamHR','streamSpeed','streamElev','streamCadence'].forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
 }
 
@@ -494,51 +495,42 @@ function _showIntervalStats() {
   const i1 = Math.max(0, Math.min(Math.round(_selA * step), origLen - 1));
   const i2 = Math.max(0, Math.min(Math.round(_selB * step), origLen - 1));
   const sl = arr => arr ? arr.slice(i1, i2 + 1) : [];
-  const tSl = sl(s.time), wSl = sl(s.watts), hrSl = sl(s.heartrate);
-  const spdSl = sl(s.velocity_smooth), altSl = sl(s.altitude), cadSl = sl(s.cadence);
+  const tSl = sl(s.time), wSl = sl(s.watts);
 
-  const dur  = tSl.length >= 2 ? tSl[tSl.length-1] - tSl[0] : 0;
-  const avgW = wSl.length ? Math.round(wSl.reduce((a,b)=>a+b,0)/wSl.length) : null;
+  const dur  = tSl.length >= 2 ? tSl[tSl.length - 1] - tSl[0] : 0;
+  const avgW = wSl.length ? Math.round(wSl.reduce((a, b) => a + b, 0) / wSl.length) : null;
   const maxW = wSl.length ? Math.max(...wSl) : null;
   let npW = null;
   if (wSl.length >= 30) {
-    const wNZ = wSl.filter(v=>v>0); const ma=[]; let sum=0;
-    for (let i=0;i<wNZ.length;i++){sum+=wNZ[i];if(i>=30)sum-=wNZ[i-30];ma.push(sum/Math.min(i+1,30));}
-    if (ma.length) npW = Math.round(Math.sqrt(Math.sqrt(ma.reduce((a,b)=>a+Math.pow(b,4),0)/ma.length)));
+    const wNZ = wSl.filter(v => v > 0); const ma = []; let sum = 0;
+    for (let i = 0; i < wNZ.length; i++) { sum += wNZ[i]; if (i >= 30) sum -= wNZ[i - 30]; ma.push(sum / Math.min(i + 1, 30)); }
+    if (ma.length) npW = Math.round(Math.sqrt(Math.sqrt(ma.reduce((a, b) => a + Math.pow(b, 4), 0) / ma.length)));
   }
-  const IF   = (npW && _sFTP) ? Math.round(npW/_sFTP*100)/100 : null;
-  const avgHR= hrSl.length ? Math.round(hrSl.reduce((a,b)=>a+b,0)/hrSl.length) : null;
-  const avgSpd=spdSl.length ? Math.round(spdSl.reduce((a,b)=>a+b,0)/spdSl.length*3.6*10)/10 : null;
-  const cadNZ=cadSl.filter(v=>v>0);
-  const avgCad=cadNZ.length ? Math.round(cadNZ.reduce((a,b)=>a+b,0)/cadNZ.length) : null;
-  let elevGain=0;
-  for(let i=1;i<altSl.length;i++){const d=altSl[i]-altSl[i-1];if(d>0)elevGain+=d;}
 
-  const m=(label,val,color='var(--text)')=>val!=null
-    ?`<div style="text-align:center;min-width:58px;padding:6px 4px;background:var(--bg-card);border-radius:8px">
-        <div style="font-size:14px;font-weight:700;color:${color}">${val}</div>
-        <div style="font-size:8px;color:var(--text-muted);margin-top:1px;text-transform:uppercase;letter-spacing:.05em">${label}</div>
-      </div>`:'';;
-  const panel = document.getElementById('interval-stats-panel');
-  if (!panel) return;
-  panel.innerHTML=`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ED62B">
-        <i class="fas fa-ruler-horizontal" style="margin-right:4px"></i>Intervalo · ${fmtTime(dur)}
-      </span>
-      <button onclick="clearStreamSelection()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);cursor:pointer;font-size:11px;padding:2px 8px;line-height:1.6">× Limpiar</button>
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
-      ${m('Pot. Media',avgW?avgW+'W':null,'var(--primary)')}
-      ${m('NP',npW?npW+'W':null,'#9ED62B')}
-      ${m('Pot. Máx',maxW?maxW+'W':null,'#ef4444')}
-      ${m('IF',IF,'#F59E0B')}
-      ${m('FC Media',avgHR?avgHR+' bpm':null,'#ef4444')}
-      ${m('Velocidad',avgSpd?avgSpd+' km/h':null,'#38bdf8')}
-      ${m('Cadencia',avgCad?avgCad+' rpm':null,'#a78bfa')}
-      ${elevGain>0?m('Desnivel','+'+Math.round(elevGain)+'m','#94a3b8'):''}
-    </div>`;
-  panel.style.display='';
+  const tip = document.getElementById('interval-mini-tooltip');
+  if (!tip) return;
+
+  // Posicionar el tooltip flotante centrado sobre el tramo seleccionado
+  const wChart = chartInsts.streamWatts;
+  let tipLeft = window.innerWidth / 2, tipTop = 120;
+  if (wChart) {
+    const rect = wChart.canvas.getBoundingClientRect();
+    const dpr  = wChart.canvas.width / rect.width;
+    const x1   = wChart.scales.x.getPixelForValue(_selA) / dpr;
+    const x2   = wChart.scales.x.getPixelForValue(_selB) / dpr;
+    tipLeft = Math.max(56, Math.min(window.innerWidth - 56, rect.left + (x1 + x2) / 2));
+    tipTop  = rect.top + wChart.chartArea.top / dpr + 10;
+  }
+
+  tip.innerHTML = `
+    <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${fmtTime(dur)}</div>
+    ${avgW != null ? `<div style="font-size:28px;font-weight:800;color:#9ED62B;line-height:1">${avgW}W</div><div style="font-size:8px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em">media</div>` : ''}
+    ${npW  != null ? `<div style="font-size:11px;font-weight:700;color:#9ED62B;margin-top:4px;opacity:.75">${npW}W <span style="font-weight:400;opacity:.7">NP</span></div>` : ''}
+    ${maxW != null ? `<div style="font-size:10px;color:rgba(239,68,68,0.85);margin-top:1px">máx ${maxW}W</div>` : ''}
+    <button onclick="clearStreamSelection()" style="margin-top:7px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:7px;color:rgba(255,255,255,0.45);cursor:pointer;font-size:10px;padding:3px 12px;line-height:1.8;width:100%">× cerrar</button>`;
+  tip.style.left = tipLeft + 'px';
+  tip.style.top  = tipTop  + 'px';
+  tip.style.display = '';
 }
 
 async function initActivities() {
@@ -1276,12 +1268,12 @@ function showActivityDetail(actId) {
           </div>
         </div>
 
-        <!-- Panel de intervalo seleccionado -->
-        <div id="interval-stats-panel" style="display:none;background:var(--bg-input);border:1px solid rgba(158,214,43,0.3);border-radius:12px;padding:12px 14px;margin-top:4px"></div>
-
         <div style="text-align:center;margin-top:6px;font-size:10px;color:var(--text-muted);opacity:.6">
-          <i class="fas fa-hand-pointer" style="margin-right:3px"></i>Toca dos puntos para ver los datos del intervalo
+          <i class="fas fa-hand-pointer" style="margin-right:3px"></i>Arrastra el dedo para seleccionar un tramo
         </div>
+
+        <!-- Mini tooltip flotante de intervalo (position:fixed, se posiciona sobre la selección) -->
+        <div id="interval-mini-tooltip" style="display:none;position:fixed;z-index:9999;transform:translate(-50%,0);background:rgba(10,14,26,0.93);border:1px solid rgba(158,214,43,0.45);border-radius:14px;padding:10px 16px;text-align:center;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 6px 28px rgba(0,0,0,0.55);min-width:96px"></div>
       </div>
 
       <!-- Error -->
@@ -1851,8 +1843,8 @@ function renderStreamCharts(s, ftp, act) {
         _mouseDragging = true;
         _dragEndpoint  = null;
         _selA = idx; _selB = null;
-        const panel = document.getElementById('interval-stats-panel');
-        if (panel) panel.style.display = 'none';
+        const tip = document.getElementById('interval-mini-tooltip');
+        if (tip) tip.style.display = 'none';
         _setAllTooltips(false);
         _updateAllCharts();
       }
@@ -1872,17 +1864,18 @@ function renderStreamCharts(s, ftp, act) {
     let _touchDragging = false;
 
     chart.canvas.addEventListener('touchstart', evt => {
+      evt.preventDefault(); // evitar scroll mientras se selecciona
       const touch = evt.touches[0];
       if (_selA !== null && _selB !== null) {
         const ep = _nearHandleTouch(touch);
-        if (ep !== null) { _dragEndpoint = ep; evt.preventDefault(); return; }
+        if (ep !== null) { _dragEndpoint = ep; return; }
       }
       const idx = _touchIdx(touch);
       if (idx === null) return;
       _touchDragging = true; _dragEndpoint = null;
       _selA = idx; _selB = null;
-      const panel = document.getElementById('interval-stats-panel');
-      if (panel) panel.style.display = 'none';
+      const tip = document.getElementById('interval-mini-tooltip');
+      if (tip) tip.style.display = 'none';
       _setAllTooltips(false);
       _updateAllCharts();
     }, { passive: false });
