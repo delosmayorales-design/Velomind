@@ -2336,7 +2336,10 @@ async function _renderLastActMapElev(act) {
       _dashTileLayer = L.tileLayer(initTile.url, { ...initTile.opts, attribution: '' }).addTo(_dashMap);
       _dashTrack = L.polyline(pts, { color: LIME, weight: 3, opacity: 0.9 });
       _dashTrack.addTo(_dashMap);
-      _dashMap.fitBounds(_dashTrack.getBounds(), { padding: [16, 16] });
+      setTimeout(() => {
+        _dashMap.invalidateSize();
+        _dashMap.fitBounds(_dashTrack.getBounds(), { padding: [16, 16] });
+      }, 0);
       L.circleMarker(pts[0],              { radius: 5, color: '#fff', weight: 1.5, fillColor: '#10b981', fillOpacity: 1 }).addTo(_dashMap);
       L.circleMarker(pts[pts.length - 1], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#ef4444', fillOpacity: 1 }).addTo(_dashMap);
     }
