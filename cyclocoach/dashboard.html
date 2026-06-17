@@ -2182,9 +2182,18 @@ function renderWeek(plan) {
 /* Estima distribución de zonas (Z1-Z5) desde métricas resumen.
    Usa una distribución gaussiana centrada en la zona del IF,
    ensanchada por el Variability Index (NP/avg_power). */
-/* ── ÚLTIMA ACTIVIDAD — mapa + perfil de altitud ─────────── */
+/* ── ÚLTIMA ACTIVIDAD — mapa + perfil + animación playback ── */
 let _dashMap = null;
 let _dashElevChart = null;
+let _dashTrack = null;
+let _dashAnimTrail = null;
+let _dashAnimMarker = null;
+let _dashAnimFrame = null;
+let _dashAnimPlaying = false;
+let _dashAnimOffset = 0;
+let _dashAnimT0 = null;
+let _dashStreams = null;
+const _DASH_SPEED = 25; // 25× velocidad real
 
 function _dashDecodePolyline(enc) {
   const pts = [];
@@ -2201,14 +2210,78 @@ function _dashDecodePolyline(enc) {
   return pts;
 }
 
-async function _renderLastActMapElev(act, url) {
-  const mapEl   = document.getElementById('dash-act-map');
+function _dashAnimTick(now) {
+  if (!_dashAnimPlaying || !_dashStreams) return;
+  const times   = _dashStreams.time;
+  const total   = times[times.length - 1];
+  const elapsed = (now - _dashAnimT0) * _DASH_SPEED / 1000 + _dashAnimOffset;
+
+  if (elapsed >= total) { _dashPauseAnim(true); return; }
+
+  const latlng = _dashStreams.latlng;
+  let idx = 0;
+  for (let j = 0; j < times.length - 1; j++) {
+    if (times[j + 1] > elapsed) { idx = j; break; }
+    idx = j;
+  }
+  const t0 = times[idx], t1 = times[idx + 1] || t0;
+  const frac = t1 > t0 ? (elapsed - t0) / (t1 - t0) : 0;
+  const p0 = latlng[idx], p1 = latlng[Math.min(idx + 1, latlng.length - 1)];
+  const curPos = [p0[0] + (p1[0] - p0[0]) * frac, p0[1] + (p1[1] - p0[1]) * frac];
+
+  if (_dashAnimMarker) _dashAnimMarker.setLatLng(curPos);
+  if (_dashAnimTrail)  _dashAnimTrail.setLatLngs([...latlng.slice(0, idx + 1), curPos]);
+
+  const cursor = document.getElementById('dash-elev-cursor');
+  const wrap   = document.getElementById('dash-act-elev-wrap');
+  if (cursor && wrap) cursor.style.left = (elapsed / total * wrap.clientWidth) + 'px';
+
+  _dashAnimFrame = requestAnimationFrame(_dashAnimTick);
+}
+
+function _dashStartAnim() {
+  if (_dashAnimPlaying) return;
+  _dashAnimPlaying = true;
+  _dashAnimT0 = performance.now();
+  const btn = document.getElementById('dash-play-btn');
+  if (btn) btn.innerHTML = '<i class="fas fa-pause"></i>';
+  const cursor = document.getElementById('dash-elev-cursor');
+  if (cursor) cursor.style.opacity = '1';
+  _dashAnimFrame = requestAnimationFrame(_dashAnimTick);
+}
+
+function _dashPauseAnim(finished = false) {
+  if (_dashAnimFrame) { cancelAnimationFrame(_dashAnimFrame); _dashAnimFrame = null; }
+  if (_dashAnimPlaying) _dashAnimOffset += (performance.now() - _dashAnimT0) * _DASH_SPEED / 1000;
+  _dashAnimPlaying = false;
+  const btn = document.getElementById('dash-play-btn');
+  if (btn) btn.innerHTML = finished ? '<i class="fas fa-rotate-left"></i>' : '<i class="fas fa-play"></i>';
+}
+
+function _dashToggleAnim() {
+  if (!_dashStreams?.latlng?.length) return;
+  if (_dashAnimPlaying) {
+    _dashPauseAnim();
+  } else {
+    const total = _dashStreams.time?.slice(-1)[0] || 0;
+    if (_dashAnimOffset >= total) {
+      _dashAnimOffset = 0;
+      if (_dashAnimTrail)  _dashAnimTrail.setLatLngs([]);
+      if (_dashAnimMarker) _dashAnimMarker.setLatLng(_dashStreams.latlng[0]);
+      const cursor = document.getElementById('dash-elev-cursor');
+      if (cursor) cursor.style.left = '0px';
+    }
+    _dashStartAnim();
+  }
+}
+
+async function _renderLastActMapElev(act) {
+  const mapEl = document.getElementById('dash-act-map');
   if (!mapEl) return;
 
   const idStr = String(act.id || '');
   const sid   = act.strava_id || (idStr.startsWith('strava_') ? idStr.replace('strava_', '') : null);
 
-  // Buscar polyline en caché localStorage o en los datos de la actividad
   let polylineEnc = null;
   if (sid) {
     try {
@@ -2218,17 +2291,20 @@ async function _renderLastActMapElev(act, url) {
   }
   if (!polylineEnc) polylineEnc = act.map?.summary_polyline || null;
 
-  if (_dashMap)      { _dashMap.remove();       _dashMap      = null; }
-  if (_dashElevChart){ _dashElevChart.destroy(); _dashElevChart = null; }
+  // Limpiar estado anterior
+  if (_dashAnimFrame) { cancelAnimationFrame(_dashAnimFrame); _dashAnimFrame = null; }
+  _dashAnimPlaying = false; _dashAnimOffset = 0; _dashAnimT0 = null; _dashStreams = null;
+  if (_dashMap)       { _dashMap.remove();       _dashMap = null; }
+  if (_dashElevChart) { _dashElevChart.destroy(); _dashElevChart = null; }
+  _dashTrack = null; _dashAnimTrail = null; _dashAnimMarker = null;
 
   const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
   const LIME   = '#AAFF00';
 
-  // ── Mapa ──
+  // ── Mapa inicial desde polyline cacheado ──
   if (polylineEnc && window.L) {
     const pts = _dashDecodePolyline(polylineEnc);
     if (pts.length >= 2) {
-      mapEl.style.display = '';
       _dashMap = L.map(mapEl, {
         zoomControl: false, attributionControl: false,
         scrollWheelZoom: false, dragging: false, tap: false
@@ -2237,60 +2313,76 @@ async function _renderLastActMapElev(act, url) {
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         { maxZoom: 19, attribution: '' }
       ).addTo(_dashMap);
-      const track = L.polyline(pts, { color: LIME, weight: 3, opacity: 0.95 });
-      track.addTo(_dashMap);
-      _dashMap.fitBounds(track.getBounds(), { padding: [16, 16] });
-      L.circleMarker(pts[0], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#10b981', fillOpacity: 1 }).addTo(_dashMap);
+      _dashTrack = L.polyline(pts, { color: LIME, weight: 3, opacity: 0.9 });
+      _dashTrack.addTo(_dashMap);
+      _dashMap.fitBounds(_dashTrack.getBounds(), { padding: [16, 16] });
+      L.circleMarker(pts[0],              { radius: 5, color: '#fff', weight: 1.5, fillColor: '#10b981', fillOpacity: 1 }).addTo(_dashMap);
       L.circleMarker(pts[pts.length - 1], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#ef4444', fillOpacity: 1 }).addTo(_dashMap);
     }
   }
 
-  // ── Perfil de altitud (streams) ──
+  // ── Streams: perfil de altitud + animación ──
   if (!sid) return;
   try {
     const r = await fetch(`${window.API_URL}/providers/strava/streams/${sid}`, { headers: Auth.getHeaders() });
     if (!r.ok) return;
     const s = await r.json();
-    if (!s.altitude?.length) return;
 
-    const elevWrap   = document.getElementById('dash-act-elev-wrap');
-    const elevCanvas = document.getElementById('dash-act-elev');
-    if (!elevWrap || !elevCanvas) return;
-    elevWrap.style.display = '';
-
-    const alt  = s.altitude;
-    const N    = 300;
-    const step = alt.length > N ? Math.floor(alt.length / N) : 1;
-    const ds   = alt.filter((_, i) => i % step === 0 || i === alt.length - 1);
-    const minA = Math.min(...ds);
-
-    _dashElevChart = new Chart(elevCanvas, {
-      type: 'line',
-      data: {
-        labels: ds.map((_, i) => i),
-        datasets: [{
-          data: ds,
-          borderColor: LIME,
-          backgroundColor: isDark ? 'rgba(170,255,0,0.07)' : 'rgba(170,255,0,0.13)',
-          borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: true
-        }]
-      },
-      options: {
-        animation: false, responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        scales: {
-          x: { display: false },
-          y: {
-            min: minA - 5,
-            ticks: {
-              color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
-              font: { size: 8 }, callback: v => v + 'm', maxTicksLimit: 4
-            },
-            grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }
+    // Perfil de altitud
+    if (s.altitude?.length) {
+      const elevWrap   = document.getElementById('dash-act-elev-wrap');
+      const elevCanvas = document.getElementById('dash-act-elev');
+      if (elevWrap && elevCanvas) {
+        elevWrap.style.display = '';
+        const alt  = s.altitude;
+        const N    = 300;
+        const step = alt.length > N ? Math.floor(alt.length / N) : 1;
+        const ds   = alt.filter((_, i) => i % step === 0 || i === alt.length - 1);
+        _dashElevChart = new Chart(elevCanvas, {
+          type: 'line',
+          data: {
+            labels: ds.map((_, i) => i),
+            datasets: [{ data: ds, borderColor: LIME,
+              backgroundColor: isDark ? 'rgba(170,255,0,0.07)' : 'rgba(170,255,0,0.13)',
+              borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: true }]
+          },
+          options: {
+            animation: false, responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            scales: {
+              x: { display: false },
+              y: { min: Math.min(...ds) - 5,
+                ticks: { color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)', font: { size: 8 }, callback: v => v + 'm', maxTicksLimit: 4 },
+                grid:  { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' } }
+            }
           }
-        }
+        });
       }
-    });
+    }
+
+    // Animación playback
+    if (s.latlng?.length >= 2 && s.time?.length >= 2 && _dashMap) {
+      _dashStreams = s;
+      if (_dashTrack) _dashTrack.setStyle({ opacity: 0.2 });
+
+      _dashAnimTrail = L.polyline([], { color: LIME, weight: 3.5, opacity: 1 }).addTo(_dashMap);
+      _dashAnimMarker = L.circleMarker(s.latlng[0], {
+        radius: 7, color: '#000', weight: 1.5, fillColor: LIME, fillOpacity: 1
+      }).addTo(_dashMap);
+
+      const PlayCtrl = L.Control.extend({
+        onAdd() {
+          const btn = L.DomUtil.create('button');
+          btn.id = 'dash-play-btn';
+          btn.innerHTML = '<i class="fas fa-play"></i>';
+          btn.style.cssText = 'width:36px;height:36px;border-radius:50%;background:#AAFF00;color:#000;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.5);outline:none';
+          L.DomEvent.disableClickPropagation(btn);
+          L.DomEvent.on(btn, 'click', _dashToggleAnim);
+          return btn;
+        }
+      });
+      new PlayCtrl({ position: 'bottomright' }).addTo(_dashMap);
+    }
   } catch {}
 }
 
@@ -2319,13 +2411,14 @@ function renderLastAct() {
         <div class="last-act-metric"><div class="val">${act.tss?Math.round(act.tss):'--'}</div><div class="lbl">TSS</div></div>
       </div>
     </a>
-    <a href="${url}" style="display:block;text-decoration:none;margin-top:12px">
+    <div style="margin-top:12px">
       <div id="dash-act-map" style="height:160px;border-radius:10px;overflow:hidden;background:var(--surface2)"></div>
-      <div id="dash-act-elev-wrap" style="display:none;height:70px;margin-top:4px">
+      <div id="dash-act-elev-wrap" style="display:none;height:70px;margin-top:4px;position:relative">
         <canvas id="dash-act-elev"></canvas>
+        <div id="dash-elev-cursor" style="position:absolute;top:0;bottom:0;left:0;width:2px;background:#AAFF00;pointer-events:none;opacity:0;transition:opacity .2s"></div>
       </div>
-    </a>`;
-  _renderLastActMapElev(act, url);
+    </div>`;
+  _renderLastActMapElev(act);
 }
 
 /* ── LOAD PLAN ───────────────────────────────────────────── */
