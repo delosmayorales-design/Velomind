@@ -2234,10 +2234,12 @@ async function _renderLastActMapElev(act, url) {
         scrollWheelZoom: false, dragging: false, tap: false
       });
       L.tileLayer(
-        isDark
-          ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-          : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
-        { maxZoom: 19 }
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19, attribution: '' }
+      ).addTo(_dashMap);
+      L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19, attribution: '', opacity: 0.7 }
       ).addTo(_dashMap);
       const track = L.polyline(pts, { color: LIME, weight: 3, opacity: 0.95 });
       track.addTo(_dashMap);
