@@ -1508,15 +1508,7 @@ function renderStreamCharts(s, ftp, act) {
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { display: false },
-      tooltip: {
-        callbacks: {
-          title: items => fmtTime(s.time[items[0]?.dataIndex] ?? 0),
-          label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}${yLabel}`
-        },
-        backgroundColor: 'rgba(15,23,42,0.92)',
-        titleColor: '#94a3b8', bodyColor: '#e2e8f0',
-        padding: 10, cornerRadius: 8, displayColors: true
-      }
+      tooltip: { enabled: false }
     },
     scales: {
       x: { ticks: { color: tickC, font: { size: 7 }, maxTicksLimit: 8, callback: (_, i, arr) => {
