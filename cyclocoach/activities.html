@@ -434,6 +434,7 @@ async function loadPolylineCache() {
 let _selA = null, _selB = null;
 let _dragEndpoint = null; // 'left' | 'right' — extremo que se está arrastrando
 let _sOrig = null, _sOrigN = 900, _sFTP = 200;
+let _lastChart = null; // chart con el que el usuario interactuó por última vez
 
 const _streamSelPlugin = {
   id: 'streamSel',
@@ -525,16 +526,17 @@ function _showIntervalStats() {
   const tip = document.getElementById('interval-mini-tooltip');
   if (!tip) return;
 
-  // Posicionar centrado sobre el tramo seleccionado
-  const wChart = chartInsts.streamWatts;
-  let tipLeft = window.innerWidth / 2, tipTop = 120;
-  if (wChart) {
-    const rect = wChart.canvas.getBoundingClientRect();
-    const dpr  = wChart.canvas.width / rect.width;
-    const x1   = wChart.scales.x.getPixelForValue(_selA) / dpr;
-    const x2   = wChart.scales.x.getPixelForValue(_selB) / dpr;
+  // Posicionar centrado sobre el tramo seleccionado, siempre dentro del viewport
+  const posChart = _lastChart || chartInsts.streamWatts;
+  let tipLeft = window.innerWidth / 2, tipTop = 80;
+  if (posChart) {
+    const rect = posChart.canvas.getBoundingClientRect();
+    const dpr  = posChart.canvas.width / rect.width;
+    const x1   = posChart.scales.x.getPixelForValue(_selA) / dpr;
+    const x2   = posChart.scales.x.getPixelForValue(_selB) / dpr;
     tipLeft = Math.max(80, Math.min(window.innerWidth - 80, rect.left + (x1 + x2) / 2));
-    tipTop  = rect.top + wChart.chartArea.top / dpr + 10;
+    const idealTop = rect.top + posChart.chartArea.top / dpr + 10;
+    tipTop = Math.max(10, Math.min(window.innerHeight - 230, idealTop));
   }
 
   const row = (icon, color, val, unit, extra) => val != null ? `
@@ -1854,7 +1856,7 @@ function renderStreamCharts(s, ftp, act) {
         if (idx === null) return;
         _mouseDragging = true;
         _dragEndpoint  = null;
-        _selA = idx; _selB = null;
+        _selA = idx; _selB = null; _lastChart = chart;
         const tip = document.getElementById('interval-mini-tooltip');
         if (tip) tip.style.display = 'none';
         _setAllTooltips(false);
@@ -1885,7 +1887,7 @@ function renderStreamCharts(s, ftp, act) {
       const idx = _touchIdx(touch);
       if (idx === null) return;
       _touchDragging = true; _dragEndpoint = null;
-      _selA = idx; _selB = null;
+      _selA = idx; _selB = null; _lastChart = chart;
       const tip = document.getElementById('interval-mini-tooltip');
       if (tip) tip.style.display = 'none';
       _setAllTooltips(false);
