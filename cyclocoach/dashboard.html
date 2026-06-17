@@ -878,6 +878,7 @@
       .last-act-metric .val { font-size: 14px; }
     }
   </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
 </head>
@@ -1019,6 +1020,8 @@
 
 <script src="js/app.js"></script>
 <script src="js/backend-sync.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 /* ── Constants ──────────────────────────────────────────── */
 const DAY_NAMES      = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
@@ -2179,6 +2182,120 @@ function renderWeek(plan) {
 /* Estima distribución de zonas (Z1-Z5) desde métricas resumen.
    Usa una distribución gaussiana centrada en la zona del IF,
    ensanchada por el Variability Index (NP/avg_power). */
+/* ── ÚLTIMA ACTIVIDAD — mapa + perfil de altitud ─────────── */
+let _dashMap = null;
+let _dashElevChart = null;
+
+function _dashDecodePolyline(enc) {
+  const pts = [];
+  let i = 0, lat = 0, lng = 0;
+  while (i < enc.length) {
+    let b, shift = 0, result = 0;
+    do { b = enc.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+    shift = 0; result = 0;
+    do { b = enc.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+    pts.push([lat / 1e5, lng / 1e5]);
+  }
+  return pts;
+}
+
+async function _renderLastActMapElev(act, url) {
+  const mapEl   = document.getElementById('dash-act-map');
+  if (!mapEl) return;
+
+  const idStr = String(act.id || '');
+  const sid   = act.strava_id || (idStr.startsWith('strava_') ? idStr.replace('strava_', '') : null);
+
+  // Buscar polyline en caché localStorage o en los datos de la actividad
+  let polylineEnc = null;
+  if (sid) {
+    try {
+      const raw = localStorage.getItem('velomind_polylines');
+      if (raw) polylineEnc = JSON.parse(raw)[String(sid)] || null;
+    } catch {}
+  }
+  if (!polylineEnc) polylineEnc = act.map?.summary_polyline || null;
+
+  if (_dashMap)      { _dashMap.remove();       _dashMap      = null; }
+  if (_dashElevChart){ _dashElevChart.destroy(); _dashElevChart = null; }
+
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const LIME   = '#AAFF00';
+
+  // ── Mapa ──
+  if (polylineEnc && window.L) {
+    const pts = _dashDecodePolyline(polylineEnc);
+    if (pts.length >= 2) {
+      mapEl.style.display = '';
+      _dashMap = L.map(mapEl, {
+        zoomControl: false, attributionControl: false,
+        scrollWheelZoom: false, dragging: false, tap: false
+      });
+      L.tileLayer(
+        isDark
+          ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
+          : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
+        { maxZoom: 19 }
+      ).addTo(_dashMap);
+      const track = L.polyline(pts, { color: LIME, weight: 3, opacity: 0.95 });
+      track.addTo(_dashMap);
+      _dashMap.fitBounds(track.getBounds(), { padding: [16, 16] });
+      L.circleMarker(pts[0], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#10b981', fillOpacity: 1 }).addTo(_dashMap);
+      L.circleMarker(pts[pts.length - 1], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#ef4444', fillOpacity: 1 }).addTo(_dashMap);
+    }
+  }
+
+  // ── Perfil de altitud (streams) ──
+  if (!sid) return;
+  try {
+    const r = await fetch(`${window.API_URL}/providers/strava/streams/${sid}`, { headers: Auth.getHeaders() });
+    if (!r.ok) return;
+    const s = await r.json();
+    if (!s.altitude?.length) return;
+
+    const elevWrap   = document.getElementById('dash-act-elev-wrap');
+    const elevCanvas = document.getElementById('dash-act-elev');
+    if (!elevWrap || !elevCanvas) return;
+    elevWrap.style.display = '';
+
+    const alt  = s.altitude;
+    const N    = 300;
+    const step = alt.length > N ? Math.floor(alt.length / N) : 1;
+    const ds   = alt.filter((_, i) => i % step === 0 || i === alt.length - 1);
+    const minA = Math.min(...ds);
+
+    _dashElevChart = new Chart(elevCanvas, {
+      type: 'line',
+      data: {
+        labels: ds.map((_, i) => i),
+        datasets: [{
+          data: ds,
+          borderColor: LIME,
+          backgroundColor: isDark ? 'rgba(170,255,0,0.07)' : 'rgba(170,255,0,0.13)',
+          borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: true
+        }]
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { display: false },
+          y: {
+            min: minA - 5,
+            ticks: {
+              color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+              font: { size: 8 }, callback: v => v + 'm', maxTicksLimit: 4
+            },
+            grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }
+          }
+        }
+      }
+    });
+  } catch {}
+}
+
 function renderLastAct() {
   const el = document.getElementById('last-act-content');
   if (!AppState.activities?.length) return;
@@ -2203,7 +2320,14 @@ function renderLastAct() {
         <div class="last-act-metric"><div class="val">${Utils.formatDuration(act.duration)}</div><div class="lbl">Duración</div></div>
         <div class="last-act-metric"><div class="val">${act.tss?Math.round(act.tss):'--'}</div><div class="lbl">TSS</div></div>
       </div>
+    </a>
+    <a href="${url}" style="display:block;text-decoration:none;margin-top:12px">
+      <div id="dash-act-map" style="height:160px;border-radius:10px;overflow:hidden;background:var(--surface2)"></div>
+      <div id="dash-act-elev-wrap" style="display:none;height:70px;margin-top:4px">
+        <canvas id="dash-act-elev"></canvas>
+      </div>
     </a>`;
+  _renderLastActMapElev(act, url);
 }
 
 /* ── LOAD PLAN ───────────────────────────────────────────── */
