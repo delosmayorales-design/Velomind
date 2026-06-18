@@ -1317,6 +1317,7 @@ function toggleTopCard(bodyId, chevId) {
   if (chev) chev.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
 }
 let progressionChart = null;
+let _progressionDismiss = null;
 const _adaptCache = {}; // { [idx]: adaptation data from AI }
 let _bgSyncToken = 0; // se incrementa al guardar localmente para invalidar GETs en vuelo
 
@@ -4005,8 +4006,25 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
           ticks: { color: '#6B7280', font: { size: 9 } }
         },
       },
+      onClick(evt, elements, chart) {
+        // Toque en zona vacía → cierra el tooltip (UX móvil)
+        if (!elements.length) {
+          chart.tooltip.setActiveElements([], {});
+          chart.update('none');
+        }
+      },
     },
   });
+
+  // Dismiss tooltip al tocar fuera del canvas (móvil: no hay mouseout)
+  if (_progressionDismiss) document.removeEventListener('touchstart', _progressionDismiss);
+  _progressionDismiss = function(e) {
+    if (progressionChart && !progressionChart.canvas.contains(e.target)) {
+      progressionChart.tooltip.setActiveElements([], {});
+      progressionChart.update('none');
+    }
+  };
+  document.addEventListener('touchstart', _progressionDismiss, { passive: true });
 }
 
 function showSessionDetail(idx, showAlt = false) {
