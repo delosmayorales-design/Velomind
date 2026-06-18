@@ -2735,7 +2735,7 @@ async function adaptSession(idx, dayOffset) {
 
   const sess   = currentPlan.sessions[idx];
   const ftp    = AppState.athlete?.ftp || 200;
-  const tssVal = Math.round(sess.tssShare * currentPlan.targetTSS);
+  const tssVal = Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 0)) || (Number.isFinite(sess.tss) ? sess.tss : 0);
   const durMin = sess.durationMin || Math.round(tssVal / Math.pow(sess.ifTarget || 0.65, 2));
 
   // Detectar si ayer había sesión planificada que no se realizó
@@ -2892,6 +2892,7 @@ function _redistributeCancelledTSS(idx, cancelTSS, dayName) {
     rs.type        = newType;
     rs.ifTarget    = newIF;
     rs.tss         = adjTSS;
+    rs.tssShare    = 0; // forzar render desde rs.tss, no desde tssShare × targetTSS
     rs.durationMin = newDur;
     rs._adapted    = true;
     rs.advice      = `+${perDayTSS} TSS redistribuido de la sesión cancelada del ${dayName}.`;
