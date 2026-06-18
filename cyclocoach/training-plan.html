@@ -1800,8 +1800,9 @@ function _sanitizeCyclingContent(plan) {
   const DEFAULT_IF_SYNC = { z2: 0.62, long: 0.60, endurance: 0.65, recovery: 0.52, tempo: 0.82, threshold: 0.95, sweet_spot: 0.90, vo2max: 1.05, sprint: 0.90, strength: 0.80 };
   plan.sessions.forEach(s => {
     if (!s) return;
-    // Reparar duración mínima y recalcular TSS para planes guardados con valores incorrectos
-    if (!s.isRest && typeof s.durationMin === 'number' && s.durationMin > 0) {
+    // Reparar duración mínima y recalcular TSS para planes guardados con valores incorrectos.
+    // Saltar sesiones ya adaptadas manualmente (la IA o el usuario las redujo intencionalmente).
+    if (!s.isRest && !s._adapted && typeof s.durationMin === 'number' && s.durationMin > 0) {
       const minD = MIN_DUR[s.type] || _userMinMin;
       if (s.durationMin < minD) {
         s.durationMin = minD;
@@ -3749,6 +3750,14 @@ async function recalculateWeek(idx, isFuture = false) {
         });
 
     currentPlan.sessions = data.newPlan.sessions;
+    // Marcar sesiones modificadas por la IA como _adapted para que el sanitizador
+    // de duración mínima no sobreescriba valores intencionales al recargar la página.
+    if (Array.isArray(data.modifications)) {
+      data.modifications.forEach(mod => {
+        const s = currentPlan.sessions[mod.dayIndex];
+        if (s && !s.isRest) s._adapted = true;
+      });
+    }
     // Resumen del recálculo por IA
     const aiChanges = data.newPlan.sessions
       .filter(s => s._adapted || s._missed)
