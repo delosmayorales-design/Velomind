@@ -55,43 +55,30 @@
         align-items: flex-start;
       }
 
-      /* Perfil de Ciclista — layout móvil rediseñado */
-      .rp-layout   { flex-direction: column !important; gap: 0 !important; padding: 0 !important; }
-      .rp-radar    { flex: 0 0 auto !important; width: min(240px,92vw) !important; height: min(240px,82vw) !important; margin: 12px auto 6px !important; }
-      .rp-info     { min-width: 0 !important; width: 100%; }
-      .rp-name     { font-size: 20px !important; text-align: center; margin-bottom: 4px !important; }
-      .rp-desc     { font-size: 11px !important; text-align: center; margin-bottom: 14px !important; padding: 0 4px; }
-      .rp-stats    { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px !important; padding: 0 0 4px; }
-      .rp-pill     {
-        padding: 10px 8px !important; border-radius: 14px !important;
-        background: color-mix(in srgb, var(--pill-c) 14%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--pill-c) 40%, transparent) !important;
-        display: flex !important; flex-direction: column !important;
-        align-items: center !important; gap: 2px !important;
-      }
-      .rp-pill-val { font-size: 18px; font-weight: 800; color: var(--pill-c); line-height: 1.1; }
-      .rp-pill-lbl { font-size: 10px; font-weight: 600; color: var(--pill-c); opacity: .7; text-transform: uppercase; letter-spacing: .5px; }
+      /* Perfil de Ciclista — ajuste móvil */
+      .rp-radar  { width: min(260px,92vw) !important; height: min(260px,82vw) !important; }
+      .rp-pill-val { font-size: 20px !important; }
 
       /* Zonas: scroll horizontal en móvil */
       #zones-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       #zones-tables { min-width: 500px; }
     }
 
-    /* ── Rider Profile — estilos base (desktop) ───────────────── */
-    .rp-layout { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; padding: 4px 0 8px; }
-    .rp-radar  { flex: 0 0 220px; height: 220px; position: relative; }
-    .rp-info   { flex: 1; min-width: 200px; }
-    .rp-name   { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
-    .rp-desc   { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px; max-width: 420px; }
-    .rp-stats  { display: flex; flex-wrap: wrap; gap: 8px; }
-    .rp-pill   {
-      padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
-      background: color-mix(in srgb, var(--pill-c) 12%, transparent);
-      border: 1px solid color-mix(in srgb, var(--pill-c) 40%, transparent);
-      display: inline-flex; align-items: center; gap: 4px;
-    }
-    .rp-pill-val { color: var(--pill-c); }
-    .rp-pill-lbl { color: var(--pill-c); opacity: .75; }
+    /* ── Rider Profile ──────────────────────────────────────────── */
+    #rider-profile-card .card-header { justify-content: center; }
+    .rp-layout { display:flex; flex-direction:column; align-items:center; gap:0; padding:4px 0 20px; }
+    .rp-radar  { width:270px; height:270px; position:relative; }
+    .rp-info   { width:100%; text-align:center; padding:0 16px; }
+    .rp-name   { font-size:28px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px; }
+    .rp-desc   { font-size:13px; color:var(--text-muted); line-height:1.55; margin-bottom:16px; max-width:420px; margin-left:auto; margin-right:auto; }
+    .rp-stats  { display:grid; grid-template-columns:1fr 1fr; gap:9px; max-width:480px; margin:0 auto; width:100%; }
+    .rp-pill   { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px;
+                 background:color-mix(in srgb,var(--pill-c,#10B981) 12%,transparent);
+                 border:1px solid color-mix(in srgb,var(--pill-c,#10B981) 35%,transparent); }
+    .rp-pill-icon { font-size:17px; color:var(--pill-c,#10B981); width:20px; text-align:center; flex-shrink:0; }
+    .rp-pill-text { display:flex; flex-direction:column; }
+    .rp-pill-val  { font-size:22px; font-weight:800; color:var(--pill-c,#10B981); line-height:1.1; font-variant-numeric:tabular-nums; }
+    .rp-pill-lbl  { font-size:9px; text-transform:uppercase; letter-spacing:.08em; color:var(--pill-c,#10B981); opacity:.7; font-weight:600; }
 
     /* Header en móvil: columna para evitar bug de Android con sticky + flex-wrap */
     @media (max-width: 768px) {
@@ -1660,18 +1647,21 @@ function renderRiderProfile(acts, athlete, curve) {
   // Stats pills
   var statsEl = document.getElementById('rider-profile-stats');
   if (statsEl) {
-    function pill(label, val, color) {
+    function pill(label, val, color, icon) {
       return '<div class="rp-pill" style="--pill-c:' + color + '">' +
-        '<span class="rp-pill-val">' + val + '</span>' +
-        '<span class="rp-pill-lbl">' + label + '</span>' +
+        '<i class="' + icon + ' rp-pill-icon"></i>' +
+        '<div class="rp-pill-text">' +
+          '<span class="rp-pill-val">' + val + '</span>' +
+          '<span class="rp-pill-lbl">' + label + '</span>' +
+        '</div>' +
       '</div>';
     }
     var html = '';
-    if (result.wkg && result.wkg > 0) html += pill('W/kg', result.wkg, '#10B981');
-    html += pill('Sprint',      s.sprint      + '%', '#EF4444');
-    html += pill('Escalada',    s.escalada    + '%', '#10B981');
-    html += pill('Umbral',      s.umbral      + '%', '#8B5CF6');
-    html += pill('Regularidad', s.regularidad + '%', '#3B82F6');
+    if (result.wkg && result.wkg > 0) html += pill('W/KG', result.wkg, '#C4EF44', 'fas fa-weight-hanging');
+    html += pill('Sprint',      s.sprint      + '%', '#EF4444', 'fas fa-bolt');
+    html += pill('Escalada',    s.escalada    + '%', '#10B981', 'fas fa-mountain');
+    html += pill('Umbral',      s.umbral      + '%', '#8B5CF6', 'fas fa-gauge-high');
+    html += pill('Regularidad', s.regularidad + '%', '#3B82F6', 'fas fa-clock');
     statsEl.innerHTML = html;
   }
 
@@ -1682,20 +1672,22 @@ function renderRiderProfile(acts, athlete, curve) {
   if (riderRadarChart) { riderRadarChart.destroy(); riderRadarChart = null; }
   var ctx = document.getElementById('rider-radar-canvas');
   if (!ctx) return;
-  var isLight = document.documentElement.classList.contains('light-theme');
-  var gridColor    = isLight ? 'rgba(0,0,0,0.18)'   : 'rgba(255,255,255,0.22)';
-  var labelColor   = isLight ? '#374151'             : '#D1D5DB';
-  var fillOpacity  = isLight ? '75'                  : '65';
+  var isLight   = document.documentElement.classList.contains('light-theme');
+  var neonLime  = '#C4EF44';
+  var gridColor = isLight ? 'rgba(0,0,0,0.15)' : 'rgba(196,239,68,0.2)';
+  var labelColor = isLight ? '#374151' : '#E5E7EB';
+  var fillHex   = isLight ? '55' : '48';
+  ctx.style.filter = isLight ? '' : 'drop-shadow(0 0 14px rgba(196,239,68,0.55))';
   riderRadarChart = new Chart(ctx, {
     type: 'radar',
     data: {
       labels: ['Resistencia', 'Escalada', 'Sprint', 'Regularidad', 'Umbral'],
       datasets: [{
         data: [s.resistencia, s.escalada, s.sprint, s.regularidad, s.umbral],
-        backgroundColor: p.color + fillOpacity,
-        borderColor: p.color,
+        backgroundColor: neonLime + fillHex,
+        borderColor: neonLime,
         borderWidth: 3,
-        pointBackgroundColor: p.color,
+        pointBackgroundColor: neonLime,
         pointBorderColor: isLight ? '#fff' : '#0a0b0f',
         pointBorderWidth: 2,
         pointRadius: 5,
