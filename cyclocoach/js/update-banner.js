@@ -1,6 +1,5 @@
 (function () {
   var STORAGE_KEY = 'velomind_last_build_id';
-  var BANNER_HEIGHT = 44;
 
   function getApiBase() {
     if (window.API_URL) return window.API_URL;
@@ -9,28 +8,27 @@
       : 'https://velomind-backend.onrender.com/api';
   }
 
-  function showBanner(buildId) {
-    if (document.getElementById('vm-update-banner')) return;
+  function showModal(buildId) {
+    if (document.getElementById('vm-update-modal')) return;
 
-    var banner = document.createElement('div');
-    banner.id = 'vm-update-banner';
-    banner.innerHTML =
-      '<span class="vm-banner-icon">🔄</span>' +
-      '<span class="vm-banner-text">La app ha sido actualizada hoy &middot; Es posible que notes cambios en el funcionamiento</span>' +
-      '<button class="vm-banner-close" aria-label="Cerrar aviso">&#x2715;</button>';
-    document.body.appendChild(banner);
+    var overlay = document.createElement('div');
+    overlay.id = 'vm-update-modal';
+    overlay.innerHTML =
+      '<div class="vm-modal-box">' +
+        '<div class="vm-modal-icons">🚧 🦺 🔧 🪛 🏗️ 🦺 🚧</div>' +
+        '<div class="vm-modal-cones">🔶 🔷 🔶 🔷 🔶</div>' +
+        '<h2 class="vm-modal-title">¡App actualizada!</h2>' +
+        '<p class="vm-modal-body">Hemos publicado cambios hoy en VeloMind.<br>Es posible que notes mejoras o diferencias en el funcionamiento.</p>' +
+        '<div class="vm-modal-cones" style="transform:scaleX(-1)">🔶 🔷 🔶 🔷 🔶</div>' +
+        '<button class="vm-modal-btn" id="vm-update-ok">Entendido, ¡a entrenar! 🚴</button>' +
+      '</div>';
+    document.body.appendChild(overlay);
 
-    var main = document.querySelector('.main-content');
-    if (main) main.style.paddingTop = BANNER_HEIGHT + 'px';
-
-    banner.querySelector('.vm-banner-close').onclick = function () {
+    document.getElementById('vm-update-ok').onclick = function () {
       localStorage.setItem(STORAGE_KEY, buildId);
-      banner.style.transition = 'opacity 0.2s';
-      banner.style.opacity = '0';
-      setTimeout(function () {
-        banner.remove();
-        if (main) main.style.paddingTop = '';
-      }, 200);
+      overlay.style.transition = 'opacity 0.25s';
+      overlay.style.opacity = '0';
+      setTimeout(function () { overlay.remove(); }, 260);
     };
   }
 
@@ -45,7 +43,7 @@
       var lastSeen = localStorage.getItem(STORAGE_KEY);
 
       if (deployDate === today && data.buildId !== lastSeen) {
-        showBanner(data.buildId);
+        showModal(data.buildId);
       }
     } catch (e) {}
   }

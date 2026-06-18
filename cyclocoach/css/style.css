@@ -1609,51 +1609,78 @@ html.light-theme .glass {
   }
 }
 
-/* ─── Banner de actualizaciones ────────────────────────────── */
-#vm-update-banner {
+/* ─── Modal de actualizaciones ──────────────────────────────── */
+#vm-update-modal {
   position: fixed;
-  top: 0;
-  left: var(--sidebar-w);
-  right: 0;
-  height: 44px;
-  z-index: 200;
-  background: linear-gradient(90deg, #1a2a10 0%, #142208 100%);
-  border-bottom: 1px solid rgba(158, 214, 43, 0.35);
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.72);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 16px;
-  font-size: 13px;
-  color: var(--text-primary);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  justify-content: center;
+  padding: 24px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-.vm-banner-icon { font-size: 15px; flex-shrink: 0; }
-
-.vm-banner-text {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.vm-banner-close {
-  background: none;
+.vm-modal-box {
+  background: var(--bg-card, #0f1923);
   border: 1px solid rgba(158, 214, 43, 0.3);
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  flex-shrink: 0;
-  transition: border-color 0.2s, color 0.2s;
-}
-.vm-banner-close:hover {
-  border-color: rgba(158, 214, 43, 0.7);
-  color: var(--text-primary);
+  border-radius: 20px;
+  padding: 36px 32px 28px;
+  max-width: 460px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  animation: vm-modal-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@media (max-width: 768px) {
-  #vm-update-banner { left: 0; }
+@keyframes vm-modal-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
 }
+
+.vm-modal-icons {
+  font-size: 28px;
+  letter-spacing: 4px;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.vm-modal-cones {
+  font-size: 18px;
+  letter-spacing: 6px;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.vm-modal-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: #9ED62B;
+  margin: 0 0 12px;
+  letter-spacing: -0.4px;
+}
+
+.vm-modal-body {
+  font-size: 14px;
+  color: var(--text-muted, #8892a4);
+  line-height: 1.7;
+  margin: 0 0 24px;
+}
+
+.vm-modal-btn {
+  background: #9ED62B;
+  color: #0a0f14;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 28px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s, transform 0.1s;
+}
+.vm-modal-btn:hover  { background: #b5f030; }
+.vm-modal-btn:active { transform: scale(0.97); }
