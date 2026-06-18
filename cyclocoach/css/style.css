@@ -1608,3 +1608,52 @@ html.light-theme .glass {
     padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* ─── Banner de actualizaciones ────────────────────────────── */
+#vm-update-banner {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  height: 44px;
+  z-index: 200;
+  background: linear-gradient(90deg, #1a2a10 0%, #142208 100%);
+  border-bottom: 1px solid rgba(158, 214, 43, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+.vm-banner-icon { font-size: 15px; flex-shrink: 0; }
+
+.vm-banner-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vm-banner-close {
+  background: none;
+  border: 1px solid rgba(158, 214, 43, 0.3);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  flex-shrink: 0;
+  transition: border-color 0.2s, color 0.2s;
+}
+.vm-banner-close:hover {
+  border-color: rgba(158, 214, 43, 0.7);
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  #vm-update-banner { left: 0; }
+}

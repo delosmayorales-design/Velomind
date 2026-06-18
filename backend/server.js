@@ -7,6 +7,13 @@ const app  = express();
 const supabase = require('./db');
 const PORT = process.env.PORT || 3000;
 
+const _DEPLOY = {
+  deployedAt: new Date().toISOString(),
+  buildId: process.env.VERCEL_GIT_COMMIT_SHA ||
+           process.env.RENDER_GIT_COMMIT ||
+           `deploy-${Date.now()}`,
+};
+
 // ─────────────────────────────────────────
 // CORS — restringido a orígenes conocidos
 // ─────────────────────────────────────────
@@ -93,7 +100,8 @@ app.use('/api/feedback',   require('./routes/feedback'));
 // ─────────────────────────────────────────
 // HEALTH (usado por el keepalive y monitoreo externo)
 // ─────────────────────────────────────────
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/api/health',  (req, res) => res.json({ status: 'ok' }));
+app.get('/api/version', (req, res) => res.json(_DEPLOY));
 
 // ─────────────────────────────────────────
 // 404

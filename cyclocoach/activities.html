@@ -121,6 +121,7 @@
   </style>
   <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
   <script src="js/auth.js"></script>
+  <script src="js/update-banner.js"></script>
 </head>
 <body>
 
@@ -526,40 +527,37 @@ function _showIntervalStats() {
   const tip = document.getElementById('interval-mini-tooltip');
   if (!tip) return;
 
-  // Posicionar centrado sobre el tramo seleccionado, siempre dentro del viewport
+  // Posicionar justo debajo del gráfico con el que interactuó el usuario
   const posChart = _lastChart || chartInsts.streamWatts;
-  let tipLeft = window.innerWidth / 2, tipTop = 80;
   if (posChart) {
     const rect = posChart.canvas.getBoundingClientRect();
-    const dpr  = posChart.canvas.width / rect.width;
-    const x1   = posChart.scales.x.getPixelForValue(_selA) / dpr;
-    const x2   = posChart.scales.x.getPixelForValue(_selB) / dpr;
-    tipLeft = Math.max(80, Math.min(window.innerWidth - 80, rect.left + (x1 + x2) / 2));
-    const idealTop = rect.top + posChart.chartArea.top / dpr + 10;
-    tipTop = Math.max(10, Math.min(window.innerHeight - 230, idealTop));
+    tip.style.left      = rect.left + 'px';
+    tip.style.right     = (window.innerWidth - rect.right) + 'px';
+    tip.style.width     = '';
+    tip.style.transform = '';
+    tip.style.top       = Math.min(rect.bottom + 4, window.innerHeight - 50) + 'px';
   }
 
-  const row = (icon, color, val, unit, extra) => val != null ? `
-    <div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
-      <i class="${icon}" style="color:${color};width:12px;text-align:center;font-size:10px"></i>
-      <span style="font-size:14px;font-weight:700;color:#f1f5f9">${val}</span>
-      <span style="font-size:10px;color:rgba(255,255,255,0.4)">${unit}</span>
-      ${extra ? `<span style="font-size:10px;color:${color};margin-left:auto;opacity:.7">${extra}</span>` : ''}
-    </div>` : '';
+  const sep  = `<span style="color:#d1d5db;flex-shrink:0;font-size:11px">|</span>`;
+  const chip = (icon, color, val, unit, extra) => val != null ? `
+    ${sep}
+    <span style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap;flex-shrink:0">
+      <i class="${icon}" style="color:${color};font-size:9px"></i>
+      <span style="font-size:13px;font-weight:700;color:#1e293b">${val}</span>
+      <span style="font-size:10px;color:#64748b">${unit}${extra ? `<span style="color:${color}"> ${extra}</span>` : ''}</span>
+    </span>` : '';
 
   tip.innerHTML = `
-    <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;text-align:center">
-      <i class="fas fa-ruler-horizontal" style="margin-right:3px"></i>${fmtTime(dur)}
-    </div>
-    ${row('fas fa-bolt',        '#9ED62B', avgW,   'W',    npW ? 'NP '+npW+'W' : null)}
-    ${row('fas fa-heartbeat',   '#ef4444', avgHR,  'bpm',  null)}
-    ${row('fas fa-tachometer-alt','#38bdf8', avgSpd,'km/h', null)}
-    ${row('fas fa-sync-alt',    '#a78bfa', avgCad, 'rpm',  null)}
-    ${elevGain > 1 ? row('fas fa-mountain', '#94a3b8', '+'+Math.round(elevGain), 'm', null) : ''}
-    <button onclick="clearStreamSelection()" style="margin-top:7px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:rgba(255,255,255,0.4);cursor:pointer;font-size:10px;padding:3px 0;line-height:1.8;width:100%">× cerrar</button>`;
-  tip.style.left = tipLeft + 'px';
-  tip.style.top  = tipTop  + 'px';
-  tip.style.display = '';
+    <span style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap;flex-shrink:0;font-size:12px;font-weight:700;color:#475569">
+      <i class="fas fa-clock" style="color:#94a3b8;font-size:9px"></i>&nbsp;${fmtTime(dur)}
+    </span>
+    ${chip('fas fa-bolt',           '#d97706', avgW,   'W',    npW ? 'NP '+npW : null)}
+    ${chip('fas fa-heartbeat',      '#ef4444', avgHR,  'bpm',  null)}
+    ${chip('fas fa-tachometer-alt', '#3b82f6', avgSpd, 'km/h', null)}
+    ${chip('fas fa-sync-alt',       '#a78bfa', avgCad, 'rpm',  null)}
+    ${elevGain > 1 ? chip('fas fa-mountain', '#64748b', '+'+Math.round(elevGain), 'm', null) : ''}
+    <button onclick="clearStreamSelection()" style="margin-left:auto;flex-shrink:0;background:none;border:1px solid #d1d5db;border-radius:6px;color:#94a3b8;cursor:pointer;font-size:11px;padding:2px 8px;line-height:1.6;white-space:nowrap">× cerrar</button>`;
+  tip.style.display = 'flex';
 }
 
 async function initActivities() {
@@ -1302,7 +1300,7 @@ function showActivityDetail(actId) {
         </div>
 
         <!-- Mini tooltip flotante de intervalo (position:fixed, se posiciona sobre la selección) -->
-        <div id="interval-mini-tooltip" style="display:none;position:fixed;z-index:9999;transform:translate(-50%,0);background:rgba(10,14,26,0.93);border:1px solid rgba(158,214,43,0.45);border-radius:14px;padding:10px 16px;text-align:center;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 6px 28px rgba(0,0,0,0.55);min-width:96px"></div>
+        <div id="interval-mini-tooltip" style="display:none;position:fixed;z-index:9999;background:#f8fafc;border:1px solid #d1d5db;border-radius:10px;padding:6px 12px;box-shadow:0 4px 20px rgba(0,0,0,0.18);align-items:center;gap:10px;overflow:hidden;flex-wrap:nowrap"></div>
       </div>
 
       <!-- Error -->
@@ -1760,7 +1758,7 @@ function renderStreamCharts(s, ftp, act) {
       const tx    = clientX - rect.left;
       const xA    = chart.scales.x.getPixelForValue(_selA) / dpr;
       const xB    = chart.scales.x.getPixelForValue(_selB) / dpr;
-      const THRESH = 14;
+      const THRESH = 20;
       const dA = Math.abs(tx - xA), dB = Math.abs(tx - xB);
       if (dA < THRESH && dA <= dB) return 'left';
       if (dB < THRESH && dB <  dA) return 'right';
@@ -1773,7 +1771,7 @@ function renderStreamCharts(s, ftp, act) {
       const tx    = (touch.clientX - rect.left) * dpr;
       const xA    = chart.scales.x.getPixelForValue(_selA);
       const xB    = chart.scales.x.getPixelForValue(_selB);
-      const THRESH = 32 * dpr;
+      const THRESH = 42 * dpr;
       const dA = Math.abs(tx - xA), dB = Math.abs(tx - xB);
       if (dA < THRESH && dA <= dB) return 'left';
       if (dB < THRESH && dB <  dA) return 'right';
