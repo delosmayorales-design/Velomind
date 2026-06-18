@@ -895,6 +895,22 @@
       .fs-tsb-chip { font-size: 8px; padding: 2px 5px; }
     }
 
+    /* ── Tooltip externo del gráfico de progresión ─────────── */
+    #prog-tooltip {
+      margin: 0 16px 12px;
+      background: #13151c;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 10px 13px;
+      font-size: 12px;
+      color: #9CA3AF;
+      font-family: 'Inter', sans-serif;
+    }
+    .ptip-title { color: #f0f2f7; font-weight: 700; font-size: 13px; margin-bottom: 7px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .ptip-row   { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+    .ptip-dot   { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+    .ptip-note  { margin-top: 6px; font-size: 11px; color: #6B7280; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 5px; }
+
     @media (min-width: 601px) {
       .top-card-toggle .fa-chevron-down { display: none; }
     }
@@ -1253,6 +1269,7 @@
       <div class="chart-container">
         <canvas id="progression-chart"></canvas>
       </div>
+      <div id="prog-tooltip" style="display:none"></div>
     </div>
 
   </div>
@@ -1318,6 +1335,29 @@ function toggleTopCard(bodyId, chevId) {
 }
 let progressionChart = null;
 let _progressionDismiss = null;
+
+function renderProgTooltip(context) {
+  const el = document.getElementById('prog-tooltip');
+  if (!el) return;
+  const { tooltip } = context;
+  if (tooltip.opacity === 0 || !tooltip.dataPoints?.length) {
+    el.style.display = 'none';
+    return;
+  }
+  let html = '';
+  if (tooltip.title?.length) {
+    html += `<div class="ptip-title">${tooltip.title[0]}</div>`;
+  }
+  tooltip.dataPoints.forEach(dp => {
+    const bg = dp.dataset.borderColor || (Array.isArray(dp.dataset.backgroundColor) ? dp.dataset.backgroundColor[dp.dataIndex] : dp.dataset.backgroundColor) || '#9CA3AF';
+    html += `<div class="ptip-row"><span class="ptip-dot" style="background:${bg}"></span><span>${dp.dataset.label}: <strong style="color:#e5e7eb">${dp.formattedValue}</strong></span></div>`;
+  });
+  const i = tooltip.dataPoints[0]?.dataIndex;
+  if (i === 11) html += `<div class="ptip-note">🏁 La forma es máxima: CTL alto + fatiga mínima</div>`;
+  else if (i >= 7 && i <= 9) html += `<div class="ptip-note">↘ CTL baja levemente para que la Forma suba</div>`;
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
 const _adaptCache = {}; // { [idx]: adaptation data from AI }
 let _bgSyncToken = 0; // se incrementa al guardar localmente para invalidar GETs en vuelo
 
@@ -3967,24 +4007,8 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
           labels: { color: '#9CA3AF', font: { size: 10, family: 'Plus Jakarta Sans', weight: '600' }, usePointStyle: true, boxWidth: 4, padding: 12 }
         },
         tooltip: {
-          backgroundColor: '#13151c',
-          titleColor: '#f0f2f7',
-          bodyColor: '#9CA3AF',
-          borderColor: 'rgba(255,255,255,0.1)',
-          borderWidth: 1,
-          padding: 12,
-          titleFont: { family: 'Plus Jakarta Sans', size: 13, weight: '700' },
-          bodyFont: { family: 'Inter', size: 12 },
-          cornerRadius: 8,
-          displayColors: true,
-          callbacks: {
-            afterBody(items) {
-              const i = items[0]?.dataIndex;
-              if (i === raceIdx) return ['', '🏁 La forma es máxima: CTL alto + fatiga mínima'];
-              if (i >= 7 && i <= 9)  return ['', '↘ CTL baja levemente para que la Forma suba'];
-              return [];
-            }
-          }
+          enabled: false,
+          external: renderProgTooltip,
         },
       },
       scales: {
