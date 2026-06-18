@@ -1800,9 +1800,9 @@ function _sanitizeCyclingContent(plan) {
   const DEFAULT_IF_SYNC = { z2: 0.62, long: 0.60, endurance: 0.65, recovery: 0.52, tempo: 0.82, threshold: 0.95, sweet_spot: 0.90, vo2max: 1.05, sprint: 0.90, strength: 0.80 };
   plan.sessions.forEach(s => {
     if (!s) return;
-    // Reparar duración mínima y recalcular TSS para planes guardados con valores incorrectos.
-    // Saltar sesiones ya adaptadas manualmente (la IA o el usuario las redujo intencionalmente).
-    if (!s.isRest && !s._adapted && typeof s.durationMin === 'number' && s.durationMin > 0) {
+    // Reparar duración mínima solo para sesiones de ciclismo sin adaptar.
+    const _isCyclingType = !s.isGym && !s.isRunning && !s.isWalking && !s.isOther && !['gym','running','walking'].includes(s.type);
+    if (!s.isRest && !s._adapted && _isCyclingType && typeof s.durationMin === 'number' && s.durationMin > 0) {
       const minD = MIN_DUR[s.type] || _userMinMin;
       if (s.durationMin < minD) {
         s.durationMin = minD;
@@ -3109,13 +3109,16 @@ async function saveAdaptation(idx) {
 
   // Actualizar métricas clave desde la IA
   sess.durationMin = t.duracion_min > 0 ? t.duracion_min : sess.durationMin;
-  // Enforce type-specific minimums so the AI can't produce absurdly short sessions
-  const _wh2  = AppState.athlete?.weekly_hours  || 8;
-  const _dpw2 = AppState.athlete?.days_per_week || 5;
-  const _userMin2 = Math.max(30, Math.round((_wh2 * 60) / _dpw2));
-  const _MIN_DUR = { long: Math.max(90, _userMin2), endurance: Math.max(_userMin2, 45), threshold: Math.max(_userMin2, 40), vo2max: Math.max(_userMin2, 35), tempo: Math.max(_userMin2, 40), sweet_spot: Math.max(_userMin2, 40), sprint: Math.max(_userMin2, 30), recovery: 20 };
-  const _minForType = _MIN_DUR[sess.type] || _userMin2;
-  if (sess.durationMin < _minForType) sess.durationMin = _minForType;
+  // Enforce type-specific minimums solo para sesiones de ciclismo
+  const _isCyclingSess = !sess.isGym && !sess.isRunning && !sess.isWalking && !sess.isOther && !['gym','running','walking'].includes(sess.type);
+  if (_isCyclingSess) {
+    const _wh2  = AppState.athlete?.weekly_hours  || 8;
+    const _dpw2 = AppState.athlete?.days_per_week || 5;
+    const _userMin2 = Math.max(30, Math.round((_wh2 * 60) / _dpw2));
+    const _MIN_DUR = { long: Math.max(90, _userMin2), endurance: Math.max(_userMin2, 45), threshold: Math.max(_userMin2, 40), vo2max: Math.max(_userMin2, 35), tempo: Math.max(_userMin2, 40), sweet_spot: Math.max(_userMin2, 40), sprint: Math.max(_userMin2, 30), recovery: 20 };
+    const _minForType = _MIN_DUR[sess.type] || _userMin2;
+    if (sess.durationMin < _minForType) sess.durationMin = _minForType;
+  }
   sess.tss         = t.tss_estimado || sess.tss;
   sess.ifTarget    = t.if_estimado  || sess.ifTarget;
 
