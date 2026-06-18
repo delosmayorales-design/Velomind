@@ -2918,7 +2918,7 @@ function overrideToRest(idx) {
   if (!currentPlan?.sessions?.[idx]) return;
   const sess = currentPlan.sessions[idx];
   if (!sess._origSession) {
-    sess._origSession = { type: sess.type, name: sess.name, emoji: sess.emoji, isRest: sess.isRest, description: sess.description, durationMin: sess.durationMin, tssShare: sess.tssShare, ifTarget: sess.ifTarget };
+    sess._origSession = { type: sess.type, name: sess.name, emoji: sess.emoji, isRest: sess.isRest, description: sess.description, durationMin: sess.durationMin, tssShare: sess.tssShare, tss: sess.tss, ifTarget: sess.ifTarget, intervals: sess.intervals, alt_intervals: sess.alt_intervals, alt_description: sess.alt_description };
   }
 
   // Capturar TSS antes de borrarlo
@@ -2959,8 +2959,18 @@ function undoOverrideRest(idx) {
   const sess = currentPlan.sessions[idx];
   if (sess._origSession) {
     const o = sess._origSession;
-    sess.type = o.type; sess.name = o.name; sess.emoji = o.emoji;
-    sess.isRest = o.isRest; sess.description = o.description;
+    sess.type        = o.type;
+    sess.name        = o.name;
+    sess.emoji       = o.emoji;
+    sess.isRest      = o.isRest;
+    sess.description = o.description;
+    sess.durationMin = o.durationMin;
+    sess.tssShare    = o.tssShare;
+    sess.tss         = o.tss;
+    sess.ifTarget    = o.ifTarget;
+    if (o.intervals)       sess.intervals       = o.intervals;
+    if (o.alt_intervals)   sess.alt_intervals   = o.alt_intervals;
+    if (o.alt_description) sess.alt_description = o.alt_description;
     delete sess._overriddenToRest; delete sess._origSession;
     delete sess._adapted; delete sess.advice;
   }
