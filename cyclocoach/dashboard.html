@@ -2267,7 +2267,7 @@ function _dashStartAnim() {
   _dashAnimPlaying = true;
   _dashAnimT0 = performance.now();
   const btn = document.getElementById('dash-play-btn');
-  if (btn) btn.innerHTML = '<i class="fas fa-pause"></i>';
+  if (btn) btn.innerHTML = '<i class="fas fa-pause" style="pointer-events:none"></i>';
   const cursor = document.getElementById('dash-elev-cursor');
   if (cursor) cursor.style.opacity = '1';
   _dashAnimFrame = requestAnimationFrame(_dashAnimTick);
@@ -2278,7 +2278,7 @@ function _dashPauseAnim(finished = false) {
   if (_dashAnimPlaying) _dashAnimOffset += (performance.now() - _dashAnimT0) * _DASH_SPEED / 1000;
   _dashAnimPlaying = false;
   const btn = document.getElementById('dash-play-btn');
-  if (btn) btn.innerHTML = finished ? '<i class="fas fa-rotate-left"></i>' : '<i class="fas fa-play"></i>';
+  if (btn) btn.innerHTML = finished ? '<i class="fas fa-rotate-left" style="pointer-events:none"></i>' : '<i class="fas fa-play" style="pointer-events:none"></i>';
 }
 
 function _dashToggleAnim() {
@@ -2416,10 +2416,10 @@ async function _renderLastActMapElev(act) {
       // Botón Play
       const PlayCtrl = L.Control.extend({
         onAdd() {
-          const btn = L.DomUtil.create('button');
+          const btn = L.DomUtil.create('div');
           btn.id = 'dash-play-btn';
-          btn.innerHTML = '<i class="fas fa-play"></i>';
-          btn.style.cssText = 'width:64px;height:64px;border-radius:50%;background:#AAFF00;color:#000;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;box-shadow:0 4px 16px rgba(0,0,0,0.8);outline:none;margin:8px';
+          btn.innerHTML = '<i class="fas fa-play" style="pointer-events:none"></i>';
+          btn.style.cssText = 'width:52px;height:52px;border-radius:50%;background:#AAFF00;color:#000;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;box-shadow:0 4px 18px rgba(0,0,0,0.75);margin:10px;flex-shrink:0';
           L.DomEvent.disableClickPropagation(btn);
           L.DomEvent.on(btn, 'click', _dashToggleAnim);
           return btn;
