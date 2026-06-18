@@ -57,7 +57,7 @@
 
       /* Perfil de Ciclista — layout móvil rediseñado */
       .rp-layout   { flex-direction: column !important; gap: 0 !important; padding: 0 !important; }
-      .rp-radar    { flex: 0 0 auto !important; width: min(200px,90vw) !important; height: min(200px,80vw) !important; margin: 12px auto 6px !important; }
+      .rp-radar    { flex: 0 0 auto !important; width: min(240px,92vw) !important; height: min(240px,82vw) !important; margin: 12px auto 6px !important; }
       .rp-info     { min-width: 0 !important; width: 100%; }
       .rp-name     { font-size: 20px !important; text-align: center; margin-bottom: 4px !important; }
       .rp-desc     { font-size: 11px !important; text-align: center; margin-bottom: 14px !important; padding: 0 4px; }
@@ -79,7 +79,7 @@
 
     /* ── Rider Profile — estilos base (desktop) ───────────────── */
     .rp-layout { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; padding: 4px 0 8px; }
-    .rp-radar  { flex: 0 0 160px; height: 160px; position: relative; }
+    .rp-radar  { flex: 0 0 220px; height: 220px; position: relative; }
     .rp-info   { flex: 1; min-width: 200px; }
     .rp-name   { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
     .rp-desc   { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px; max-width: 420px; }
@@ -1649,9 +1649,9 @@ function renderRiderProfile(acts, athlete, curve) {
   var p = result.profile;
   var s = result.scores;
 
-  // Badge + nombre
+  // Badge: ocultar — el nombre ya se muestra en rp-name
   var badge = document.getElementById('rider-profile-badge');
-  if (badge) { badge.textContent = p.emoji + ' ' + p.name; badge.style.background = p.color + '22'; badge.style.color = p.color; badge.style.border = '1px solid ' + p.color + '55'; }
+  if (badge) badge.style.display = 'none';
   var nameEl = document.getElementById('rider-profile-name');
   if (nameEl) nameEl.innerHTML = '<span style="color:' + p.color + '">' + p.emoji + ' ' + p.name + '</span>';
   var descEl = document.getElementById('rider-profile-desc');
@@ -1683,9 +1683,9 @@ function renderRiderProfile(acts, athlete, curve) {
   var ctx = document.getElementById('rider-radar-canvas');
   if (!ctx) return;
   var isLight = document.documentElement.classList.contains('light-theme');
-  var gridColor    = isLight ? 'rgba(0,0,0,0.12)'   : 'rgba(255,255,255,0.13)';
-  var labelColor   = isLight ? '#374151'             : '#9CA3AF';
-  var fillOpacity  = isLight ? '55'                  : '40';
+  var gridColor    = isLight ? 'rgba(0,0,0,0.18)'   : 'rgba(255,255,255,0.22)';
+  var labelColor   = isLight ? '#374151'             : '#D1D5DB';
+  var fillOpacity  = isLight ? '75'                  : '65';
   riderRadarChart = new Chart(ctx, {
     type: 'radar',
     data: {
@@ -1694,12 +1694,12 @@ function renderRiderProfile(acts, athlete, curve) {
         data: [s.resistencia, s.escalada, s.sprint, s.regularidad, s.umbral],
         backgroundColor: p.color + fillOpacity,
         borderColor: p.color,
-        borderWidth: 2.5,
+        borderWidth: 3,
         pointBackgroundColor: p.color,
         pointBorderColor: isLight ? '#fff' : '#0a0b0f',
-        pointBorderWidth: 1.5,
-        pointRadius: 4,
-        pointHoverRadius: 6,
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
       }]
     },
     options: {
@@ -1711,7 +1711,7 @@ function renderRiderProfile(acts, athlete, curve) {
           ticks: { display: false, stepSize: 25 },
           grid: { color: gridColor },
           angleLines: { color: gridColor },
-          pointLabels: { color: labelColor, font: { size: 10, weight: '600' } }
+          pointLabels: { color: labelColor, font: { size: 11, weight: '600' } }
         }
       }
     }

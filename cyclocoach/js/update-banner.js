@@ -1,16 +1,8 @@
 (function () {
-  var STORAGE_KEY = 'velomind_last_build_id';
+  var STORAGE_KEY = 'velomind_update_seen';
 
-  function getApiBase() {
-    if (window.API_URL) return window.API_URL;
-    return (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-      ? 'http://localhost:3000/api'
-      : 'https://velomind-backend.onrender.com/api';
-  }
-
-  function showModal(buildId) {
+  function showModal(dateKey) {
     if (document.getElementById('vm-update-modal')) return;
-
     var overlay = document.createElement('div');
     overlay.id = 'vm-update-modal';
     overlay.innerHTML =
@@ -23,9 +15,8 @@
         '<button class="vm-modal-btn" id="vm-update-ok">Entendido, ¡a entrenar! 🚴</button>' +
       '</div>';
     document.body.appendChild(overlay);
-
     document.getElementById('vm-update-ok').onclick = function () {
-      localStorage.setItem(STORAGE_KEY, buildId);
+      localStorage.setItem(STORAGE_KEY, dateKey);
       overlay.style.transition = 'opacity 0.25s';
       overlay.style.opacity = '0';
       setTimeout(function () { overlay.remove(); }, 260);
@@ -33,17 +24,30 @@
   }
 
   async function checkForUpdates() {
+    var today = new Date().toISOString().split('T')[0];
+    if (localStorage.getItem(STORAGE_KEY) === today) return; // ya visto hoy
+
+    // Check 1: fecha del propio documento HTML (Vercel actualiza Last-Modified con cada deploy)
     try {
-      var res = await fetch(getApiBase() + '/version');
-      if (!res.ok) return;
-      var data = await res.json();
+      var lm = new Date(document.lastModified);
+      if (!isNaN(lm.getTime())) {
+        var docDay = lm.toISOString().split('T')[0];
+        if (docDay === today) { showModal(today); return; }
+      }
+    } catch (e) {}
 
-      var deployDate = (data.deployedAt || '').split('T')[0];
-      var today = new Date().toISOString().split('T')[0];
-      var lastSeen = localStorage.getItem(STORAGE_KEY);
-
-      if (deployDate === today && data.buildId !== lastSeen) {
-        showModal(data.buildId);
+    // Check 2: endpoint /api/version del backend (fallback con timeout de 4 s)
+    try {
+      var apiBase = window.API_URL || 'https://velomind-backend.onrender.com/api';
+      var opts = {};
+      if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+        opts.signal = AbortSignal.timeout(4000);
+      }
+      var res = await fetch(apiBase + '/version', opts);
+      if (res.ok) {
+        var data = await res.json();
+        var deployDay = (data.deployedAt || '').split('T')[0];
+        if (deployDay === today) { showModal(today); }
       }
     } catch (e) {}
   }
