@@ -1753,29 +1753,25 @@ function renderStreamCharts(s, ftp, act) {
     }
     function _nearHandleMouse(clientX) {
       if (_selA === null || _selB === null) return null;
-      const rect  = chart.canvas.getBoundingClientRect();
-      const dpr   = chart.canvas.width / rect.width;
-      const tx    = clientX - rect.left;
-      const xA    = chart.scales.x.getPixelForValue(_selA) / dpr;
-      const xB    = chart.scales.x.getPixelForValue(_selB) / dpr;
-      const THRESH = 20; // CSS px alrededor de la barra
-      const dA = Math.abs(tx - xA), dB = Math.abs(tx - xB);
-      if (dA <= dB && dA < THRESH) return 'left';
-      if (dB <  dA && dB < THRESH) return 'right';
-      return null;
+      const rect = chart.canvas.getBoundingClientRect();
+      const dpr  = chart.canvas.width / rect.width;
+      const tx   = clientX - rect.left;
+      const xA   = chart.scales.x.getPixelForValue(_selA) / dpr;
+      const xB   = chart.scales.x.getPixelForValue(_selB) / dpr;
+      const PAD  = 16; // margen fuera de la barra para facilitar click
+      if (tx < xA - PAD || tx > xB + PAD) return null; // fuera del rango → nueva selección
+      return (Math.abs(tx - xA) <= Math.abs(tx - xB)) ? 'left' : 'right';
     }
     function _nearHandleTouch(touch) {
       if (_selA === null || _selB === null) return null;
-      const rect  = chart.canvas.getBoundingClientRect();
-      const dpr   = chart.canvas.width / rect.width;
-      const tx    = touch.clientX - rect.left;
-      const xA    = chart.scales.x.getPixelForValue(_selA) / dpr;
-      const xB    = chart.scales.x.getPixelForValue(_selB) / dpr;
-      const THRESH = 40; // zona generosa para dedo
-      const dA = Math.abs(tx - xA), dB = Math.abs(tx - xB);
-      if (dA <= dB && dA < THRESH) return 'left';
-      if (dB <  dA && dB < THRESH) return 'right';
-      return null;
+      const rect = chart.canvas.getBoundingClientRect();
+      const dpr  = chart.canvas.width / rect.width;
+      const tx   = touch.clientX - rect.left;
+      const xA   = chart.scales.x.getPixelForValue(_selA) / dpr;
+      const xB   = chart.scales.x.getPixelForValue(_selB) / dpr;
+      const PAD  = 24; // margen generoso para dedo
+      if (tx < xA - PAD || tx > xB + PAD) return null; // fuera del rango → nueva selección
+      return (Math.abs(tx - xA) <= Math.abs(tx - xB)) ? 'left' : 'right';
     }
     function _updateAllCharts() {
       streamKeys.forEach(k => { if (chartInsts[k]) chartInsts[k].update('none'); });
