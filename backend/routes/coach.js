@@ -1377,6 +1377,10 @@ router.post('/ai-analysis', async (req, res) => {
       : 0;
     const hasPower = activities.some(a => (a.avg_power || 0) > 0);
 
+    const weeklyHours  = user.weekly_hours  || 8;
+    const daysPerWeek  = user.days_per_week || 5;
+    const minSessionMin = Math.max(30, Math.round((weeklyHours * 60) / daysPerWeek));
+
     const athleteProfile = {
       ftp,
       weight:   user.weight || 70,
@@ -1392,6 +1396,9 @@ router.post('/ai-analysis', async (req, res) => {
       has_power_meter: hasPower,
       zona_distribucion: { z1: zonePct[1], z2: zonePct[2], z3: zonePct[3], z4: zonePct[4], z5: zonePct[5], z6: zonePct[6], z7: zonePct[7] },
       avg_session_min: avgDurMin,
+      weekly_hours:    weeklyHours,
+      days_per_week:   daysPerWeek,
+      min_session_min: minSessionMin,
       best_np_w: maxNP || null,
       best_tss:  maxTSS || null,
     };
@@ -1483,6 +1490,10 @@ Compara la distribución de zonas real del atleta con los rangos óptimos para s
 Identifica los 2-3 puntos débiles más impactantes con datos específicos (ej: "Z2 solo ${zonePct[2]}%, recomendado >45%").
 Sé técnico pero motivador, como un coach de TrainingPeaks.
 
+RESTRICCIÓN DE DURACIÓN MÍNIMA (OBLIGATORIO):
+El atleta tiene ${weeklyHours}h/semana en ${daysPerWeek} días → duración mínima por sesión = ${minSessionMin} min.
+NUNCA generes una sesión de ciclismo con duracion_min < ${minSessionMin}. Solo las sesiones tipo "recovery" o "descanso" pueden tener duracion_min < ${minSessionMin}.
+
 Genera el análisis completo en formato JSON estrictamente válido.`;
 
     // El payload para Groq es más pequeño para no exceder el límite de tokens del tier gratuito.
@@ -1535,7 +1546,7 @@ Devuelve EXACTAMENTE este JSON (sin markdown, sin texto extra):
   },
   "recomendaciones": [{"prioridad":"alta|media|baja","titulo":"string","detalle":"string"}]
 }
-Incluye los 7 días de la semana en plan_semanal. Para días de entreno duracion_min DEBE ser > 0.`;
+Incluye los 7 días de la semana en plan_semanal. Para días de entreno duracion_min DEBE ser >= ${minSessionMin} (mínimo del atleta). Solo "Descanso" y "recovery" pueden tener duracion_min 0.`;
     }
 
     const parsed = await callAI(CYCLING_COACH_SYSTEM_PROMPT, finalUserMessage, { max_tokens: 8000, temperature: 0.2, groqModel: finalModel });
