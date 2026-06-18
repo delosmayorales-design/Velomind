@@ -3400,6 +3400,12 @@ function syncPlanWithReality() {
 
     const isToday = i === todayIdx;
     if (isToday) {
+      if (sess._manualAdaptDay === todayIdx) {
+        // El plan fue guardado manualmente hoy: no re-evaluar para no
+        // deshacer los ajustes del plan regenerado.
+        sess._evaluated = true;
+        continue;
+      }
       delete sess._evaluated; // Permitir reevaluar hoy si hay nuevos datos
     }
 
@@ -5059,6 +5065,13 @@ async function savePlan() {
   const btn = document.getElementById('btn-save-plan');
   btn.innerHTML = '<i class="fas fa-spinner spinning"></i> Guardando...';
   try {
+    // Marcar hoy como "adaptado manualmente" para que syncPlanWithReality()
+    // no vuelva a reducir los días futuros tras volver a la pantalla.
+    const _saveDay = (new Date().getDay() + 6) % 7;
+    if (currentPlan.sessions?.[_saveDay]) {
+      currentPlan.sessions[_saveDay]._manualAdaptDay = _saveDay;
+    }
+
     const planData = {
       week_start:       getMondayString(),
       sessions:         currentPlan.sessions,
