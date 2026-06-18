@@ -3503,7 +3503,7 @@ function syncPlanWithReality() {
   // Ajuste conservador: solo reducimos carga cuando hay fatiga acumulada real.
   // NUNCA aumentamos carga para compensar sesiones perdidas — la consistencia
   // a largo plazo vale más que recuperar TSS de una semana.
-  if (changed && accumTSSDeviation > 30) {
+  if (changed && accumTSSDeviation > 15) {
     for (let i = todayIdx + 1; i < 7; i++) {
       const sess = currentPlan.sessions[i];
       if (sess.isRest || accumTSSDeviation <= 20) continue;
@@ -3516,6 +3516,7 @@ function syncPlanWithReality() {
       const reduction = Math.min(accumTSSDeviation, Math.round(planTSS * 0.20));
       if (reduction < 5) continue;
       sess.tss = Math.max(20, planTSS - reduction);
+      sess.tssShare = 0; // forzar render desde sess.tss
       sess.durationMin = Math.min(_maxDur, Math.round((sess.durationMin || 60) * (sess.tss / planTSS)));
       accumTSSDeviation -= reduction;
 
