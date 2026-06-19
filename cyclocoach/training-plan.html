@@ -3696,14 +3696,17 @@ async function _applyActivitySubstitution(idx, sub, feedback, isFuture, btn, res
   if (sub.isWalking) sess.isWalking = true;
   if (sub.isOther)   sess.isOther   = true;
 
+  // TSS calculado según la carga real de la actividad: (dur_h × IF² × 100)
+  const calcTSS = Math.max(5, Math.round((newDur / 60) * Math.pow(sub.ifRef, 2) * 100));
+
   sess.type        = sub.type;
   sess.emoji       = sub.emoji;
   sess.name        = sub.name;
   sess.description = sub.desc;
   sess.alt_description = '';
-  sess.tss         = origTSS;   // Mantener TSS original: misma carga semanal
+  sess.tss         = calcTSS;
   sess.durationMin = newDur;
-  sess.advice      = `Cambiado a ${sub.name}: "${feedback.slice(0, 80)}". TSS conservado (${origTSS}) para mantener la carga semanal.`;
+  sess.advice      = `Cambiado a ${sub.name}: "${feedback.slice(0, 80)}". TSS estimado: ${calcTSS} (${newDur} min a IF ${sub.ifRef}).`;
   sess.feedback    = feedback;
   sess._adapted    = true;
   sess._substituted = sub.type;
