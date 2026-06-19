@@ -82,14 +82,18 @@
 
     /* ── Rider Profile — layout horizontal en escritorio ── */
     @media (min-width: 769px) {
-      .rp-layout  { flex-direction:row; align-items:center; gap:28px; padding:16px 24px 24px; }
-      .rp-radar   { width:230px !important; height:230px !important; flex-shrink:0; }
-      .rp-info    { flex:1; text-align:left; padding:0; }
-      .rp-name    { font-size:22px; margin-bottom:6px; }
-      .rp-desc    { font-size:12px; max-width:none; margin-left:0; margin-right:0; margin-bottom:12px; }
-      .rp-stats   { max-width:none; margin:0; gap:7px; }
-      .rp-pill    { padding:8px 11px; border-radius:11px; }
-      .rp-pill-val { font-size:17px; }
+      .rp-layout   { flex-direction:row; align-items:center; gap:28px; padding:16px 24px 24px; }
+      .rp-radar    { width:230px !important; height:230px !important; flex-shrink:0; }
+      .rp-info     { flex:1; text-align:left; padding:0; min-width:0; }
+      .rp-name     { font-size:22px; margin-bottom:6px; }
+      .rp-desc     { font-size:12px; max-width:none; margin-left:0; margin-right:0; margin-bottom:12px; }
+      /* Pills: fila única, cada una ocupa lo mismo */
+      .rp-stats    { display:flex; flex-wrap:nowrap; gap:6px; max-width:none; margin:0; width:100%; }
+      .rp-pill     { flex:1; min-width:0; flex-direction:column; align-items:center; justify-content:center;
+                     gap:3px; padding:8px 6px; border-radius:10px; text-align:center; }
+      .rp-pill-icon { font-size:14px; width:auto; }
+      .rp-pill-val  { font-size:15px; }
+      .rp-pill-lbl  { font-size:8px; letter-spacing:.06em; }
     }
 
     /* Header en móvil: columna para evitar bug de Android con sticky + flex-wrap */
