@@ -654,6 +654,16 @@
       gap: 8px;
       margin-top: 12px;
     }
+
+    /* Desktop: todo en una línea */
+    @media (min-width: 769px) {
+      .last-act-top  { flex-wrap: nowrap !important; align-items: center !important; }
+      .last-act-info { display: flex !important; align-items: baseline; gap: 14px; min-width: 0; }
+      .last-act-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45vw; }
+      .last-act-date { flex-shrink: 0; white-space: nowrap; }
+      .last-act-link { flex-shrink: 0; white-space: nowrap; margin-left: auto; padding-left: 24px; }
+    }
+
     .last-act-metric {
       background: var(--bg-input);
       border-radius: 10px;
@@ -2461,12 +2471,12 @@ function renderLastAct() {
   const url  = (act.id||act.strava_id) ? `activities.html?id=${act.id||act.strava_id}` : 'activities.html';
   el.innerHTML = `
     <a href="${url}" style="display:block;text-decoration:none;color:inherit">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-        <div>
-          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700">${act.name||'Actividad'}</div>
-          <div style="font-size:12px;color:var(--text-muted)">${when} · ${Utils.formatDate(act.date?.substring(0,10))}</div>
+      <div class="last-act-top" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <div class="last-act-info">
+          <div class="last-act-name" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700">${act.name||'Actividad'}</div>
+          <div class="last-act-date" style="font-size:12px;color:var(--text-muted)">${when} · ${Utils.formatDate(act.date?.substring(0,10))}</div>
         </div>
-        <span style="font-size:12px;color:var(--primary);font-weight:600">Ver actividad <i class="fas fa-arrow-right"></i></span>
+        <span class="last-act-link" style="font-size:12px;color:var(--primary);font-weight:600">Ver actividad <i class="fas fa-arrow-right"></i></span>
       </div>
       <div class="last-act-metrics">
         <div class="last-act-metric"><div class="val">${Utils.formatDistance(act.distance)}</div><div class="lbl">Distancia</div></div>
