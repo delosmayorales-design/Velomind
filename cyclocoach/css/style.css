@@ -153,12 +153,6 @@ input, select, textarea, button { font-family: inherit; }
   cursor: pointer;
 }
 
-.sidebar-logo img:hover,
-.logo img:hover {
-  animation: none;
-  transform: perspective(160px) rotateY(-18deg) scale(1.1);
-  filter: drop-shadow(0 0 26px rgba(196,239,68,0.85)) brightness(1.18);
-}
 
 .logo-icon {
   font-size: 26px;
