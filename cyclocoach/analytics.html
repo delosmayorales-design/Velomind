@@ -96,6 +96,27 @@
       .rp-pill-lbl  { font-size:8px; letter-spacing:.06em; }
     }
 
+    /* ── Curva de Potencia — desktop ─────────────────────────── */
+    @media (min-width: 769px) {
+      #power-curve-section .grid-2col {
+        grid-template-columns: 56% 44% !important;
+        gap: 0 !important;
+        align-items: stretch;
+      }
+      #power-curve-chart-wrap {
+        height: auto !important;
+        align-self: stretch !important;
+        border-right: 1px solid var(--border);
+        padding: 4px 20px 8px 0;
+      }
+      #power-curve-section .pwr-table-wrap {
+        padding: 0 0 0 20px;
+        overflow-x: visible;
+      }
+      .power-table-td { padding: 6px 8px !important; }
+      .power-table-th { padding: 6px 8px !important; }
+    }
+
     /* Header en móvil: columna para evitar bug de Android con sticky + flex-wrap */
     @media (max-width: 768px) {
       .page-header {
@@ -441,8 +462,8 @@
         <span id="power-ftp-label" class="badge" style="background:rgba(196,239,68,0.1);color:#C4EF44;border:1px solid rgba(196,239,68,0.25)"></span>
       </div>
       <div class="grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div id="power-curve-chart-wrap" style="height:200px;position:relative;align-self:start"><canvas id="power-curve-chart"></canvas></div>
-        <div style="overflow-x:auto">
+        <div id="power-curve-chart-wrap" style="height:200px;position:relative"><canvas id="power-curve-chart"></canvas></div>
+        <div class="pwr-table-wrap" style="overflow-x:auto">
           <table id="power-table" style="width:100%;border-collapse:collapse">
             <thead>
               <tr>
@@ -2135,17 +2156,25 @@ function renderPowerCurve(pc) {
   var tbody = document.querySelector('#power-table tbody');
   if (tbody) {
     var maxP = Math.max.apply(null, pc.curve.map(function(p){ return p.power; }));
+    var KEY_LABELS = { '5min': '#C4EF44', '20min': '#F59E0B' }; // VO2max, FTP proxy
     tbody.innerHTML = pc.curve.map(function(p) {
-      var pct = Math.round(p.power / maxP * 100);
-      var barOpacity = 0.35 + (pct / 100) * 0.65; // más largo = más brillante
-      var barColor = 'rgba(196,239,68,' + barOpacity.toFixed(2) + ')';
-      return '<tr>' +
-        '<td class="power-table-td" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text-primary);white-space:nowrap">' + p.label + '</td>' +
-        '<td class="power-table-td" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:14px;color:#C4EF44;font-weight:800;font-family:\'Plus Jakarta Sans\',sans-serif">' + p.power + 'W</td>' +
-        '<td class="power-table-td hide-on-mobile" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted)">' + (p.wkg || '--') + '</td>' +
-        '<td class="power-table-td hide-on-mobile" style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted)">' + (p.pctFTP ? p.pctFTP + '%' : '--') + '</td>' +
-        '<td class="power-table-td" style="padding:10px 10px;border-bottom:1px solid var(--border);width:100%">' +
-          '<div style="height:6px;border-radius:3px;background:' + barColor + ';width:' + pct + '%"></div>' +
+      var pct     = Math.round(p.power / maxP * 100);
+      var accentC = KEY_LABELS[p.label] || null;
+      var rowBg   = accentC ? 'background:color-mix(in srgb,' + accentC + ' 5%,transparent)' : '';
+      var labelStyle = accentC
+        ? 'color:' + accentC + ';font-weight:800;font-size:12px'
+        : 'color:var(--text-primary);font-weight:700;font-size:12px';
+      var barGrad = 'linear-gradient(90deg,rgba(196,239,68,0.9),rgba(196,239,68,0.45))';
+      var borderC = accentC ? 'border-bottom:1px solid color-mix(in srgb,' + accentC + ' 20%,var(--border))' : 'border-bottom:1px solid var(--border)';
+      return '<tr style="' + rowBg + '">' +
+        '<td class="power-table-td" style="' + borderC + ';white-space:nowrap;' + labelStyle + '">' +
+          (accentC ? '<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:' + accentC + ';margin-right:5px;vertical-align:middle"></span>' : '') +
+          p.label + '</td>' +
+        '<td class="power-table-td" style="' + borderC + ';font-size:14px;color:#C4EF44;font-weight:800;font-family:\'Plus Jakarta Sans\',sans-serif">' + p.power + 'W</td>' +
+        '<td class="power-table-td hide-on-mobile" style="' + borderC + ';font-size:12px;color:var(--text-muted)">' + (p.wkg || '--') + '</td>' +
+        '<td class="power-table-td hide-on-mobile" style="' + borderC + ';font-size:12px;color:var(--text-muted)">' + (p.pctFTP ? p.pctFTP + '%' : '--') + '</td>' +
+        '<td class="power-table-td" style="' + borderC + ';width:100%;padding-right:4px">' +
+          '<div style="height:5px;border-radius:4px;background:' + barGrad + ';width:' + pct + '%;box-shadow:0 0 6px rgba(196,239,68,0.25)"></div>' +
         '</td></tr>';
     }).join('');
   }
