@@ -25,6 +25,39 @@
       #bw-main-grid     { grid-template-columns: 1fr !important; }
       #bw-analysis-grid { grid-template-columns: 1fr !important; }
     }
+
+    /* ── Diseño desktop ───────────────────────────────────────── */
+    @media (min-width: 841px) {
+
+      /* Stats: acento cromático por posición + número más grande */
+      #stats-row { gap: 12px !important; }
+      #stats-row .metric-card .metric-value { font-size: 26px !important; }
+      #stats-row .metric-card:nth-child(1) { border-top: 3px solid var(--primary); }
+      #stats-row .metric-card:nth-child(2) { border-top: 3px solid var(--success); }
+      #stats-row .metric-card:nth-child(3) { border-top: 3px solid var(--accent); }
+      #stats-row .metric-card:nth-child(4) { border-top: 3px solid var(--warning); }
+      #stats-row .metric-card:nth-child(5) { border-top: 3px solid #8B5CF6; }
+
+      /* Gráfico más alto — elimina espacio vacío bajo la curva */
+      #weight-chart-wrap { height: 380px !important; }
+
+      /* Grid principal: chart un poco más ancho */
+      #bw-main-grid { grid-template-columns: 3fr 2fr !important; gap: 24px !important; }
+
+      /* Formulario compacto */
+      #bw-main-grid .form-group { margin-bottom: 10px !important; }
+      #bw-main-grid .form-hint  { font-size: 11px; }
+      #bw-main-grid .form-label { font-size: 12px; margin-bottom: 3px !important; }
+      #bw-main-grid .form-control { padding: 7px 10px !important; font-size: 13px !important; }
+
+      /* Analysis: W/kg a la izquierda ocupa las 2 filas */
+      #bw-analysis-grid {
+        grid-template-columns: 1fr 1fr !important;
+        align-items: stretch;
+      }
+      #bw-analysis-grid > .card:first-child { grid-row: 1 / 3; }
+      #bw-analysis-grid > .card:first-child #wkg-value { font-size: 64px !important; }
+    }
     /* ── Bluetooth báscula ────────────────────────────────────── */
     .btn-bt {
       display: inline-flex; align-items: center; gap: 6px;

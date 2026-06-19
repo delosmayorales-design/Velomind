@@ -2595,7 +2595,7 @@ const Charts = {
           x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', font: { size: 11 } } },
           y: {
             grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: { color: '#6b7280', font: { size: 11 }, callback: v => v + ' kg' },
+            ticks: { color: '#6b7280', font: { size: 11 }, callback: v => (+v).toFixed(1) + ' kg' },
           },
           ...(sorted.some(e => e.fat) ? {
             y2: {
