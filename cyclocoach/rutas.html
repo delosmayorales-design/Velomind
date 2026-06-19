@@ -238,22 +238,27 @@
       z-index: 499;
       display: none;
       align-items: center;
-      gap: 5px;
-      flex-wrap: wrap;
+      gap: 10px;
+      flex-wrap: nowrap;
+      white-space: nowrap;
       justify-content: center;
       background: rgba(6,12,8,0.82);
       backdrop-filter: blur(12px);
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 5px 14px;
+      padding: 5px 16px;
       font-size: 11px;
-      max-width: 88vw;
+      max-width: 92vw;
       pointer-events: none;
       box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+    @media (max-width: 768px) {
+      #route-cities-bar { flex-wrap: wrap; white-space: normal; gap: 5px; top: 74px; padding: 4px 10px; }
     }
     .cty-icon { color: var(--primary); font-size: 10px; opacity: .8; flex-shrink: 0; margin-right: 2px; }
     .cty-tag  { color: var(--text-primary); font-weight: 600; white-space: nowrap; }
-    .cty-sep  { color: var(--text-muted); opacity: .5; font-size: 9px; }
+    .cty-sep  { color: var(--text-muted); opacity: .4; font-size: 8px; flex-shrink: 0; }
 
     /* Etiquetas de ciudad sobre el mapa */
     .city-pin {
