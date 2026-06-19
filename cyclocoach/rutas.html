@@ -2677,15 +2677,14 @@ async function _detectRouteCities(latLngs, distKm) {
     if (_cityRunId !== myId) return; // ruta recalculada — abortar esta ejecución
     try {
       const r = await fetch(
-        // zoom=12 → nivel municipio/pedanía (detecta pueblos pequeños)
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=12&accept-language=es`,
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&accept-language=es`,
         { headers: { 'User-Agent': 'VeloMind/1.0' } }
       );
       if (!r.ok) continue;
       const d = await r.json();
-      // Prioridad: village/town sobre city para no colapsar todo en la capital comarcal
+      // village/town primero para no colapsar pequeños municipios bajo la capital comarcal
       const name = d.address?.village || d.address?.town || d.address?.city
-                || d.address?.municipality || d.address?.hamlet || d.address?.suburb;
+                || d.address?.municipality || d.address?.hamlet;
       if (name && !seen.has(name)) {
         seen.add(name);
         cities.push({ name, lat, lng });
