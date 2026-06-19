@@ -3726,11 +3726,21 @@ async function _applyActivitySubstitution(idx, sub, feedback, isFuture, btn, res
 
   if (!isFuture) sess.completed = true;
 
+  // Redistribuir el déficit de TSS a las sesiones futuras de la semana
+  const tssDeficit = origTSS - calcTSS;
+  let redistMsg = '';
+  if (tssDeficit > 5) {
+    const redistChanges = _redistributeCancelledTSS(idx, tssDeficit, sub.name);
+    if (redistChanges.length) {
+      redistMsg = ` Los días restantes absorben los ${tssDeficit} TSS de diferencia.`;
+    }
+  }
+
   renderPlan(currentPlan, AppState.athlete);
   await silentSavePlan();
 
   if (result) {
-    result.innerHTML = `<span style="color:#10b981"><i class="fas fa-check-circle"></i> Sesión cambiada a <strong>${sub.name}</strong> (${newDur} min · ${origTSS} TSS). El resto del plan no cambia.</span>`;
+    result.innerHTML = `<span style="color:#10b981"><i class="fas fa-check-circle"></i> Sesión cambiada a <strong>${sub.name}</strong> (${newDur} min · ${calcTSS} TSS).${redistMsg}</span>`;
     result.style.display = '';
   }
   if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles" style="font-size:10px"></i> Adaptar'; }
