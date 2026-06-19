@@ -2662,19 +2662,23 @@ function _clearCityLabels() {
 }
 
 async function _detectRouteCities(latLngs, distKm) {
-  const myId = ++_cityRunId; // invalidar ejecuciones anteriores
+  const myId = ++_cityRunId;
   _clearCityLabels();
-  if (!latLngs || latLngs.length < 2 || distKm < 1) return;
+  if (!waypoints || waypoints.length < 2 || distKm < 1) return;
 
-  // Muestrear ~1 punto cada 5 km, mínimo 3, máximo 16
-  const n = Math.max(3, Math.min(16, Math.round(distKm / 5)));
-  const sampled = _sampleByDistance(latLngs, n);
+  // Usar los waypoints del usuario (5-10 puntos típicos) en lugar de muestreo denso.
+  // Menos peticiones → no activa rate-limit de Nominatim.
+  // Añadir también punto de mitad de ruta si hay pocos waypoints.
+  const pts = [...waypoints.map(w => [w.lat, w.lng])];
+  if (pts.length < 4 && latLngs?.length) {
+    pts.push(latLngs[Math.floor(latLngs.length / 2)]);
+  }
 
-  const seen  = new Set();
+  const seen   = new Set();
   const cities = [];
 
-  for (const [lat, lng] of sampled) {
-    if (_cityRunId !== myId) return; // ruta recalculada — abortar esta ejecución
+  for (const [lat, lng] of pts) {
+    if (_cityRunId !== myId) return;
     try {
       const r = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&accept-language=es`,
@@ -2682,21 +2686,23 @@ async function _detectRouteCities(latLngs, distKm) {
       );
       if (!r.ok) continue;
       const d = await r.json();
-      // village/town primero para no colapsar pequeños municipios bajo la capital comarcal
       const name = d.address?.village || d.address?.town || d.address?.city
                 || d.address?.municipality || d.address?.hamlet;
-      if (name && !seen.has(name)) {
+      // Usar lat/lon de la respuesta → posiciona el pin en el centro real del pueblo
+      const pinLat = parseFloat(d.lat);
+      const pinLng = parseFloat(d.lon);
+      if (name && !seen.has(name) && !isNaN(pinLat)) {
         seen.add(name);
-        cities.push({ name, lat, lng });
+        cities.push({ name, lat: pinLat, lng: pinLng });
       }
     } catch { /* ignorar fallos individuales */ }
-    await new Promise(res => setTimeout(res, 300)); // Nominatim rate limit
+    await new Promise(res => setTimeout(res, 450)); // Nominatim: respetar rate limit
   }
 
-  if (_cityRunId !== myId) return; // resultado ya obsoleto
+  if (_cityRunId !== myId) return;
   if (!cities.length) return;
 
-  // Etiquetas sobre el mapa
+  // Etiquetas en el centro del pueblo (coordenadas de Nominatim, no de la ruta)
   cities.forEach(({ name, lat, lng }) => {
     const icon = L.divIcon({
       className: '',
