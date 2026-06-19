@@ -146,13 +146,15 @@ input, select, textarea, button { font-family: inherit; }
   }
 }
 
-.sidebar-logo img {
+.sidebar-logo img,
+.logo img {
   animation: logo-float 4s ease-in-out infinite;
   transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), filter 0.4s ease;
   cursor: pointer;
 }
 
-.sidebar-logo img:hover {
+.sidebar-logo img:hover,
+.logo img:hover {
   animation: none;
   transform: perspective(160px) rotateY(-18deg) scale(1.1);
   filter: drop-shadow(0 0 26px rgba(196,239,68,0.85)) brightness(1.18);
