@@ -1630,6 +1630,14 @@ async function initTrainingPlan() {
       if (local?.sessions) {
         if (!local.week_start || local.week_start.slice(0, 10) === currentWeekStart) {
           currentPlan = { sessions: local.sessions, phase: local.phase, targetTSS: local.tss_target, advice: local.advice || {}, adaptation: local.adaptation || null };
+          // Garantizar que cyclocoach_plan_original existe y corresponde a esta semana
+          try {
+            const _origRaw = localStorage.getItem('cyclocoach_plan_original');
+            const _origWeek = _origRaw ? JSON.parse(_origRaw)?.week_start?.slice(0, 10) : null;
+            if (!_origWeek || _origWeek !== currentWeekStart) {
+              localStorage.setItem('cyclocoach_plan_original', JSON.stringify({ ...local, savedAt: Date.now() }));
+            }
+          } catch(_e) {}
         }
       }
     } catch(_) {}
@@ -1654,6 +1662,20 @@ async function initTrainingPlan() {
       } else {
         generatePlan();
         silentSavePlan();
+        // Guardar original del plan recién generado si no existe todavía
+        try {
+          if (currentPlan && !localStorage.getItem('cyclocoach_plan_original')) {
+            const _newPlanData = {
+              week_start: currentWeekStart,
+              sessions:   JSON.parse(JSON.stringify(currentPlan.sessions)),
+              tss_target: currentPlan.targetTSS || null,
+              phase:      currentPlan.phase     || null,
+              advice:     currentPlan.advice    || null,
+              savedAt:    Date.now()
+            };
+            localStorage.setItem('cyclocoach_plan_original', JSON.stringify(_newPlanData));
+          }
+        } catch(_e) {}
       }
     }
 
@@ -1716,7 +1738,17 @@ async function initTrainingPlan() {
           _sanitizeCyclingContent(currentPlan);
           syncPlanWithReality();
           // Normalizar week_start a YYYY-MM-DD antes de guardar en localStorage
-          localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...savedPlan, week_start: remoteWeekStart || currentWeekStart, savedAt: Date.now() }));
+          const _remoteWeek = remoteWeekStart || currentWeekStart;
+          const _remoteMeta = JSON.stringify({ ...savedPlan, week_start: _remoteWeek, savedAt: Date.now() });
+          localStorage.setItem('cyclocoach_training_plan', _remoteMeta);
+          // Garantizar que cyclocoach_plan_original existe y corresponde a esta semana
+          try {
+            const _origRaw = localStorage.getItem('cyclocoach_plan_original');
+            const _origWeek = _origRaw ? JSON.parse(_origRaw)?.week_start?.slice(0, 10) : null;
+            if (!_origWeek || _origWeek !== _remoteWeek) {
+              localStorage.setItem('cyclocoach_plan_original', _remoteMeta);
+            }
+          } catch(_e) {}
           if (AppState.athlete) renderPlan(currentPlan, AppState.athlete);
         }
       }).catch(e => console.log('[TP] Usando caché local'));
@@ -3615,8 +3647,141 @@ function syncPlanWithReality() {
   }
 }
 
+// ── Sustitución de tipo de actividad (running, gym, caminata, rodaje…) ─────────────────
+const _ACTIVITY_SUBS = [
+  { match: /\b(caminata|caminar|caminando|paseo|pasear|andar a pie|salir a andar|voy a andar|quiero andar)\b/,
+    type: 'walking', isWalking: true, emoji: '🚶', name: 'Caminata activa',
+    desc: 'Caminata de recuperación activa — ritmo suave, Z1.',
+    ifRef: 0.50, maxDur: 90, cycling: false },
+  { match: /\b(correr|running|carrera a pie|salir a correr|voy a correr|quiero correr|he corrido|fui a correr|sali a correr|sali a run)\b/,
+    type: 'running', isRunning: true, emoji: '🏃', name: 'Running',
+    desc: 'Carrera continua en Z2 — ritmo conversacional.',
+    ifRef: 0.70, maxDur: 90, cycling: false },
+  { match: /\b(gym|gimnasio|pesas|musculacion|musculación|sala de pesas|fuerza en sala)\b/,
+    type: 'gym', isGym: true, emoji: '🏋️', name: 'Gimnasio — Fuerza y movilidad',
+    desc: 'Sesión de fuerza en sala: tren inferior, tren superior y core.',
+    ifRef: 0.65, maxDur: 90, cycling: false },
+  { match: /\b(rodaje|rodada|salir en bici|voy en bici|bici hoy|quiero rodar|quiero salir en bici)\b/,
+    type: 'endurance', emoji: '🚴', name: 'Resistencia Z2',
+    desc: 'Rodaje aeróbico en Z2 — ritmo controlado y constante.',
+    ifRef: 0.65, maxDur: 180, cycling: true },
+];
+
+function _detectActivitySubstitution(fbNorm) {
+  for (const sub of _ACTIVITY_SUBS) {
+    const m = sub.match.exec(fbNorm);
+    if (!m) continue;
+    // Ignorar si la keyword está precedida de negación dentro de los 25 chars anteriores
+    const before = fbNorm.slice(Math.max(0, m.index - 25), m.index);
+    if (/\bno\b/.test(before)) continue;
+    return sub;
+  }
+  return null;
+}
+
+async function _applyActivitySubstitution(idx, sub, feedback, isFuture, btn, result) {
+  const sess = currentPlan?.sessions?.[idx];
+  if (!sess) return;
+
+  const origTSS = sess.tss || 0;
+  const origDur = sess.durationMin || 60;
+  const fbNorm  = feedback.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const minM    = fbNorm.match(/\b(\d{1,3})\s*(?:min(?:utos?)?|')\b/);
+  const newDur  = minM ? Math.max(15, Math.min(sub.maxDur, parseInt(minM[1]))) : origDur;
+
+  // Borrar flags de tipo anteriores
+  delete sess.isGym; delete sess.isRunning; delete sess.isWalking; delete sess.isOther;
+  if (sub.isGym)     sess.isGym     = true;
+  if (sub.isRunning) sess.isRunning = true;
+  if (sub.isWalking) sess.isWalking = true;
+  if (sub.isOther)   sess.isOther   = true;
+
+  sess.type        = sub.type;
+  sess.emoji       = sub.emoji;
+  sess.name        = sub.name;
+  sess.description = sub.desc;
+  sess.alt_description = '';
+  sess.tss         = origTSS;   // Mantener TSS original: misma carga semanal
+  sess.durationMin = newDur;
+  sess.advice      = `Cambiado a ${sub.name}: "${feedback.slice(0, 80)}". TSS conservado (${origTSS}) para mantener la carga semanal.`;
+  sess.feedback    = feedback;
+  sess._adapted    = true;
+  sess._substituted = sub.type;
+
+  if (!sub.cycling) {
+    sess.intervals     = [];
+    sess.alt_intervals = [];
+    sess.ifTarget      = null;
+  } else {
+    sess.ifTarget = sub.ifRef;
+    const ftp = AppState.athlete?.ftp || 200;
+    if (window.TrainingPlanGenerator) {
+      sess.intervals     = TrainingPlanGenerator._buildIntervals(sub.type, ftp, newDur, origTSS, sub.ifRef, 'main');
+      sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sub.type, ftp, newDur, origTSS, sub.ifRef, 'alt');
+    }
+  }
+
+  if (!isFuture) sess.completed = true;
+
+  renderPlan(currentPlan, AppState.athlete);
+  await silentSavePlan();
+
+  if (result) {
+    result.innerHTML = `<span style="color:#10b981"><i class="fas fa-check-circle"></i> Sesión cambiada a <strong>${sub.name}</strong> (${newDur} min · ${origTSS} TSS). El resto del plan no cambia.</span>`;
+    result.style.display = '';
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles" style="font-size:10px"></i> Adaptar'; }
+}
+
+// ── Ajustar TSS de sesiones futuras al presupuesto restante ──────────────
+function _applyTSSBudget(plan) {
+  if (!plan?.sessions || !plan.targetTSS) return;
+  const completedTSS = plan.sessions.reduce((s, x) => s + (x.completed && !x.isRest ? (x.tss || 0) : 0), 0);
+  const budget     = plan.targetTSS - completedTSS;
+  if (budget <= 0) return;
+  const futureSess = plan.sessions.filter(s => !s.completed && !s.isRest);
+  const futureTSS  = futureSess.reduce((s, x) => s + (x.tss || 0), 0);
+  if (futureTSS <= budget) return;
+
+  const scale = budget / futureTSS;
+  const ftp   = AppState.athlete?.ftp || 200;
+  futureSess.forEach(s => {
+    const newTSS = Math.max(15, Math.round((s.tss || 0) * scale));
+    s.tss = newTSS;
+    const isCycling = !s.isGym && !s.isRunning && !s.isWalking && !s.isOther
+                      && !['gym','running','walking'].includes(s.type);
+    if (isCycling && s.ifTarget) {
+      s.durationMin = Math.max(20, Math.round((newTSS / (s.ifTarget ** 2 * 100)) * 60));
+      if (window.TrainingPlanGenerator && s.type) {
+        s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, newTSS, s.ifTarget, 'main');
+        s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, newTSS, s.ifTarget, 'alt');
+      }
+    } else if (s.durationMin) {
+      s.durationMin = Math.max(15, Math.round(s.durationMin * scale));
+    }
+  });
+}
+
+// ── Backup del plan justo antes de cualquier modificación (para "Regenerar" = deshacer) ──
+function savePreModificationBackup() {
+  if (!currentPlan) return;
+  try {
+    const snap = {
+      week_start:  getMondayString(),
+      sessions:    JSON.parse(JSON.stringify(currentPlan.sessions)),
+      tss_target:  currentPlan.targetTSS || null,
+      phase:       currentPlan.phase     || null,
+      advice:      currentPlan.advice    || null,
+      adaptation:  currentPlan.adaptation || null,
+      savedAt:     Date.now()
+    };
+    localStorage.setItem('cyclocoach_plan_pre_mod', JSON.stringify(snap));
+  } catch(e) {}
+}
+
 // ── Marcar hoy como descanso y redistribuir carga restante ──────
 async function markTodayAsRest(idx, userNote) {
+  savePreModificationBackup();
   if (!currentPlan?.sessions?.[idx]) return;
   const sess      = currentPlan.sessions[idx];
   const cancelTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
@@ -3662,6 +3827,8 @@ async function recalculateWeek(idx, isFuture = false) {
 
   if (!feedback) { input.focus(); return; }
 
+  savePreModificationBackup();
+
   // ── Detección determinista: sesión no realizada ───────────────
   const KW_NO_SALIR = [
     'no puedo salir', 'no podré salir', 'no podre salir', 'no saldré', 'no saldre',
@@ -3704,6 +3871,13 @@ async function recalculateWeek(idx, isFuture = false) {
 
   // Patrón texto: "ayer X pero hoy no"
   const _ayerHoyNo = /ayer.{0,40}hoy no\b|hoy no (sal|entr|pued|voy|puedo)\b/i.test(fbNorm);
+
+  // ── Sustitución de tipo de actividad (running, gym, caminata, rodaje…) ──
+  const _actSub = _detectActivitySubstitution(fbNorm);
+  if (_actSub) {
+    await _applyActivitySubstitution(idx, _actSub, feedback, isFuture, btn, result);
+    return;
+  }
 
   if ((!isFuture && _stravaConfirmsNoTraining) || _ayerHoyNo || KW_NO_SALIR.some(k => fbNorm.includes(k.normalize('NFD').replace(/[̀-ͯ]/g, '')))) {
     markTodayAsRest(idx, feedback);
@@ -4863,33 +5037,46 @@ function swapDays(idx1, idx2) {
 }
 
 function regeneratePlan() {
-  // Si existe un plan original guardado, restaurarlo exactamente (preservando completados)
+  const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
+
+  function _restoreFromSnap(raw, toastMsg) {
+    const snap = JSON.parse(raw);
+    currentPlan = {
+      sessions:   snap.sessions,
+      phase:      snap.phase,
+      targetTSS:  snap.tss_target,
+      advice:     snap.advice || {},
+      adaptation: null,
+    };
+    currentPlan.sessions.forEach((s, i) => { if (prevCompleted[i]) s.completed = true; });
+    // Ajustar TSS de sesiones pendientes para no exceder el presupuesto semanal restante
+    _applyTSSBudget(currentPlan);
+    localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...snap, savedAt: Date.now() }));
+    renderPlan(currentPlan, AppState.athlete);
+    silentSavePlan();
+    showToast(toastMsg, 'var(--accent-green)');
+  }
+
+  // 1. Intentar restaurar el estado justo antes de la última modificación
+  const preModRaw = localStorage.getItem('cyclocoach_plan_pre_mod');
+  if (preModRaw) {
+    try {
+      _restoreFromSnap(preModRaw, '↩️ Cambio deshecho — plan restaurado');
+      localStorage.removeItem('cyclocoach_plan_pre_mod');
+      return;
+    } catch(e) {}
+  }
+
+  // 2. Fallback: restaurar el plan original de la semana
   const originalRaw = localStorage.getItem('cyclocoach_plan_original');
   if (originalRaw) {
     try {
-      const original = JSON.parse(originalRaw);
-      const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
-      currentPlan = {
-        sessions:  original.sessions,
-        phase:     original.phase,
-        targetTSS: original.tss_target,
-        advice:    original.advice || {},
-        adaptation: null,
-      };
-      // Restaurar estados completados
-      currentPlan.sessions.forEach((s, i) => {
-        if (prevCompleted[i]) s.completed = true;
-      });
-      localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...original, savedAt: Date.now() }));
-      renderPlan(currentPlan, AppState.athlete);
-      silentSavePlan();
-      showToast('✅ Plan restaurado al original', 'var(--accent-green)');
+      _restoreFromSnap(originalRaw, '✅ Plan restaurado al original de la semana');
       return;
-    } catch(e) { /* fallback a regenerar */ }
+    } catch(e) {}
   }
 
-  // Sin original guardado: generar desde cero (primera vez o tras borrar evento)
-  const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
+  // 3. Sin backup: regenerar desde cero
   localStorage.removeItem('cyclocoach_plan_snapshot');
   localStorage.removeItem('cyclocoach_training_plan');
   generatePlan();
