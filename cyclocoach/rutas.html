@@ -2661,17 +2661,23 @@ function _clearCityLabels() {
   if (bar) { bar.style.display = 'none'; bar.innerHTML = ''; }
 }
 
-async function _detectRouteCities(latLngs, distKm) {
+// queryPts: opcional — si se pasa, se usan esos puntos [[lat,lng],...];
+//           si no, se usan los waypoints del usuario (al dibujar una ruta nueva).
+async function _detectRouteCities(latLngs, distKm, queryPts) {
   const myId = ++_cityRunId;
   _clearCityLabels();
-  if (!waypoints || waypoints.length < 2 || distKm < 1) return;
+  if (distKm < 1) return;
 
-  // Usar los waypoints del usuario (5-10 puntos típicos) en lugar de muestreo denso.
-  // Menos peticiones → no activa rate-limit de Nominatim.
-  // Añadir también punto de mitad de ruta si hay pocos waypoints.
-  const pts = [...waypoints.map(w => [w.lat, w.lng])];
-  if (pts.length < 4 && latLngs?.length) {
-    pts.push(latLngs[Math.floor(latLngs.length / 2)]);
+  let pts;
+  if (queryPts && queryPts.length >= 2) {
+    pts = queryPts;
+  } else if (waypoints && waypoints.length >= 2) {
+    // Ruta en dibujo: usar waypoints del usuario + punto de mitad si son pocos
+    pts = waypoints.map(w => [w.lat, w.lng]);
+    if (pts.length < 4 && latLngs?.length)
+      pts.push(latLngs[Math.floor(latLngs.length / 2)]);
+  } else {
+    return;
   }
 
   const seen   = new Set();
@@ -3395,6 +3401,13 @@ function openRouteOnMap(id) {
         .catch(() => {});
     }
   });
+
+  // Detectar poblaciones: muestrear ~1 punto cada 15 km (máx 8) de la geometría guardada
+  const _distKm = route.distance_km ?? 0;
+  if (flatLatLngs.length >= 2 && _distKm > 0) {
+    const _n = Math.max(3, Math.min(8, Math.round(_distKm / 15)));
+    _detectRouteCities(flatLatLngs, _distKm, _sampleByDistance(flatLatLngs, _n));
+  }
 }
 
 async function toggleFav(id, fav) {
