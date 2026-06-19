@@ -2694,13 +2694,16 @@ async function _detectRouteCities(latLngs, distKm, queryPts) {
       const d = await r.json();
       const name = d.address?.village || d.address?.town || d.address?.city
                 || d.address?.municipality || d.address?.hamlet;
-      // Usar lat/lon de la respuesta → posiciona el pin en el centro real del pueblo
       const pinLat = parseFloat(d.lat);
       const pinLng = parseFloat(d.lon);
-      if (name && !seen.has(name) && !isNaN(pinLat)) {
-        seen.add(name);
-        cities.push({ name, lat: pinLat, lng: pinLng });
-      }
+      if (!name || seen.has(name) || isNaN(pinLat)) continue;
+      // Filtro de distancia: descartar si el centro del pueblo está >7 km del punto
+      // muestreado. Evita municipios de gran extensión cuya capital queda lejos de la ruta.
+      const dlat = (pinLat - lat) * 111;
+      const dlng = (pinLng - lng) * 111 * Math.cos(lat * Math.PI / 180);
+      if (Math.sqrt(dlat * dlat + dlng * dlng) > 7) continue;
+      seen.add(name);
+      cities.push({ name, lat: pinLat, lng: pinLng });
     } catch { /* ignorar fallos individuales */ }
     await new Promise(res => setTimeout(res, 450)); // Nominatim: respetar rate limit
   }
@@ -3402,10 +3405,10 @@ function openRouteOnMap(id) {
     }
   });
 
-  // Detectar poblaciones: muestrear ~1 punto cada 15 km (máx 8) de la geometría guardada
+  // Detectar poblaciones: muestrear ~1 punto cada 10 km (máx 12) de la geometría guardada
   const _distKm = route.distance_km ?? 0;
   if (flatLatLngs.length >= 2 && _distKm > 0) {
-    const _n = Math.max(3, Math.min(8, Math.round(_distKm / 15)));
+    const _n = Math.max(3, Math.min(12, Math.round(_distKm / 10)));
     _detectRouteCities(flatLatLngs, _distKm, _sampleByDistance(flatLatLngs, _n));
   }
 }
