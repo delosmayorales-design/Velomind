@@ -3748,6 +3748,8 @@ function _applyTSSBudget(plan) {
   futureSess.forEach(s => {
     const newTSS = Math.max(15, Math.round((s.tss || 0) * scale));
     s.tss = newTSS;
+    // Sincronizar el texto de advice con el TSS real después del ajuste
+    if (s.advice) s.advice = s.advice.replace(/\b\d+ TSS\b/g, `${newTSS} TSS`);
     const isCycling = !s.isGym && !s.isRunning && !s.isWalking && !s.isOther
                       && !['gym','running','walking'].includes(s.type);
     if (isCycling && s.ifTarget) {
@@ -4365,7 +4367,7 @@ function showSessionDetail(idx, showAlt = false) {
           <div style="font-size:11px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">📊 Referencias</div>
           <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
             <div style="display:flex;justify-content:space-between"><span>Intensidad</span><span style="color:var(--text-muted);font-weight:600">Z1 · &lt; 60% FCmáx</span></div>
-            <div style="display:flex;justify-content:space-between"><span>Duración</span><span style="color:var(--text-muted);font-weight:600">30-45 min</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Duración</span><span style="color:var(--text-muted);font-weight:600">${sess.durationMin || 40} min</span></div>
             <div style="display:flex;justify-content:space-between"><span>Terreno</span><span style="color:var(--text-muted);font-weight:600">Llano o suave, al aire libre</span></div>
           </div>
         </div>
