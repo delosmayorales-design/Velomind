@@ -1718,30 +1718,25 @@ async function initTrainingPlan() {
 
         const localStr = localStorage.getItem('cyclocoach_training_plan');
         if (localStr) {
-          try {
-            const localObj = JSON.parse(localStr);
-            if (localObj.savedAt && Date.now() - localObj.savedAt < 6 * 60 * 60 * 1000) {
-              // Prioridad al guardado local (ventana de 6h). Re-sincronizamos al servidor por si se cortó.
-              fetch(`${window.API_URL}/plans/training`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
-                body: localStr
-              }).catch(()=>{});
-              return;
-            }
-          } catch(e) {}
+          // El plan local es siempre la fuente de verdad — el servidor es solo un backup.
+          // Re-sincronizamos silenciosamente por si hubo fallo de red en la última sesión.
+          fetch(`${window.API_URL}/plans/training`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
+            body: localStr
+          }).catch(()=>{});
+          return;
         }
 
+        // Solo si NO hay plan local: arrancar desde el servidor como punto de partida
         if (savedPlan?.sessions) {
           currentPlan = { sessions: savedPlan.sessions, phase: savedPlan.phase, targetTSS: savedPlan.tss_target, advice: savedPlan.advice || {} };
           _patchSegmentDistances(currentPlan);
           _sanitizeCyclingContent(currentPlan);
-          syncPlanWithReality();
           // Normalizar week_start a YYYY-MM-DD antes de guardar en localStorage
           const _remoteWeek = remoteWeekStart || currentWeekStart;
           const _remoteMeta = JSON.stringify({ ...savedPlan, week_start: _remoteWeek, savedAt: Date.now() });
           localStorage.setItem('cyclocoach_training_plan', _remoteMeta);
-          // Garantizar que cyclocoach_plan_original existe y corresponde a esta semana
           try {
             const _origRaw = localStorage.getItem('cyclocoach_plan_original');
             const _origWeek = _origRaw ? JSON.parse(_origRaw)?.week_start?.slice(0, 10) : null;
@@ -3587,62 +3582,19 @@ function syncPlanWithReality() {
   // Ajuste conservador: solo reducimos carga cuando hay fatiga acumulada real.
   // NUNCA aumentamos carga para compensar sesiones perdidas — la consistencia
   // a largo plazo vale más que recuperar TSS de una semana.
-  if (changed && accumTSSDeviation > 15) {
-    for (let i = todayIdx + 1; i < 7; i++) {
-      const sess = currentPlan.sessions[i];
-      if (sess.isRest || accumTSSDeviation <= 20) continue;
-
-      const planTSS = sess.tss || Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
-      const _maxDurForType = { long: 300, endurance: 240, recovery: 90, tempo: 150, threshold: 150, vo2max: 150, sprint: 150, strength: 150 };
-      const _maxDur = _maxDurForType[sess.type] || 240;
-
-      // Reducción máx 20% por sesión; preferimos subentrenar antes que acumular fatiga
-      const reduction = Math.min(accumTSSDeviation, Math.round(planTSS * 0.20));
-      if (reduction < 5) continue;
-      sess.tss = Math.max(20, planTSS - reduction);
-      sess.tssShare = 0; // forzar render desde sess.tss
-      sess.durationMin = Math.min(_maxDur, Math.round((sess.durationMin || 60) * (sess.tss / planTSS)));
-      accumTSSDeviation -= reduction;
-
-      // Solo suavizar tipo cuando la fatiga es muy alta (>60 TSS acumulados) y la sesión es de alta intensidad
-      if (accumTSSDeviation > 60 && ['vo2max', 'sprint'].includes(sess.type)) {
-        sess.type = 'endurance';
-        sess.ifTarget = 0.64;
-        if (window.WORKOUT_TYPES) {
-          sess.emoji = window.WORKOUT_TYPES['endurance'].emoji;
-          sess.name = 'Z2 (Reducido por fatiga)';
-        }
-      }
-
-      sess._adapted = true;
-      sess.advice = `Sesión reducida a ${sess.tss} TSS para proteger la frescura del resto de la semana. Subentrenar ligeramente hoy es mejor que llegar cansado al próximo entrenamiento clave.`;
-      changesSummary.push({ icon: '📉', day: sess.day, desc: `Carga ajustada a ${sess.tss} TSS (fatiga acumulada).` });
-
-      if (window.TrainingPlanGenerator) {
-        const _if = sess.ifTarget || 0.65;
-        sess.intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, _if, 'main');
-        sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, _if, 'alt');
-        if (TrainingPlanGenerator._buildDesc) {
-          sess.description = TrainingPlanGenerator._buildDesc(sess.intervals);
-          sess.alt_description = TrainingPlanGenerator._buildDesc(sess.alt_intervals);
-        }
-      }
-    }
-  }
-  // Sesiones perdidas: el plan continúa normal. No se redistribuye carga.
-
-  // Pase final anti-back-to-back (siempre, independientemente de `changed`)
+  // Pase final anti-back-to-back (solo display — no se guarda)
   _applyAntiBackToBack(currentPlan, todayIdx, ftp);
 
   if (changed) {
     if (changesSummary.length > 0) {
       currentPlan._recalcSummary = {
         timestamp: Date.now(),
-        feedback: 'Adaptación automática proactiva basada en tus actividades reales de esta semana.',
+        feedback: 'Sesiones marcadas según tus actividades reales de esta semana.',
         changes: changesSummary
       };
     }
-    silentSavePlan();
+    // No silentSavePlan() aquí — el plan del usuario no se modifica automáticamente.
+    // Solo se guarda cuando el usuario hace una acción explícita (adaptar, cambiar sesión, etc.)
     renderPlan(currentPlan, AppState.athlete);
   }
 }
