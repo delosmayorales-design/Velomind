@@ -3747,9 +3747,10 @@ function _applyTSSBudget(plan) {
         s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, newTSS, s.ifTarget, 'main');
         s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, newTSS, s.ifTarget, 'alt');
       }
-    } else if (s.durationMin) {
-      s.durationMin = Math.max(15, Math.round(s.durationMin * scale));
+    } else if (isCycling && s.durationMin) {
+      s.durationMin = Math.max(20, Math.round(s.durationMin * scale));
     }
+    // Gym/walking/running: solo se escala el TSS, la duración queda fija
   });
 }
 
