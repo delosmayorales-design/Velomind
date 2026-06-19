@@ -709,31 +709,31 @@
               <div class="canvas-label-tag">Tu Posición</div>
               <canvas id="bioCanvas"></canvas>
               <div id="canvas-placeholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;pointer-events:none">
-                <div style="width:100%;max-width:290px">
-                  <div style="background:rgba(196,239,68,0.06);border:1px solid rgba(196,239,68,0.22);border-radius:10px;padding:12px 14px">
-                    <div style="font-size:11px;font-weight:700;color:#C4EF44;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
-                      <i class="fas fa-camera"></i> Cómo sacar la foto perfecta
+                <div style="width:100%;max-width:280px">
+                  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+                    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;display:flex;align-items:center;gap:7px">
+                      <i class="fas fa-camera" style="color:var(--primary)"></i> Cómo sacar la foto perfecta
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-                      <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
-                        <div style="font-size:10px;font-weight:700;color:#34d399;margin-bottom:4px">📸 Vista lateral</div>
-                        <div style="font-size:11px;color:#94a3b8;line-height:1.5">Cámara a la altura de la cadera, perpendicular a la bici.</div>
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                      <div style="display:flex;gap:11px;align-items:flex-start">
+                        <span style="font-size:10px;color:var(--primary);font-weight:800;flex-shrink:0;width:14px;margin-top:1px">1</span>
+                        <div><div style="font-size:12px;font-weight:600;color:var(--text-secondary)">Vista lateral</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.45">Cámara a la altura de la cadera, perpendicular a la bici.</div></div>
                       </div>
-                      <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
-                        <div style="font-size:10px;font-weight:700;color:#34d399;margin-bottom:4px">⏰ Pedal</div>
-                        <div style="font-size:11px;color:#94a3b8;line-height:1.5">Biela vertical, pie abajo del todo (6 en punto).</div>
+                      <div style="display:flex;gap:11px;align-items:flex-start">
+                        <span style="font-size:10px;color:var(--primary);font-weight:800;flex-shrink:0;width:14px;margin-top:1px">2</span>
+                        <div><div style="font-size:12px;font-weight:600;color:var(--text-secondary)">Posición del pedal</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.45">Biela vertical, pie abajo del todo (6 en punto).</div></div>
                       </div>
-                      <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
-                        <div style="font-size:10px;font-weight:700;color:#f59e0b;margin-bottom:4px">📐 Nivelado</div>
-                        <div style="font-size:11px;color:#94a3b8;line-height:1.5">Bici en llano o rodillo. Sin cuestas.</div>
+                      <div style="display:flex;gap:11px;align-items:flex-start">
+                        <span style="font-size:10px;color:var(--primary);font-weight:800;flex-shrink:0;width:14px;margin-top:1px">3</span>
+                        <div><div style="font-size:12px;font-weight:600;color:var(--text-secondary)">Terreno llano</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.45">Bici en llano o rodillo. Sin cuestas.</div></div>
                       </div>
-                      <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
-                        <div style="font-size:10px;font-weight:700;color:#f59e0b;margin-bottom:4px">🩱 Ropa</div>
-                        <div style="font-size:11px;color:#94a3b8;line-height:1.5">Culote ajustado para detectar articulaciones.</div>
+                      <div style="display:flex;gap:11px;align-items:flex-start">
+                        <span style="font-size:10px;color:var(--primary);font-weight:800;flex-shrink:0;width:14px;margin-top:1px">4</span>
+                        <div><div style="font-size:12px;font-weight:600;color:var(--text-secondary)">Ropa ajustada</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.45">Culote ceñido para detectar articulaciones.</div></div>
                       </div>
                     </div>
-                    <div style="margin-top:8px;padding:6px 8px;background:rgba(196,239,68,.06);border-radius:6px;border-left:2px solid #C4EF44">
-                      <span style="font-size:10px;color:#C4EF44"><i class="fas fa-arrow-up"></i> <strong>Sube o arrastra tu foto</strong> arriba para comenzar</span>
+                    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:10px">
+                      <span style="font-size:11px;color:var(--primary);font-weight:600"><i class="fas fa-arrow-up" style="font-size:9px"></i> Sube o arrastra tu foto arriba para comenzar</span>
                     </div>
                   </div>
                 </div>
@@ -752,34 +752,34 @@
 
               <!-- Estado: Instrucciones (sin botón de subir) -->
               <div id="videoUploadArea" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center">
-                <div style="width:100%;max-width:290px">
-                  <div style="background:rgba(196,239,68,0.06);border:1px solid rgba(196,239,68,0.22);border-radius:10px;padding:12px 14px">
-                    <div style="font-size:11px;font-weight:700;color:#C4EF44;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
-                      <i class="fas fa-video"></i> Cómo grabar para el mejor análisis
+                <div style="width:100%;max-width:280px">
+                  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+                    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;display:flex;align-items:center;gap:7px">
+                      <i class="fas fa-video" style="color:var(--primary)"></i> Cómo grabar para el mejor análisis
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-                      <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
-                        <div style="font-size:10px;font-weight:700;color:#34d399;margin-bottom:4px">⏱ Duración</div>
-                        <div style="font-size:11px;color:#94a3b8;line-height:1.5">20–30 segundos pedaleando a cadencia normal.</div>
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                      <div style="display:flex;gap:11px;align-items:flex-start">
+                        <span style="font-size:10px;color:var(--primary);font-weight:800;flex-shrink:0;width:14px;margin-top:1px">1</span>
+                        <div><div style="font-size:12px;font-weight:600;color:var(--text-secondary)">Duración</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.45">20–30 segundos pedaleando a cadencia normal.</div></div>
                       </div>
-                      <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
-                        <div style="font-size:10px;font-weight:700;color:#34d399;margin-bottom:4px">📐 Ángulo lateral</div>
-                        <div style="font-size:11px;color:#94a3b8;line-height:1.5">Cámara perpendicular a la bici, de pies a cabeza.</div>
+                      <div style="display:flex;gap:11px;align-items:flex-start">
+                        <span style="font-size:10px;color:var(--primary);font-weight:800;flex-shrink:0;width:14px;margin-top:1px">2</span>
+                        <div><div style="font-size:12px;font-weight:600;color:var(--text-secondary)">Ángulo lateral</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.45">Cámara perpendicular a la bici, de pies a cabeza.</div></div>
                       </div>
-                      <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
-                        <div style="font-size:10px;font-weight:700;color:#f59e0b;margin-bottom:4px">💡 Iluminación</div>
-                        <div style="font-size:11px;color:#94a3b8;line-height:1.5">Sin contraluz. Ropa ajustada para ver las articulaciones.</div>
+                      <div style="display:flex;gap:11px;align-items:flex-start">
+                        <span style="font-size:10px;color:var(--primary);font-weight:800;flex-shrink:0;width:14px;margin-top:1px">3</span>
+                        <div><div style="font-size:12px;font-weight:600;color:var(--text-secondary)">Iluminación</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.45">Sin contraluz. Ropa ajustada para ver las articulaciones.</div></div>
                       </div>
-                      <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:8px 10px">
-                        <div style="font-size:10px;font-weight:700;color:#f59e0b;margin-bottom:4px">🚴 Rodillo</div>
-                        <div style="font-size:11px;color:#94a3b8;line-height:1.5">Cámara fija, sin zoom. Rodillo estático.</div>
+                      <div style="display:flex;gap:11px;align-items:flex-start">
+                        <span style="font-size:10px;color:var(--primary);font-weight:800;flex-shrink:0;width:14px;margin-top:1px">4</span>
+                        <div><div style="font-size:12px;font-weight:600;color:var(--text-secondary)">Cámara fija</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.45">Sin zoom. Rodillo estático y cámara fija.</div></div>
                       </div>
                     </div>
-                    <div style="margin-top:8px;padding:6px 8px;background:rgba(239,68,68,.06);border-radius:6px;border-left:2px solid #ef4444">
-                      <span style="font-size:10px;color:#fca5a5"><i class="fas fa-exclamation-triangle"></i> <strong>Ángulo trasero o frontal no sirven</strong> — la IA necesita el perfil completo.</span>
+                    <div style="margin-top:12px;padding:8px 10px;background:var(--bg-input);border-radius:6px;border-left:2px solid var(--border-light)">
+                      <span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--text-muted);margin-right:4px"></i>Ángulo trasero o frontal no sirven — la IA necesita el perfil lateral completo.</span>
                     </div>
-                    <div style="margin-top:8px;padding:6px 8px;background:rgba(59,130,246,.06);border-radius:6px;border-left:2px solid #3b82f6">
-                      <span style="font-size:10px;color:#60a5fa"><i class="fas fa-arrow-up"></i> <strong>Sube o arrastra tu video</strong> arriba para comenzar</span>
+                    <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+                      <span style="font-size:11px;color:var(--primary);font-weight:600"><i class="fas fa-arrow-up" style="font-size:9px"></i> Sube o arrastra tu video arriba para comenzar</span>
                     </div>
                   </div>
                 </div>
