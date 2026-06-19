@@ -1809,6 +1809,7 @@ function generatePlan() {
   currentPlan = plan;
   syncPlanWithReality();
   renderPlan(plan, athlete);
+  silentSavePlan();
 }
 
 // Corrige distancias de segmentos locales en planes guardados en caché
