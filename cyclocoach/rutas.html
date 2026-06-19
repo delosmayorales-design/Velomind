@@ -229,6 +229,51 @@
     }
     .map-stats::-webkit-scrollbar { display: none; }
     .map-stats.visible { display: flex; }
+
+    /* ── Ciudades de la ruta ─────────────────────────── */
+    #route-cities-bar {
+      position: absolute;
+      top: 82px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 499;
+      display: none;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+      justify-content: center;
+      background: rgba(6,12,8,0.82);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 5px 14px;
+      font-size: 11px;
+      max-width: 88vw;
+      pointer-events: none;
+      box-shadow: var(--shadow-md);
+    }
+    .cty-icon { color: var(--primary); font-size: 10px; opacity: .8; flex-shrink: 0; margin-right: 2px; }
+    .cty-tag  { color: var(--text-primary); font-weight: 600; white-space: nowrap; }
+    .cty-sep  { color: var(--text-muted); opacity: .5; font-size: 9px; }
+
+    /* Etiquetas de ciudad sobre el mapa */
+    .city-pin {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(6,12,8,0.80); backdrop-filter: blur(8px);
+      border: 1px solid rgba(196,239,68,0.30); border-radius: 7px;
+      padding: 2px 7px; font-size: 10px; font-weight: 600;
+      color: #EEF2FF; white-space: nowrap; pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .city-pin-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #C4EF44;
+      box-shadow: 0 0 5px rgba(196,239,68,0.7);
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+      #route-cities-bar { top: 74px; padding: 4px 10px; font-size: 10px; }
+    }
     .ms-main { display: flex; gap: 20px; padding: 0 20px 0 0; margin: 0; border-bottom: none; border-right: 1px solid var(--border); }
     .stat-it { text-align: center; }
     .stat-v  { font-size: 20px; font-weight: 800; color: var(--primary); font-family:'Plus Jakarta Sans',sans-serif; }
@@ -1491,6 +1536,9 @@
         <span id="stat-time" style="display:none">—</span>
       </div>
 
+      <!-- Strip de poblaciones de la ruta -->
+      <div id="route-cities-bar"></div>
+
       <!-- Toolbar dibujo (abajo del mapa) -->
       <div class="draw-toolbar" id="draw-toolbar">
         <div class="dt-types">
@@ -2602,6 +2650,68 @@ async function routeWithFallback(type) {
   }
 }
 
+// ── Detección de poblaciones ──────────────────────────────────────────────────
+let _cityMarkers = [];
+
+function _clearCityLabels() {
+  _cityMarkers.forEach(m => map.removeLayer(m));
+  _cityMarkers = [];
+  const bar = document.getElementById('route-cities-bar');
+  if (bar) { bar.style.display = 'none'; bar.innerHTML = ''; }
+}
+
+async function _detectRouteCities(latLngs, distKm) {
+  _clearCityLabels();
+  if (!latLngs || latLngs.length < 2 || distKm < 1) return;
+
+  // Muestrear ~1 punto cada 7 km, mínimo 2, máximo 12
+  const n = Math.max(2, Math.min(12, Math.round(distKm / 7)));
+  const sampled = _sampleByDistance(latLngs, n);
+
+  const seen = new Set();
+  const cities = [];
+
+  for (const [lat, lng] of sampled) {
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&accept-language=es`,
+        { headers: { 'User-Agent': 'VeloMind/1.0' } }
+      );
+      if (!r.ok) continue;
+      const d = await r.json();
+      const name = d.address?.city || d.address?.town || d.address?.village
+                || d.address?.municipality || d.address?.hamlet;
+      if (name && !seen.has(name)) {
+        seen.add(name);
+        cities.push({ name, lat, lng });
+      }
+    } catch { /* ignorar fallos individuales */ }
+    await new Promise(res => setTimeout(res, 320)); // Nominatim: ~3 req/s
+  }
+
+  if (!cities.length) return;
+
+  // Etiquetas sobre el mapa
+  cities.forEach(({ name, lat, lng }) => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="city-pin"><span class="city-pin-dot"></span>${name}</div>`,
+      iconAnchor: [0, 5],
+    });
+    const m = L.marker([lat, lng], { icon, interactive: false, zIndexOffset: -20 }).addTo(map);
+    _cityMarkers.push(m);
+  });
+
+  // Strip inferior con la lista de ciudades
+  const bar = document.getElementById('route-cities-bar');
+  if (!bar) return;
+  bar.innerHTML =
+    `<i class="fas fa-signs-post cty-icon"></i>` +
+    cities.map(c => `<span class="cty-tag">${c.name}</span>`)
+          .join('<span class="cty-sep">·</span>');
+  bar.style.display = 'flex';
+}
+
 async function calcRoute(type) {
   if (waypoints.length < 2) return;
   document.getElementById('route-spinner').classList.add('visible');
@@ -2629,6 +2739,7 @@ async function calcRoute(type) {
     _pendingElevFetch = null;
     document.getElementById('stat-elev').textContent = _computedElevGain ?? '—';
     if (elevs?.length) renderElevChart(elevs);
+    _detectRouteCities(latLngs, distKm); // sin await — corre en background
   } catch (e) {
     console.error('[Rutas] Error calculando ruta:', e);
     showToast('No se pudo calcular la ruta: ' + e.message, 'error');
@@ -2946,6 +3057,7 @@ function clearRoute() {
   document.body.classList.remove('elev-open');
   document.getElementById('dt-btn-elev')?.classList.remove('active');
   _clearPreviewLine();
+  _clearCityLabels();
   _syncWpCount();
 }
 
