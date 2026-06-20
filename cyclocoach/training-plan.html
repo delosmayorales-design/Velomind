@@ -1361,6 +1361,13 @@ function renderProgTooltip(context) {
 const _adaptCache = {}; // { [idx]: adaptation data from AI }
 let _bgSyncToken = 0; // se incrementa al guardar localmente para invalidar GETs en vuelo
 let _pendingOpenDay = (() => { const v = new URLSearchParams(location.search).get('day'); return v !== null ? parseInt(v, 10) : null; })();
+function _openPendingDay() {
+  if (_pendingOpenDay === null) return;
+  const d = _pendingOpenDay;
+  _pendingOpenDay = null;
+  history.replaceState(null, '', location.pathname);
+  setTimeout(() => showSessionDetail(d), 80);
+}
 
 function getMondayString() {
   const d = new Date();
@@ -1692,11 +1699,14 @@ async function initTrainingPlan() {
       if (BackendSync.loadProfile) BackendSync.loadProfile().then(() => { renderAthleteSidebar(); fillAdjustmentForm(); });
       if (BackendSync.loadActivities) BackendSync.loadActivities().then(() => {
         syncPlanWithReality();
+        _openPendingDay();
       }).catch(() => {
         syncPlanWithReality();
+        _openPendingDay();
       });
     } else {
       syncPlanWithReality();
+      _openPendingDay();
     }
     
     // Fetch nutrition plan for FIT export (fire-and-forget, no UI dependency)
@@ -2775,13 +2785,6 @@ function renderPlan(plan, athlete) {
 
   renderPrinciples(plan.phase);
   renderProgressionChart(metrics.ctl || 40, plan.targetTSS, plan.phase);
-
-  if (_pendingOpenDay !== null) {
-    const _d = _pendingOpenDay;
-    _pendingOpenDay = null;
-    history.replaceState(null, '', location.pathname);
-    setTimeout(() => showSessionDetail(_d), 80);
-  }
 }
 
 // ── Marcar sesión como completada ────────────────────────────
@@ -3378,9 +3381,16 @@ async function silentSavePlan() {
   if (!currentPlan) return;
   _bgSyncToken++; // invalida cualquier GET en vuelo — el plan local es ahora la fuente de verdad
   try {
+    // Guardar siempre con los valores originales de cada sesión, sin las reducciones
+    // de exceso TSS en memoria (_tssExcess/_excessOrig son solo para display).
+    const cleanSessions = currentPlan.sessions.map(s => {
+      if (!s._tssExcess || !s._excessOrig) return s;
+      const { _excessOrig, _tssExcess, ...rest } = s;
+      return { ...rest, ..._excessOrig };
+    });
     const planData = {
       week_start:      getMondayString(),
-      sessions:        currentPlan.sessions,
+      sessions:        cleanSessions,
       tss_target:      currentPlan.targetTSS || null,
       phase:           currentPlan.phase     || null,
       ftp_at_creation: AppState.athlete?.ftp || null,
@@ -4641,9 +4651,10 @@ function showToast(text, color = 'var(--primary)') {
 
 // Reduce la carga de los días futuros cuando el TSS semanal acumulado supera el objetivo.
 // Umbrales: +5-10% → recorte proporcional; +10-20% → recuperación activa; >20% → descanso.
-// Solo display — no se guarda automáticamente.
+// Idempotente: guarda originales en _excessOrig antes de modificar y los restaura al re-ejecutar,
+// evitando el efecto cascada cuando silentSavePlan guarda el plan ya reducido.
 function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
-  if (!plan?.sessions || !AppState.activities) return;
+  if (!plan?.sessions || !AppState.activities?.length) return;
   const targetTSS = plan.targetTSS || 0;
   if (!targetTSS) return;
 
@@ -4659,21 +4670,34 @@ function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
     .reduce((s, a) => s + (Number(a.tss) || 0), 0);
 
   const devPct = (weekActualTSS - targetTSS) / targetTSS * 100;
-  if (devPct <= 5) return;
 
   for (let i = todayIdx + 1; i < 7; i++) {
     const sess = plan.sessions[i];
-    if (!sess || sess.isRest || sess._manualAdaptDay === i) continue;
+    if (!sess || sess._manualAdaptDay === i) continue;
+
+    // Restaurar siempre desde los originales antes de evaluar (previene compounding)
+    if (sess._excessOrig) {
+      Object.assign(sess, sess._excessOrig);
+      delete sess._excessOrig;
+      delete sess._tssExcess;
+    }
+
+    if (devPct <= 5 || sess.isRest) continue;
+
+    // Guardar originales antes de modificar
+    const ORIG_FIELDS = ['tss','durationMin','type','ifTarget','name','emoji','isRest','advice','intervals','alt_intervals','description','alt_description'];
+    sess._excessOrig = {};
+    ORIG_FIELDS.forEach(f => { if (sess[f] !== undefined) sess._excessOrig[f] = sess[f]; });
+    sess._tssExcess = true;
 
     const _wt = window.WORKOUT_TYPES || {};
-    sess._tssExcess = true;
 
     if (devPct > 20) {
       sess.isRest      = true;
       sess.type        = 'recovery';
       sess.name        = 'Descanso';
       sess.emoji       = '😴';
-      sess.advice      = `Descanso recomendado: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} planificados (+${Math.round(devPct)}%). Deja que el cuerpo absorba la carga antes del próximo bloque.`;
+      sess.advice      = `Descanso recomendado: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} planificados (+${Math.round(devPct)}%). Deja que el cuerpo absorba la carga.`;
     } else if (devPct > 10) {
       const newDur     = Math.min(sess.durationMin || 60, 45);
       const newTSS     = Math.round((newDur / 60) * 0.55 * 0.55 * 100);
@@ -4683,7 +4707,7 @@ function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
       sess.durationMin = newDur;
       sess.name        = 'Recuperación activa';
       sess.emoji       = (_wt.recovery || {}).emoji || '🚴';
-      sess.advice      = `Rebajado a recuperación: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} objetivo (+${Math.round(devPct)}%). Pedalea 30-45 min en Z1 o descansa directamente.`;
+      sess.advice      = `Rebajado a recuperación: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} objetivo (+${Math.round(devPct)}%). Pedalea 30-45 min en Z1 o descansa.`;
       if (window.TrainingPlanGenerator?._buildIntervals) {
         sess.intervals     = TrainingPlanGenerator._buildIntervals('recovery', ftp, newDur, newTSS, 0.55, 'main');
         sess.alt_intervals = TrainingPlanGenerator._buildIntervals('recovery', ftp, newDur, newTSS, 0.55, 'alt');
@@ -4693,13 +4717,15 @@ function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
         }
       }
     } else {
+      const origTSS    = sess._excessOrig.tss || 80;
+      const origDur    = sess._excessOrig.durationMin || 60;
       const factor     = Math.max(0.75, 1 - (devPct - 5) * 0.05);
-      const newTSS     = Math.round((sess.tss || 80) * factor);
-      const newDur     = Math.round((sess.durationMin || 60) * factor);
+      const newTSS     = Math.round(origTSS * factor);
+      const newDur     = Math.round(origDur * factor);
       const pctRed     = Math.round((1 - factor) * 100);
       sess.tss         = newTSS;
       sess.durationMin = newDur;
-      sess.advice      = `Duración reducida un ${pctRed}%: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} objetivo (+${Math.round(devPct)}%). Ajusta la intensidad según cómo te sientas.`;
+      sess.advice      = `Duración reducida un ${pctRed}%: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} objetivo (+${Math.round(devPct)}%). Adapta la intensidad según cómo te sientas.`;
       if (window.TrainingPlanGenerator?._buildIntervals) {
         sess.intervals     = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, sess.ifTarget || 0.65, 'main');
         sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, sess.ifTarget || 0.65, 'alt');
@@ -5077,7 +5103,7 @@ function toggleSwapPills(idx) {
 // (ej: isRest=false por _fromRestOverride, completed=true de un día diferente).
 const _SWAP_RUNTIME_FLAGS = [
   '_evaluated', '_fromRestOverride', 'completed', 'manuallyUnmarked',
-  '_missed', 'advice', '_origCheckIn', '_tssExcess',
+  '_missed', 'advice', '_origCheckIn', '_tssExcess', '_excessOrig',
 ];
 
 function _clearSwapRuntimeFlags(sess) {
