@@ -3603,7 +3603,8 @@ function syncPlanWithReality() {
   // a largo plazo vale más que recuperar TSS de una semana.
   // Pases finales de ajuste (solo display — no se guarda)
   _applyAntiBackToBack(currentPlan, todayIdx, ftp);
-  _applyWeekTSSExcessScaling(currentPlan, todayIdx, ftp);
+  const _excessChanged = _applyWeekTSSExcessScaling(currentPlan, todayIdx, ftp);
+  if (_excessChanged) changed = true;
 
   if (changed) {
     if (changesSummary.length > 0) {
@@ -4659,9 +4660,11 @@ function showToast(text, color = 'var(--primary)') {
 // Idempotente: guarda originales en _excessOrig antes de modificar y los restaura al re-ejecutar,
 // evitando el efecto cascada cuando silentSavePlan guarda el plan ya reducido.
 function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
-  if (!plan?.sessions || !AppState.activities?.length) return;
+  if (!plan?.sessions || !AppState.activities?.length) return false;
   const targetTSS = plan.targetTSS || 0;
-  if (!targetTSS) return;
+  if (!targetTSS) return false;
+
+  let anyChange = false;
 
   const mondayDate = new Date();
   mondayDate.setDate(mondayDate.getDate() - ((mondayDate.getDay() || 7) - 1));
@@ -4697,6 +4700,8 @@ function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
 
     const _wt = window.WORKOUT_TYPES || {};
 
+    anyChange = true;
+
     if (devPct > 20) {
       sess.isRest      = true;
       sess.type        = 'recovery';
@@ -4704,36 +4709,38 @@ function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
       sess.emoji       = '😴';
       sess.advice      = `Descanso recomendado: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} planificados (+${Math.round(devPct)}%). Deja que el cuerpo absorba la carga.`;
     } else if (devPct > 10) {
-      const newDur     = Math.min(sess.durationMin || 60, 45);
-      const newTSS     = Math.round((newDur / 60) * 0.55 * 0.55 * 100);
+      const ifV        = 0.55;
+      const newDur     = Math.min(sess._excessOrig.durationMin || 60, 45);
+      const newTSS     = Math.round((newDur / 60) * ifV * ifV * 100);
       sess.type        = 'recovery';
-      sess.ifTarget    = 0.55;
+      sess.ifTarget    = ifV;
       sess.tss         = newTSS;
       sess.durationMin = newDur;
       sess.name        = 'Recuperación activa';
       sess.emoji       = (_wt.recovery || {}).emoji || '🚴';
       sess.advice      = `Rebajado a recuperación: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} objetivo (+${Math.round(devPct)}%). Pedalea 30-45 min en Z1 o descansa.`;
       if (window.TrainingPlanGenerator?._buildIntervals) {
-        sess.intervals     = TrainingPlanGenerator._buildIntervals('recovery', ftp, newDur, newTSS, 0.55, 'main');
-        sess.alt_intervals = TrainingPlanGenerator._buildIntervals('recovery', ftp, newDur, newTSS, 0.55, 'alt');
+        sess.intervals     = TrainingPlanGenerator._buildIntervals('recovery', ftp, newDur, newTSS, ifV, 'main');
+        sess.alt_intervals = TrainingPlanGenerator._buildIntervals('recovery', ftp, newDur, newTSS, ifV, 'alt');
         if (TrainingPlanGenerator._buildDesc) {
           sess.description     = TrainingPlanGenerator._buildDesc(sess.intervals);
           sess.alt_description = TrainingPlanGenerator._buildDesc(sess.alt_intervals);
         }
       }
     } else {
-      const origTSS    = sess._excessOrig.tss || 80;
       const origDur    = sess._excessOrig.durationMin || 60;
+      const ifV        = sess._excessOrig.ifTarget || 0.65;
       const factor     = Math.max(0.75, 1 - (devPct - 5) * 0.05);
-      const newTSS     = Math.round(origTSS * factor);
       const newDur     = Math.round(origDur * factor);
+      // TSS calculado desde la duración real reducida × IF² (coherente con lo que verá el usuario)
+      const newTSS     = Math.round((newDur / 60) * ifV * ifV * 100);
       const pctRed     = Math.round((1 - factor) * 100);
       sess.tss         = newTSS;
       sess.durationMin = newDur;
       sess.advice      = `Duración reducida un ${pctRed}%: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} objetivo (+${Math.round(devPct)}%). Adapta la intensidad según cómo te sientas.`;
       if (window.TrainingPlanGenerator?._buildIntervals) {
-        sess.intervals     = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, sess.ifTarget || 0.65, 'main');
-        sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, sess.ifTarget || 0.65, 'alt');
+        sess.intervals     = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, ifV, 'main');
+        sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, ifV, 'alt');
         if (TrainingPlanGenerator._buildDesc) {
           sess.description     = TrainingPlanGenerator._buildDesc(sess.intervals);
           sess.alt_description = TrainingPlanGenerator._buildDesc(sess.alt_intervals);
@@ -4741,6 +4748,7 @@ function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
       }
     }
   }
+  return anyChange;
 }
 
 // Garantiza que nunca haya dos sesiones de calidad consecutivas.
