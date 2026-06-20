@@ -1301,14 +1301,16 @@ function renderToday(plan, athlete) {
     const durRatio   = (plannedMin > 0 && actualMin !== null) ? actualMin/plannedMin : null;
     const tssRatio   = (tss > 0 && actualTSS !== null) ? actualTSS/tss : null;
 
+    // Use TSS ratio as primary metric (actual training load); fall back to duration ratio
+    const primaryRatio = tssRatio ?? durRatio;
     let evalEmoji, evalTitle, evalColor;
-    if (durRatio === null) {
+    if (primaryRatio === null) {
       evalEmoji = '✅'; evalTitle = 'Sesión completada'; evalColor = '#10b981';
-    } else if (durRatio >= 0.9 && durRatio <= 1.15) {
+    } else if (primaryRatio >= 0.9 && primaryRatio <= 1.15) {
       evalEmoji = '🎯'; evalTitle = 'Exactamente lo que pedía el plan'; evalColor = '#10b981';
-    } else if (durRatio > 1.15) {
+    } else if (primaryRatio > 1.15) {
       evalEmoji = '⚡'; evalTitle = 'Te pasaste del plan'; evalColor = '#f59e0b';
-    } else if (durRatio >= 0.6) {
+    } else if (primaryRatio >= 0.6) {
       evalEmoji = '📉'; evalTitle = 'Algo por debajo del plan'; evalColor = '#f59e0b';
     } else {
       evalEmoji = '⚠️'; evalTitle = 'Bastante por debajo del plan'; evalColor = '#ef4444';
