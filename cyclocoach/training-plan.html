@@ -3777,9 +3777,14 @@ function _applyTSSBudget(plan) {
 function savePreModificationBackup() {
   if (!currentPlan) return;
   try {
+    const cleanSessions = currentPlan.sessions.map(s => {
+      if (!s._tssExcess || !s._excessOrig) return s;
+      const { _excessOrig, _tssExcess, ...rest } = s;
+      return { ...rest, ..._excessOrig };
+    });
     const snap = {
       week_start:  getMondayString(),
-      sessions:    JSON.parse(JSON.stringify(currentPlan.sessions)),
+      sessions:    JSON.parse(JSON.stringify(cleanSessions)),
       tss_target:  currentPlan.targetTSS || null,
       phase:       currentPlan.phase     || null,
       advice:      currentPlan.advice    || null,
@@ -5151,6 +5156,8 @@ function regeneratePlan() {
     currentPlan.sessions.forEach((s, i) => { if (prevCompleted[i]) s.completed = true; });
     // Ajustar TSS de sesiones pendientes para no exceder el presupuesto semanal restante
     _applyTSSBudget(currentPlan);
+    // Aplicar escala por exceso TSS antes de renderizar (igual que en carga normal)
+    syncPlanWithReality();
     localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...snap, savedAt: Date.now() }));
     renderPlan(currentPlan, AppState.athlete);
     silentSavePlan();
