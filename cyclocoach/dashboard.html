@@ -617,6 +617,8 @@
       transition: all .2s;
     }
     .wk-day-dot i { font-size: 11px; line-height: 1; }
+    .week-day-col.clickable { cursor: pointer; }
+    .week-day-col.clickable:hover .wk-day-dot { filter: brightness(1.2); transform: scale(1.06); }
     .wk-day-dot.done { background: rgba(16,185,129,.18); border-color: rgba(16,185,129,.5); color: #10b981; }
     .wk-day-dot.done i { color: #10b981 !important; }
     .wk-day-dot.today { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-glow); }
@@ -2092,7 +2094,9 @@ function renderWeek(plan) {
       ? `<span class="wk-day-lbl" style="color:${cs.clr}">${cs.lbl}</span>`
       : (s.isRest ? `<span class="wk-day-lbl" style="color:var(--text-muted);opacity:.4">Des.</span>` : '');
 
-    return `<div class="week-day-col">
+    const colClick = !s.isRest
+      ? `onclick="location.href='training-plan.html?day=${i}'"` : '';
+    return `<div class="week-day-col${!s.isRest?' clickable':''}" ${colClick}>
       <div class="wk-day-dot ${dotCls}" style="${circleStyle}">${innerHtml}</div>
       <span class="week-day-name ${isToday?'today':''}">${DAY_NAMES[i]}</span>
       ${catLbl}

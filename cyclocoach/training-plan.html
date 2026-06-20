@@ -1360,6 +1360,7 @@ function renderProgTooltip(context) {
 }
 const _adaptCache = {}; // { [idx]: adaptation data from AI }
 let _bgSyncToken = 0; // se incrementa al guardar localmente para invalidar GETs en vuelo
+let _pendingOpenDay = (() => { const v = new URLSearchParams(location.search).get('day'); return v !== null ? parseInt(v, 10) : null; })();
 
 function getMondayString() {
   const d = new Date();
@@ -2774,6 +2775,13 @@ function renderPlan(plan, athlete) {
 
   renderPrinciples(plan.phase);
   renderProgressionChart(metrics.ctl || 40, plan.targetTSS, plan.phase);
+
+  if (_pendingOpenDay !== null) {
+    const _d = _pendingOpenDay;
+    _pendingOpenDay = null;
+    history.replaceState(null, '', location.pathname);
+    setTimeout(() => showSessionDetail(_d), 80);
+  }
 }
 
 // ── Marcar sesión como completada ────────────────────────────
