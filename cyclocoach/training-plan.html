@@ -4693,7 +4693,7 @@ function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
     if (devPct <= 5 || sess.isRest) continue;
 
     // Guardar originales antes de modificar
-    const ORIG_FIELDS = ['tss','durationMin','type','ifTarget','name','emoji','isRest','advice','intervals','alt_intervals','description','alt_description'];
+    const ORIG_FIELDS = ['tss','tssShare','durationMin','type','ifTarget','name','emoji','isRest','advice','intervals','alt_intervals','description','alt_description'];
     sess._excessOrig = {};
     ORIG_FIELDS.forEach(f => { if (sess[f] !== undefined) sess._excessOrig[f] = sess[f]; });
     sess._tssExcess = true;
@@ -4715,6 +4715,7 @@ function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
       sess.type        = 'recovery';
       sess.ifTarget    = ifV;
       sess.tss         = newTSS;
+      sess.tssShare    = 0;
       sess.durationMin = newDur;
       sess.name        = 'Recuperación activa';
       sess.emoji       = (_wt.recovery || {}).emoji || '🚴';
@@ -4736,6 +4737,7 @@ function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
       const newTSS     = Math.round((newDur / 60) * ifV * ifV * 100);
       const pctRed     = Math.round((1 - factor) * 100);
       sess.tss         = newTSS;
+      sess.tssShare    = 0;
       sess.durationMin = newDur;
       sess.advice      = `Duración reducida un ${pctRed}%: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} objetivo (+${Math.round(devPct)}%). Adapta la intensidad según cómo te sientas.`;
       if (window.TrainingPlanGenerator?._buildIntervals) {
