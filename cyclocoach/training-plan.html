@@ -5414,9 +5414,17 @@ async function savePlan() {
       currentPlan.sessions[_saveDay]._manualAdaptDay = _saveDay;
     }
 
+    // Limpiar modificaciones de display (exceso TSS) antes de guardar,
+    // igual que silentSavePlan — los valores originales son la fuente de verdad.
+    const cleanSessions = currentPlan.sessions.map(s => {
+      if (!s._tssExcess || !s._excessOrig) return s;
+      const { _excessOrig, _tssExcess, ...rest } = s;
+      return { ...rest, ..._excessOrig };
+    });
+
     const planData = {
       week_start:       getMondayString(),
-      sessions:         currentPlan.sessions,
+      sessions:         cleanSessions,
       tss_target:       currentPlan.targetTSS   || null,
       phase:            currentPlan.phase        || null,
       ftp_at_creation:  AppState.athlete?.ftp    || null,
