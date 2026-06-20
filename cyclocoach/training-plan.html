@@ -3745,6 +3745,18 @@ async function _applyActivitySubstitution(idx, sub, feedback, isFuture, btn, res
 // ── Ajustar TSS de sesiones futuras al presupuesto restante ──────────────
 function _applyTSSBudget(plan) {
   if (!plan?.sessions || !plan.targetTSS) return;
+
+  // Si el TSS real de la semana ya supera el objetivo, _applyWeekTSSExcessScaling lo gestiona.
+  // No aplicar las dos reducciones a la vez (evita doble compresión de sesiones futuras).
+  if (AppState.activities?.length) {
+    const mon = new Date(); mon.setDate(mon.getDate() - ((mon.getDay() || 7) - 1)); mon.setHours(0,0,0,0);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999);
+    const weekActualTSS = AppState.activities
+      .filter(a => { const d = new Date((a.date?.slice(0,10)||'') + 'T12:00:00'); return d >= mon && d <= sun; })
+      .reduce((s, a) => s + (Number(a.tss) || 0), 0);
+    if (weekActualTSS >= plan.targetTSS) return;
+  }
+
   const completedTSS = plan.sessions.reduce((s, x) => s + (x.completed && !x.isRest ? (x.tss || 0) : 0), 0);
   const budget     = plan.targetTSS - completedTSS;
   if (budget <= 0) return;
