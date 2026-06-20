@@ -3583,8 +3583,9 @@ function syncPlanWithReality() {
   // Ajuste conservador: solo reducimos carga cuando hay fatiga acumulada real.
   // NUNCA aumentamos carga para compensar sesiones perdidas — la consistencia
   // a largo plazo vale más que recuperar TSS de una semana.
-  // Pase final anti-back-to-back (solo display — no se guarda)
+  // Pases finales de ajuste (solo display — no se guarda)
   _applyAntiBackToBack(currentPlan, todayIdx, ftp);
+  _applyWeekTSSExcessScaling(currentPlan, todayIdx, ftp);
 
   if (changed) {
     if (changesSummary.length > 0) {
@@ -4630,6 +4631,79 @@ function showToast(text, color = 'var(--primary)') {
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 3500);
 }
 
+// Reduce la carga de los días futuros cuando el TSS semanal acumulado supera el objetivo.
+// Umbrales: +5-10% → recorte proporcional; +10-20% → recuperación activa; >20% → descanso.
+// Solo display — no se guarda automáticamente.
+function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
+  if (!plan?.sessions || !AppState.activities) return;
+  const targetTSS = plan.targetTSS || 0;
+  if (!targetTSS) return;
+
+  const mondayDate = new Date();
+  mondayDate.setDate(mondayDate.getDate() - ((mondayDate.getDay() || 7) - 1));
+  mondayDate.setHours(0, 0, 0, 0);
+  const sundayDate = new Date(mondayDate);
+  sundayDate.setDate(mondayDate.getDate() + 6);
+  sundayDate.setHours(23, 59, 59, 999);
+
+  const weekActualTSS = AppState.activities
+    .filter(a => { const d = new Date(a.date?.slice(0,10)+'T12:00:00'); return d >= mondayDate && d <= sundayDate; })
+    .reduce((s, a) => s + (Number(a.tss) || 0), 0);
+
+  const devPct = (weekActualTSS - targetTSS) / targetTSS * 100;
+  if (devPct <= 5) return;
+
+  for (let i = todayIdx + 1; i < 7; i++) {
+    const sess = plan.sessions[i];
+    if (!sess || sess.isRest || sess._manualAdaptDay === i) continue;
+
+    const _wt = window.WORKOUT_TYPES || {};
+    sess._tssExcess = true;
+
+    if (devPct > 20) {
+      sess.isRest      = true;
+      sess.type        = 'recovery';
+      sess.name        = 'Descanso';
+      sess.emoji       = '😴';
+      sess.advice      = `Descanso recomendado: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} planificados (+${Math.round(devPct)}%). Deja que el cuerpo absorba la carga antes del próximo bloque.`;
+    } else if (devPct > 10) {
+      const newDur     = Math.min(sess.durationMin || 60, 45);
+      const newTSS     = Math.round((newDur / 60) * 0.55 * 0.55 * 100);
+      sess.type        = 'recovery';
+      sess.ifTarget    = 0.55;
+      sess.tss         = newTSS;
+      sess.durationMin = newDur;
+      sess.name        = 'Recuperación activa';
+      sess.emoji       = (_wt.recovery || {}).emoji || '🚴';
+      sess.advice      = `Rebajado a recuperación: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} objetivo (+${Math.round(devPct)}%). Pedalea 30-45 min en Z1 o descansa directamente.`;
+      if (window.TrainingPlanGenerator?._buildIntervals) {
+        sess.intervals     = TrainingPlanGenerator._buildIntervals('recovery', ftp, newDur, newTSS, 0.55, 'main');
+        sess.alt_intervals = TrainingPlanGenerator._buildIntervals('recovery', ftp, newDur, newTSS, 0.55, 'alt');
+        if (TrainingPlanGenerator._buildDesc) {
+          sess.description     = TrainingPlanGenerator._buildDesc(sess.intervals);
+          sess.alt_description = TrainingPlanGenerator._buildDesc(sess.alt_intervals);
+        }
+      }
+    } else {
+      const factor     = Math.max(0.75, 1 - (devPct - 5) * 0.05);
+      const newTSS     = Math.round((sess.tss || 80) * factor);
+      const newDur     = Math.round((sess.durationMin || 60) * factor);
+      const pctRed     = Math.round((1 - factor) * 100);
+      sess.tss         = newTSS;
+      sess.durationMin = newDur;
+      sess.advice      = `Duración reducida un ${pctRed}%: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} objetivo (+${Math.round(devPct)}%). Ajusta la intensidad según cómo te sientas.`;
+      if (window.TrainingPlanGenerator?._buildIntervals) {
+        sess.intervals     = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, sess.ifTarget || 0.65, 'main');
+        sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, sess.ifTarget || 0.65, 'alt');
+        if (TrainingPlanGenerator._buildDesc) {
+          sess.description     = TrainingPlanGenerator._buildDesc(sess.intervals);
+          sess.alt_description = TrainingPlanGenerator._buildDesc(sess.alt_intervals);
+        }
+      }
+    }
+  }
+}
+
 // Garantiza que nunca haya dos sesiones de calidad consecutivas.
 // Se aplica SIEMPRE como pase final tras syncPlanWithReality.
 function _applyAntiBackToBack(plan, todayIdx, ftp) {
@@ -4995,7 +5069,7 @@ function toggleSwapPills(idx) {
 // (ej: isRest=false por _fromRestOverride, completed=true de un día diferente).
 const _SWAP_RUNTIME_FLAGS = [
   '_evaluated', '_fromRestOverride', 'completed', 'manuallyUnmarked',
-  '_missed', 'advice', '_origCheckIn',
+  '_missed', 'advice', '_origCheckIn', '_tssExcess',
 ];
 
 function _clearSwapRuntimeFlags(sess) {
