@@ -4712,9 +4712,12 @@ function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
 
   const devPct = (weekActualTSS - targetTSS) / targetTSS * 100;
 
-  for (let i = todayIdx + 1; i < 7; i++) {
+  // Incluir hoy si aún no se ha entrenado: si el exceso viene de días anteriores,
+  // la sesión de hoy también debe reducirse. Solo se salta si ya está completada.
+  for (let i = todayIdx; i < 7; i++) {
     const sess = plan.sessions[i];
     if (!sess || sess._manualAdaptDay === i) continue;
+    if (sess.completed) continue; // Ya entrenaste hoy — no tocar
 
     // Restaurar siempre desde los originales antes de evaluar (previene compounding)
     if (sess._excessOrig) {
