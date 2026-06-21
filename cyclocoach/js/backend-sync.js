@@ -77,7 +77,16 @@ function isLegacyDemoActivity(a) {
           AppState.athlete = { ...data.user, ...AppState.athlete };
         } else {
           // El servidor es autoritativo
-          AppState.athlete = { ...AppState.athlete, ...data.user };
+          const _merged = { ...AppState.athlete, ...data.user };
+          // Si el servidor devuelve target_events null (migración no aplicada en DB),
+          // preservar el valor local para no borrar eventos guardados solo en localStorage.
+          if (data.user.target_events == null && AppState.athlete?.target_events) {
+            _merged.target_events = AppState.athlete.target_events;
+          }
+          if (data.user.event_date == null && AppState.athlete?.event_date) {
+            _merged.event_date = AppState.athlete.event_date;
+          }
+          AppState.athlete = _merged;
           delete AppState.athlete._local_updated_at;
         }
 

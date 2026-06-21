@@ -1415,7 +1415,9 @@ async function loadCoachData() {
     const rec = await recRes.json();
     
     // Forzar siempre el uso del PMC local (preciso) para consistencia visual absoluta
-    const summaryToRender = { ...rec.summary, pmc: metrics };
+    // La fase del plan (frontend) tiene prioridad sobre la del backend:
+    // el plan considera la fecha del evento; el backend solo mira el ramp CTL.
+    const summaryToRender = { ...rec.summary, pmc: metrics, phase: currentPlan?.phase || rec.summary.phase };
 
     renderFormState(summaryToRender, rec.training);
     renderCoachAlerts(rec.training.alerts);
@@ -1598,7 +1600,11 @@ function renderZoneBars(z) {
 
 function renderCoachAlerts(alerts) {
   const section = document.getElementById('coach-alerts-section');
-  if (!alerts?.length) { section.classList.add('hidden'); return; }
+  if (!alerts?.length) {
+    // No ocultar si renderPlan ya escribió una adaptación del plan aquí
+    if (!currentPlan?.adaptation) section.classList.add('hidden');
+    return;
+  }
   section.innerHTML = alerts.map(a => {
     const type = a.startsWith('⚠️') ? 'alert-warning' : a.startsWith('📈') ? 'alert-warning' : 'alert-info';
     return `<div class="coach-alert ${type}"><span style="font-size:18px;flex-shrink:0">${a.substring(0,2)}</span><span>${a.substring(2).trim()}</span></div>`;
@@ -2226,10 +2232,17 @@ function renderPlan(plan, athlete) {
     document.getElementById('plan-hours-val').textContent = (athlete.weekly_hours || 8) + 'h';
   }
   const _hiSessions = (plan.sessions || []).filter(s => !s.isRest && ['threshold','vo2max','sprint','race'].includes(s.type)).length;
-  const _weekCtx = _hiSessions >= 3 ? '🔥 Semana de carga alta' :
-                   _hiSessions >= 2 ? '⚡ Semana con calidad' :
-                   _hiSessions === 1 ? '⚖️ Semana equilibrada' :
-                   '🌱 Semana de base aeróbica';
+  // Derivar _weekCtx desde conteo de sesiones de calidad, pero si el plan
+  // está en un estado de fatiga/recuperación dejar que la adaptación prevalezca
+  // para que el resumen y el banner nunca cuenten historias distintas.
+  let _weekCtx = _hiSessions >= 3 ? '🔥 Semana de carga alta' :
+                 _hiSessions >= 2 ? '⚡ Semana con calidad' :
+                 _hiSessions === 1 ? '⚖️ Semana equilibrada' :
+                 '🌱 Semana de base aeróbica';
+  if      (plan.adaptation?.level === 'danger')  _weekCtx = '🛑 Recuperación forzada';
+  else if (plan.adaptation?.level === 'warning') _weekCtx = '⚠️ Semana aligerada';
+  else if (plan.adaptation?.level === 'caution') _weekCtx = '⚖️ Carga ajustada';
+  else if (plan.adaptation?.level === 'info' && (plan.adaptation?.title || '').includes('Recuperación')) _weekCtx = '🔄 Semana de recuperación';
   document.getElementById('plan-summary-inline').innerHTML =
     `${_weekCtx} · <strong style="color:var(--primary)">${plan.targetTSS} TSS</strong> · ${athlete.weekly_hours || 8}h · ${phaseLabel(plan.phase)}`;
 
@@ -3607,6 +3620,12 @@ function syncPlanWithReality() {
   if (_excessChanged) changed = true;
 
   if (changed) {
+    // Si solo disparó el exceso TSS (sin sesiones perdidas/extra), añadirlo al resumen
+    // para que el usuario entienda por qué las sesiones futuras aparecen reducidas.
+    if (_excessChanged && changesSummary.length === 0) {
+      const _scaledSess = currentPlan.sessions.find(s => s._tssExcess && s.advice);
+      if (_scaledSess?.advice) changesSummary.push({ icon: '📊', day: 'Esta semana', desc: _scaledSess.advice });
+    }
     if (changesSummary.length > 0) {
       currentPlan._recalcSummary = {
         timestamp: Date.now(),
@@ -5256,18 +5275,10 @@ async function applyAdjustments() {
     if (maxHR      !== null && !isNaN(maxHR)      && maxHR      >= 100) updates.max_hr = maxHR;
     if (lthr       !== null && !isNaN(lthr)        && lthr       >= 100) updates.lthr = lthr;
     if (goal)  updates.goal = goal;
-    // Deduplicar eventos A: si hay varios (bug legacy), quedarse con el no-legacy más futuro
-    const _allA = (_adjEvents || []).filter(e => e.priority === 'A');
-    if (_allA.length > 1) {
-      const _nonLegA = _allA.filter(e => e.id !== '_legacy');
-      const _bestA   = (_nonLegA.length ? _nonLegA : _allA)
-        .reduce((best, e) => e.date > best.date ? e : best);
-      _adjEvents = [_bestA, ...(_adjEvents || []).filter(e => e.priority !== 'A')];
-    }
-    // Guardar eventos múltiples y sincronizar event_date con el evento A
-    const aEvent = (_adjEvents || []).find(e => e.priority === 'A');
-    updates.event_date = aEvent?.date || null;
-    updates.target_events = JSON.stringify(_adjEvents || []);
+    // Los eventos (target_events / event_date) se guardan exclusivamente desde
+    // _saveEventsNow() cuando el usuario agrega o elimina un evento.
+    // NO los incluimos aquí para evitar que un _adjEvents vacío (condición de carrera
+    // con loadProfile) borre accidentalmente los eventos del backend.
     AppState.saveAthlete(updates);
     if (typeof BackendSync !== 'undefined') {
       BackendSync.saveProfile(updates).then(async () => {
