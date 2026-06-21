@@ -1671,8 +1671,10 @@ async function initTrainingPlan() {
       fillAdjustmentForm();
       if (currentPlan) {
         renderPlan(currentPlan, AppState.athlete);
-        // No regenerar plan aunque falte adaptation: las sesiones del usuario se respetan
-        // loadCoachData() se encarga del análisis IA por separado
+        // Aplicar ajuste por exceso TSS inmediatamente con las actividades ya cargadas
+        // desde localStorage (AppState.init). Así la tarjeta y el modal muestran
+        // los valores correctos desde el primer render, sin esperar loadActivities().
+        syncPlanWithReality();
       } else {
         generatePlan();
         silentSavePlan();
