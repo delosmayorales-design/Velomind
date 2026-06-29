@@ -5193,49 +5193,14 @@ function swapDays(idx1, idx2) {
 function regeneratePlan() {
   const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
 
-  function _restoreFromSnap(raw, toastMsg) {
-    const snap = JSON.parse(raw);
-    currentPlan = {
-      sessions:   snap.sessions,
-      phase:      snap.phase,
-      targetTSS:  snap.tss_target,
-      advice:     snap.advice || {},
-      adaptation: null,
-    };
-    currentPlan.sessions.forEach((s, i) => { if (prevCompleted[i]) s.completed = true; });
-    // Ajustar TSS de sesiones pendientes para no exceder el presupuesto semanal restante
-    _applyTSSBudget(currentPlan);
-    // Aplicar escala por exceso TSS antes de renderizar (igual que en carga normal)
-    syncPlanWithReality();
-    localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...snap, savedAt: Date.now() }));
-    renderPlan(currentPlan, AppState.athlete);
-    silentSavePlan();
-    showToast(toastMsg, 'var(--accent-green)');
-  }
-
-  // 1. Intentar restaurar el estado justo antes de la última modificación
-  const preModRaw = localStorage.getItem('cyclocoach_plan_pre_mod');
-  if (preModRaw) {
-    try {
-      _restoreFromSnap(preModRaw, '↩️ Cambio deshecho — plan restaurado');
-      localStorage.removeItem('cyclocoach_plan_pre_mod');
-      return;
-    } catch(e) {}
-  }
-
-  // 2. Fallback: restaurar el plan original de la semana
-  const originalRaw = localStorage.getItem('cyclocoach_plan_original');
-  if (originalRaw) {
-    try {
-      _restoreFromSnap(originalRaw, '✅ Plan restaurado al original de la semana');
-      return;
-    } catch(e) {}
-  }
-
-  // 3. Sin backup: regenerar desde cero
+  // Limpia todos los snapshots para garantizar generación fresca desde el motor
   localStorage.removeItem('cyclocoach_plan_snapshot');
   localStorage.removeItem('cyclocoach_training_plan');
+  localStorage.removeItem('cyclocoach_plan_original');
+  localStorage.removeItem('cyclocoach_plan_pre_mod');
+
   generatePlan();
+
   if (currentPlan?.sessions && prevCompleted.length) {
     let anyChange = false;
     currentPlan.sessions.forEach((s, i) => {
@@ -5244,7 +5209,7 @@ function regeneratePlan() {
     if (anyChange) renderPlan(currentPlan, AppState.athlete);
   }
   silentSavePlan();
-  showToast('✅ Plan de entrenamiento generado', 'var(--accent-green)');
+  showToast('✅ Plan regenerado con fase y carga actualizadas', 'var(--accent-green)');
 }
 
 async function applyAdjustments() {
