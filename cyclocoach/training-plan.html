@@ -3203,6 +3203,14 @@ async function saveAdaptation(idx) {
   sess.advice      = t.razon || sess.advice;
   sess._adapted    = true;
 
+  // Si había TSS excess scaling activo, la adaptación manual del coach tiene prioridad.
+  // Eliminar los flags para que savePlan() guarde los valores adaptados y no el snapshot previo.
+  if (sess._tssExcess) {
+    delete sess._tssExcess;
+    delete sess._excessOrig;
+    sess._manualAdaptDay = idx; // evita que _applyWeekTSSExcessScaling() reaplique el escalado
+  }
+
   // Actualizar métricas clave desde la IA
   sess.durationMin = t.duracion_min > 0 ? t.duracion_min : sess.durationMin;
   // Enforce type-specific minimums solo para sesiones de ciclismo
