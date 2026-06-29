@@ -65,7 +65,7 @@ router.post('/portal', requireAuth, async (req, res) => {
       customer: user.stripe_customer_id,
       return_url: `${appUrl}/app/dashboard.html`,
     });
-    res.json({ url: session.url });
+    res.json({ url });
   } catch (e) {
     console.error('[payments/portal]', e.message);
     res.status(500).json({ error: e.message });

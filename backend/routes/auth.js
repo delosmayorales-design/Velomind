@@ -8,6 +8,7 @@ const { requireAuth, signToken } = require('../middleware/auth');
 const { recalculatePMC } = require('../services/pmc');
 const router  = express.Router();
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -18,6 +19,7 @@ router.post('/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+    if (!EMAIL_RE.test(email.trim())) return res.status(400).json({ error: 'Formato de email inválido' });
     if (password.length < 6)  return res.status(400).json({ error: 'Contraseña mínimo 6 caracteres' });
 
     const emailNorm = email.trim().toLowerCase();
@@ -36,7 +38,7 @@ router.post('/register', async (req, res) => {
     res.status(201).json({ message: '✅ Cuenta creada', token: signToken(user), user: safeUser(user) });
   } catch (e) {
     console.error('[auth/register]', e.message);
-    res.status(500).json({ error: 'Error al registrar: ' + e.message });
+    res.status(500).json({ error: 'Error al crear la cuenta. Inténtalo de nuevo.' });
   }
 });
 
@@ -51,7 +53,7 @@ router.post('/login', async (req, res) => {
     res.json({ message: '✅ Sesión iniciada', token: signToken(user), user: safeUser(user) });
   } catch (e) {
     console.error('[auth/login]', e.message);
-    res.status(500).json({ error: 'Error en login: ' + e.message });
+    res.status(500).json({ error: 'Error al iniciar sesión. Inténtalo de nuevo.' });
   }
 });
 
@@ -131,7 +133,27 @@ router.put('/profile', requireAuth, async (req, res) => {
     if (req.body[k] !== undefined) updates[k] = req.body[k];
   }
   if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'Sin datos para actualizar' });
-  
+
+  // Validaciones de rango
+  if (updates.ftp !== undefined) {
+    const ftp = Number(updates.ftp);
+    if (!Number.isFinite(ftp) || ftp < 50 || ftp > 600)
+      return res.status(400).json({ error: 'FTP debe estar entre 50 y 600 W' });
+    updates.ftp = ftp;
+  }
+  if (updates.weight !== undefined) {
+    const w = Number(updates.weight);
+    if (!Number.isFinite(w) || w < 30 || w > 200)
+      return res.status(400).json({ error: 'Peso debe estar entre 30 y 200 kg' });
+    updates.weight = w;
+  }
+  if (updates.max_hr !== undefined) {
+    const hr = Number(updates.max_hr);
+    if (!Number.isFinite(hr) || hr < 100 || hr > 250)
+      return res.status(400).json({ error: 'FC máxima debe estar entre 100 y 250 bpm' });
+    updates.max_hr = hr;
+  }
+
   updates.updated_at = new Date().toISOString();
 
   const { error } = await supabase.from('users').update(updates).eq('id', req.user.id);

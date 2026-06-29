@@ -2022,7 +2022,7 @@
 
 <script src="js/auth.js"></script>
 <script src="js/update-banner.js"></script>
-<script src="js/app.js"></script>
+<script src="js/app.js?v=108"></script>
 <script src="js/backend-sync.js"></script>
 <script>
 const API_BASE = window.API_URL;
@@ -4999,7 +4999,7 @@ function selectTimelineHour(idx) {
   const today = new Date();
   const tom = new Date(today); tom.setDate(tom.getDate() + 1);
 
-  let dayStr = dt.toLocaleDateString('es', {weekday: 'short'});
+  let dayStr = dt.toLocaleDateString('es-ES', {weekday: 'short'});
   if (dt.toDateString() === today.toDateString()) dayStr = 'Hoy';
   else if (dt.toDateString() === tom.toDateString()) dayStr = 'Mañ.';
 
@@ -5156,7 +5156,7 @@ async function recoverTrackSession() {
   const now      = new Date();
   const dateStr  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   document.getElementById('trk-modal-name').value =
-    `Salida ${now.toLocaleDateString('es', {weekday:'long'})} ${now.toLocaleDateString('es',{day:'numeric',month:'short'})}`;
+    `Salida ${now.toLocaleDateString('es-ES', {weekday:'long'})} ${now.toLocaleDateString('es-ES',{day:'numeric',month:'short'})}`;
   const recoverTypeSelect = document.getElementById('trk-modal-type');
   if (recoverTypeSelect) recoverTypeSelect.value = _trkActivityType;
   document.getElementById('trk-modal-summary').innerHTML = `
@@ -5655,7 +5655,7 @@ function _stopTracking() {
   const dateStr  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
   document.getElementById('trk-modal-name').value =
-    `Salida ${now.toLocaleDateString('es', {weekday:'long'})} ${now.toLocaleDateString('es',{day:'numeric',month:'short'})}`;
+    `Salida ${now.toLocaleDateString('es-ES', {weekday:'long'})} ${now.toLocaleDateString('es-ES',{day:'numeric',month:'short'})}`;
   // Pre-rellenar el tipo seleccionado al inicio
   const typeSelect = document.getElementById('trk-modal-type');
   if (typeSelect) typeSelect.value = _trkActivityType;

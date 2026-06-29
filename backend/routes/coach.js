@@ -22,15 +22,31 @@ const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 const powerZone = (np, ftp) => getZone(np, ftp)?.id || 0;
 const formState = getTSBStatus;
 
-// Detectar fase de entrenamiento según tendencia CTL
-function detectPhase(pmc) {
+// Detectar fase de entrenamiento: misma lógica que frontend _detectPhase()
+function detectPhase(pmc, eventDate, tsb = 0) {
+  // Override crítico: sobreentrenamiento o fatiga extrema
+  if (tsb < -30) return 'recovery';
+
+  // Con fecha de evento configurada
+  if (eventDate) {
+    const eventLocal = new Date(eventDate + 'T00:00:00');
+    const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0);
+    const daysUntil = Math.floor((eventLocal - todayLocal) / 86400000);
+    if (daysUntil < 0)   return 'recovery';
+    if (daysUntil < 7)   return 'race';
+    if (daysUntil < 22)  return 'peak';
+    if (daysUntil < 113) return 'build';
+    return 'base';
+  }
+
+  // Sin evento: usar tendencia CTL (ramp rate)
   if (!pmc || pmc.length < 14) return 'base';
-  const recent  = pmc.slice(-7).reduce((s, p) => s + p.ctl, 0) / 7;
-  const before  = pmc.slice(-14, -7).reduce((s, p) => s + p.ctl, 0) / 7;
-  const ramp    = recent - before;
-  const lastTSB = pmc[pmc.length - 1]?.tsb ?? 0;
-  if (ramp > 3)       return 'build';
-  if (ramp < -3)      return lastTSB < -20 ? 'recovery' : 'peak';
+  const recent = pmc.slice(-7).reduce((s, p) => s + p.ctl, 0) / 7;
+  const before = pmc.slice(-14, -7).reduce((s, p) => s + p.ctl, 0) / 7;
+  const ramp   = recent - before;
+  if (ramp > 3)                  return 'build';
+  if (ramp < -3 && tsb > -15)   return 'peak';
+  if (ramp < -3 && tsb <= -15)  return 'recovery';
   return 'base';
 }
 
@@ -165,7 +181,7 @@ router.get('/recommendations', async (req, res) => {
   const prevAvgTSS   = prev2w.length   ? Math.round(prev2w.reduce((s, a) => s + (a.tss || 0), 0) / prev2w.length)   : 0;
   const tssGrowth    = prevAvgTSS ? Math.round((recentAvgTSS - prevAvgTSS) / prevAvgTSS * 100) : 0;
 
-  const phase = detectPhase(pmc);
+  const phase = detectPhase(pmc, user.event_date, tsb);
   const form  = formState(tsb);
   const wkg   = ftp && weight ? Math.round(ftp / weight * 100) / 100 : 0;
 

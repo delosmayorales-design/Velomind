@@ -165,13 +165,14 @@ const Utils = {
    PMC: Performance Management Chart (CTL/ATL/TSB)
 ══════════════════════════════════════════════════════════════ */
 const PMC = {
-  /**
-   * Genera array de {date, ctl, atl, tsb}.
-   * Siempre arranca desde la primera actividad para que CTL/ATL
-   * estén bien calentados. El parámetro `days` filtra solo la ventana
-   * de salida (cuántos días devuelve), no el arranque del cálculo.
-   */
+  _cache: null,
+
   compute(activities, days = 120, seedCTL = 0) {
+    // Memoización: si los inputs son idénticos, devolver resultado cacheado
+    const totalTSS = activities.reduce((s, a) => s + (parseFloat(a.tss) || 0), 0);
+    const sig = `${activities.length}|${activities[0]?.date || ''}|${activities[activities.length-1]?.date || ''}|${Math.round(totalTSS)}|${days}|${seedCTL}`;
+    if (this._cache && this._cache.sig === sig) return this._cache.result;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const result = [];
@@ -219,6 +220,7 @@ const PMC = {
         });
       }
     }
+    this._cache = { sig, result };
     return result;
   },
 };
@@ -348,7 +350,7 @@ const TrainingPlanGenerator = {
     const effectivePhase = this._detectPhase(primaryEventDate, pmcArr, tsb);
 
     // ── Adherencia real: compara TSS completado vs esperado en últimas 4 semanas ──
-    const adherence = this._calculateAdherence(cyclingActs, hours);
+    const adherence = this._calculateAdherence(cyclingActs, hours, exp);
 
     // ── Ciclo 3:1 — detectar semana del microciclo desde historial TSS ──
     const cycleInfo = options.cycleWeekOverride != null
@@ -764,7 +766,7 @@ const TrainingPlanGenerator = {
   },
 
   // ── Adherencia real de las últimas 4 semanas ────────────────────
-  _calculateAdherence(activities, weeklyHoursTarget) {
+  _calculateAdherence(activities, weeklyHoursTarget, exp = 'intermedio') {
     const now = new Date();
     const fourWeeksAgo = new Date(now.getTime() - 28 * 86400000);
     const recentActs = activities.filter(a => {
@@ -774,8 +776,9 @@ const TrainingPlanGenerator = {
 
     const actualTSS4w = recentActs.reduce((s, a) => s + (a.tss || 0), 0);
 
-    // TSS esperado en 4 semanas basado en el perfil del atleta
-    const expectedWeeklyTSS = Math.round(weeklyHoursTarget * 3600 * 0.68 * 0.68 / 36);
+    // TSS esperado según nivel de experiencia (igual que baseIF en _buildSessions)
+    const baseIF = { principiante: 0.60, intermedio: 0.68, avanzado: 0.74 }[exp] || 0.68;
+    const expectedWeeklyTSS = Math.round(weeklyHoursTarget * 3600 * baseIF * baseIF / 36);
     const expectedTSS4w = expectedWeeklyTSS * 4;
 
     if (expectedTSS4w === 0) return 1.0;
@@ -2753,82 +2756,6 @@ const Charts = {
     };
   },
 
-  createPMCChart(canvasId, pmcData) {
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) return null;
-
-    const labels = pmcData.map(d => d.date.substring(5));
-    const ctlData = pmcData.map(d => d.ctl);
-    const atlData = pmcData.map(d => d.atl);
-    const tsbData = pmcData.map(d => d.tsb);
-
-    return new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          { label: 'CTL (Fitness)', data: ctlData, borderColor: '#00D4FF', backgroundColor: 'rgba(0,212,255,0.1)', tension: 0.4, pointRadius: 0, borderWidth: 2, fill: true },
-          { label: 'ATL (Fatiga)',  data: atlData, borderColor: '#FF6B35', backgroundColor: 'rgba(255,107,53,0.1)', tension: 0.4, pointRadius: 0, borderWidth: 2, fill: true },
-          { label: 'TSB (Forma)',   data: tsbData, borderColor: '#00C882', backgroundColor: 'transparent', tension: 0.4, pointRadius: 0, borderWidth: 1.5, fill: false, borderDash: [5, 5] },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { labels: { color: '#9ca3af', font: { family: 'Inter', size: 12 }, usePointStyle: true, pointStyleWidth: 12 } },
-          tooltip: {
-            backgroundColor: '#1a1d26',
-            borderColor: 'rgba(255,255,255,0.1)',
-            borderWidth: 1,
-            titleColor: '#f0f2f7',
-            bodyColor: '#9ca3af',
-            padding: 12,
-          },
-        },
-        scales: {
-          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', font: { size: 11 }, maxTicksLimit: 12 } },
-          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', font: { size: 11 } } },
-        },
-      },
-    });
-  },
-
-  createTSSHistoryChart(canvasId, activities) {
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) return null;
-
-    const last12 = activities.slice(-12);
-    return new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: last12.map(a => a.date?.substring(5) || ''),
-        datasets: [{
-          label: 'TSS',
-          data: last12.map(a => a.tss || 0),
-          backgroundColor: last12.map(a => {
-            const t = a.tss || 0;
-            if (t > 150) return 'rgba(255,71,87,0.7)';
-            if (t > 100) return 'rgba(255,107,53,0.7)';
-            if (t > 60)  return 'rgba(255,217,61,0.7)';
-            return 'rgba(59,130,246,0.7)';
-          }),
-          borderRadius: 4,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 11 } } },
-          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', font: { size: 11 } } },
-        },
-      },
-    });
-  },
-
   createMacroChart(canvasId, carbsG, proteinG, fatG) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
@@ -3146,238 +3073,6 @@ const ProviderSync = {
   },
 };
 
-/* ══════════════════════════════════════════════════════════════
-   DASHBOARD UI — Componentes visuales inyectables
-══════════════════════════════════════════════════════════════ */
-const DashboardUI = {
-  renderWeeklyHighlight(containerId, activities, tssObjetivo = 350) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    // 1. Filtrar actividades de esta semana (desde el lunes)
-    const now = new Date();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    monday.setHours(0, 0, 0, 0);
-
-    const weekActs = activities.filter(a => new Date(a.date + 'T00:00:00') >= monday);
-
-    // 2. Calcular totales
-    const totalTSS = Math.round(weekActs.reduce((s, a) => s + (a.tss || 0), 0));
-    const totalDist = weekActs.reduce((s, a) => s + (a.distance || 0), 0) / 1000;
-    const totalSecs = weekActs.reduce((s, a) => s + (a.duration || 0), 0);
-
-    const hours = Math.floor(totalSecs / 3600);
-    const minutes = Math.floor((totalSecs % 3600) / 60);
-
-    // 3. Inyectar HTML y CSS (Glassmorphism & Neon)
-    container.innerHTML = `
-      <style>
-        .weekly-highlight-card {
-          background: linear-gradient(145deg, #1a1d26 0%, #13151c 100%);
-          border: 1px solid rgba(255, 107, 53, 0.3);
-          border-radius: 16px;
-          padding: 14px;
-          position: relative;
-          overflow: hidden;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 107, 53, 0.05);
-          font-family: 'Inter', sans-serif;
-        }
-        .weekly-highlight-card::before {
-          content: '';
-          position: absolute;
-          top: -60px;
-          right: -60px;
-          width: 200px;
-          height: 200px;
-          background: radial-gradient(circle, rgba(255,107,53,0.3) 0%, rgba(0,0,0,0) 70%);
-          border-radius: 50%;
-          z-index: 0;
-          pointer-events: none;
-        }
-        .weekly-content {
-          position: relative;
-          z-index: 1;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 20px;
-        }
-        .weekly-tss { text-align: center; flex: 1; min-width: 120px; }
-        .weekly-tss-val {
-          font-size: 2.4rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800;
-          background: linear-gradient(135deg, #FF6B35 0%, #FFB088 100%);
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-          line-height: 1; margin-bottom: 5px; text-shadow: 0px 4px 15px rgba(255, 107, 53, 0.3);
-        }
-        .weekly-stats { display: flex; flex-direction: column; gap: 10px; flex: 2; min-width: 180px; }
-        .weekly-stat-item {
-          display: flex; align-items: center; gap: 15px; background: rgba(255, 255, 255, 0.03);
-          padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);
-          transition: transform 0.2s ease, background 0.2s ease;
-        }
-        .weekly-stat-item:hover { transform: translateX(5px); background: rgba(255, 255, 255, 0.06); }
-        .weekly-stat-icon {
-          display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;
-          border-radius: 10px; background: rgba(0, 212, 255, 0.1); color: #00D4FF; font-size: 1.2rem;
-        }
-      </style>
-      <div class="weekly-highlight-card">
-        <h3 style="color: #fff; margin-top: 0; margin-bottom: 20px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.3rem; display: flex; align-items: center; gap: 8px;">
-          <i class="fas fa-fire" style="color: #FF6B35;"></i> Tu Semana
-        </h3>
-        <div class="weekly-content">
-          <div class="weekly-tss">
-            <div class="weekly-tss-val" id="ui-week-tss">0</div>
-            <div style="color: #9ca3af; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">TSS Acumulado</div>
-          </div>
-          <div class="weekly-stats">
-            <div class="weekly-stat-item">
-              <div class="weekly-stat-icon"><i class="fas fa-route"></i></div>
-              <div>
-                <div style="color: #9ca3af; font-size: 0.85rem; margin-bottom: 2px;">Distancia</div>
-                <div style="color: #fff; font-weight: 700; font-size: 1.2rem;">${totalDist.toFixed(1)} km</div>
-              </div>
-            </div>
-            <div class="weekly-stat-item">
-              <div class="weekly-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10B981;"><i class="fas fa-stopwatch"></i></div>
-              <div>
-                <div style="color: #9ca3af; font-size: 0.85rem; margin-bottom: 2px;">Tiempo en movimiento</div>
-                <div style="color: #fff; font-weight: 700; font-size: 1.2rem;">${hours}h ${minutes}m</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style="margin-top: 18px;">
-          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #9ca3af; margin-bottom: 8px; font-weight: 500;">
-            <span>Progreso objetivo semanal</span>
-            <span id="ui-week-progress-text" style="color: #00D4FF;">0%</span>
-          </div>
-          <div style="width: 100%; height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);">
-            <div id="ui-week-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #FF6B35, #00D4FF); border-radius: 5px; transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);"></div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    // 4. Animar TSS progresivamente (Contador rápido)
-    const tssEl = document.getElementById('ui-week-tss');
-    let currentTss = 0;
-    if (totalTSS > 0) {
-      const step = totalTSS / 30; // 30 frames
-      const timer = setInterval(() => {
-        currentTss += step;
-        if (currentTss >= totalTSS) { 
-          currentTss = totalTSS; 
-          clearInterval(timer); 
-        }
-        if (tssEl) tssEl.innerText = Math.round(currentTss);
-      }, 33);
-    }
-
-    // 5. Animar barra de progreso
-    setTimeout(() => {
-      const pct = Math.min(100, Math.round((totalTSS / tssObjetivo) * 100));
-      const bar = document.getElementById('ui-week-progress-bar');
-      const txt = document.getElementById('ui-week-progress-text');
-      
-      if (bar) bar.style.width = pct + '%';
-      if (txt) txt.innerText = pct + '%';
-      
-      if (pct >= 100 && bar && txt) {
-        bar.style.background = 'linear-gradient(90deg, #10B981, #00C882)';
-        bar.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.5)';
-        txt.style.color = '#10B981';
-      }
-    }, 100);
-  }
-};
-
-/* ══════════════════════════════════════════════════════════════
-   UI COMPONENTS — Modales y elementos reusables
-══════════════════════════════════════════════════════════════ */
-const UIComponents = {
-  /**
-   * Muestra un modal con los detalles de una actividad.
-   * Implementa el scroll interno para móvil y gestiona el estado del body.
-   * @param {object} activity - El objeto de la actividad a mostrar.
-   */
-  showActivityDetailsModal(activity) {
-    // Prevenir múltiples modales
-    const existingModal = document.querySelector('.activity-modal-overlay');
-    if (existingModal) existingModal.remove();
-
-    const overlay = document.createElement('div');
-    overlay.className = 'activity-modal-overlay';
-    overlay.style.cssText = `
-      position: fixed; inset: 0; z-index: 1001;
-      background: rgba(10, 11, 15, 0.8);
-      backdrop-filter: blur(4px);
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; transition: opacity 0.2s ease-in-out;
-    `;
-
-    const close = () => {
-      overlay.style.opacity = '0';
-      setTimeout(() => {
-        overlay.remove();
-        document.body.classList.remove('modal-open');
-      }, 200);
-    };
-
-    overlay.onclick = (e) => {
-      if (e.target === overlay) close();
-    };
-    
-    // Aquí aplicamos la clase `modal-scroll-content` que definimos en el CSS
-    const modalHTML = `
-      <div class="card" style="width: 90%; max-width: 550px; margin: 0; transform: scale(0.95); transition: transform 0.2s ease-in-out;">
-        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="margin:0; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;">
-            ${activity.name || 'Detalles de la actividad'}
-          </h3>
-          <button id="modal-close-btn" class="btn-icon" style="background:none; border:none; color: #9ca3af; font-size: 1.5rem; cursor: pointer;">&times;</button>
-        </div>
-        <div class="card-body modal-scroll-content">
-          <div class="metrics-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px 12px;">
-            <div><strong>Fecha:</strong> ${Utils.formatDate(activity.date)}</div>
-            <div><strong>Fuente:</strong> ${activity.source || 'Manual'}</div>
-            <div><strong>Distancia:</strong> ${Utils.formatDistance(activity.distance)}</div>
-            <div><strong>Duración:</strong> ${Utils.formatDuration(activity.duration)}</div>
-            <div><strong>Potencia Media:</strong> ${Utils.formatPower(activity.avg_power)}</div>
-            <div><strong>Potencia Normalizada:</strong> ${Utils.formatPower(activity.np)}</div>
-            <div><strong>TSS:</strong> ${activity.tss ? Math.round(activity.tss) : '--'}</div>
-            <div><strong>IF:</strong> ${activity.if_value ? activity.if_value.toFixed(2) : '--'}</div>
-            <div><strong>FC Media:</strong> ${activity.avg_hr ? activity.avg_hr + ' bpm' : '--'}</div>
-            <div><strong>Elevación:</strong> ${activity.elevation ? Math.round(activity.elevation) + ' m' : '--'}</div>
-            <div><strong>Calorías:</strong> ${activity.calories ? Math.round(activity.calories) : '--'}</div>
-            <div><strong>Velocidad Media:</strong> ${activity.avg_speed ? activity.avg_speed.toFixed(1) + ' km/h' : '--'}</div>
-          </div>
-          ${activity.strava_id ? `
-            <a href="https://strava.com/activities/${activity.strava_id}" target="_blank" class="btn btn-secondary" style="width: 100%; margin-top: 20px; justify-content: center;">
-              <i class="fab fa-strava"></i> Ver en Strava
-            </a>` : ''}
-        </div>
-      </div>
-    `;
-
-    overlay.innerHTML = modalHTML;
-    document.body.appendChild(overlay);
-    document.body.classList.add('modal-open');
-
-    const modalCard = overlay.querySelector('.card');
-    
-    // Animar la entrada
-    requestAnimationFrame(() => {
-      overlay.style.opacity = '1';
-      if (modalCard) modalCard.style.transform = 'scale(1)';
-    });
-
-    overlay.querySelector('#modal-close-btn').onclick = close;
-  }
-};
-
 /* Exportar al ámbito global */
 window.AppState       = AppState;
 window.PMC            = PMC;
@@ -3385,8 +3080,6 @@ window.Utils          = Utils;
 window.Charts         = Charts;
 window.FileParser     = FileParser;
 window.ProviderSync   = ProviderSync;
-window.DashboardUI    = DashboardUI;
-window.UIComponents   = UIComponents;
 window.ZONES_COGGAN   = ZONES_COGGAN;
 window.WORKOUT_TYPES  = WORKOUT_TYPES;
 window.GoalUtils      = GoalUtils;
@@ -4092,6 +3785,33 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+/* ══════════════════════════════════════════════════════════════
+   TOAST GLOBAL (fallback — las páginas pueden definir el suyo)
+══════════════════════════════════════════════════════════════ */
+if (!window.showToast) {
+  window.showToast = function showToast(msg, type = 'info') {
+    const colors = {
+      success: 'var(--accent-green,#10B981)',
+      warning: 'var(--accent-yellow,#F59E0B)',
+      error:   'var(--accent-red,#EF4444)',
+      info:    'var(--accent,#9ED62B)',
+    };
+    const color = colors[type] || colors.info;
+    const toast = document.createElement('div');
+    toast.style.cssText = `position:fixed;bottom:24px;right:24px;background:var(--bg-card,#1a1d26);`
+      + `border:1px solid ${color};color:${color};padding:12px 20px;border-radius:10px;`
+      + `font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.4);`
+      + `max-width:400px;opacity:0;transition:opacity 0.25s;`;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => { toast.style.opacity = '1'; });
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, 4000);
+  };
+}
 
 // ── Ampliar Logo (Efecto Lightbox) en todas las pantallas ───────────────────
 (function setupLogoZoom() {

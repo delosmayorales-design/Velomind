@@ -24,6 +24,9 @@ router.post('/', requireAuth, async (req, res) => {
     const { name, type, geojson, distance_km, elevation_gain_m, estimated_minutes, notes,
             activity_date, avg_power, avg_hr, strava_activity_id } = req.body;
     if (!geojson) return res.status(400).json({ error: 'GeoJSON requerido' });
+    // Validación básica de estructura GeoJSON
+    if (typeof geojson !== 'object' || !geojson.type || !['FeatureCollection','Feature','LineString','MultiLineString'].includes(geojson.type))
+      return res.status(400).json({ error: 'GeoJSON inválido: type debe ser FeatureCollection, Feature o LineString' });
 
     const { data, error } = await supabase
       .from('routes')

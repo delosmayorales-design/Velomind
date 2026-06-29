@@ -1,13 +1,14 @@
 // Cálculos de entrenamiento compartidos por todas las rutas
 
+// Zonas Coggan — idénticas a ZONES_COGGAN en app.js (frontend)
 const ZONES = [
   { id: 1, name: 'Z1 Recuperación', min: 0,    max: 0.55, color: '#6B7280' },
-  { id: 2, name: 'Z2 Resistencia',  min: 0.55, max: 0.75, color: '#3B82F6' },
-  { id: 3, name: 'Z3 Tempo',        min: 0.75, max: 0.90, color: '#10B981' },
-  { id: 4, name: 'Z4 Umbral',       min: 0.90, max: 1.05, color: '#F59E0B' },
-  { id: 5, name: 'Z5 VO₂Max',       min: 1.05, max: 1.20, color: '#EF4444' },
-  { id: 6, name: 'Z6 Anaeróbico',   min: 1.20, max: 1.50, color: '#8B5CF6' },
-  { id: 7, name: 'Z7 Neuromuscular',min: 1.50, max: 999,  color: '#EC4899' },
+  { id: 2, name: 'Z2 Resistencia',  min: 0.56, max: 0.75, color: '#3B82F6' },
+  { id: 3, name: 'Z3 Tempo',        min: 0.76, max: 0.90, color: '#10B981' },
+  { id: 4, name: 'Z4 Umbral',       min: 0.91, max: 1.05, color: '#F59E0B' },
+  { id: 5, name: 'Z5 VO₂Max',       min: 1.06, max: 1.20, color: '#EF4444' },
+  { id: 6, name: 'Z6 Anaeróbico',   min: 1.21, max: 1.50, color: '#8B5CF6' },
+  { id: 7, name: 'Z7 Neuromuscular',min: 1.51, max: 999,  color: '#EC4899' },
 ];
 
 function calcIF(np, ftp) {

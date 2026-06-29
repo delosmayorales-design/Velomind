@@ -500,7 +500,7 @@
   }
 
   async function startCheckout(plan) {
-    const token = localStorage.getItem('cyclocoach_token');
+    const token = localStorage.getItem('velomind_token');
     if (!token) {
       location.href = 'login.html?redirect=pricing.html';
       return;

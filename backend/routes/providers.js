@@ -22,6 +22,61 @@ const GARMIN_AUTH_URL = 'https://connect.garmin.com/oauth2Confirm';
 const GARMIN_TOKEN_URL = 'https://connectapi.garmin.com/di-oauth2-service/oauth/token';
 const GARMIN_API_BASE = process.env.GARMIN_API_BASE || 'https://apis.garmin.com/wellness-api/rest';
 
+// ─── TOKEN REFRESH HELPERS ──────────────────────────────────
+async function refreshStravaToken(user, uid) {
+  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
+  if (!user.strava_refresh || !isExpired) return user.strava_token;
+  try {
+    const re = await fetch('https://www.strava.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: STRAVA_ID, client_secret: STRAVA_SECRET,
+        grant_type: 'refresh_token', refresh_token: user.strava_refresh,
+      }),
+    });
+    const d = await re.json();
+    if (re.ok && d.access_token) {
+      await supabase.from('users').update({
+        strava_token: d.access_token,
+        strava_refresh: d.refresh_token,
+        strava_expires_at: d.expires_at,
+      }).eq('id', uid);
+      return d.access_token;
+    }
+    return null; // Token caducado y no se pudo renovar
+  } catch (e) {
+    console.error('[Strava] Error refrescando token:', e.message);
+    return user.strava_token; // Intentar con el token existente
+  }
+}
+
+async function refreshGarminToken(user, uid) {
+  const isExpired = !user.garmin_expires_at || (Date.now() / 1000 > user.garmin_expires_at - 300);
+  if (!user.garmin_refresh || !isExpired) return user.garmin_token;
+  try {
+    const creds = Buffer.from(`${GARMIN_ID}:${GARMIN_SECRET}`).toString('base64');
+    const re = await fetch(GARMIN_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Basic ${creds}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(user.garmin_refresh)}`,
+    });
+    const d = await re.json();
+    if (re.ok && d.access_token) {
+      await supabase.from('users').update({
+        garmin_token: d.access_token,
+        garmin_refresh: d.refresh_token || user.garmin_refresh,
+        garmin_expires_at: Math.floor(Date.now() / 1000) + (d.expires_in || 3600),
+      }).eq('id', uid);
+      return d.access_token;
+    }
+    return null;
+  } catch (e) {
+    console.error('[Garmin] Error refrescando token:', e.message);
+    return user.garmin_token;
+  }
+}
+
 function base64Url(input) {
   return Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -162,37 +217,8 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Strava no conectado' });
   }
 
-  let token = user.strava_token;
-
-  // Refrescar token si ha expirado (Strava requiere renovar cada 6 horas)
-  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
-  if (user.strava_refresh && isExpired) {
-    try {
-      const re = await fetch('https://www.strava.com/oauth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: STRAVA_ID,
-          client_secret: STRAVA_SECRET,
-          grant_type: 'refresh_token',
-          refresh_token: user.strava_refresh
-        }),
-      });
-      const d = await re.json();
-      if (re.ok && d.access_token) {
-        token = d.access_token;
-        await supabase.from('users').update({
-          strava_token: d.access_token,
-          strava_refresh: d.refresh_token,
-          strava_expires_at: d.expires_at
-        }).eq('id', uid);
-      } else {
-        return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
-      }
-    } catch(e) {
-      console.error('[Strava Sync] Error refrescando token:', e.message);
-    }
-  }
+  const token = await refreshStravaToken(user, uid);
+  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
 
   try {
     let page = 1;
@@ -508,30 +534,8 @@ router.get('/strava/streams/:activityId', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Strava no conectado' });
   }
 
-  let token = user.strava_token;
-  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
-  if (user.strava_refresh && isExpired) {
-    try {
-      const re = await fetch('https://www.strava.com/oauth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: STRAVA_ID, client_secret: STRAVA_SECRET,
-          grant_type: 'refresh_token', refresh_token: user.strava_refresh
-        }),
-      });
-      const d = await re.json();
-      if (re.ok && d.access_token) {
-        token = d.access_token;
-        await supabase.from('users').update({
-          strava_token: d.access_token, strava_refresh: d.refresh_token,
-          strava_expires_at: d.expires_at
-        }).eq('id', uid);
-      }
-    } catch (e) {
-      console.warn('[Streams] Error refrescando token Strava:', e.message);
-    }
-  }
+  const token = await refreshStravaToken(user, uid);
+  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
 
   try {
     const keys = 'time,watts,heartrate,velocity_smooth,altitude,cadence,grade_smooth,latlng';
@@ -581,28 +585,8 @@ router.get('/strava/polylines', requireAuth, async (req, res) => {
 
   if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
 
-  let token = user.strava_token;
-  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
-  if (user.strava_refresh && isExpired) {
-    try {
-      const re = await fetch('https://www.strava.com/oauth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: STRAVA_ID, client_secret: STRAVA_SECRET,
-          grant_type: 'refresh_token', refresh_token: user.strava_refresh
-        }),
-      });
-      const d = await re.json();
-      if (re.ok && d.access_token) {
-        token = d.access_token;
-        await supabase.from('users').update({
-          strava_token: d.access_token, strava_refresh: d.refresh_token,
-          strava_expires_at: d.expires_at
-        }).eq('id', uid);
-      }
-    } catch (e) { console.warn('[Polylines] Token refresh error:', e.message); }
-  }
+  const token = await refreshStravaToken(user, uid);
+  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
 
   try {
     const oneYearAgo = Math.floor(Date.now() / 1000) - 365 * 24 * 3600;
@@ -1342,23 +1326,8 @@ router.get('/strava/activity-segments/:stravaId', requireAuth, async (req, res) 
     .eq('id', uid).single();
   if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
 
-  let token = user.strava_token;
-  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
-  if (user.strava_refresh && isExpired) {
-    try {
-      const re = await fetch('https://www.strava.com/oauth/token', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: STRAVA_ID, client_secret: STRAVA_SECRET,
-          grant_type: 'refresh_token', refresh_token: user.strava_refresh }),
-      });
-      const d = await re.json();
-      if (re.ok && d.access_token) {
-        token = d.access_token;
-        await supabase.from('users').update({ strava_token: d.access_token,
-          strava_refresh: d.refresh_token, strava_expires_at: d.expires_at }).eq('id', uid);
-      }
-    } catch (e) { console.warn('[ActivitySegments] Error refrescando token:', e.message); }
-  }
+  const token = await refreshStravaToken(user, uid);
+  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
 
   try {
     const r = await fetch(
@@ -1404,23 +1373,8 @@ router.get('/strava/segment-leaderboard/:segmentId', requireAuth, async (req, re
     .eq('id', uid).single();
   if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
 
-  let token = user.strava_token;
-  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
-  if (user.strava_refresh && isExpired) {
-    try {
-      const re = await fetch('https://www.strava.com/oauth/token', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: STRAVA_ID, client_secret: STRAVA_SECRET,
-          grant_type: 'refresh_token', refresh_token: user.strava_refresh }),
-      });
-      const d = await re.json();
-      if (re.ok && d.access_token) {
-        token = d.access_token;
-        await supabase.from('users').update({ strava_token: d.access_token,
-          strava_refresh: d.refresh_token, strava_expires_at: d.expires_at }).eq('id', uid);
-      }
-    } catch (e) { console.warn('[Leaderboard] Error refrescando token:', e.message); }
-  }
+  const token = await refreshStravaToken(user, uid);
+  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
 
   try {
     // Intentar leaderboard público; si Strava devuelve 403 (requiere aprobación especial),
@@ -1473,23 +1427,8 @@ router.get('/strava/segments', requireAuth, async (req, res) => {
 
   if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
 
-  let token = user.strava_token;
-  const isExpired = !user.strava_expires_at || (Date.now() / 1000 > user.strava_expires_at - 300);
-  if (user.strava_refresh && isExpired) {
-    try {
-      const re = await fetch('https://www.strava.com/oauth/token', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: STRAVA_ID, client_secret: STRAVA_SECRET,
-          grant_type: 'refresh_token', refresh_token: user.strava_refresh }),
-      });
-      const d = await re.json();
-      if (re.ok && d.access_token) {
-        token = d.access_token;
-        await supabase.from('users').update({ strava_token: d.access_token,
-          strava_refresh: d.refresh_token, strava_expires_at: d.expires_at }).eq('id', uid);
-      }
-    } catch (e) { console.warn('[Segments] Error refrescando token:', e.message); }
-  }
+  const token = await refreshStravaToken(user, uid);
+  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
 
   try {
     const r = await fetch(
