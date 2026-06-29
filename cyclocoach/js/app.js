@@ -1187,8 +1187,8 @@ const TrainingPlanGenerator = {
           { day: 'Miércoles',isRest: true,  description: 'Descanso. Hidratación activa, 3 L de agua mínimo.' },
           { day: 'Jueves',   type: 'recovery',  name: 'Activación pre-evento', description: '20-30 min muy suaves con 3-4 acelerones cortos al final. Que las piernas recuerden lo que saben hacer.', tssShare: 0.06, ifTarget: 0.52, emoji: '😴' },
           { day: 'Viernes',  isRest: true,  description: 'Descanso absoluto. Come bien, duerme más, descansa.' },
-          { day: 'Sábado',   type: 'race',  name: '🏁 DÍA DE CARRERA / EVENTO', description: 'Ejecuta tu plan. Empieza conservador, termina fuerte.', tssShare: 0.30, ifTarget: 0.85, emoji: '🏁' },
-          { day: 'Domingo',  isRest: true,  description: 'Recuperación post-evento. Proteínas y sueño.' },
+          { day: 'Sábado',   type: 'endurance', name: 'Rodada de activación final', description: 'Salida muy suave con 3-4 acelerones cortos al final para despertar las piernas. Nada de carga — solo mantener el flujo.', tssShare: 0.10, ifTarget: 0.62, emoji: '🔵' },
+          { day: 'Domingo',  isRest: true,  description: 'Descanso total. Cuerpo fresco y listo para el evento.' },
         ],
       ];
       return peakVariants[(weekInCycle - 1) % 3];
@@ -1214,9 +1214,9 @@ const TrainingPlanGenerator = {
           // Semana 2: sweetspot + resistencia muscular
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso activo — estiramientos de piernas y core' },
-            { day: 'Martes',   type: 'tempo',    name: 'Bloques Sweetspot', description: 'Zona dulce (88-93% FTP) en bloques de 10-15 min. Sube tu umbral de forma controlada.', tssShare: 0.18, ifTarget: 0.78, emoji: '🟢' },
+            { day: 'Martes',   type: 'tempo',    name: 'Bloques Sweetspot', description: 'Zona dulce (88-93% FTP) en bloques de 10-15 min. Sube tu umbral aeróbico de forma controlada.', tssShare: 0.18, ifTarget: 0.78, emoji: '🟢' },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa Z1', description: 'Muy suave. Hoy el cuerpo asimila el trabajo del martes.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Jueves',   type: 'threshold', name: 'Umbral suave introductorio', description: 'Intervalos al FTP más cortos de lo habitual. Acostumbra las piernas sin sobrecargarlas.', tssShare: 0.15, ifTarget: 0.82, emoji: '🟡' },
+            { day: 'Jueves',   type: 'tempo',    name: 'Sweetspot en bloques cortos', description: 'Bloques de 10-12 min al 88-93% FTP. Más intenso que el tempo clásico pero sin cruzar el umbral anaeróbico.', tssShare: 0.15, ifTarget: 0.78, emoji: '🟢' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso — descansa bien para el fondo del domingo' },
             { day: 'Sábado',   type: 'endurance', name: 'Z2 largo continuo', description: 'Dos o tres horas en Z2 puro. Practica la ingesta de carbohidratos en bici.', tssShare: 0.24, ifTarget: 0.65, emoji: '🔵' },
             { day: 'Domingo',  type: 'long',    name: 'Fondón con final progresivo', description: 'Base larga y en los últimos 20 min sube gradualmente hasta Z3. Simula el final de una salida real.', tssShare: 0.28, ifTarget: 0.64, emoji: '💙' },
@@ -1231,12 +1231,12 @@ const TrainingPlanGenerator = {
             { day: 'Sábado',   type: 'tempo',    name: 'Tempo + bloques sweetspot', description: 'Combina ritmo Z3 con algunos bloques de sweetspot. Semana pico de calidad.', tssShare: 0.22, ifTarget: 0.78, emoji: '🟢' },
             { day: 'Domingo',  type: 'long',    name: 'Fondón máximo de la fase', description: 'El fondón más largo del bloque base. Máxima acumulación de volumen aeróbico.', tssShare: 0.32, ifTarget: 0.63, emoji: '💙' },
           ],
-          // Semana 4: fuerza de base entre semana + umbral introductorio
+          // Semana 4: fuerza de base + sweetspot introductorio
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso activo — movilidad de cadera y core' },
             { day: 'Martes',   type: 'endurance', name: 'Z2 con fuerza a baja cadencia', description: 'Bloques de 8 min a 60-65 rpm en llano para desarrollar torque aeróbico sin estrés cardiovascular alto.', tssShare: 0.22, ifTarget: 0.68, emoji: '🔵' },
             { day: 'Miércoles',isRest: true,  description: 'Descanso completo — descarga de mitad de semana' },
-            { day: 'Jueves',   type: 'threshold', name: 'Umbral introductorio Z4', description: 'Dos series cortas de 7 min al FTP. Primer estímulo de umbral del ciclo para activar las adaptaciones.', tssShare: 0.24, ifTarget: 0.82, emoji: '🟡' },
+            { day: 'Jueves',   type: 'tempo',    name: 'Sweetspot a baja cadencia', description: 'Bloques de 10 min al 88-93% FTP con cadencia 65-70 rpm. Construye fuerza muscular específica en zona aeróbica superior, sin cruzar el umbral anaeróbico.', tssShare: 0.22, ifTarget: 0.79, emoji: '🟢' },
             { day: 'Viernes',  type: 'recovery',  name: 'Recuperación activa Z1', description: 'Pedaleo muy suave. Prepara el cuerpo para la jornada larga del sábado.', tssShare: 0.08, ifTarget: 0.50, emoji: '😴' },
             { day: 'Sábado',   type: 'long',    name: 'Fondón largo a ritmo estable Z2', description: 'Base aeróbica pura durante 3-4 horas. Cadencia alta y ritmo conversacional de inicio a fin.', tssShare: 0.38, ifTarget: 0.63, emoji: '💙' },
             { day: 'Domingo',  isRest: true,  description: 'Descanso total — recuperación post-fondón' },
@@ -1421,9 +1421,9 @@ const TrainingPlanGenerator = {
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso' },
             { day: 'Martes',   type: 'endurance', name: 'Z2 base aeróbica', description: 'Base estructurada pura para soportar la carga de VO₂ que viene. Cadencia alta.', tssShare: 0.12, ifTarget: 0.65, emoji: '🔵' },
-            { day: 'Miércoles',type: 'tempo',     name: 'Sweetspot + sprints cortos', description: 'Base en sweetspot con 4-5 sprints de 10 s al final. Toca las fibras rápidas.', tssShare: 0.17, ifTarget: 0.78, emoji: '🟢' },
-            { day: 'Jueves',   type: 'recovery',  name: 'Recuperación activa', description: 'Crucial descansar activo antes de las sesiones fuertes del fin de semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Viernes',  type: 'threshold', name: 'Umbral + arranques', description: 'Series de umbral con arranques explosivos al final de cada bloque. Acostumbra las piernas al lactato.', tssShare: 0.17, ifTarget: 0.83, emoji: '🟡' },
+            { day: 'Miércoles',type: 'tempo',     name: 'Sweetspot + sprints cortos', description: 'Base en sweetspot con 4-5 sprints de 10 s al final. Activa las fibras rápidas sin acumular fatiga.', tssShare: 0.17, ifTarget: 0.78, emoji: '🟢' },
+            { day: 'Jueves',   type: 'recovery',  name: 'Recuperación activa', description: 'Pedaleo muy suave. Guarda piernas frescas para el VO₂ del sábado.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
+            { day: 'Viernes',  type: 'tempo',     name: 'Sweetspot + arranques', description: 'Bloques en sweetspot (88-92% FTP) con 3 arranques explosivos de 8 s al final de cada uno. Base aeróbica superior con activación neuromuscular sin generar fatiga residual.', tssShare: 0.17, ifTarget: 0.78, emoji: '🟢' },
             { day: 'Sábado',   type: 'vo2max',   name: 'Intervalos VO₂ introductorios', description: 'Primeras series de VO₂ del bloque. Cortas pero exigentes. El dolor bueno empieza aquí.', tssShare: 0.18, ifTarget: 0.85, emoji: '🔴' },
             { day: 'Domingo',  type: 'endurance', name: 'Rodada larga Z2', description: 'Base aeróbica que permite sostener alta intensidad semana tras semana.', tssShare: 0.22, ifTarget: 0.65, emoji: '🔵' },
           ],
@@ -1447,24 +1447,24 @@ const TrainingPlanGenerator = {
             { day: 'Sábado',   type: 'sprint',   name: 'Capacidad anaeróbica máxima', description: 'Sprints máximos con recuperación completa. Activa las fibras rápidas al máximo.', tssShare: 0.16, ifTarget: 0.82, emoji: '🟣' },
             { day: 'Domingo',  type: 'long',    name: 'Fondón largo de base', description: 'Cierra el bloque con el fondón más largo. Base aeróbica máxima antes de la recuperación.', tssShare: 0.26, ifTarget: 0.63, emoji: '💙' },
           ],
-          // Semana 4: base neuromuscular — umbral en viernes, VO2 en sábado
+          // Semana 4: base neuromuscular — sweetspot en viernes, VO2 en sábado
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso. Semana de calidad concentrada en la segunda mitad.' },
             { day: 'Martes',   type: 'endurance', name: 'Z2 de preparación aeróbica', description: 'Dos horas en Z2 estricto. Construye la base aeróbica que soporta las sesiones VO₂.', tssShare: 0.15, ifTarget: 0.65, emoji: '🔵' },
             { day: 'Miércoles',type: 'tempo',    name: 'Sweetspot con sprints de activación', description: 'Bloque de sweetspot con 4 sprints de 10 s al final de cada intervalo. Mezcla aeróbica-neuromuscular.', tssShare: 0.18, ifTarget: 0.80, emoji: '🟢' },
             { day: 'Jueves',   type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Pedaleo suave. Guarda las piernas para las dos sesiones de calidad del fin de semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Viernes',  type: 'threshold', name: 'Umbral de activación pre-VO₂', description: 'Dos series de 8 min al FTP. Eleva el umbral aeróbico antes de la sesión VO₂ del sábado.', tssShare: 0.18, ifTarget: 0.83, emoji: '🟡' },
+            { day: 'Viernes',  type: 'tempo',     name: 'Sweetspot de activación pre-VO₂', description: 'Bloque continuo en sweetspot (88-92% FTP). Activa el sistema aeróbico sin la fatiga residual del umbral anaeróbico — llega fresco al VO₂ del sábado.', tssShare: 0.17, ifTarget: 0.79, emoji: '🟢' },
             { day: 'Sábado',   type: 'vo2max',   name: 'VO₂ Max — sesión principal de la semana', description: 'Series de 3-4 min al 110-115% FTP. La sesión clave de la semana con piernas algo activadas.', tssShare: 0.19, ifTarget: 0.87, emoji: '🔴' },
             { day: 'Domingo',  type: 'long',    name: 'Fondón Z2 de recuperación', description: 'Fondón aeróbico largo para asimilar el estrés de intensidad del fin de semana.', tssShare: 0.26, ifTarget: 0.63, emoji: '💙' },
           ],
-          // Semana 5: base explosiva — sprint y VO2 en días diferentes
+          // Semana 5: base explosiva — sprint el martes, VO2 el jueves
           [
-            { day: 'Lunes',    isRest: true,  description: 'Descanso. Semana con sprints el miércoles y VO₂ el jueves.' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 de base aeróbica', description: 'Rodada tranquila en Z2. Prepara el sistema para los estímulos de alta intensidad de la semana.', tssShare: 0.14, ifTarget: 0.65, emoji: '🔵' },
-            { day: 'Miércoles',type: 'sprint',   name: 'Sprints neuromusculares de base', description: 'Series de 10 s al máximo con 5 min de recuperación completa. Activa las fibras rápidas sin fatiga cardiovascular.', tssShare: 0.15, ifTarget: 0.82, emoji: '🟣' },
-            { day: 'Jueves',   type: 'vo2max',   name: 'VO₂ Max — base progresiva', description: 'Series de 2-3 min al 108-112% FTP. El día más duro de la semana tras la activación neuromuscular del miércoles.', tssShare: 0.20, ifTarget: 0.86, emoji: '🔴' },
+            { day: 'Lunes',    isRest: true,  description: 'Descanso. Sprints el martes, VO₂ el jueves — separados por recuperación.' },
+            { day: 'Martes',   type: 'sprint',   name: 'Sprints neuromusculares de base', description: 'Series de 10 s al máximo con 5 min de recuperación completa. Activa las fibras rápidas sin fatiga cardiovascular.', tssShare: 0.15, ifTarget: 0.82, emoji: '🟣' },
+            { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Pedaleo muy suave. El sistema nervioso necesita 24h para recuperar los sprints del martes antes del VO₂.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
+            { day: 'Jueves',   type: 'vo2max',   name: 'VO₂ Max — base progresiva', description: 'Series de 2-3 min al 108-112% FTP. Con los sprints del martes como activación previa, el sistema aeróbico superior responde mejor.', tssShare: 0.20, ifTarget: 0.86, emoji: '🔴' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso activo — movilidad y estiramientos' },
-            { day: 'Sábado',   type: 'threshold', name: 'Umbral de consolidación', description: 'Dos series de 12 min al FTP. Consolida las adaptaciones de la semana con trabajo de umbral.', tssShare: 0.18, ifTarget: 0.83, emoji: '🟡' },
+            { day: 'Sábado',   type: 'tempo',    name: 'Sweetspot de consolidación', description: 'Bloque de sweetspot (88-93% FTP) para asentar las adaptaciones de la semana sin añadir más estrés anaeróbico.', tssShare: 0.18, ifTarget: 0.79, emoji: '🟢' },
             { day: 'Domingo',  type: 'long',    name: 'Fondón de cierre Z1-Z2', description: 'Fondón largo aeróbico. Cierra la semana intensa con volumen tranquilo para maximizar la adaptación.', tssShare: 0.26, ifTarget: 0.63, emoji: '💙' },
           ],
         ][w],
