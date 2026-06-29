@@ -4107,10 +4107,11 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
   }
   if (!_chartEvDate) _chartEvDate = _chartAthlete.event_date;
 
-  let currentIdx;
+  let currentIdx, eventInChart = false;
   if (_chartEvDate) {
     const _msToEvent = new Date(_chartEvDate + 'T00:00:00') - new Date();
     const _weeksToEvent = Math.max(0, Math.ceil(_msToEvent / (7 * 24 * 3600 * 1000)));
+    eventInChart = _weeksToEvent <= raceIdx; // el evento cabe en la ventana de 12 semanas
     currentIdx = Math.max(0, Math.min(raceIdx - 1, raceIdx - _weeksToEvent));
   } else {
     const phaseIndexMap = { base: 1, build: 4, peak: 8, recovery: 10, race: 11 };
@@ -4146,25 +4147,27 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
   tsbGrad.addColorStop(0, 'rgba(255,200,0,0.12)');
   tsbGrad.addColorStop(1, 'rgba(255,200,0,0)');
 
-  // Barras: semana actual en lima, "Carrera" en rosa
+  // Barras: semana actual en lima, "Carrera" en rosa solo si el evento entra en la ventana
   const barColors = tssData.map((_, i) =>
-    i === currentIdx ? 'rgba(196,239,68,0.85)' :
-    i === raceIdx    ? 'rgba(236,72,153,0.55)' : barGrad
+    i === currentIdx              ? 'rgba(196,239,68,0.85)' :
+    (eventInChart && i===raceIdx) ? 'rgba(236,72,153,0.55)' : barGrad
   );
   const barBorders = tssData.map((_, i) =>
-    i === currentIdx ? '#C4EF44' :
-    i === raceIdx    ? '#EC4899' : 'rgba(158,214,43,0.45)'
+    i === currentIdx              ? '#C4EF44' :
+    (eventInChart && i===raceIdx) ? '#EC4899' : 'rgba(158,214,43,0.45)'
   );
 
   // Puntos en líneas CTL y TSB
-  const ctlPointR = ctlData.map((_, i) => i === currentIdx ? 6 : i === raceIdx ? 7 : 0);
-  const tsbPointR = tsbData.map((_, i) => i === raceIdx ? 8 : 0);
-  const tsbPointColor = tsbData.map((_, i) => i === raceIdx ? '#EC4899' : '#FFC800');
+  const ctlPointR = ctlData.map((_, i) => i === currentIdx ? 6 : (eventInChart && i===raceIdx) ? 7 : 0);
+  const tsbPointR = tsbData.map((_, i) => (eventInChart && i===raceIdx) ? 8 : 0);
+  const tsbPointColor = tsbData.map((_, i) => (eventInChart && i===raceIdx) ? '#EC4899' : '#FFC800');
 
-  const labels = phases.map((p, i) =>
-    i === currentIdx ? `${p} — Hoy` :
-    i === raceIdx    ? `${p} 🏁`   : p
-  );
+  const labels = phases.map((p, i) => {
+    const name = (!eventInChart && i === raceIdx) ? 'Sem. 12' : p;
+    if (i === currentIdx)              return `${name} — Hoy`;
+    if (eventInChart && i === raceIdx) return `${name} 🏁`;
+    return name;
+  });
 
   if (progressionChart) progressionChart.destroy();
   progressionChart = new Chart(canvas, {
@@ -4239,8 +4242,8 @@ function renderProgressionChart(currentCTL, weeklyTSS, currentPhase) {
         x: {
           grid: { display: false },
           ticks: {
-            color: (c) => c.index === currentIdx ? '#C4EF44' : c.index === raceIdx ? '#EC4899' : '#4B5563',
-            font: (c) => ({ size: 9, family: 'Plus Jakarta Sans', weight: (c.index === currentIdx || c.index === raceIdx) ? '700' : '400' }),
+            color: (c) => c.index === currentIdx ? '#C4EF44' : (eventInChart && c.index === raceIdx) ? '#EC4899' : '#4B5563',
+            font: (c) => ({ size: 9, family: 'Plus Jakarta Sans', weight: (c.index === currentIdx || (eventInChart && c.index === raceIdx)) ? '700' : '400' }),
           }
         },
         y: {

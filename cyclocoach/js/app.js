@@ -742,11 +742,11 @@ const TrainingPlanGenerator = {
       const eventLocal = new Date(eventDate + 'T00:00:00'); // hora local, no UTC
       const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0);
       const daysUntil = Math.floor((eventLocal - todayLocal) / 86400000);
-      if (daysUntil < 0)  return 'recovery'; // evento pasado → recuperación post-evento
-      if (daysUntil < 7)  return 'race';
-      if (daysUntil < 21) return 'peak';
-      if (daysUntil < 70) return 'build';
-      // > 70 días: caer al análisis de ramp rate
+      if (daysUntil < 0)   return 'recovery'; // evento pasado → recuperación post-evento
+      if (daysUntil < 7)   return 'race';
+      if (daysUntil < 22)  return 'peak';    // ≤ 3 semanas: taper
+      if (daysUntil < 113) return 'build';   // 3–16 semanas: build (inicio o intenso)
+      return 'base';                          // > 16 semanas: base aeróbica
     }
 
     // Sin evento o evento muy lejano: usar tendencia CTL (ramp rate últimas 2 semanas)
