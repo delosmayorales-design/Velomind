@@ -3624,7 +3624,7 @@ function syncPlanWithReality() {
   // Ajuste conservador: solo reducimos carga cuando hay fatiga acumulada real.
   // NUNCA aumentamos carga para compensar sesiones perdidas — la consistencia
   // a largo plazo vale más que recuperar TSS de una semana.
-  // Pases finales de ajuste (solo display — no se guarda)
+  // Pases finales de ajuste
   _applyAntiBackToBack(currentPlan, todayIdx, ftp);
   const _excessChanged = _applyWeekTSSExcessScaling(currentPlan, todayIdx, ftp);
   if (_excessChanged) changed = true;
@@ -3643,9 +3643,11 @@ function syncPlanWithReality() {
         changes: changesSummary
       };
     }
-    // No silentSavePlan() aquí — el plan del usuario no se modifica automáticamente.
-    // Solo se guarda cuando el usuario hace una acción explícita (adaptar, cambiar sesión, etc.)
     renderPlan(currentPlan, AppState.athlete);
+    // Persistir: lo que se recalcula automáticamente pasa a ser la verdad guardada,
+    // para que reentrar a la pantalla muestre siempre exactamente esto (no un recálculo
+    // distinto en cada carga).
+    silentSavePlan();
   }
 }
 
@@ -5198,24 +5200,63 @@ function swapDays(idx1, idx2) {
   showToast(`✅ ${day1} y ${day2} intercambiados`, 'var(--primary)');
 }
 
-function regeneratePlan() {
-  const prevCompleted = (currentPlan?.sessions || []).map(s => !!s.completed);
+// Reescala proporcionalmente duración/TSS/intervalos de las sesiones desde fromIdx
+// hasta domingo para que su suma case con remainingTargetTSS. Se usa al regenerar
+// el plan a mitad de semana, cuando ya hay días vividos cuyo TSS hay que descontar
+// del objetivo semanal recién calculado por el motor.
+function _rescaleRemainingSessions(plan, fromIdx, remainingTargetTSS, ftp) {
+  if (!plan?.sessions) return;
+  const remaining = plan.sessions.slice(fromIdx).filter(s => s && !s.isRest);
+  if (!remaining.length) return;
+  const engineSumTSS = remaining.reduce((sum, s) => sum + (s.tss || 0), 0);
+  if (!engineSumTSS || !remainingTargetTSS) return;
+  const factor = Math.max(0.5, Math.min(1.5, remainingTargetTSS / engineSumTSS));
+  if (Math.abs(factor - 1) < 0.05) return; // ya está suficientemente cerca, no tocar
 
+  remaining.forEach(s => {
+    const newDur = Math.max(20, Math.round((s.durationMin || 60) * factor));
+    const ifV    = s.ifTarget || 0.65;
+    s.durationMin = newDur;
+    s.tss         = Math.round((newDur / 60) * ifV * ifV * 100);
+    if (window.TrainingPlanGenerator?._buildIntervals) {
+      s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, newDur, s.tss, ifV, 'main');
+      s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, newDur, s.tss, ifV, 'alt');
+    }
+  });
+}
+
+// Regenera el plan desde los parámetros del atleta, pero respetando los días ya
+// vividos de la semana actual (no se reescriben) y ajustando la carga de los días
+// restantes para que sumen el objetivo semanal recién calculado menos lo ya hecho.
+// La usan tanto el botón "Regenerar" como el panel de Ajustes.
+function _regeneratePlanRespectingProgress() {
+  const todayIdx     = (new Date().getDay() + 6) % 7;
+  const oldSessions  = currentPlan?.sessions || [];
+  // Si hoy ya está completado no lo tocamos; si no, se regenera junto al resto.
+  const cutoffIdx    = oldSessions[todayIdx]?.completed ? todayIdx + 1 : todayIdx;
+  const preserved    = oldSessions.slice(0, cutoffIdx).map(s => ({ ...s }));
+  const doneTSS      = preserved.reduce((sum, s) => sum + (s.completed ? (s.tss || 0) : 0), 0);
+
+  generatePlan(); // recalcula fase/ciclo/targetTSS frescos con CTL/ATL/TSB actuales
+
+  if (currentPlan?.sessions && cutoffIdx > 0) {
+    for (let i = 0; i < cutoffIdx && i < currentPlan.sessions.length; i++) {
+      currentPlan.sessions[i] = preserved[i]; // los días ya vividos no se reescriben
+    }
+    const remainingTarget = Math.max(0, (currentPlan.targetTSS || 0) - doneTSS);
+    _rescaleRemainingSessions(currentPlan, cutoffIdx, remainingTarget, AppState.athlete?.ftp || 200);
+  }
+}
+
+function regeneratePlan() {
   // Limpia todos los snapshots para garantizar generación fresca desde el motor
   localStorage.removeItem('cyclocoach_plan_snapshot');
   localStorage.removeItem('cyclocoach_training_plan');
   localStorage.removeItem('cyclocoach_plan_original');
   localStorage.removeItem('cyclocoach_plan_pre_mod');
 
-  generatePlan();
-
-  if (currentPlan?.sessions && prevCompleted.length) {
-    let anyChange = false;
-    currentPlan.sessions.forEach((s, i) => {
-      if (!s.completed && prevCompleted[i]) { s.completed = true; anyChange = true; }
-    });
-    if (anyChange) renderPlan(currentPlan, AppState.athlete);
-  }
+  _regeneratePlanRespectingProgress();
+  renderPlan(currentPlan, AppState.athlete);
   silentSavePlan();
   showToast('✅ Plan regenerado con fase y carga actualizadas', 'var(--accent-green)');
 }
@@ -5266,8 +5307,10 @@ async function applyAdjustments() {
         // Si cambió el CTL inicial, recargar PMC del backend (se recalcula en el servidor)
         if (updates.initial_ctl !== undefined) {
           await BackendSync.loadActivities();
-          generatePlan();
+          _regeneratePlanRespectingProgress();
           renderAthleteSidebar();
+          renderPlan(currentPlan, AppState.athlete);
+          silentSavePlan();
         }
       }).catch(() => {
         showToast('⚠️ No se pudo guardar en el servidor. Comprueba tu conexión o vuelve a entrar.', '#EF4444');
@@ -5284,8 +5327,9 @@ async function applyAdjustments() {
   }
 
   localStorage.removeItem('cyclocoach_plan_original'); // nuevo plan = nuevo original
-  generatePlan();
+  _regeneratePlanRespectingProgress();
   renderAthleteSidebar();
+  renderPlan(currentPlan, AppState.athlete);
   silentSavePlan();
 
   // Si el panel "Próxima semana" está abierto, refrescarlo con el nuevo plan
