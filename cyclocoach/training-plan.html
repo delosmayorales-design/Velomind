@@ -5238,14 +5238,22 @@ function _regeneratePlanRespectingProgress() {
   const doneTSS      = preserved.reduce((sum, s) => sum + (s.completed ? (s.tss || 0) : 0), 0);
 
   generatePlan(); // recalcula fase/ciclo/targetTSS frescos con CTL/ATL/TSB actuales
+  if (!currentPlan?.sessions) return;
 
-  if (currentPlan?.sessions && cutoffIdx > 0) {
-    for (let i = 0; i < cutoffIdx && i < currentPlan.sessions.length; i++) {
-      currentPlan.sessions[i] = preserved[i]; // los días ya vividos no se reescriben
-    }
-    const remainingTarget = Math.max(0, (currentPlan.targetTSS || 0) - doneTSS);
-    _rescaleRemainingSessions(currentPlan, cutoffIdx, remainingTarget, AppState.athlete?.ftp || 200);
+  for (let i = 0; i < cutoffIdx && i < currentPlan.sessions.length; i++) {
+    currentPlan.sessions[i] = preserved[i]; // los días ya vividos no se reescriben
   }
+
+  // generatePlan() ejecuta syncPlanWithReality() internamente, que puede haber dejado
+  // _tssExcess/_excessOrig (snapshot pre-recorte) en los días que vamos a recalcular.
+  // Si no se limpian, savePlan()/silentSavePlan() restaurarían ese snapshot antiguo
+  // y descartarían el valor reescalado abajo al guardar.
+  currentPlan.sessions.forEach((s, i) => {
+    if (i >= cutoffIdx && s) { delete s._tssExcess; delete s._excessOrig; }
+  });
+
+  const remainingTarget = Math.max(0, (currentPlan.targetTSS || 0) - doneTSS);
+  _rescaleRemainingSessions(currentPlan, cutoffIdx, remainingTarget, AppState.athlete?.ftp || 200);
 }
 
 function regeneratePlan() {
