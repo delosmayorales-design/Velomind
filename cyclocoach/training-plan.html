@@ -5152,6 +5152,12 @@ function _saveEventsNow() {
       .then(() => showToast('✅ Evento guardado', 'var(--accent-green)'))
       .catch(() => showToast('Sin conexión — el evento se guardará cuando vuelva la red', '#F59E0B'));
   }
+  // La fecha del evento cambia la fase (base/build/peak/race) y el taper — sin esto
+  // el plan mostrado quedaba desactualizado hasta tocar algún otro parámetro y pulsar
+  // "Actualizar" o "Regenerar".
+  _regeneratePlanRespectingProgress();
+  renderPlan(currentPlan, AppState.athlete);
+  silentSavePlan();
 }
 
 function clearEventDate() {
@@ -5163,7 +5169,10 @@ function clearEventDate() {
   localStorage.removeItem('cyclocoach_plan_snapshot');
   localStorage.removeItem('cyclocoach_training_plan');
   localStorage.removeItem('cyclocoach_plan_original');
-  generatePlan();
+  // _regeneratePlanRespectingProgress() (no generatePlan() a pelo) para no perder los
+  // días ya completados de la semana en curso, igual que Regenerar/Ajustes.
+  _regeneratePlanRespectingProgress();
+  renderPlan(currentPlan, AppState.athlete);
   silentSavePlan();
   showToast('✅ Fecha de evento eliminada. Plan recalculado.', 'var(--accent-green)');
 }
