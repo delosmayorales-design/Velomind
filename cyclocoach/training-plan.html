@@ -5263,8 +5263,12 @@ function _regeneratePlanRespectingProgress() {
   // _tssExcess/_excessOrig (snapshot pre-recorte) en los días que vamos a recalcular.
   // Si no se limpian, savePlan()/silentSavePlan() restaurarían ese snapshot antiguo
   // y descartarían el valor reescalado abajo al guardar.
+  // _adapted se marca en TODOS los días recalculados (no solo en los que toque
+  // _rescaleRemainingSessions, que puede no tocar nada si el motor ya generó algo
+  // cercano al objetivo) para que _sanitizeCyclingContent() no vuelva a subir su
+  // duración al mínimo por tipo en la siguiente carga de la pantalla.
   currentPlan.sessions.forEach((s, i) => {
-    if (i >= cutoffIdx && s) { delete s._tssExcess; delete s._excessOrig; }
+    if (i >= cutoffIdx && s) { delete s._tssExcess; delete s._excessOrig; s._adapted = true; }
   });
 
   const remainingTarget = Math.max(0, (currentPlan.targetTSS || 0) - doneTSS);
