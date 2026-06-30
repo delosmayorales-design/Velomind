@@ -86,6 +86,14 @@ function isLegacyDemoActivity(a) {
           if (data.user.event_date == null && AppState.athlete?.event_date) {
             _merged.event_date = AppState.athlete.event_date;
           }
+          // Mismo problema que target_events/event_date, pero aquí 0 es un valor válido
+          // y querido (p.ej. "sin días de gimnasio"): no se puede usar truthiness, hay
+          // que comprobar explícitamente null/undefined para no perder un 0 local real.
+          ['gym_days', 'running_days', 'walking_days', 'other_days'].forEach(f => {
+            if (data.user[f] == null && AppState.athlete?.[f] != null) {
+              _merged[f] = AppState.athlete[f];
+            }
+          });
           AppState.athlete = _merged;
           delete AppState.athlete._local_updated_at;
         }
