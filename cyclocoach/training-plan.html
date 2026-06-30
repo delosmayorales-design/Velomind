@@ -1836,10 +1836,15 @@ function _extractCrossTrainingDays(plan) {
   return map;
 }
 
-function generatePlan() {
+// excludeDayIndices: índices (0=Lunes..6=Domingo) que _regeneratePlanRespectingProgress()
+// va a sobreescribir igualmente con los días ya vividos — sin esto, gym/running/caminata/
+// otro podían "elegir" uno de esos días (por su orden de preferencia) y el motor los
+// asignaba ahí, pero el paso de preservar el progreso los descartaba justo después,
+// dando la sensación de que el tipo elegido "no se tenía en cuenta".
+function generatePlan(excludeDayIndices = []) {
   const athlete = AppState.athlete || getDefaultAthlete();
   const previousDayTypes = _extractCrossTrainingDays(currentPlan);
-  const plan = TrainingPlanGenerator.generate(athlete, AppState.activities, { previousDayTypes });
+  const plan = TrainingPlanGenerator.generate(athlete, AppState.activities, { previousDayTypes, excludeDayIndices });
   currentPlan = plan;
   syncPlanWithReality();
   renderPlan(plan, athlete);
@@ -5276,7 +5281,10 @@ function _regeneratePlanRespectingProgress() {
   const preserved    = oldSessions.slice(0, cutoffIdx).map(s => ({ ...s }));
   const doneTSS      = preserved.reduce((sum, s) => sum + (s.completed ? (s.tss || 0) : 0), 0);
 
-  generatePlan(); // recalcula fase/ciclo/targetTSS frescos con CTL/ATL/TSB actuales
+  // Los días < cutoffIdx se van a sobreescribir con "preserved" más abajo de todas formas;
+  // que el motor no malgaste ahí un día de gym/running/caminata/otro que luego se descarta.
+  const excludeDayIndices = Array.from({ length: cutoffIdx }, (_, i) => i);
+  generatePlan(excludeDayIndices); // recalcula fase/ciclo/targetTSS frescos con CTL/ATL/TSB actuales
   if (!currentPlan?.sessions) return;
 
   for (let i = 0; i < cutoffIdx && i < currentPlan.sessions.length; i++) {
