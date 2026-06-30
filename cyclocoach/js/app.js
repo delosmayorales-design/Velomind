@@ -2081,7 +2081,11 @@ const TrainingPlanGenerator = {
   _buildIntervals(type, ftp, durMin, tss, ifTarget, variant = 'main') {
     const pct = (ratio) => Math.round(ftp * ratio);
 
-    let warm = Math.max(10, Math.round(durMin * 0.2));
+    // Días de series (umbral/VO2/sprint/fuerza/tempo): calentamiento mínimo de 30 min
+    // antes de entrar en calidad — el resto de tipos mantiene el mínimo de 10 min.
+    const QUALITY_TYPES = ['tempo', 'threshold', 'vo2max', 'sprint', 'strength'];
+    const minWarm = QUALITY_TYPES.includes(type) ? 30 : 10;
+    let warm = Math.max(minWarm, Math.round(durMin * 0.2));
     let cool = Math.max(10, Math.round(durMin * 0.15));
     let main = Math.max(0, durMin - warm - cool);
 

@@ -5214,7 +5214,14 @@ function _rescaleRemainingSessions(plan, fromIdx, remainingTargetTSS, ftp) {
   if (Math.abs(factor - 1) < 0.05) return; // ya está suficientemente cerca, no tocar
 
   remaining.forEach(s => {
-    const newDur = Math.max(20, Math.round((s.durationMin || 60) * factor));
+    // El motor nunca genera una sesión ciclista por debajo de 70 min (app.js:1026,
+    // "nadie se viste de bici para menos"); respetamos el mismo suelo aquí para no
+    // producir sesiones absurdamente cortas al reescalar. El cross-training
+    // (gym/running/walking/other) sí puede ser más corto.
+    const isCycling = !s.isGym && !s.isRunning && !s.isWalking && !s.isOther
+      && !['gym', 'running', 'walking'].includes(s.type);
+    const minDur = isCycling ? 70 : 20;
+    const newDur = Math.max(minDur, Math.round((s.durationMin || 60) * factor));
     const ifV    = s.ifTarget || 0.65;
     s.durationMin = newDur;
     s.tss         = Math.round((newDur / 60) * ifV * ifV * 100);
