@@ -1822,9 +1822,24 @@ function renderWeekDates() {
     sunday.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// Extrae qué día tenía cada tipo de entrenamiento complementario en un plan, para que
+// al regenerar el motor prefiera mantener el día en vez de saltar a otro (ver generatePlan).
+function _extractCrossTrainingDays(plan) {
+  const map = {};
+  (plan?.sessions || []).forEach(s => {
+    if (!s) return;
+    if (s.isGym) map[s.day] = 'gym';
+    else if (s.isRunning) map[s.day] = 'running';
+    else if (s.isWalking) map[s.day] = 'walking';
+    else if (s.isOther) map[s.day] = 'other';
+  });
+  return map;
+}
+
 function generatePlan() {
   const athlete = AppState.athlete || getDefaultAthlete();
-  const plan = TrainingPlanGenerator.generate(athlete, AppState.activities);
+  const previousDayTypes = _extractCrossTrainingDays(currentPlan);
+  const plan = TrainingPlanGenerator.generate(athlete, AppState.activities, { previousDayTypes });
   currentPlan = plan;
   syncPlanWithReality();
   renderPlan(plan, athlete);

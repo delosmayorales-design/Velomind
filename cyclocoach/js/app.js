@@ -435,18 +435,22 @@ const TrainingPlanGenerator = {
     const runningDays = Math.max(0, Math.min(3, parseInt(athlete.running_days) || 0));
     const walkingDays = Math.max(0, Math.min(3, parseInt(athlete.walking_days) || 0));
     const otherDays   = Math.max(0, Math.min(3, parseInt(athlete.other_days)   || 0));
+    // Día previo de cada tipo de entrenamiento complementario (si se pasa), para que al
+    // cambiar de tipo o quitar/añadir días se prefiera mantener el mismo día en vez de
+    // saltar a otro por la preferencia fija de cada función _inject*Sessions.
+    const previousDayTypes = options.previousDayTypes || {};
     const sessions = this._injectOtherSessions(
       this._injectWalkingSessions(
         this._injectRunningSessions(
           this._injectGymSessions(
             this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle, events, cycleInfo.globalWeekIdx || 0),
-            gymDays
+            gymDays, previousDayTypes
           ),
-          runningDays
+          runningDays, previousDayTypes
         ),
-        walkingDays
+        walkingDays, previousDayTypes
       ),
-      otherDays
+      otherDays, previousDayTypes
     );
 
     // Tasa de progresión: ΔCTLsemana ≈ (carga_diaria - CTL) × (1 - e^(-7/42)) ≈ × 0.154
@@ -595,16 +599,20 @@ const TrainingPlanGenerator = {
   },
 
   // Inyecta días de gimnasio reemplazando los slots de menor prioridad
-  _injectGymSessions(sessions, gymDays) {
+  _injectGymSessions(sessions, gymDays, previousDayTypes = {}) {
     if (!gymDays || gymDays <= 0) return sessions;
     const result = sessions.map(s => ({ ...s }));
     // Preferencia de día: martes y jueves primero (no pisan fondo del fin de semana)
     const DAY_SCORE = { 'Martes':0, 'Jueves':1, 'Miércoles':2, 'Lunes':3, 'Viernes':4, 'Sábado':5, 'Domingo':6 };
     const typeScore = s => s.isRest ? 0 : ({ recovery:1, endurance:2 }[s.type] ?? 99);
+    // 0 = el día ya era gimnasio (sin cambios) · 1 = el día tenía OTRO entrenamiento
+    // complementario que ya no se usa (slot liberado, se reutiliza antes que uno nuevo) ·
+    // 2 = descanso/recuperación nunca usado para cross-training.
+    const stability = day => previousDayTypes[day] === 'gym' ? 0 : (previousDayTypes[day] ? 1 : 2);
     const candidates = result
-      .map((s, i) => ({ i, ts: typeScore(s), ds: DAY_SCORE[s.day] ?? 6 }))
+      .map((s, i) => ({ i, st: stability(s.day), ts: typeScore(s), ds: DAY_SCORE[s.day] ?? 6 }))
       .filter(c => c.ts < 99)
-      .sort((a, b) => a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
+      .sort((a, b) => a.st !== b.st ? a.st - b.st : a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
       .slice(0, gymDays);
     for (const { i } of candidates) {
       result[i] = {
@@ -622,15 +630,16 @@ const TrainingPlanGenerator = {
   },
 
   // Inyecta días de running reemplazando slots de menor prioridad
-  _injectRunningSessions(sessions, runningDays) {
+  _injectRunningSessions(sessions, runningDays, previousDayTypes = {}) {
     if (!runningDays || runningDays <= 0) return sessions;
     const result = sessions.map(s => ({ ...s }));
     const DAY_SCORE = { 'Lunes':0, 'Miércoles':1, 'Martes':2, 'Jueves':3, 'Viernes':4, 'Sábado':5, 'Domingo':6 };
     const typeScore = s => s.isRest ? 0 : ({ recovery:1, endurance:2 }[s.type] ?? 99);
+    const stability = day => previousDayTypes[day] === 'running' ? 0 : (previousDayTypes[day] ? 1 : 2);
     const candidates = result
-      .map((s, i) => ({ i, ts: typeScore(s), ds: DAY_SCORE[s.day] ?? 6 }))
+      .map((s, i) => ({ i, st: stability(s.day), ts: typeScore(s), ds: DAY_SCORE[s.day] ?? 6 }))
       .filter(c => c.ts < 99)
-      .sort((a, b) => a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
+      .sort((a, b) => a.st !== b.st ? a.st - b.st : a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
       .slice(0, runningDays);
     for (const { i } of candidates) {
       result[i] = {
@@ -647,15 +656,16 @@ const TrainingPlanGenerator = {
   },
 
   // Inyecta días de caminata en días de descanso o recuperación
-  _injectWalkingSessions(sessions, walkingDays) {
+  _injectWalkingSessions(sessions, walkingDays, previousDayTypes = {}) {
     if (!walkingDays || walkingDays <= 0) return sessions;
     const result = sessions.map(s => ({ ...s }));
     const DAY_SCORE = { 'Lunes':0, 'Miércoles':1, 'Viernes':2, 'Martes':3, 'Jueves':4, 'Sábado':5, 'Domingo':6 };
     const typeScore = s => ({ isRest: 0, recovery: 1 }[s.isRest ? 'isRest' : s.type] ?? (s.isRest ? 0 : 99));
+    const stability = day => previousDayTypes[day] === 'walking' ? 0 : (previousDayTypes[day] ? 1 : 2);
     const candidates = result
-      .map((s, i) => ({ i, ts: s.isRest ? 0 : (s.type === 'recovery' ? 1 : 99), ds: DAY_SCORE[s.day] ?? 6 }))
+      .map((s, i) => ({ i, st: stability(s.day), ts: s.isRest ? 0 : (s.type === 'recovery' ? 1 : 99), ds: DAY_SCORE[s.day] ?? 6 }))
       .filter(c => c.ts < 99)
-      .sort((a, b) => a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
+      .sort((a, b) => a.st !== b.st ? a.st - b.st : a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
       .slice(0, walkingDays);
     for (const { i } of candidates) {
       result[i] = {
@@ -669,14 +679,15 @@ const TrainingPlanGenerator = {
   },
 
   // Inyecta días de otro deporte (escalada, karate, etc.) en slots de menor carga
-  _injectOtherSessions(sessions, otherDays) {
+  _injectOtherSessions(sessions, otherDays, previousDayTypes = {}) {
     if (!otherDays || otherDays <= 0) return sessions;
     const result = sessions.map(s => ({ ...s }));
     const DAY_SCORE = { 'Martes':0, 'Jueves':1, 'Lunes':2, 'Miércoles':3, 'Viernes':4, 'Sábado':5, 'Domingo':6 };
+    const stability = day => previousDayTypes[day] === 'other' ? 0 : (previousDayTypes[day] ? 1 : 2);
     const candidates = result
-      .map((s, i) => ({ i, ts: s.isRest ? 0 : (s.type === 'recovery' ? 1 : (s.type === 'endurance' ? 2 : 99)), ds: DAY_SCORE[s.day] ?? 6 }))
+      .map((s, i) => ({ i, st: stability(s.day), ts: s.isRest ? 0 : (s.type === 'recovery' ? 1 : (s.type === 'endurance' ? 2 : 99)), ds: DAY_SCORE[s.day] ?? 6 }))
       .filter(c => c.ts < 99)
-      .sort((a, b) => a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
+      .sort((a, b) => a.st !== b.st ? a.st - b.st : a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
       .slice(0, otherDays);
     for (const { i } of candidates) {
       result[i] = {
