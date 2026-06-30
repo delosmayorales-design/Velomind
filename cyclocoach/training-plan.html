@@ -5225,6 +5225,14 @@ function _rescaleRemainingSessions(plan, fromIdx, remainingTargetTSS, ftp) {
     const ifV    = s.ifTarget || 0.65;
     s.durationMin = newDur;
     s.tss         = Math.round((newDur / 60) * ifV * ifV * 100);
+    // tssShare es la proporción del reparto semanal original; si se deja tal cual,
+    // las tarjetas/modal recalculan el TSS mostrado como tssShare*targetTSS e
+    // ignoran el s.tss recién reescalado (mismo patrón que _applyWeekTSSExcessScaling).
+    s.tssShare    = 0;
+    // _adapted evita que _sanitizeCyclingContent() (se ejecuta al recargar la pantalla,
+    // initTrainingPlan():~1660) vuelva a subir la duración al mínimo por tipo y deshaga
+    // este recorte deliberado — mismo patrón que recalculateWeek() (:4032-4037).
+    s._adapted    = true;
     if (window.TrainingPlanGenerator?._buildIntervals) {
       s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, newDur, s.tss, ifV, 'main');
       s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, newDur, s.tss, ifV, 'alt');
