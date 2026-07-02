@@ -5276,15 +5276,26 @@ function swapDays(idx1, idx2) {
 // hasta domingo para que su suma case con remainingTargetTSS. Se usa al regenerar
 // el plan a mitad de semana, cuando ya hay días vividos cuyo TSS hay que descontar
 // del objetivo semanal recién calculado por el motor.
+// Devuelve el TSS que realmente se pudo asignar a los días restantes: puede ser menor
+// que remainingTargetTSS si los límites físicos por tipo de sesión no dan más de sí
+// (antes había un tope arbitrario de factor ×1.5 que recortaba el reparto muy por
+// debajo del objetivo sin avisar — ahora el límite es por sesión, no global, y si aun
+// así no llega, el objetivo mostrado se ajusta en el llamante en vez de mentir).
 function _rescaleRemainingSessions(plan, fromIdx, remainingTargetTSS, ftp) {
-  if (!plan?.sessions) return;
+  if (!plan?.sessions) return remainingTargetTSS;
   const remaining = plan.sessions.slice(fromIdx).filter(s => s && !s.isRest);
-  if (!remaining.length) return;
+  if (!remaining.length) return 0;
   const engineSumTSS = remaining.reduce((sum, s) => sum + (s.tss || 0), 0);
-  if (!engineSumTSS || !remainingTargetTSS) return;
-  const factor = Math.max(0.5, Math.min(1.5, remainingTargetTSS / engineSumTSS));
-  if (Math.abs(factor - 1) < 0.05) return; // ya está suficientemente cerca, no tocar
+  if (!engineSumTSS || !remainingTargetTSS) return engineSumTSS;
+  const factor = remainingTargetTSS / engineSumTSS;
+  if (Math.abs(factor - 1) < 0.05) return engineSumTSS; // ya está suficientemente cerca, no tocar
 
+  // Duración máxima razonable por tipo (mismos topes que usa el motor al generar
+  // el plan la primera vez, ver app.js ~1044-1055) — evita sesiones absurdas sin
+  // depender de un factor global arbitrario.
+  const MAX_DUR = { long: 240, endurance: 210, recovery: 90, tempo: 150, threshold: 150, vo2max: 150, sprint: 150, strength: 150 };
+
+  let achieved = 0;
   remaining.forEach(s => {
     // El motor nunca genera una sesión ciclista por debajo de 70 min (app.js:1026,
     // "nadie se viste de bici para menos"); respetamos el mismo suelo aquí para no
@@ -5293,10 +5304,12 @@ function _rescaleRemainingSessions(plan, fromIdx, remainingTargetTSS, ftp) {
     const isCycling = !s.isGym && !s.isRunning && !s.isWalking && !s.isOther
       && !['gym', 'running', 'walking'].includes(s.type);
     const minDur = isCycling ? 70 : 20;
-    const newDur = Math.max(minDur, Math.round((s.durationMin || 60) * factor));
+    const maxDur = isCycling ? (MAX_DUR[s.type] || 210) : 180;
+    const newDur = Math.min(maxDur, Math.max(minDur, Math.round((s.durationMin || 60) * factor)));
     const ifV    = s.ifTarget || 0.65;
     s.durationMin = newDur;
     s.tss         = Math.round((newDur / 60) * ifV * ifV * 100);
+    achieved     += s.tss;
     // tssShare es la proporción del reparto semanal original; si se deja tal cual,
     // las tarjetas/modal recalculan el TSS mostrado como tssShare*targetTSS e
     // ignoran el s.tss recién reescalado (mismo patrón que _applyWeekTSSExcessScaling).
@@ -5310,6 +5323,7 @@ function _rescaleRemainingSessions(plan, fromIdx, remainingTargetTSS, ftp) {
       s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, newDur, s.tss, ifV, 'alt');
     }
   });
+  return achieved;
 }
 
 // Regenera el plan desde los parámetros del atleta, pero respetando los días ya
@@ -5394,7 +5408,14 @@ function _regeneratePlanRespectingProgress(allowTargetChange = false) {
   }
 
   const remainingTarget = Math.max(0, (currentPlan.targetTSS || 0) - doneTSS);
-  _rescaleRemainingSessions(currentPlan, cutoffIdx, remainingTarget, AppState.athlete?.ftp || 200);
+  const achieved = _rescaleRemainingSessions(currentPlan, cutoffIdx, remainingTarget, AppState.athlete?.ftp || 200);
+  // Si los límites físicos por sesión no permiten absorber todo el objetivo en los días
+  // que quedan, no dejar la etiqueta de objetivo prometiendo un TSS que el plan ya no
+  // contiene — se ajusta a lo que de verdad hay, y se avisa en el toast del llamante.
+  currentPlan._capacityCapped = achieved < remainingTarget - 5;
+  if (currentPlan._capacityCapped) {
+    currentPlan.targetTSS = doneTSS + achieved;
+  }
 }
 
 function regeneratePlan() {
@@ -5410,6 +5431,8 @@ function regeneratePlan() {
   silentSavePlan();
   const _msg = currentPlan?.adaptation?.level === 'danger'
     ? '🛑 Plan regenerado — objetivo semanal reducido por fatiga excesiva (TSB muy bajo)'
+    : currentPlan?._capacityCapped
+    ? `⚖️ Plan regenerado — los días que quedan no dan para todo el objetivo; ajustado a ${currentPlan.targetTSS} TSS`
     : '✅ Plan regenerado — objetivo semanal se mantiene, días restantes actualizados';
   showToast(_msg, 'var(--accent-green)');
 }
