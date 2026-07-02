@@ -75,7 +75,7 @@ class PlanRecalculator {
       });
 
       // 5️⃣ Comparar: Sesiones Planeadas vs Reales
-      const deltas = this._computeDeltas(currentPlan.sessions, realTSSByDay, weekStart);
+      const deltas = this._computeDeltas(currentPlan.sessions, realTSSByDay, weekStart, today);
 
       // 6️⃣ Decidir si hay que recalcular
       const shouldRecalc = this._shouldAdapt(deltas, athleteState);
@@ -125,7 +125,7 @@ class PlanRecalculator {
   /**
    * Comparar TSS planificado vs real por día
    */
-  static _computeDeltas(plannedSessions, realTSSByDay, weekStart) {
+  static _computeDeltas(plannedSessions, realTSSByDay, weekStart, today) {
     const deltas = {
       byDay: {},
       totalPlanned: 0,
@@ -148,7 +148,11 @@ class PlanRecalculator {
     // Comparar
     Object.keys(plannedByDate).forEach(date => {
       const planned = plannedByDate[date];
+      if (date > today) return;
+
       const real = realTSSByDay[date] || 0;
+      if (date === today && real === 0) return;
+
       const delta = real - planned;
 
       deltas.byDay[date] = {
@@ -161,7 +165,7 @@ class PlanRecalculator {
 
       if (delta > 0) {
         deltas.exceedingDays.push({ date, delta });
-      } else if (delta < 0 && real === 0) {
+      } else if (date < today && delta < 0 && real === 0) {
         deltas.missingDays.push({ date, delta }); // No hizo nada
       }
     });
@@ -299,7 +303,7 @@ class PlanRecalculator {
       const real = realTSSByDay[dateStr] || 0;
       const planned = sess.tss || 0;
 
-      if (dateStr > today) {
+      if (dateStr > today || (dateStr === today && real === 0)) {
         // Sesión futura: calcular déficit/exceso
         remainingDays.push({ dayIdx, dateStr, planned });
         remainingTSS += planned;

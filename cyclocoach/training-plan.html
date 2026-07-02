@@ -4770,12 +4770,14 @@ function closeSessionModal() {
   document.getElementById('plan-side-panel')?.classList.remove('sp-hidden');
 }
 
-function showToast(text, color = 'var(--primary)') {
+function showToast(text, color = 'var(--primary)', duration = 3500) {
+  document.querySelectorAll('.app-toast').forEach(el => el.remove());
   const t = document.createElement('div');
+  t.className = 'app-toast';
   t.style.cssText = `position:fixed;bottom:24px;right:24px;background:var(--bg-card);border:1px solid ${color};color:${color};padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;transition:opacity .3s`;
   t.textContent = text;
   document.body.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 3500);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, duration);
 }
 
 // Reduce la carga de los días futuros cuando el TSS semanal acumulado supera el objetivo.
@@ -5433,20 +5435,30 @@ function _regeneratePlanRespectingProgress(allowTargetChange = false) {
   }
 }
 
+let _regenerateInFlight = false;
+
 async function regeneratePlan() {
-  // Limpia las cachés de contenido del plan para garantizar generación fresca desde
-  // el motor. cyclocoach_plan_original NO se toca: es el objetivo semanal comprometido
-  // (un coach no lo renegocia solo porque el atleta pide refrescar el plan).
-  localStorage.removeItem('cyclocoach_plan_snapshot');
-  localStorage.removeItem('cyclocoach_training_plan');
-  localStorage.removeItem('cyclocoach_plan_pre_mod');
+  if (_regenerateInFlight) return;
+  _regenerateInFlight = true;
 
-  _regeneratePlanRespectingProgress();
-  renderPlan(currentPlan, AppState.athlete);
-  await silentSavePlan();
+  const btn = document.querySelector('.phb-regen');
+  const previousBtnHtml = btn?.innerHTML;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner spinning"></i>';
+  }
 
-  // 🔄 TRIGGER: Recalcular plan en backend (detecta cambios reales vs planificado)
   try {
+    if (!currentPlan) {
+      generatePlan();
+      renderPlan(currentPlan, AppState.athlete);
+    }
+
+    // El backend nuevo compara el plan persistido con las actividades reales.
+    // Guardamos el estado actual sin regenerarlo localmente para que no prevalezca
+    // el flujo antiguo antes de que PlanRecalculator haga su trabajo.
+    await silentSavePlan();
+
     const weekStart = getMondayString();
     const response = await fetch(`${API}/plans/training/regenerate`, {
       method: 'POST',
@@ -5454,33 +5466,78 @@ async function regeneratePlan() {
       body: JSON.stringify({ week_start: weekStart })
     });
 
-    if (response.ok) {
-      const result = await response.json();
-      console.log('[PlanRegen] Backend result:', result);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result.error || `Error ${response.status}`);
+    }
 
-      // Si hay adaptaciones, mostrar
-      if (result.changed) {
-        const msg = result.reason === 'exceeded_target'
-          ? `⚠️ Plan reajustado: detectamos que te pasaste de TSS. Distribuimos el resto de la semana.`
-          : result.reason === 'missed_sessions'
-          ? `📊 Plan reajustado: completaste menos sesiones. Distribuimos las TSS faltantes.`
-          : `📈 Plan sincronizado con tu progreso real.`;
-        showToast(msg, 'var(--accent-blue)', 3000);
-      }
+    console.log('[PlanRegen] Backend result:', result);
+
+    if (result.changed && Array.isArray(result.newSessions) && result.newSessions.length) {
+      currentPlan.sessions = result.newSessions;
+      currentPlan._recalcSummary = {
+        timestamp: Date.now(),
+        feedback: _regenerateReasonText(result.reason),
+        changes: _buildBackendRecalcChanges(result.deltas)
+      };
+      _patchSegmentDistances(currentPlan);
+      _sanitizeCyclingContent(currentPlan);
+      renderPlan(currentPlan, AppState.athlete);
+      await silentSavePlan();
+      showToast(_regenerateReasonText(result.reason), 'var(--accent-blue)');
     } else {
-      console.warn('⚠️ Error recalculating plan:', response.statusText);
+      renderPlan(currentPlan, AppState.athlete);
+      showToast('✅ Plan revisado — ya estaba sincronizado con tu progreso real', 'var(--accent-green)');
     }
   } catch(e) {
-    console.error('⚠️ Error triggering backend recalc:', e);
-    // No fallar la operación si el backend falla
+    console.error('⚠️ Error regenerating plan dynamically:', e);
+    showToast(`⚠️ No se pudo recalcular el plan: ${e.message}`, '#f87171');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = previousBtnHtml || '<i class="fas fa-sync-alt"></i>';
+    }
+    _regenerateInFlight = false;
   }
+}
 
-  const _msg = currentPlan?.adaptation?.level === 'danger'
-    ? '🛑 Plan regenerado — objetivo semanal reducido por fatiga excesiva (TSB muy bajo)'
-    : currentPlan?._capacityCapped
-    ? `⚖️ Plan regenerado — los días que quedan no dan para todo el objetivo; ajustado a ${currentPlan.targetTSS} TSS`
-    : '✅ Plan regenerado — objetivo semanal se mantiene, días restantes actualizados';
-  showToast(_msg, 'var(--accent-green)');
+function _regenerateReasonText(reason) {
+  if (reason === 'exceeded_target') {
+    return '⚠️ Plan reajustado con tu TSS real: reducimos la carga restante';
+  }
+  if (reason === 'missed_sessions') {
+    return '📊 Plan reajustado: redistribuimos las TSS pendientes';
+  }
+  if (reason === 'significant_deviation') {
+    return '📈 Plan sincronizado con la desviación real de la semana';
+  }
+  if (reason === 'fatigue_threshold') {
+    return '🛑 Plan suavizado por fatiga acumulada';
+  }
+  return '✅ Plan sincronizado con tu progreso real';
+}
+
+function _buildBackendRecalcChanges(deltas = {}) {
+  const byDay = deltas.byDay || {};
+  const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const rows = Object.entries(byDay)
+    .filter(([, v]) => Math.abs(Number(v.delta) || 0) > 5)
+    .slice(0, 4)
+    .map(([date, v]) => {
+      const d = new Date(date + 'T12:00:00');
+      const delta = Number(v.delta) || 0;
+      return {
+        icon: delta > 0 ? '↘' : '↗',
+        day: days[d.getDay()] || date,
+        desc: `Plan ${Math.round(v.planned || 0)} TSS · real ${Math.round(v.real || 0)} TSS · ajuste ${delta > 0 ? '+' : ''}${Math.round(delta)}`
+      };
+    });
+
+  return rows.length ? rows : [{
+    icon: '✓',
+    day: 'Semana',
+    desc: 'El backend revisó el plan y actualizó las sesiones restantes.'
+  }];
 }
 
 async function applyAdjustments() {
