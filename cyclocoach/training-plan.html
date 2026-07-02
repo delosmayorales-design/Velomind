@@ -5300,28 +5300,38 @@ function swapDays(idx1, idx2) {
 // así no llega, el objetivo mostrado se ajusta en el llamante en vez de mentir).
 function _rescaleRemainingSessions(plan, fromIdx, remainingTargetTSS, ftp) {
   if (!plan?.sessions) return remainingTargetTSS;
-  const remaining = plan.sessions.slice(fromIdx).filter(s => s && !s.isRest);
-  if (!remaining.length) return 0;
-  const engineSumTSS = remaining.reduce((sum, s) => sum + (s.tss || 0), 0);
-  if (!engineSumTSS || !remainingTargetTSS) return engineSumTSS;
-  const factor = remainingTargetTSS / engineSumTSS;
-  if (Math.abs(factor - 1) < 0.05) return engineSumTSS; // ya está suficientemente cerca, no tocar
+  const all = plan.sessions.slice(fromIdx).filter(s => s && !s.isRest);
+  if (!all.length) return 0;
 
-  // Duración máxima razonable por tipo (mismos topes que usa el motor al generar
-  // el plan la primera vez, ver app.js ~1044-1055) — evita sesiones absurdas sin
-  // depender de un factor global arbitrario.
+  // El cross-training (gym/running/walking/otro) tiene una duración y TSS fijos y bajos,
+  // prescritos aparte del presupuesto ciclista semanal (ver _injectWalkingSessions y
+  // hermanas en app.js: caminata=40min/15TSS, gym=60min/45TSS, running=45min/38TSS,
+  // fijos, sin ifTarget). No se reescalan — solo cuentan como aportación fija al total.
+  // Reescalarlos con el mismo factor que el ciclismo producía caminatas de 149 min.
+  const isCycling = s => !s.isGym && !s.isRunning && !s.isWalking && !s.isOther
+    && !['gym', 'running', 'walking'].includes(s.type);
+  const cycling  = all.filter(isCycling);
+  const fixed    = all.filter(s => !isCycling(s));
+  const fixedTSS = fixed.reduce((sum, s) => sum + (s.tss || 0), 0);
+
+  const cyclingTarget = Math.max(0, remainingTargetTSS - fixedTSS);
+  const engineSumTSS  = cycling.reduce((sum, s) => sum + (s.tss || 0), 0);
+  if (!engineSumTSS || !cyclingTarget) return fixedTSS + engineSumTSS;
+  const factor = cyclingTarget / engineSumTSS;
+  if (Math.abs(factor - 1) < 0.05) return fixedTSS + engineSumTSS; // ya está suficientemente cerca, no tocar
+
+  // Duración máxima razonable por tipo de sesión ciclista (mismos topes que usa el motor
+  // al generar el plan la primera vez, ver app.js ~1044-1055) — evita sesiones absurdas
+  // sin depender de un factor global arbitrario.
   const MAX_DUR = { long: 240, endurance: 210, recovery: 90, tempo: 150, threshold: 150, vo2max: 150, sprint: 150, strength: 150 };
 
-  let achieved = 0;
-  remaining.forEach(s => {
+  let achieved = fixedTSS;
+  cycling.forEach(s => {
     // El motor nunca genera una sesión ciclista por debajo de 70 min (app.js:1026,
     // "nadie se viste de bici para menos"); respetamos el mismo suelo aquí para no
-    // producir sesiones absurdamente cortas al reescalar. El cross-training
-    // (gym/running/walking/other) sí puede ser más corto.
-    const isCycling = !s.isGym && !s.isRunning && !s.isWalking && !s.isOther
-      && !['gym', 'running', 'walking'].includes(s.type);
-    const minDur = isCycling ? 70 : 20;
-    const maxDur = isCycling ? (MAX_DUR[s.type] || 210) : 180;
+    // producir sesiones absurdamente cortas al reescalar.
+    const minDur = 70;
+    const maxDur = MAX_DUR[s.type] || 210;
     const newDur = Math.min(maxDur, Math.max(minDur, Math.round((s.durationMin || 60) * factor)));
     const ifV    = s.ifTarget || 0.65;
     s.durationMin = newDur;

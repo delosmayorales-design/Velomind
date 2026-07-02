@@ -291,9 +291,21 @@ class PlanRecalculator {
     const today = new Date().toISOString().split('T')[0];
     const newSessions = JSON.parse(JSON.stringify(plannedSessions)); // Deep copy
 
-    // Calcular TSS faltante
-    let remainingTSS = 0;
-    let remainingDays = [];
+    // El cross-training (gym/running/walking/otro) tiene una duración y TSS fijos y bajos,
+    // prescritos aparte del presupuesto ciclista semanal (ver _injectWalkingSessions y
+    // hermanas en app.js: caminata=40min/15TSS, gym=60min/45TSS, running=45min/38TSS,
+    // sin ifTarget real). No se redistribuyen aquí — solo el ciclismo absorbe el ajuste,
+    // igual que en el reescalado del frontend (training-plan.html _rescaleRemainingSessions).
+    const isCrossTraining = sess => sess.isGym || sess.isRunning || sess.isWalking || sess.isOther
+      || ['gym', 'running', 'walking'].includes(sess.type);
+
+    // Delta acumulado SOLO de los días ya vividos (planificado - real): positivo si faltó
+    // carga (hay que compensar subiendo días futuros), negativo si se excedió (hay que
+    // bajarlos). Antes esto se sumaba junto con el TSS YA planificado de los días futuros,
+    // que luego se volvía a sumar sobre sí mismo al calcular newTSS = currentTSS + tssPerDay
+    // — duplicaba el TSS de cada sesión futura en vez de solo ajustarla por el delta real.
+    let pastDelta = 0;
+    const remainingDays = [];
 
     plannedSessions.forEach((sess, dayIdx) => {
       const sessionDate = new Date(weekStart);
@@ -304,45 +316,46 @@ class PlanRecalculator {
       const planned = sess.tss || 0;
 
       if (dateStr > today || (dateStr === today && real === 0)) {
-        // Sesión futura: calcular déficit/exceso
-        remainingDays.push({ dayIdx, dateStr, planned });
-        remainingTSS += planned;
+        // Sesión futura ciclista: candidata a absorber el ajuste
+        if (!sess.isRest && !isCrossTraining(sess)) {
+          remainingDays.push({ dayIdx, dateStr, planned });
+        }
       } else if (dateStr <= today) {
-        // Sesión pasada: usar lo real
-        const delta = planned - real;
-        remainingTSS += delta; // Si se pasó: delta negativo, si faltó: delta positivo
+        // Sesión pasada: cuánto se desvió de lo planificado
+        pastDelta += (planned - real); // se pasó → negativo; faltó → positivo
       }
     });
 
-    // Redistribuir TSS en sesiones futuras
-    if (remainingDays.length > 0 && Math.abs(remainingTSS) > 10) {
-      // Intentar distribuir equitativamente, respetando caps
-      const tssPerDay = Math.round(remainingTSS / remainingDays.length);
+    // Ajustar sesiones ciclistas futuras para compensar la desviación de los días pasados
+    if (remainingDays.length > 0 && Math.abs(pastDelta) > 10) {
+      const adjustPerDay = Math.round(pastDelta / remainingDays.length);
+
+      // Caps de TSS y duración por tipo (mismos límites físicos que usa el motor al
+      // generar el plan por primera vez, ver app.js ~1037-1055).
+      const MAX_TSS = {
+        long: 185, endurance: 140, recovery: 45,
+        threshold: 115, tempo: 115, vo2max: 115, sprint: 100, strength: 100,
+      };
+      const MAX_DUR = {
+        long: 240, endurance: 210, recovery: 90,
+        threshold: 150, tempo: 150, vo2max: 150, sprint: 150, strength: 150,
+      };
 
       remainingDays.forEach(({ dayIdx }) => {
-        const currentTSS = newSessions[dayIdx].tss || 0;
-        let newTSS = currentTSS + tssPerDay;
+        const sess = newSessions[dayIdx];
+        const currentTSS = sess.tss || 0;
+        let newTSS = currentTSS + adjustPerDay;
 
-        // Respetar caps
-        const MAX_TSS = {
-          long: 185,
-          endurance: 140,
-          recovery: 45,
-          threshold: 115,
-          tempo: 115,
-          vo2max: 115,
-          sprint: 100,
-        };
-
-        const cap = MAX_TSS[newSessions[dayIdx].type] || 140;
+        const cap = MAX_TSS[sess.type] || 140;
         newTSS = Math.max(0, Math.min(newTSS, cap));
 
-        // Recalcular duración si cambia TSS
+        // Recalcular duración si cambia TSS, dentro de límites físicos por sesión
         if (newTSS !== currentTSS) {
-          const ifTarget = newSessions[dayIdx].ifTarget || 0.75;
-          const durMin = Math.round((newTSS / (Math.pow(ifTarget, 2) * 100)) * 60);
-          newSessions[dayIdx].tss = newTSS;
-          newSessions[dayIdx].durationMin = durMin;
+          const ifTarget = sess.ifTarget || 0.65;
+          let durMin = Math.round((newTSS / (Math.pow(ifTarget, 2) * 100)) * 60);
+          durMin = Math.max(70, Math.min(MAX_DUR[sess.type] || 210, durMin));
+          sess.tss = newTSS;
+          sess.durationMin = durMin;
         }
       });
     }
