@@ -2516,7 +2516,7 @@ function renderPlan(plan, athlete) {
     const sessionStructureTitle = 'Estructura detallada de la sesión';
     const color  = typeColors[sess.type] || 'var(--text-secondary)';
     const _DEFAULT_IF_DISP = { z2: 0.62, long: 0.60, endurance: 0.65, recovery: 0.52, tempo: 0.82, threshold: 0.95, sweet_spot: 0.90, vo2max: 1.05, sprint: 0.90, strength: 0.80 };
-    let tssVal = Math.round((sess.tssShare || 0) * (plan.targetTSS || 0)) || (Number.isFinite(sess.tss) ? sess.tss : 0);
+    let tssVal = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare || 0) * (plan.targetTSS || 0));
     const durMin = Number.isFinite(sess.durationMin) ? sess.durationMin : (sess.ifTarget ? Math.round(tssVal / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);
     let ifVal = sess.ifTarget || 0;
     // Fallback para sesiones de ciclismo que carecen de TSS/IF (datos incompletos del plan)
@@ -2882,7 +2882,7 @@ async function adaptSession(idx, dayOffset) {
 
   const sess   = currentPlan.sessions[idx];
   const ftp    = AppState.athlete?.ftp || 200;
-  const tssVal = Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 0)) || (Number.isFinite(sess.tss) ? sess.tss : 0);
+  const tssVal = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 0));
   const durMin = sess.durationMin || Math.round(tssVal / Math.pow(sess.ifTarget || 0.65, 2));
 
   // Detectar si ayer había sesión planificada que no se realizó
@@ -4374,7 +4374,7 @@ function showSessionDetail(idx, showAlt = false) {
   const currentDesc = showAlt && sess.alt_description ? sess.alt_description : sess.description;
   // Usar SIEMPRE la misma fuente de verdad que la tarjeta (valores ya calculados en el generador)
   const _DEFAULT_IF_MODAL = { z2: 0.62, long: 0.60, endurance: 0.65, recovery: 0.52, tempo: 0.82, threshold: 0.95, sweet_spot: 0.90, vo2max: 1.05, sprint: 0.90, strength: 0.80 };
-  let tss = Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 0)) || (Number.isFinite(sess.tss) ? sess.tss : 0);
+  let tss = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 0));
   const durMin = Number.isFinite(sess.durationMin)
     ? sess.durationMin
     : (sess.ifTarget ? Math.round(tss / (Math.pow(sess.ifTarget || 0.65, 2))) : 0);

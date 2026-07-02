@@ -36,6 +36,23 @@ class PlanRecalculator {
         return { changed: false, reason: 'no_plan_found' };
       }
 
+      // 1️⃣.5 Reparar sesiones (incluidas las ya completadas) cuyo TSS/duración PLANIFICADOS
+      // ya excedían el límite físico del tipo — residuo de una ejecución anterior del bug
+      // de redistribución (ej. 172 TSS a 150 min/IF 0.83 en una sesión de umbral, tope 115).
+      // No toca lo que el atleta hizo realmente (viene de `activities`, no de aquí); solo
+      // corrige el valor "planificado" que si no queda corrupto para siempre y contamina
+      // _computeDeltas cada vez que se recalcula la semana (ej. "ajuste -83" fantasma).
+      const { sessions: sanitizedSessions, changed: wasSanitized } = this._sanitizeStoredSessions(currentPlan.sessions);
+      if (wasSanitized) {
+        currentPlan.sessions = sanitizedSessions;
+        const { error: sanitizeError } = await supabase
+          .from('training_plans')
+          .update({ sessions: sanitizedSessions, updated_at: new Date().toISOString() })
+          .eq('user_id', userId)
+          .eq('week_start', weekStart);
+        if (sanitizeError) console.error('[PlanRecalc] Error saving sanitized sessions:', sanitizeError.message);
+      }
+
       // 2️⃣ Obtener PMC/CTL actual del usuario
       const { data: athleteState, error: stateError } = await supabase
         .from('pmc')
@@ -234,25 +251,58 @@ class PlanRecalculator {
    * ninguna desviación real que compensar, para que el plan se autorepare.
    */
   static _hasCapacityViolation(sessions, today, weekStart) {
-    const MAX_TSS = { long: 185, endurance: 140, recovery: 45, threshold: 115, tempo: 115, vo2max: 115, sprint: 100, strength: 100 };
-    const MAX_DUR = { long: 240, endurance: 210, recovery: 90, threshold: 150, tempo: 150, vo2max: 150, sprint: 150, strength: 150 };
-
     return (sessions || []).some((sess, dayIdx) => {
       if (!sess || sess.isRest || sess.completed) return false;
       const sessionDate = new Date(weekStart);
       sessionDate.setDate(sessionDate.getDate() + dayIdx);
       const dateStr = sessionDate.toISOString().split('T')[0];
-      if (dateStr < today) return false; // días pasados no se tocan
+      if (dateStr < today) return false; // días pasados no se tocan (los repara _sanitizeStoredSessions)
 
       const key = this._crossTrainingKey(sess);
       if (key) {
         const def = this._CROSS_TRAINING_DEFAULTS[key];
         return def && (sess.durationMin || 0) > def.durationMin * 2;
       }
-      const maxTss = MAX_TSS[sess.type] || 140;
-      const maxDur = MAX_DUR[sess.type] || 210;
+      const maxTss = this._MAX_TSS[sess.type] || 140;
+      const maxDur = this._MAX_DUR[sess.type] || 210;
       return (sess.tss || 0) > maxTss * 1.1 || (sess.durationMin || 0) > maxDur * 1.1;
     });
+  }
+
+  /**
+   * Repara sesiones (pasadas o futuras) cuyo TSS/duración PLANIFICADOS ya exceden el
+   * límite físico del tipo — residuo de una ejecución anterior del bug de redistribución.
+   * No toca `real`/actividades; solo el valor "planificado" guardado en la sesión. Se
+   * aplica también a sesiones completadas porque, si no, un valor corrupto ahí queda
+   * envenenando _computeDeltas para siempre (ej. "ajuste -83" fantasma cada semana).
+   */
+  static _sanitizeStoredSessions(sessions) {
+    let changed = false;
+    const fixed = (sessions || []).map(sess => {
+      if (!sess || sess.isRest) return sess;
+
+      const key = this._crossTrainingKey(sess);
+      if (key) {
+        const def = this._CROSS_TRAINING_DEFAULTS[key];
+        if (def && (sess.durationMin || 0) > def.durationMin * 2) {
+          changed = true;
+          return { ...sess, durationMin: def.durationMin, tss: def.tss, tssShare: 0 };
+        }
+        return sess;
+      }
+
+      const maxTss = this._MAX_TSS[sess.type] || 140;
+      if ((sess.tss || 0) > maxTss * 1.1) {
+        changed = true;
+        const ifTarget = sess.ifTarget || 0.65;
+        const maxDur = this._MAX_DUR[sess.type] || 210;
+        const durMin = Math.max(70, Math.min(maxDur, Math.round((maxTss / (Math.pow(ifTarget, 2) * 100)) * 60)));
+        const finalTSS = Math.round((durMin / 60) * Math.pow(ifTarget, 2) * 100);
+        return { ...sess, tss: finalTSS, durationMin: durMin, tssShare: 0 };
+      }
+      return sess;
+    });
+    return { sessions: fixed, changed };
   }
 
   /**
@@ -329,6 +379,11 @@ class PlanRecalculator {
     other:   { durationMin: 60, tss: 40 },
   };
 
+  // Caps de TSS y duración por tipo ciclista (mismos límites físicos que usa el motor
+  // al generar el plan por primera vez, ver app.js ~1037-1055).
+  static _MAX_TSS = { long: 185, endurance: 140, recovery: 45, threshold: 115, tempo: 115, vo2max: 115, sprint: 100, strength: 100 };
+  static _MAX_DUR = { long: 240, endurance: 210, recovery: 90, threshold: 150, tempo: 150, vo2max: 150, sprint: 150, strength: 150 };
+
   static _crossTrainingKey(sess) {
     if (sess.isWalking) return 'walking';
     if (sess.isGym) return 'gym';
@@ -344,17 +399,8 @@ class PlanRecalculator {
   static async _redistributeSessions(plannedSessions, realTSSByDay, weekStart, athleteState) {
     const today = new Date().toISOString().split('T')[0];
     const newSessions = JSON.parse(JSON.stringify(plannedSessions)); // Deep copy
-
-    // Caps de TSS y duración por tipo ciclista (mismos límites físicos que usa el motor
-    // al generar el plan por primera vez, ver app.js ~1037-1055).
-    const MAX_TSS = {
-      long: 185, endurance: 140, recovery: 45,
-      threshold: 115, tempo: 115, vo2max: 115, sprint: 100, strength: 100,
-    };
-    const MAX_DUR = {
-      long: 240, endurance: 210, recovery: 90,
-      threshold: 150, tempo: 150, vo2max: 150, sprint: 150, strength: 150,
-    };
+    const MAX_TSS = this._MAX_TSS;
+    const MAX_DUR = this._MAX_DUR;
 
     // El cross-training (gym/running/walking/otro) tiene una duración y TSS fijos y bajos,
     // prescritos aparte del presupuesto ciclista semanal (ver _injectWalkingSessions y

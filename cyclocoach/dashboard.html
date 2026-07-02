@@ -1299,7 +1299,7 @@ function renderToday(plan, athlete) {
 
   const wt     = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || { label: sess.type, color:'#9ED62B' };
   const color  = wt.color || '#9ED62B';
-  const tss    = Math.round((sess.tssShare||0)*(plan.targetTSS||0)) || sess.tss || 0;
+  const tss    = Number.isFinite(sess.tss) ? sess.tss : Math.round((sess.tssShare||0)*(plan.targetTSS||0)) || 0;
   const dur    = sess.durationMin ? `${sess.durationMin} min` : '';
   const isDone = !!sess.completed;
 
