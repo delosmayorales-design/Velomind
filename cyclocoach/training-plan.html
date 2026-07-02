@@ -5159,8 +5159,9 @@ function _saveEventsNow() {
   }
   // La fecha del evento cambia la fase (base/build/peak/race) y el taper — sin esto
   // el plan mostrado quedaba desactualizado hasta tocar algún otro parámetro y pulsar
-  // "Actualizar" o "Regenerar".
-  _regeneratePlanRespectingProgress();
+  // "Actualizar" o "Regenerar". Añadir/quitar un evento es un cambio de base explícito
+  // (afecta al taper vía nextBEvent en app.js), así que sí puede renegociar el objetivo.
+  _regeneratePlanRespectingProgress(true);
   renderPlan(currentPlan, AppState.athlete);
   silentSavePlan();
 }
@@ -5173,10 +5174,10 @@ function clearEventDate() {
   if (adjEvt) adjEvt.value = '';
   localStorage.removeItem('cyclocoach_plan_snapshot');
   localStorage.removeItem('cyclocoach_training_plan');
-  localStorage.removeItem('cyclocoach_plan_original');
   // _regeneratePlanRespectingProgress() (no generatePlan() a pelo) para no perder los
-  // días ya completados de la semana en curso, igual que Regenerar/Ajustes.
-  _regeneratePlanRespectingProgress();
+  // días ya completados de la semana en curso, igual que Regenerar/Ajustes. Quitar el
+  // evento también es un cambio de base explícito (true).
+  _regeneratePlanRespectingProgress(true);
   renderPlan(currentPlan, AppState.athlete);
   silentSavePlan();
   showToast('✅ Fecha de evento eliminada. Plan recalculado.', 'var(--accent-green)');
@@ -5271,9 +5272,20 @@ function _rescaleRemainingSessions(plan, fromIdx, remainingTargetTSS, ftp) {
 
 // Regenera el plan desde los parámetros del atleta, pero respetando los días ya
 // vividos de la semana actual (no se reescriben) y ajustando la carga de los días
-// restantes para que sumen el objetivo semanal recién calculado menos lo ya hecho.
+// restantes para que sumen el objetivo semanal MENOS lo ya hecho.
 // La usan tanto el botón "Regenerar" como el panel de Ajustes.
-function _regeneratePlanRespectingProgress() {
+//
+// allowTargetChange: un coach profesional fija el objetivo semanal una vez (al
+// empezar la semana, o cuando el atleta cambia deliberadamente horas/objetivo/CTL/
+// eventos) y no lo renegocia solo porque se ha retocado el plan a mitad de semana.
+// Sin esto, cada regeneración recalculaba targetTSS con el TSB ya rebajado por lo
+// entrenado esa misma semana, reduciendo el objetivo cada vez más aunque el atleta
+// cumpliera el plan. Por defecto (false) el objetivo comprometido de la semana
+// (guardado en cyclocoach_plan_original) se mantiene fijo; solo se acepta el nuevo
+// targetTSS recalculado si el propio motor detecta sobreentrenamiento real
+// (adaptation.level === 'danger', TSB < -30) — un override de seguridad explícito
+// y comunicado en la UI, no un ajuste silencioso.
+function _regeneratePlanRespectingProgress(allowTargetChange = false) {
   const todayIdx     = (new Date().getDay() + 6) % 7;
   const oldSessions  = currentPlan?.sessions || [];
   // Si hoy ya está completado no lo tocamos; si no, se regenera junto al resto.
@@ -5284,7 +5296,7 @@ function _regeneratePlanRespectingProgress() {
   // Los días < cutoffIdx se van a sobreescribir con "preserved" más abajo de todas formas;
   // que el motor no malgaste ahí un día de gym/running/caminata/otro que luego se descarta.
   const excludeDayIndices = Array.from({ length: cutoffIdx }, (_, i) => i);
-  generatePlan(excludeDayIndices); // recalcula fase/ciclo/targetTSS frescos con CTL/ATL/TSB actuales
+  generatePlan(excludeDayIndices); // recalcula fase/sesiones frescas; el targetTSS se contrasta abajo
   if (!currentPlan?.sessions) return;
 
   for (let i = 0; i < cutoffIdx && i < currentPlan.sessions.length; i++) {
@@ -5303,21 +5315,53 @@ function _regeneratePlanRespectingProgress() {
     if (i >= cutoffIdx && s) { delete s._tssExcess; delete s._excessOrig; s._adapted = true; }
   });
 
+  const weekStart = getMondayString();
+  let committedTarget = null;
+  try {
+    const orig = JSON.parse(localStorage.getItem('cyclocoach_plan_original') || 'null');
+    if (orig && orig.week_start?.slice(0, 10) === weekStart && orig.tss_target > 0) {
+      committedTarget = orig.tss_target;
+    }
+  } catch (_e) {}
+
+  const isSafetyOverride = currentPlan.adaptation?.level === 'danger';
+  if (committedTarget && !allowTargetChange && !isSafetyOverride) {
+    currentPlan.targetTSS = committedTarget; // objetivo de la semana ya comprometido: se mantiene
+  } else {
+    // Primera generación de la semana, cambio de base explícito (horas/objetivo/CTL/eventos),
+    // o override de seguridad por sobreentrenamiento real: el nuevo targetTSS pasa a ser
+    // el objetivo comprometido de la semana a partir de ahora.
+    try {
+      localStorage.setItem('cyclocoach_plan_original', JSON.stringify({
+        week_start: weekStart,
+        sessions:   JSON.parse(JSON.stringify(currentPlan.sessions)),
+        tss_target: currentPlan.targetTSS || null,
+        phase:      currentPlan.phase     || null,
+        advice:     currentPlan.advice    || null,
+        savedAt:    Date.now()
+      }));
+    } catch (_e) {}
+  }
+
   const remainingTarget = Math.max(0, (currentPlan.targetTSS || 0) - doneTSS);
   _rescaleRemainingSessions(currentPlan, cutoffIdx, remainingTarget, AppState.athlete?.ftp || 200);
 }
 
 function regeneratePlan() {
-  // Limpia todos los snapshots para garantizar generación fresca desde el motor
+  // Limpia las cachés de contenido del plan para garantizar generación fresca desde
+  // el motor. cyclocoach_plan_original NO se toca: es el objetivo semanal comprometido
+  // (un coach no lo renegocia solo porque el atleta pide refrescar el plan).
   localStorage.removeItem('cyclocoach_plan_snapshot');
   localStorage.removeItem('cyclocoach_training_plan');
-  localStorage.removeItem('cyclocoach_plan_original');
   localStorage.removeItem('cyclocoach_plan_pre_mod');
 
   _regeneratePlanRespectingProgress();
   renderPlan(currentPlan, AppState.athlete);
   silentSavePlan();
-  showToast('✅ Plan regenerado con fase y carga actualizadas', 'var(--accent-green)');
+  const _msg = currentPlan?.adaptation?.level === 'danger'
+    ? '🛑 Plan regenerado — objetivo semanal reducido por fatiga excesiva (TSB muy bajo)'
+    : '✅ Plan regenerado — objetivo semanal se mantiene, días restantes actualizados';
+  showToast(_msg, 'var(--accent-green)');
 }
 
 async function applyAdjustments() {
@@ -5338,6 +5382,13 @@ async function applyAdjustments() {
   const goal   = window.GoalUtils
     ? window.GoalUtils.normalize(goalEl?.value || 'resistencia')
     : (goalEl?.value || 'resistencia');
+
+  // Solo horas/objetivo/CTL alimentan la fórmula de targetTSS (ver app.js ~360-431);
+  // FTP, peso, días de gym/running/etc., HR máx. y LTHR no la tocan. Un coach solo
+  // renegocia el objetivo semanal comprometido cuando cambia algo que de verdad
+  // afecta a la carga prescrita, no en cualquier guardado del panel de Ajustes.
+  const athleteBefore = AppState.athlete;
+  let basisChanged = !athleteBefore; // sin atleta previo = plan nuevo desde cero
 
   if (AppState.athlete) {
     const updates = {};
@@ -5360,13 +5411,17 @@ async function applyAdjustments() {
     // _saveEventsNow() cuando el usuario agrega o elimina un evento.
     // NO los incluimos aquí para evitar que un _adjEvents vacío (condición de carrera
     // con loadProfile) borre accidentalmente los eventos del backend.
+    basisChanged = basisChanged
+      || (updates.weekly_hours !== undefined && updates.weekly_hours !== athleteBefore.weekly_hours)
+      || (updates.goal         !== undefined && updates.goal         !== athleteBefore.goal)
+      || (updates.initial_ctl  !== undefined && updates.initial_ctl  !== athleteBefore.initial_ctl);
     AppState.saveAthlete(updates);
     if (typeof BackendSync !== 'undefined') {
       BackendSync.saveProfile(updates).then(async () => {
         // Si cambió el CTL inicial, recargar PMC del backend (se recalcula en el servidor)
         if (updates.initial_ctl !== undefined) {
           await BackendSync.loadActivities();
-          _regeneratePlanRespectingProgress();
+          _regeneratePlanRespectingProgress(true);
           renderAthleteSidebar();
           renderPlan(currentPlan, AppState.athlete);
           silentSavePlan();
@@ -5385,8 +5440,7 @@ async function applyAdjustments() {
     };
   }
 
-  localStorage.removeItem('cyclocoach_plan_original'); // nuevo plan = nuevo original
-  _regeneratePlanRespectingProgress();
+  _regeneratePlanRespectingProgress(basisChanged);
   renderAthleteSidebar();
   renderPlan(currentPlan, AppState.athlete);
   silentSavePlan();
@@ -5397,7 +5451,10 @@ async function applyAdjustments() {
     _renderNextWeekSummary();
   }
 
-  showToast('✅ Plan de entrenamiento y nutrición recalculado', 'var(--accent-green)');
+  const _msg = basisChanged
+    ? `✅ Plan recalculado — objetivo semanal: ${currentPlan?.targetTSS ?? '--'} TSS`
+    : '✅ Ajustes guardados — objetivo semanal se mantiene, días restantes actualizados';
+  showToast(_msg, 'var(--accent-green)');
 }
 
 function toggleNextWeekSummary() {
