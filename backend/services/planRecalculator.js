@@ -97,10 +97,11 @@ class PlanRecalculator {
 
       // 6️⃣ Decidir si hay que recalcular. Un clic manual en "Regenerar" siempre debe
       // hacer algo visible (no quedarse callado si la desviación real es pequeña) y, si
-      // el plan ya tiene alguna sesión que excede sus límites físicos por tipo — restos
-      // de una ejecución anterior del bug de redistribución — se repara aunque no haya
-      // ninguna desviación nueva que compensar.
-      const capacityViolation = this._hasCapacityViolation(currentPlan.sessions, today, weekStart);
+      // el plan ya tiene alguna sesión que excede sus límites físicos por tipo, o la suma
+      // total de la semana ya no coincide con el objetivo (tss_target) — restos de una
+      // ejecución anterior del bug de redistribución — se repara aunque no haya ninguna
+      // desviación nueva que compensar.
+      const capacityViolation = this._hasCapacityViolation(currentPlan.sessions, today, weekStart, currentPlan.tss_target);
       const shouldRecalc = manual || capacityViolation || this._shouldAdapt(deltas, athleteState);
 
       if (!shouldRecalc) {
@@ -110,12 +111,16 @@ class PlanRecalculator {
       // 7️⃣ Guardar histórico del plan ACTUAL antes de cambiar
       await this._saveHistoricalPlan(userId, weekStart, currentPlan, manual ? 'manual_regenerate' : 'auto_recalculation', deltas, athleteState);
 
-      // 8️⃣ RECALCULAR: Distribuir TSS restante en sesiones futuras
+      // 8️⃣ RECALCULAR: Distribuir TSS restante en sesiones futuras, anclado siempre al
+      // objetivo semanal (currentPlan.tss_target) — no solo compensando la desviación
+      // del día a día, que es lo que permitía que la suma de la semana se desancorara
+      // del objetivo tras varias regeneraciones.
       const newSessions = await this._redistributeSessions(
         currentPlan.sessions,
         realTSSByDay,
         weekStart,
-        athleteState
+        athleteState,
+        currentPlan.tss_target
       );
 
       // 9️⃣ Actualizar plan en BD
@@ -250,8 +255,8 @@ class PlanRecalculator {
    * una caminata a 149 min). Si hay alguna, hace falta recalcular aunque hoy no haya
    * ninguna desviación real que compensar, para que el plan se autorepare.
    */
-  static _hasCapacityViolation(sessions, today, weekStart) {
-    return (sessions || []).some((sess, dayIdx) => {
+  static _hasCapacityViolation(sessions, today, weekStart, weeklyTarget) {
+    const perSession = (sessions || []).some((sess, dayIdx) => {
       if (!sess || sess.isRest || sess.completed) return false;
       const sessionDate = new Date(weekStart);
       sessionDate.setDate(sessionDate.getDate() + dayIdx);
@@ -267,6 +272,17 @@ class PlanRecalculator {
       const maxDur = this._MAX_DUR[sess.type] || 210;
       return (sess.tss || 0) > maxTss * 1.1 || (sess.durationMin || 0) > maxDur * 1.1;
     });
+    if (perSession) return true;
+
+    // Aunque cada sesión sea individualmente razonable, la suma de la semana puede haberse
+    // desanclado del objetivo (currentPlan.tss_target) tras regeneraciones antiguas — nada
+    // comprobaba nunca que total == objetivo. Si la desviación agregada es grande, también
+    // hace falta recalcular para volver a anclar la semana a su objetivo declarado.
+    if (weeklyTarget > 0) {
+      const total = (sessions || []).reduce((sum, s) => sum + (s?.tss || 0), 0);
+      if (Math.abs(total - weeklyTarget) > weeklyTarget * 0.15) return true;
+    }
+    return false;
   }
 
   /**
@@ -394,49 +410,45 @@ class PlanRecalculator {
   }
 
   /**
-   * Recalcular distribución de TSS en sesiones futuras
+   * Recalcular distribución de TSS en sesiones futuras.
+   *
+   * Ancla SIEMPRE al objetivo semanal (weeklyTarget = currentPlan.tss_target): el TSS
+   * restante a repartir es (objetivo - TSS real ya conseguido esta semana), nunca "lo que
+   * quedaba planificado ± una compensación día a día". La versión anterior solo comparaba
+   * planificado vs real por día y ajustaba por ese delta, sin comprobar nunca que la suma
+   * total de la semana siguiera coincidiendo con el objetivo — así, tras varias
+   * regeneraciones, la semana podía desanclarse del objetivo sin límite (ej. 686 TSS con
+   * un objetivo de 411). Mismo criterio que ya usa el frontend
+   * (training-plan.html _rescaleRemainingSessions): un coach fija el objetivo una vez y
+   * los días que quedan absorben (objetivo - hecho), no una cadena de ajustes sueltos.
    */
-  static async _redistributeSessions(plannedSessions, realTSSByDay, weekStart, athleteState) {
+  static async _redistributeSessions(plannedSessions, realTSSByDay, weekStart, athleteState, weeklyTarget) {
     const today = new Date().toISOString().split('T')[0];
     const newSessions = JSON.parse(JSON.stringify(plannedSessions)); // Deep copy
-    const MAX_TSS = this._MAX_TSS;
     const MAX_DUR = this._MAX_DUR;
 
     // El cross-training (gym/running/walking/otro) tiene una duración y TSS fijos y bajos,
     // prescritos aparte del presupuesto ciclista semanal (ver _injectWalkingSessions y
     // hermanas en app.js: caminata=40min/15TSS, gym=60min/45TSS, running=45min/38TSS,
-    // sin ifTarget real). No se redistribuyen aquí — solo el ciclismo absorbe el ajuste,
-    // igual que en el reescalado del frontend (training-plan.html _rescaleRemainingSessions).
+    // sin ifTarget real). No se redistribuyen — solo cuentan como aportación fija al total.
     const isCrossTraining = sess => this._crossTrainingKey(sess) !== null;
 
-    // Delta acumulado SOLO de los días ya vividos (planificado - real): positivo si faltó
-    // carga (hay que compensar subiendo días futuros), negativo si se excedió (hay que
-    // bajarlos). Antes esto se sumaba junto con el TSS YA planificado de los días futuros,
-    // que luego se volvía a sumar sobre sí mismo al calcular newTSS = currentTSS + tssPerDay
-    // — duplicaba el TSS de cada sesión futura en vez de solo ajustarla por el delta real.
-    let pastDelta = 0;
-    const remainingDays = [];
-    const remainingCross = [];
+    let doneTSS = 0; // TSS real conseguido esta semana hasta hoy (única fuente de "lo hecho")
+    const remainingDays = [];  // sesiones ciclistas futuras: absorben el ajuste
+    const remainingCross = []; // cross-training futuro: fijo, solo se sanea si está roto
 
     plannedSessions.forEach((sess, dayIdx) => {
       const sessionDate = new Date(weekStart);
       sessionDate.setDate(sessionDate.getDate() + dayIdx);
       const dateStr = sessionDate.toISOString().split('T')[0];
-
       const real = realTSSByDay[dateStr] || 0;
-      const planned = sess.tss || 0;
 
       if (dateStr > today || (dateStr === today && real === 0)) {
         if (sess.isRest || sess.completed) return;
-        if (isCrossTraining(sess)) {
-          remainingCross.push(dayIdx);
-        } else {
-          // Sesión futura ciclista: candidata a absorber el ajuste
-          remainingDays.push({ dayIdx, dateStr, planned });
-        }
-      } else if (dateStr <= today) {
-        // Sesión pasada: cuánto se desvió de lo planificado
-        pastDelta += (planned - real); // se pasó → negativo; faltó → positivo
+        if (isCrossTraining(sess)) remainingCross.push(dayIdx);
+        else remainingDays.push(dayIdx);
+      } else {
+        doneTSS += real; // días ya vividos: cuenta lo REAL, no lo planificado
       }
     });
 
@@ -457,40 +469,29 @@ class PlanRecalculator {
       }
     });
 
-    // Ajustar sesiones ciclistas futuras para compensar la desviación de los días pasados
-    const adjustPerDay = remainingDays.length && Math.abs(pastDelta) > 10
-      ? Math.round(pastDelta / remainingDays.length)
-      : 0;
+    const fixedTSS = remainingCross.reduce((sum, dayIdx) => sum + (newSessions[dayIdx].tss || 0), 0);
+    const remainingTarget = Math.max(0, (weeklyTarget || 0) - doneTSS);
+    const cyclingTarget = Math.max(0, remainingTarget - fixedTSS);
+    const engineSumTSS = remainingDays.reduce((sum, dayIdx) => sum + (newSessions[dayIdx].tss || 0), 0);
 
-    // Recorre siempre las sesiones ciclistas futuras (no solo cuando hay adjustPerDay):
-    // así, si alguna ya excedía su tope físico por una ejecución anterior del bug, se
-    // corrige aunque hoy no haya ninguna desviación nueva que compensar.
-    remainingDays.forEach(({ dayIdx }) => {
-      const sess = newSessions[dayIdx];
-      const currentTSS = sess.tss || 0;
-      const currentDur = sess.durationMin || 0;
-      let newTSS = currentTSS + adjustPerDay;
-
-      const cap = MAX_TSS[sess.type] || 140;
-      newTSS = Math.max(0, Math.min(newTSS, cap));
-
-      // Duración que correspondería a newTSS, acotada por el límite físico del tipo.
-      const maxDur = MAX_DUR[sess.type] || 210;
-      const ifTarget = sess.ifTarget || 0.65;
-      const durMin = Math.max(70, Math.min(maxDur, Math.round((newTSS / (Math.pow(ifTarget, 2) * 100)) * 60)));
-      // Recalcular el TSS final desde la duración YA acotada: así quedan siempre
-      // matemáticamente coherentes entre sí, tanto si el tope de TSS recorta la
-      // duración como si el tope de duración obliga a bajar también el TSS (antes
-      // podía quedar, p.ej., 199 min con TSS 71 — coherentes por separado con sus
-      // propios topes, pero incoherentes entre sí).
-      const finalTSS = Math.round((durMin / 60) * Math.pow(ifTarget, 2) * 100);
-
-      if (finalTSS !== currentTSS || durMin !== currentDur) {
-        sess.tss = finalTSS;
-        sess.durationMin = durMin;
-        sess.tssShare = 0; // idem: forzar que el frontend muestre sess.tss, no tssShare×targetTSS
+    if (remainingDays.length && engineSumTSS > 0 && cyclingTarget > 0) {
+      const factor = cyclingTarget / engineSumTSS;
+      if (Math.abs(factor - 1) >= 0.05) {
+        remainingDays.forEach(dayIdx => {
+          const sess = newSessions[dayIdx];
+          const ifTarget = sess.ifTarget || 0.65;
+          const maxDur = MAX_DUR[sess.type] || 210;
+          const durMin = Math.max(70, Math.min(maxDur, Math.round((sess.durationMin || 60) * factor)));
+          // TSS final SIEMPRE derivado de la duración ya acotada, para que ambos queden
+          // matemáticamente coherentes entre sí por construcción (nunca, p.ej., 199 min
+          // con 71 TSS: valores que por separado respetan su propio tope pero entre sí
+          // no corresponden a la misma sesión).
+          sess.tss = Math.round((durMin / 60) * Math.pow(ifTarget, 2) * 100);
+          sess.durationMin = durMin;
+          sess.tssShare = 0; // forzar que el frontend muestre sess.tss, no tssShare×targetTSS
+        });
       }
-    });
+    }
 
     // Aplicar restricción de fatiga si TSB < -30
     if (athleteState?.tsb < -30) {
