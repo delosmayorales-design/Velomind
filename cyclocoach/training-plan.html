@@ -4785,11 +4785,29 @@ function showToast(text, color = 'var(--primary)', duration = 3500) {
 // Idempotente: guarda originales en _excessOrig antes de modificar y los restaura al re-ejecutar,
 // evitando el efecto cascada cuando silentSavePlan guarda el plan ya reducido.
 function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
-  if (!plan?.sessions || !AppState.activities?.length) return false;
-  const targetTSS = plan.targetTSS || 0;
-  if (!targetTSS) return false;
+  if (!plan?.sessions) return false;
 
   let anyChange = false;
+
+  // Limpiar marcas "zombie" en días anteriores a hoy (incluidos los ya completados):
+  // el bucle de abajo solo gestiona i >= todayIdx, así que un día que tuvo esta reducción
+  // temporal mientras aún era "hoy o futuro" y luego quedó atrás (p.ej. se completó) nunca
+  // vuelve a pasar por aquí para restaurarse — se queda con el snapshot antiguo para
+  // siempre, y cada silentSavePlan() lo re-persiste, deshaciendo cualquier corrección
+  // posterior sobre ese día (del backend o de cualquier otro sitio). Se descarta el
+  // snapshot sin restaurarlo: ya no es relevante, se confía en los valores actuales.
+  for (let i = 0; i < todayIdx; i++) {
+    const _pastSess = plan.sessions[i];
+    if (_pastSess?._tssExcess || _pastSess?._excessOrig) {
+      delete _pastSess._tssExcess;
+      delete _pastSess._excessOrig;
+      anyChange = true;
+    }
+  }
+
+  if (!AppState.activities?.length) return anyChange;
+  const targetTSS = plan.targetTSS || 0;
+  if (!targetTSS) return anyChange;
 
   const mondayDate = new Date();
   mondayDate.setDate(mondayDate.getDate() - ((mondayDate.getDay() || 7) - 1));

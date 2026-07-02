@@ -297,6 +297,19 @@ class PlanRecalculator {
     const fixed = (sessions || []).map(sess => {
       if (!sess || sess.isRest) return sess;
 
+      // _tssExcess/_excessOrig son flags SOLO del frontend (snapshot temporal de
+      // "reducción por exceso semanal", ver training-plan.html _applyWeekTSSExcessScaling)
+      // que nunca deberían persistir en el backend. Si una sesión con esas marcas queda
+      // "completada" antes de que el frontend tenga ocasión de limpiarlas, se quedan
+      // pegadas para siempre: cada guardado del frontend restaura _excessOrig como si
+      // fuera el valor "verdadero", deshaciendo cualquier corrección posterior (incluida
+      // esta misma reparación). Se descartan aquí para cortar el ciclo en la fuente.
+      if (sess._tssExcess || sess._excessOrig) {
+        changed = true;
+        const { _tssExcess, _excessOrig, ...rest } = sess;
+        sess = rest;
+      }
+
       const key = this._crossTrainingKey(sess);
       if (key) {
         const def = this._CROSS_TRAINING_DEFAULTS[key];
