@@ -3232,19 +3232,28 @@ async function saveAdaptation(idx) {
   }
 
   // Actualizar métricas clave desde la IA
-  sess.durationMin = t.duracion_min > 0 ? t.duracion_min : sess.durationMin;
+  const _aiDurationMin = t.duracion_min > 0 ? t.duracion_min : sess.durationMin;
+  sess.durationMin = _aiDurationMin;
+  sess.ifTarget    = t.if_estimado || sess.ifTarget;
   // Enforce type-specific minimums solo para sesiones de ciclismo
   const _isCyclingSess = !sess.isGym && !sess.isRunning && !sess.isWalking && !sess.isOther && !['gym','running','walking'].includes(sess.type);
+  let _minDurBump = false;
   if (_isCyclingSess) {
     const _wh2  = AppState.athlete?.weekly_hours  || 8;
     const _dpw2 = AppState.athlete?.days_per_week || 5;
     const _userMin2 = Math.max(30, Math.round((_wh2 * 60) / _dpw2));
     const _MIN_DUR = { long: Math.max(90, _userMin2), endurance: Math.max(_userMin2, 45), threshold: Math.max(_userMin2, 40), vo2max: Math.max(_userMin2, 35), tempo: Math.max(_userMin2, 40), sweet_spot: Math.max(_userMin2, 40), sprint: Math.max(_userMin2, 30), recovery: 20 };
     const _minForType = _MIN_DUR[sess.type] || _userMin2;
-    if (sess.durationMin < _minForType) sess.durationMin = _minForType;
+    if (sess.durationMin < _minForType) { sess.durationMin = _minForType; _minDurBump = true; }
   }
-  sess.tss         = t.tss_estimado || sess.tss;
-  sess.ifTarget    = t.if_estimado  || sess.ifTarget;
+  sess.tss = t.tss_estimado || sess.tss;
+  // El TSS que da la IA está calculado para SU duración propuesta (_aiDurationMin). Si el
+  // mínimo por tipo alargó la sesión por encima de eso, ese TSS ya no corresponde a la
+  // duración final — reescalarlo proporcionalmente para que ambos sigan siendo coherentes
+  // (si no, la tarjeta mostraba p.ej. 150 min con el TSS de una sesión de 101 min).
+  if (_minDurBump && _aiDurationMin > 0 && sess.tss) {
+    sess.tss = Math.round(sess.tss * (sess.durationMin / _aiDurationMin));
+  }
 
   if (t.recomendacion === 'descanso') {
     sess.isRest      = true;
@@ -3271,8 +3280,10 @@ async function saveAdaptation(idx) {
     else if (intL.includes('sprint')) sess.type = 'sprint';
     else if (intL.includes('fuerza')) sess.type = 'strength';
 
-    // Reconstruir intervalos si la sesión fue modificada
-    if (t.recomendacion !== 'mantener' && window.TrainingPlanGenerator) {
+    // Reconstruir intervalos si la sesión fue modificada, o si "mantener" ya no aplica
+    // porque el mínimo por tipo alargó la duración (el texto/intervalos de la IA
+    // describían su duración original, ya no la que se guarda).
+    if ((t.recomendacion !== 'mantener' || _minDurBump) && window.TrainingPlanGenerator) {
       sess.intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'main');
       sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'alt');
       
@@ -3971,13 +3982,14 @@ async function recalculateWeek(idx, isFuture = false) {
     const newMin = Math.max(10, Math.min(300, parseInt(_minMatch[1])));
     const sess = currentPlan.sessions[idx];
     if (sess && !sess.isRest) {
+      // Recalcular TSS proporcional al tiempo — leer la duración previa ANTES de
+      // sobreescribirla, si no prevMin == newMin y el TSS se queda congelado sin cambiar.
+      const prevMin = sess._origDurationMin || sess.durationMin;
+      if (!sess._origDurationMin) sess._origDurationMin = prevMin;
+      if (sess.tss && prevMin > 0) sess.tss = Math.round(sess.tss * (newMin / prevMin));
       sess.durationMin  = newMin;
       sess.completed    = true;
       sess.feedback     = feedback;
-      // Recalcular TSS proporcional al tiempo (si el plan tenía tss y durationMin previos)
-      const prevMin = (sess._origDurationMin || sess.durationMin);
-      if (!sess._origDurationMin) sess._origDurationMin = prevMin;
-      if (sess.tss && prevMin > 0) sess.tss = Math.round(sess.tss * (newMin / prevMin));
       renderPlan(currentPlan, AppState.athlete);
       silentSavePlan();
       if (result) { result.innerHTML = `<span style="color:#10b981"><i class="fas fa-check-circle"></i> Sesión actualizada a ${newMin} min. El resto del plan no cambia.</span>`; result.style.display = ''; }
