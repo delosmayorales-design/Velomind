@@ -1666,6 +1666,46 @@ function getRouteRec(code, wind, precip, temp, sess) {
   return { icon:'🚴', type:'Carretera', color:'#9ED62B', msg:'Condiciones perfectas para carretera. ¡Aprovéchalo!' };
 }
 
+// Franja horaria más fresca que queda hoy para entrenar al aire libre, usando el
+// pronóstico horario ya descargado (hourly.temperature_2m, timezone=auto → hora local).
+// Solo se muestra si hoy hace calor de verdad (>28°C) y la sesión es al aire libre
+// (el gym ya tiene su propio aviso de "climatizado" en getRouteRec).
+function getBestHeatWindow(hourly, sess) {
+  if (!hourly?.time?.length || sess?.isGym || sess?.isRest) return null;
+
+  const RAIN_CODES = [51,53,55,61,63,65,80,81,82,95,96,99];
+  const now = new Date();
+  const todayIdxs = hourly.time
+    .map((t, i) => ({ t: new Date(t), i }))
+    .filter(({ t }) => t.getDate() === now.getDate() && t.getMonth() === now.getMonth());
+  if (!todayIdxs.length) return null;
+
+  const maxTempToday = Math.max(...todayIdxs.map(({ i }) => hourly.temperature_2m?.[i] ?? -99));
+  if (maxTempToday < 28) return null; // no hace suficiente calor para que la hora importe
+
+  // Solo horas futuras y dentro de una franja razonable para entrenar (6h-21h), sin lluvia
+  const candidates = todayIdxs.filter(({ t, i }) => {
+    const h = t.getHours();
+    if (t < now || h < 6 || h > 21) return false;
+    const prob = hourly.precipitation_probability?.[i] ?? 0;
+    return prob < 40 && !RAIN_CODES.includes(hourly.weather_code?.[i] ?? 0);
+  });
+  if (!candidates.length) return null; // hoy ya no queda franja utilizable (o llueve todo el resto del día)
+
+  const best = candidates.reduce((min, c) =>
+    (hourly.temperature_2m?.[c.i] ?? 99) < (hourly.temperature_2m?.[min.i] ?? 99) ? c : min);
+  const bestHour = best.t.getHours();
+  const bestTemp = Math.round(hourly.temperature_2m?.[best.i] ?? 0);
+  const icon = bestHour < 12 ? '🌅' : bestHour >= 18 ? '🌇' : '☀️';
+  const when = bestHour === now.getHours() ? 'Ahora mismo' : `Sobre las ${String(bestHour).padStart(2, '0')}h`;
+
+  return {
+    icon,
+    label: `${when} (~${bestTemp}°C)`,
+    msg: `Hoy se esperan ${Math.round(maxTempToday)}°C. ${when} es tu franja más fresca — evita entrenar entre las 12h y las 18h si puedes elegir.`,
+  };
+}
+
 let wxTomorrow = null;
 
 function buildHourlyRow(hourly) {
@@ -1825,6 +1865,7 @@ function _renderWeather(el, data) {
   const wx     = WX[code] || { l:'Variable', i:'fa-cloud-sun', c:'#93C5FD' };
   const sess   = dashPlan?.sessions?.[todayIdx];
   const rec    = getRouteRec(code, wind, prec, temp, sess);
+  const heatWindow = getBestHeatWindow(data.hourly, sess);
   const clothes = getClothing(temp, wind, prec, code, sess);
   const isGymDay     = !!sess?.isGym;
   const isWalkingDay = !!sess?.isWalking;
@@ -1850,6 +1891,12 @@ function _renderWeather(el, data) {
       <div class="rec-box-title">${rec.icon} ${rec.type}</div>
       <div class="rec-box-desc">${rec.msg}</div>
     </div>
+    ${heatWindow ? `
+    <div class="rec-box" style="border-color:#F9731635;background:#F973160a;margin-bottom:10px">
+      <div class="rec-box-label" style="color:#F97316">Mejor hora para evitar el calor</div>
+      <div class="rec-box-title">${heatWindow.icon} ${heatWindow.label}</div>
+      <div class="rec-box-desc">${heatWindow.msg}</div>
+    </div>` : ''}
     <div class="clothes-box">
       <div class="clothes-label">${clothLabel}</div>
       <div class="clothes-items">
