@@ -404,6 +404,10 @@ class PlanRecalculator {
       if (def && (sess.durationMin || 0) > def.durationMin * 2) {
         sess.durationMin = def.durationMin;
         sess.tss = def.tss;
+        // tssShare es la proporción del reparto semanal original; si no se limpia, las
+        // tarjetas del frontend recalculan el TSS mostrado como tssShare×targetTSS y
+        // ignoran el sess.tss recién reparado (ver training-plan.html ~2519, 2885, 4377).
+        sess.tssShare = 0;
       }
     });
 
@@ -418,22 +422,27 @@ class PlanRecalculator {
     remainingDays.forEach(({ dayIdx }) => {
       const sess = newSessions[dayIdx];
       const currentTSS = sess.tss || 0;
+      const currentDur = sess.durationMin || 0;
       let newTSS = currentTSS + adjustPerDay;
 
       const cap = MAX_TSS[sess.type] || 140;
       newTSS = Math.max(0, Math.min(newTSS, cap));
 
-      const currentDur = sess.durationMin || 0;
+      // Duración que correspondería a newTSS, acotada por el límite físico del tipo.
       const maxDur = MAX_DUR[sess.type] || 210;
-      const overCap = newTSS !== currentTSS || currentDur > maxDur;
-      if (overCap) {
-        const ifTarget = sess.ifTarget || 0.65;
-        let durMin = newTSS !== currentTSS
-          ? Math.round((newTSS / (Math.pow(ifTarget, 2) * 100)) * 60)
-          : currentDur;
-        durMin = Math.max(70, Math.min(maxDur, durMin));
-        sess.tss = newTSS;
+      const ifTarget = sess.ifTarget || 0.65;
+      const durMin = Math.max(70, Math.min(maxDur, Math.round((newTSS / (Math.pow(ifTarget, 2) * 100)) * 60)));
+      // Recalcular el TSS final desde la duración YA acotada: así quedan siempre
+      // matemáticamente coherentes entre sí, tanto si el tope de TSS recorta la
+      // duración como si el tope de duración obliga a bajar también el TSS (antes
+      // podía quedar, p.ej., 199 min con TSS 71 — coherentes por separado con sus
+      // propios topes, pero incoherentes entre sí).
+      const finalTSS = Math.round((durMin / 60) * Math.pow(ifTarget, 2) * 100);
+
+      if (finalTSS !== currentTSS || durMin !== currentDur) {
+        sess.tss = finalTSS;
         sess.durationMin = durMin;
+        sess.tssShare = 0; // idem: forzar que el frontend muestre sess.tss, no tssShare×targetTSS
       }
     });
 
@@ -445,6 +454,7 @@ class PlanRecalculator {
           const reductionFactor = 0.70; // 30% reducción
           sess.tss = Math.round((sess.tss || 0) * reductionFactor);
           sess.durationMin = Math.round((sess.durationMin || 0) * reductionFactor);
+          sess.tssShare = 0;
         }
       });
     }
