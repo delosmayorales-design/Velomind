@@ -5357,11 +5357,17 @@ function _regeneratePlanRespectingProgress(allowTargetChange = false) {
     if (i >= cutoffIdx && s) { delete s._tssExcess; delete s._excessOrig; s._adapted = true; }
   });
 
+  // v2: solo se confía en un objetivo comprometido que lleve esta marca. Los guardados
+  // por la versión anterior de "Regenerar" (el bug que recalculaba el objetivo en cada
+  // click, ej. 411→338 TSS) pueden llevar ya un número corrupto sin la marca — se tratan
+  // como "no hay objetivo comprometido todavía" y se recalculan UNA vez desde el motor
+  // (fresco, no el valor cacheado), en vez de arrastrar el número corrupto para siempre.
+  const PLAN_ORIGINAL_V = 2;
   const weekStart = getMondayString();
   let committedTarget = null;
   try {
     const orig = JSON.parse(localStorage.getItem('cyclocoach_plan_original') || 'null');
-    if (orig && orig.week_start?.slice(0, 10) === weekStart && orig.tss_target > 0) {
+    if (orig && orig.__v === PLAN_ORIGINAL_V && orig.week_start?.slice(0, 10) === weekStart && orig.tss_target > 0) {
       committedTarget = orig.tss_target;
     }
   } catch (_e) {}
@@ -5371,10 +5377,12 @@ function _regeneratePlanRespectingProgress(allowTargetChange = false) {
     currentPlan.targetTSS = committedTarget; // objetivo de la semana ya comprometido: se mantiene
   } else {
     // Primera generación de la semana, cambio de base explícito (horas/objetivo/CTL/eventos),
-    // o override de seguridad por sobreentrenamiento real: el nuevo targetTSS pasa a ser
-    // el objetivo comprometido de la semana a partir de ahora.
+    // override de seguridad por sobreentrenamiento real, o auto-reparación de un objetivo
+    // heredado sin marca de versión: el nuevo targetTSS (recién calculado por generatePlan()
+    // más arriba, no el cacheado) pasa a ser el objetivo comprometido de la semana.
     try {
       localStorage.setItem('cyclocoach_plan_original', JSON.stringify({
+        __v: PLAN_ORIGINAL_V,
         week_start: weekStart,
         sessions:   JSON.parse(JSON.stringify(currentPlan.sessions)),
         tss_target: currentPlan.targetTSS || null,
