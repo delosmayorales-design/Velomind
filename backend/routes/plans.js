@@ -132,8 +132,10 @@ router.post('/training/regenerate', async (req, res) => {
   if (!week_start) return res.status(400).json({ error: 'week_start requerido' });
 
   try {
-    // El recalculator ya maneja guardar histórico y recalcular
-    const result = await PlanRecalculator.recalculateWeek(req.user.id, week_start);
+    // El recalculator ya maneja guardar histórico y recalcular. manual:true fuerza que
+    // el clic del usuario en "Regenerar" siempre haga algo visible, sin depender de que
+    // la desviación real supere el umbral pensado para la recalculación automática.
+    const result = await PlanRecalculator.recalculateWeek(req.user.id, week_start, { manual: true });
 
     res.json({
       message: 'Plan regenerado',

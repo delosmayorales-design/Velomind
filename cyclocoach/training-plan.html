@@ -5524,6 +5524,9 @@ function _regenerateReasonText(reason) {
   if (reason === 'fatigue_threshold') {
     return '🛑 Plan suavizado por fatiga acumulada';
   }
+  if (reason === 'capacity_violation') {
+    return '🔧 Se han corregido sesiones que excedían sus límites de una regeneración anterior';
+  }
   return '✅ Plan sincronizado con tu progreso real';
 }
 
