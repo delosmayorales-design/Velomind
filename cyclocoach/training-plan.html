@@ -1655,9 +1655,10 @@ async function initTrainingPlan() {
         }
       }
     } catch(_) {}
+    let _sanitizeFixedSomething = false;
     if (currentPlan) {
       _patchSegmentDistances(currentPlan);
-      _sanitizeCyclingContent(currentPlan);
+      _sanitizeFixedSomething = _sanitizeCyclingContent(currentPlan);
     }
 
     renderAthleteSidebar();
@@ -1675,6 +1676,10 @@ async function initTrainingPlan() {
         // desde localStorage (AppState.init). Así la tarjeta y el modal muestran
         // los valores correctos desde el primer render, sin esperar loadActivities().
         syncPlanWithReality();
+        // Si el saneo corrigió alguna sesión (p.ej. TSS que ya no correspondía a la
+        // duración), persistir para que dashboard.html también vea el dato ya coherente
+        // en su próxima carga, en vez de esperar a la próxima acción que guarde el plan.
+        if (_sanitizeFixedSomething) silentSavePlan();
       } else {
         generatePlan();
         silentSavePlan();
@@ -1907,6 +1912,7 @@ function _sanitizeCyclingContent(plan) {
     recovery:    20,
   };
   const DEFAULT_IF_SYNC = { z2: 0.62, long: 0.60, endurance: 0.65, recovery: 0.52, tempo: 0.82, threshold: 0.95, sweet_spot: 0.90, vo2max: 1.05, sprint: 0.90, strength: 0.80 };
+  let changed = false;
   plan.sessions.forEach(s => {
     if (!s) return;
     // Reparar duración mínima solo para sesiones de ciclismo sin adaptar.
@@ -1917,6 +1923,7 @@ function _sanitizeCyclingContent(plan) {
         s.durationMin = minD;
         const ifRef = s.ifTarget || DEFAULT_IF_SYNC[s.type] || 0.65;
         s.tss = Math.round((minD / 60) * Math.pow(ifRef, 2) * 100);
+        changed = true;
       }
       // Reparar TSS = 0 en sesiones de ciclismo que tienen duración (sin importar tssShare)
       const _isCycling = !s.isWalking && !s.isRunning && !s.isGym && !s.isOther && !['gym','running','walking'].includes(s.type);
@@ -1925,6 +1932,28 @@ function _sanitizeCyclingContent(plan) {
         const computedTSS = Math.round((s.tssShare || 0) * (plan.targetTSS || 0));
         if ((!s.tss || s.tss === 0) && (computedTSS === 0)) {
           s.tss = Math.round((s.durationMin / 60) * Math.pow(s.ifTarget, 2) * 100);
+          changed = true;
+        }
+      }
+    }
+    // Reparar TSS/intervalos/descripción que ya no corresponden a la duración guardada
+    // (p. ej. una adaptación de la IA cuyo TSS se calculó para una duración distinta a
+    // la que finalmente se guardó por el mínimo de tipo). A diferencia del bloque de
+    // arriba, esto SÍ se aplica a sesiones _adapted: no es deshacer la adaptación del
+    // usuario, es corregir que sus propios campos dejen de contradecirse entre sí.
+    if (!s.isRest && _isCyclingType && typeof s.durationMin === 'number' && s.durationMin > 0 && s.ifTarget) {
+      const expectedTSS = Math.round((s.durationMin / 60) * Math.pow(s.ifTarget, 2) * 100);
+      if (s.tss && expectedTSS > 0 && Math.abs(s.tss - expectedTSS) / expectedTSS > 0.15) {
+        s.tss = expectedTSS;
+        changed = true;
+        if (window.TrainingPlanGenerator?._buildIntervals) {
+          const _ftpSan = AppState.athlete?.ftp || 200;
+          s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, _ftpSan, s.durationMin, s.tss, s.ifTarget, 'main');
+          s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, _ftpSan, s.durationMin, s.tss, s.ifTarget, 'alt');
+          if (TrainingPlanGenerator._buildDesc) {
+            s.description     = TrainingPlanGenerator._buildDesc(s.intervals);
+            s.alt_description = TrainingPlanGenerator._buildDesc(s.alt_intervals);
+          }
         }
       }
     }
@@ -1948,6 +1977,7 @@ function _sanitizeCyclingContent(plan) {
       s[field] = cleaned || s[field].replace(/[^.]*(?:zancada|tierra compacta|hierba|sendero suave|carrera a pie|kilómetro de carrera)[^.]*/gi, '').trim();
     });
   });
+  return changed;
 }
 
 function getDefaultAthlete() {

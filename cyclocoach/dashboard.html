@@ -2555,6 +2555,16 @@ function _rebuildDashDescriptions(sessions) {
   (sessions || []).forEach(s => {
     if (s.isRest || !s.type) return;
     if (s.isGym || s.isRunning || s.isWalking || s.isOther || _NON_CYCLING.has(s.type)) return;
+    // Si el TSS guardado ya no corresponde a durationMin+ifTarget (p.ej. una adaptación
+    // cuyo TSS se calculó para una duración distinta a la finalmente guardada), corregirlo
+    // antes de reconstruir intervalos/descripción — si no, esta tarjeta y training-plan.html
+    // muestran el mismo entreno con minutos distintos aunque el TSS coincida.
+    if (s.durationMin > 0 && s.ifTarget) {
+      const expectedTSS = Math.round((s.durationMin / 60) * Math.pow(s.ifTarget, 2) * 100);
+      if (s.tss && expectedTSS > 0 && Math.abs(s.tss - expectedTSS) / expectedTSS > 0.15) {
+        s.tss = expectedTSS;
+      }
+    }
     const sv    = s.intervalVariant || 'main';
     const svAlt = sv === 'main' ? 'alt' : 'main';
     s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, sv);
