@@ -2,6 +2,7 @@ const express = require('express');
 const supabase = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { recalculatePMC } = require('../services/pmc');
+const PlanRecalculator = require('../services/planRecalculator');
 const { calcIF, calcTSS, calcVI } = require('../utils/training');
 const router = express.Router();
 
@@ -76,12 +77,21 @@ router.post('/', async (req, res) => {
     if (error) throw error;
 
     if (a.gear_id) await updateGarageStats(uid, a.gear_id, distanceMeters, a.duration || 0, true);
-    
+
     setImmediate(async () => {
       try {
         await recalculatePMC(uid);
+
+        // 🔄 TRIGGER: Recalcular plan de la semana si la actividad cayó en esta semana
+        const actDate = new Date(a.date);
+        const dayOfWeek = actDate.getDay();
+        const mondayOfWeek = new Date(actDate);
+        mondayOfWeek.setDate(actDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        const weekStart = mondayOfWeek.toISOString().split('T')[0];
+
+        await PlanRecalculator.recalculateWeek(uid, weekStart);
       } catch(err) {
-        console.error('⚠️ [Activities] Error recalculando PMC en background:', err.message);
+        console.error('⚠️ [Activities] Error en recalculation chain:', err.message);
       }
     });
     res.status(201).json({ message: 'Guardada', id, tss, if_value: ifValue });
@@ -135,7 +145,23 @@ async function correctActivity(req, res) {
 
     if (updates.tss !== undefined) {
       setImmediate(async () => {
-        try { await recalculatePMC(uid); } catch {}
+        try {
+          await recalculatePMC(uid);
+
+          // 🔄 TRIGGER: Recalcular plan (ya que cambió TSS de actividad)
+          const { data: act } = await supabase.from('activities')
+            .select('date').eq('id', id).single();
+          if (act) {
+            const actDate = new Date(act.date);
+            const dayOfWeek = actDate.getDay();
+            const mondayOfWeek = new Date(actDate);
+            mondayOfWeek.setDate(actDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            const weekStart = mondayOfWeek.toISOString().split('T')[0];
+            await PlanRecalculator.recalculateWeek(uid, weekStart);
+          }
+        } catch(err) {
+          console.error('⚠️ [Activities.PATCH] Error en recalculation chain:', err.message);
+        }
       });
     }
 
@@ -221,10 +247,10 @@ router.delete('/', async (req, res) => {
   try {
     const uid = req.user.id;
     const { count } = await supabase.from('activities').select('*', { count: 'exact', head: true }).eq('user_id', uid);
-    
+
     const { error: err1 } = await supabase.from('activities').delete().eq('user_id', uid);
     if (err1) throw err1;
-    
+
     // También limpiamos el PMC ya que no quedan datos para calcularlo
     const { error: err2 } = await supabase.from('pmc').delete().eq('user_id', uid);
     if (err2) throw err2;

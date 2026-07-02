@@ -15,10 +15,6 @@
  */
 
 const BackendSync = (() => {
-  const API = window.API_URL || 
-    (location.hostname === 'localhost' || location.hostname === '127.0.0.1' 
-      ? 'http://localhost:3000/api' 
-      : 'https://velomind-backend.onrender.com/api');
 
 function isLegacyDemoActivity(a) {
   // SOLO eliminar actividades demo reales (si existen)
@@ -43,20 +39,13 @@ function isLegacyDemoActivity(a) {
     }
   });
 
-  // ── Helpers ──────────────────────────────────────────────────
-  function headers() {
-    return Auth.getHeaders();
-  }
-
   async function apiFetch(path, options = {}) {
-    const headersObj = headers();
-    console.log('[BackendSync] apiFetch headers:', JSON.stringify(headersObj));
-    const res = await fetch(`${API}${path}`, {
-      headers: headersObj,
-      cache: 'no-store',
-      ...options,
-    });
-    const data = await res.json().catch(() => ({}));
+    // Usamos la función centralizada de Auth para obtener la URL y las cabeceras
+    const res = await Auth.apiFetch(`${window.API_URL}${path}`, { cache: 'no-store', ...options });
+
+    // Auth.apiFetch ya maneja errores 401/403. Aquí manejamos el cuerpo de la respuesta.
+    const data = await res.json().catch(() => ({ error: `Respuesta inválida del servidor (status ${res.status})` }));
+
     if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
     return data;
   }
@@ -258,11 +247,11 @@ function isLegacyDemoActivity(a) {
   async function deleteActivity(id) {
     try {
       const res = await apiFetch(`/activities/${id}`, { method: 'DELETE' });
-      
+
       // 1. Eliminar del estado global local (localStorage y AppState)
       AppState.removeActivity(id);
       await loadGarage(); // Mantener el garaje sincronizado
-      
+
       // 2. Refrescar la UI de la tabla de actividades automáticamente
       if (typeof window.renderActivities === 'function') {
         if (typeof window.allActivities !== 'undefined') {
@@ -272,10 +261,10 @@ function isLegacyDemoActivity(a) {
           window.renderActivities(AppState.activities);
         }
       }
-      
+
       // 3. Refrescar el Dashboard si el usuario eliminó desde allí
       if (typeof window.loadDashboard === 'function') window.loadDashboard();
-      
+
       return res;
     } catch (e) {
       console.warn('[BackendSync] deleteActivity error:', e.message);
@@ -520,8 +509,8 @@ function isLegacyDemoActivity(a) {
   /** Elimina una bicicleta del garaje */
   async function deleteBike(bikeId) {
     try {
-      return await apiFetch(`/garage/${bikeId}`, { 
-        method: 'DELETE' 
+      return await apiFetch(`/garage/${bikeId}`, {
+        method: 'DELETE'
       });
     } catch (e) {
       console.warn('[BackendSync] deleteBike error:', e.message);

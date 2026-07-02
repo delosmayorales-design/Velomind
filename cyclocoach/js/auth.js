@@ -539,6 +539,7 @@ const Auth = (() => {
 
 // Exponer globalmente
 window.Auth = Auth;
+window.API_URL = API_URL; // Exponer para compatibilidad con otros scripts si es necesario
 
 // Auto-init en páginas protegidas
 if (!window.CYCLOCOACH_PUBLIC) {

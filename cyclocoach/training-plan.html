@@ -1387,10 +1387,10 @@ async function syncStrava() {
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + msg;
     });
     btn.innerHTML = `<i class="fas fa-check"></i> ${result.synced || 0} actividades`;
-    
+
     await loadCoachData();
     generatePlan(); // Regenerar plan con la nueva fatiga real
-    
+
     if (btn) {
       setTimeout(() => { btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Sincronizar Strava'; btn.disabled = false; }, 3000);
     }
@@ -1413,7 +1413,7 @@ async function loadCoachData() {
     const recRes = await fetch(`${API}/coach/recommendations?ctl=${metrics.ctl}&atl=${metrics.atl}&tsb=${metrics.tsb}`, { headers: Auth.getHeaders() });
     if (!recRes.ok) throw new Error('Sin conexión al backend');
     const rec = await recRes.json();
-    
+
     // Forzar siempre el uso del PMC local (preciso) para consistencia visual absoluta
     // La fase del plan (frontend) tiene prioridad sobre la del backend:
     // el plan considera la fecha del evento; el backend solo mira el ramp CTL.
@@ -1634,7 +1634,7 @@ async function initTrainingPlan() {
   try {
     await AppState.init();
     console.log('[TP] AppState ready, athlete:', AppState.athlete?.name);
-    
+
     const currentWeekStart = getMondayString();
 
     // 1. RENDERIZADO INMEDIATO (Optimistic UI)
@@ -1721,7 +1721,7 @@ async function initTrainingPlan() {
       syncPlanWithReality();
       _openPendingDay();
     }
-    
+
     // Fetch nutrition plan for FIT export (fire-and-forget, no UI dependency)
     fetch(`${window.API_URL}/plans/nutrition`, { headers: Auth.getHeaders() })
       .then(r => r.ok ? r.json() : null)
@@ -1733,7 +1733,7 @@ async function initTrainingPlan() {
       .then(r => r.ok ? r.json() : null)
       .then(savedPlan => {
         if (_fetchToken !== _bgSyncToken) return; // El usuario ya guardó localmente — ignorar respuesta antigua
-        
+
         // Normalizar week_start: Supabase puede devolver timestamp completo ('2026-05-11T00:00:00+00:00')
         const remoteWeekStart = (savedPlan?.week_start || '').slice(0, 10);
         if (remoteWeekStart && remoteWeekStart !== currentWeekStart) {
@@ -2545,10 +2545,10 @@ function renderPlan(plan, athlete) {
         const actualTSS    = Math.round(dayActs.reduce((s, a) => s + (Number(a.tss) || 0), 0));
         const actualDurMin = Math.round(dayActs.reduce((s, a) => s + (Number(a.duration) || 0), 0) / 60);
         const maxIF        = Math.max(...dayActs.map(a => Number(a.if_value) || 0));
-        
+
         const ratio = tssVal > 0 ? actualTSS / tssVal : 1;
         let eIcon, eLabel, eBg, eBorder, eColor;
-        
+
         if (ratio >= 1.15) {
           eIcon = 'fa-fire'; eLabel = '¡Te excediste de carga!';
           eBg = 'rgba(239,68,68,.08)'; eBorder = 'rgba(239,68,68,.25)'; eColor = '#ef4444';
@@ -2825,7 +2825,7 @@ function renderPlan(plan, athlete) {
                 if (!hr) return '';
                 return `<span class="meta-tag"><i class="fas fa-heartbeat" style="color:#ef4444"></i> ${hr.bpmMin}-${hr.bpmMax} bpm (${hr.zone})</span>`;
               })()}
-                
+
                 <div style="flex:1; min-width:10px"></div>
                 ${(!sess.isRest && isPastOrToday) ? `
                   <button onclick="event.preventDefault(); event.stopPropagation(); markSessionDone(${i})" title="${sess.completed ? 'Desmarcar' : 'Marcar como hecha'}" style="display:flex;align-items:center;gap:6px;background:${sess.completed ? 'rgba(16,185,129,0.1)' : 'var(--bg-input)'};border:1px solid ${sess.completed ? 'rgba(16,185,129,0.3)' : 'var(--border)'};color:${sess.completed ? '#10b981' : (isToday ? 'var(--primary)' : 'var(--text-secondary)')};border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;transition:all .2s;white-space:nowrap;width:auto !important;margin:0 !important;position:relative;z-index:10;-webkit-tap-highlight-color:transparent;" onmouseover="this.style.borderColor='${sess.completed ? '#10b981' : 'var(--primary)'}';this.style.color='${sess.completed ? '#10b981' : 'var(--primary)'}'" onmouseout="this.style.borderColor='${sess.completed ? 'rgba(16,185,129,0.3)' : 'var(--border)'}';this.style.color='${sess.completed ? '#10b981' : (isToday ? 'var(--primary)' : 'var(--text-secondary)')}'">
@@ -3299,7 +3299,7 @@ async function saveAdaptation(idx) {
     sess.ifTarget    = 0;
   } else {
     sess.isRest = false;
-    
+
     // Inferir el nuevo TIPO de sesión para actualizar colores, emojis y consejos
     const intL = (t.intensidad || '').toLowerCase();
     if (intL.includes('z1') || intL.includes('recupera')) sess.type = 'recovery';
@@ -3316,7 +3316,7 @@ async function saveAdaptation(idx) {
     if ((t.recomendacion !== 'mantener' || _minDurBump) && window.TrainingPlanGenerator) {
       sess.intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'main');
       sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'alt');
-      
+
       const buildDesc = (ivs) => {
         let parts = [];
         for (let idx = 0; idx < ivs.length; idx++) {
@@ -3346,7 +3346,7 @@ async function saveAdaptation(idx) {
   } else {
     sess.emoji = sess.isRest ? '😴' : '🚴';
   }
-  
+
   if (sess.ifTarget && !sess.isRest) {
     sess.targetWatts = Math.round(ftp * sess.ifTarget);
   } else {
@@ -3472,22 +3472,37 @@ async function silentSavePlan() {
       const { _excessOrig, _tssExcess, ...rest } = s;
       return { ...rest, ..._excessOrig };
     });
+
+    // Detectar si es generación inicial
+    const isInitial = !localStorage.getItem('cyclocoach_training_plan') ||
+                      !JSON.parse(localStorage.getItem('cyclocoach_training_plan') || '{}').week_start;
+
     const planData = {
-      week_start:      getMondayString(),
-      sessions:        cleanSessions,
-      tss_target:      currentPlan.targetTSS || null,
-      phase:           currentPlan.phase     || null,
-      ftp_at_creation: AppState.athlete?.ftp || null,
-      advice:          currentPlan.advice    || null,
-      adaptation:      currentPlan.adaptation || null,
+      week_start:           getMondayString(),
+      sessions:             cleanSessions,
+      tss_target:           currentPlan.targetTSS || null,
+      phase:                currentPlan.phase     || null,
+      ftp_at_creation:      AppState.athlete?.ftp || null,
+      advice:               currentPlan.advice    || null,
+      adaptation:           currentPlan.adaptation || null,
+      is_initial_generation: isInitial,  // 🔖 Flag para historizar en backend
     };
     localStorage.setItem('cyclocoach_training_plan', JSON.stringify({ ...planData, savedAt: Date.now() }));
-    await fetch(`${API}/plans/training`, {
+
+    // Guardar en backend (será historizado automáticamente si es inicial)
+    const response = await fetch(`${API}/plans/training`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
       body: JSON.stringify(planData)
     });
-  } catch(e) { /* fallo silencioso — localStorage ya tiene la copia */ }
+
+    if (!response.ok) {
+      console.warn('⚠️ Error saving plan to backend:', response.statusText);
+    }
+  } catch(e) {
+    console.error('⚠️ Error saving plan:', e);
+    /* fallo silencioso — localStorage ya tiene la copia */
+  }
 }
 
 // ── Registrar Realidad (Feedback Loop) ───────────────────────
@@ -4068,7 +4083,7 @@ async function recalculateWeek(idx, isFuture = false) {
             }
             s.intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'main');
             s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'alt');
-            
+
             const buildDesc = (ivs) => {
               let parts = [];
               for (let idx = 0; idx < ivs.length; idx++) {
@@ -5418,7 +5433,7 @@ function _regeneratePlanRespectingProgress(allowTargetChange = false) {
   }
 }
 
-function regeneratePlan() {
+async function regeneratePlan() {
   // Limpia las cachés de contenido del plan para garantizar generación fresca desde
   // el motor. cyclocoach_plan_original NO se toca: es el objetivo semanal comprometido
   // (un coach no lo renegocia solo porque el atleta pide refrescar el plan).
@@ -5428,7 +5443,38 @@ function regeneratePlan() {
 
   _regeneratePlanRespectingProgress();
   renderPlan(currentPlan, AppState.athlete);
-  silentSavePlan();
+  await silentSavePlan();
+
+  // 🔄 TRIGGER: Recalcular plan en backend (detecta cambios reales vs planificado)
+  try {
+    const weekStart = getMondayString();
+    const response = await fetch(`${API}/plans/training/regenerate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...Auth.getHeaders() },
+      body: JSON.stringify({ week_start: weekStart })
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('[PlanRegen] Backend result:', result);
+
+      // Si hay adaptaciones, mostrar
+      if (result.changed) {
+        const msg = result.reason === 'exceeded_target'
+          ? `⚠️ Plan reajustado: detectamos que te pasaste de TSS. Distribuimos el resto de la semana.`
+          : result.reason === 'missed_sessions'
+          ? `📊 Plan reajustado: completaste menos sesiones. Distribuimos las TSS faltantes.`
+          : `📈 Plan sincronizado con tu progreso real.`;
+        showToast(msg, 'var(--accent-blue)', 3000);
+      }
+    } else {
+      console.warn('⚠️ Error recalculating plan:', response.statusText);
+    }
+  } catch(e) {
+    console.error('⚠️ Error triggering backend recalc:', e);
+    // No fallar la operación si el backend falla
+  }
+
   const _msg = currentPlan?.adaptation?.level === 'danger'
     ? '🛑 Plan regenerado — objetivo semanal reducido por fatiga excesiva (TSB muy bajo)'
     : currentPlan?._capacityCapped
@@ -5744,9 +5790,9 @@ async function runAICoach() {
 }
 
 // ── Audio Coach ───────────────────────────────────────────────
-// Utiliza la API 'SpeechSynthesis' (sintetizador de voz nativo del navegador) 
-// para dictar el entrenamiento en tiempo real. Va descontando los segundos y 
-// cuando cambia un bloque, te dice por los auriculares la potencia objetivo, 
+// Utiliza la API 'SpeechSynthesis' (sintetizador de voz nativo del navegador)
+// para dictar el entrenamiento en tiempo real. Va descontando los segundos y
+// cuando cambia un bloque, te dice por los auriculares la potencia objetivo,
 // cadencia y frases motivacionales sin que tengas que mirar la pantalla.
 const AC = {
   sessIdx: -1, blocks: [], blockIdx: 0,
@@ -6666,11 +6712,11 @@ function exportRollerSession(idx, rollerDur) {
 
   // Crear una copia de la sesión con duración ajustada
   const rollerSess = { ...sess, durationMin: rollerDur };
-  
+
   // Usar la función existente de exportar, pero con la sesión modificada
   // Asumiendo que exportSessionToGarmin toma la sesión directamente
   // Necesitaría modificar la función o crear una nueva
-  
+
   // Por simplicidad, mostrar un mensaje
   showToast('🚴 Función de exportación para rodillo próximamente', '#6366f1');
   closeRollerModal();
@@ -7202,7 +7248,7 @@ function _buildRaceAnalysisHtml(cp, rc) {
       </div>
     </div>` : '';
 
-  // Con datos del recorrido → plan tramo a tramo específico (reemplaza los rows genéricos)
+  // Con datos del recorrido -> plan tramo a tramo especifico.
   if (cp.tramos?.length) {
     return `
       <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border)">
@@ -7221,7 +7267,7 @@ function _buildRaceAnalysisHtml(cp, rc) {
       ${coachBriefingHtml}${nutHtml}${alertsHtml}`;
   }
 
-  // Sin datos → estrategia genérica basada en forma
+  // Sin datos -> estrategia generica basada en forma.
   return `
     <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border)">
       <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${rc};margin-bottom:10px">Estrategia de vatios</div>
@@ -7239,6 +7285,315 @@ function _buildRaceAnalysisHtml(cp, rc) {
     </div>
     ${coachBriefingHtml}${alertsHtml}${nutHtml}`;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 📊 HISTORIAL Y ADAPTACIONES DE PLANES
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Cargar histórico de planes y mostrar modal
+ */
+async function viewPlanHistory() {
+  try {
+    const weekStart = getMondayString();
+    const response = await fetch(`${API}/plans/training/history?week_start=${weekStart}`, {
+      headers: Auth.getHeaders()
+    });
+
+    if (!response.ok) throw new Error('Error loading history');
+
+    const result = await response.json();
+    const history = result.history || [];
+
+    if (history.length === 0) {
+      showToast('📋 Sin histórico de cambios en esta semana', 'var(--text-muted)');
+      return;
+    }
+
+    // Renderizar modal con histórico
+    const histHtml = history.map((h, idx) => `
+      <div style="margin-bottom:16px;padding:12px;background:rgba(196,239,68,.05);border:1px solid rgba(196,239,68,.15);border-radius:8px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent-green);margin-bottom:6px">
+          ${idx === 0 ? '✓' : '⟳'} ${h.reason === 'initial_generation' ? 'Plan inicial' : 'Recalculado'} — ${formatDateShort(h.created_at)}
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">
+          TSS: ${h.tss_target_initial} → ${h.tss_target_recalc}
+          ${h.adjustment_delta?.total_delta !== 0 ? `(${h.adjustment_delta.total_delta > 0 ? '+' : ''}${h.adjustment_delta.total_delta} TSS)` : ''}
+        </div>
+        ${h.adaptation_reason ? `<div style="font-size:10px;color:var(--text-muted);font-style:italic">${h.adaptation_reason}</div>` : ''}
+      </div>
+    `).join('');
+
+    const modal = `
+      <div style="padding:20px;max-height:500px;overflow-y:auto">
+        <h3 style="margin-bottom:16px;color:var(--accent-green)">📈 Histórico de cambios</h3>
+        ${histHtml}
+      </div>
+    `;
+
+    showModal(modal, 'Histórico de planes');
+  } catch (e) {
+    console.error('Error loading plan history:', e);
+    showToast('❌ Error cargando histórico', 'var(--error-color)');
+  }
+}
+
+/**
+ * Cargar adaptaciones realizadas
+ */
+async function viewPlanAdaptations() {
+  try {
+    const weekStart = getMondayString();
+    const response = await fetch(`${API}/plans/training/adaptations?week_start=${weekStart}&limit=50`, {
+      headers: Auth.getHeaders()
+    });
+
+    if (!response.ok) throw new Error('Error loading adaptations');
+
+    const result = await response.json();
+    const adaptations = result.adaptations || [];
+
+    if (adaptations.length === 0) {
+      showToast('✓ Ningún cambio automático en esta semana', 'var(--text-muted)');
+      return;
+    }
+
+    // Renderizar modal con adaptaciones
+    const adaptHtml = adaptations.map(a => `
+      <div style="margin-bottom:12px;padding:10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.15);border-radius:6px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-size:11px;font-weight:700;color:#F59E0B;margin-bottom:4px">
+              ${getTriggerEmoji(a.trigger_type)} ${a.trigger_type} — ${formatDateShort(a.created_at)}
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">${a.reason}</div>
+            <div style="font-size:10px;color:var(--text-muted)">
+              TSS: ${a.tss_total_before} → ${a.tss_total_after}
+              | Sesiones modificadas: ${a.sessions_affected}
+            </div>
+            ${a.approved_by_user !== null ? `
+              <div style="font-size:9px;color:var(--text-muted);margin-top:4px">
+                ${a.approved_by_user ? '✓ Aprobado' : '✗ Rechazado'} por usuario
+              </div>
+            ` : ''}
+          </div>
+          <button onclick="revertAdaptation('${a.id}', '${weekStart}')" style="
+            padding:4px 8px;font-size:9px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);
+            color:#ef4444;border-radius:4px;cursor:pointer;white-space:nowrap;margin-left:8px;
+          " title="Deshacer este cambio">
+            ↶ Deshacer
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    const modal = `
+      <div style="padding:20px;max-height:500px;overflow-y:auto">
+        <h3 style="margin-bottom:16px;color:#F59E0B">🔄 Adaptaciones realizadas</h3>
+        ${adaptHtml}
+        <div style="margin-top:16px;padding:10px;background:rgba(158,214,43,.08);border-left:3px solid #9ED62B;border-radius:4px;font-size:10px;color:var(--text-muted)">
+          <strong style="color:#9ED62B">💡 Deshacer</strong> revierte la distribución de entrenamientos a la versión anterior. Usa esto si el cambio automático no te parece adecuado.
+        </div>
+      </div>
+    `;
+
+    showModal(modal, 'Adaptaciones automáticas');
+  } catch (e) {
+    console.error('Error loading adaptations:', e);
+    showToast('❌ Error cargando adaptaciones', 'var(--error-color)');
+  }
+}
+
+/**
+ * Deshacer/Revertir una adaptación
+ */
+async function revertAdaptation(adaptationId, weekStart) {
+  try {
+    showToast('⏳ Revirtiendo cambio...', '#f59e0b');
+
+    const response = await fetch(`${API}/plans/training/adaptations/${adaptationId}/revert`, {
+      method: 'POST',
+      headers: {
+        ...Auth.getHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ week_start: weekStart })
+    });
+
+    if (!response.ok) throw new Error('Error revirtiendo adaptación');
+
+    const result = await response.json();
+    showToast('✓ Plan restaurado a la versión anterior', '#10b981');
+
+    // Recargar dashboard
+    await loadDashboard();
+  } catch (e) {
+    console.error('Error reverting adaptation:', e);
+    showToast('❌ Error revirtiendo cambio', 'var(--error-color)');
+  }
+}
+
+/**
+ * Emoji para tipo de trigger
+ */
+function getTriggerEmoji(triggerType) {
+  const emojis = {
+    'activity_inserted': '➕',
+    'activity_modified': '✏️',
+    'manual_regenerate': '🔄',
+    'tss_exceeded': '⚠️',
+    'tss_missed': '📉',
+    'fatigue_threshold': '🛑',
+    'auto_recalculation': '📊',
+  };
+  return emojis[triggerType] || '•';
+}
+
+/**
+ * Formatear fecha corta
+ */
+function formatDateShort(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  const today = new Date();
+  const days = Math.floor((today - d) / (1000*60*60*24));
+  if (days === 0) return `Hoy ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+  if (days === 1) return 'Ayer';
+  if (days < 7) return `${days}d atrás`;
+  return d.toLocaleDateString('es-ES', {month:'short', day:'numeric'});
+}
+
+/**
+ * Mostrar modal genérico
+ */
+function showModal(content, title = '') {
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position:fixed; top:0; left:0; right:0; bottom:0;
+    background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center;
+    z-index:9999; padding:20px;
+  `;
+  modal.onclick = () => modal.remove();
+
+  const box = document.createElement('div');
+  box.style.cssText = `
+    background:var(--bg-surface); border-radius:12px; max-width:500px;
+    width:100%; box-shadow:0 20px 60px rgba(0,0,0,.5); max-height:80vh;
+    display:flex; flex-direction:column; overflow:hidden;
+  `;
+  box.onclick = (e) => e.stopPropagation();
+
+  if (title) {
+    const titleBar = document.createElement('div');
+    titleBar.style.cssText = `
+      padding:16px; border-bottom:1px solid var(--border);
+      display:flex; justify-content:space-between; align-items:center;
+    `;
+    titleBar.innerHTML = `
+      <h3 style="margin:0;font-size:14px;font-weight:700">${title}</h3>
+      <button onclick="this.closest('div').closest('div').remove()" style="
+        background:none; border:none; color:var(--text-muted); cursor:pointer;
+        font-size:18px; padding:0; width:24px; height:24px; display:flex;
+        align-items:center; justify-content:center;
+      ">×</button>
+    `;
+    box.appendChild(titleBar);
+  }
+
+  const contentDiv = document.createElement('div');
+  contentDiv.style.cssText = `
+    flex:1; overflow-y:auto; color:var(--text-primary);
+  `;
+  contentDiv.innerHTML = content;
+  box.appendChild(contentDiv);
+
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+}
+
+/**
+ * Cargar y mostrar reporte semanal de adaptaciones
+ */
+async function viewWeeklyReport() {
+  try {
+    const weekStart = getMondayString();
+    const response = await fetch(`${API}/plans/training/weekly-report?week_start=${weekStart}`, {
+      headers: Auth.getHeaders()
+    });
+
+    if (!response.ok) throw new Error('Error loading report');
+
+    const report = await response.json();
+
+    // Renderizar reporte
+    const summaryColor = report.major_changes.length > 2 ? '#ef4444' : report.adaptations_count > 1 ? '#f59e0b' : '#10b981';
+    const summaryIcon = report.major_changes.length > 2 ? '⚠️' : report.adaptations_count > 1 ? '📊' : '✅';
+
+    const reportHtml = `
+      <div style="padding:20px">
+        <div style="padding:12px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:#10b981;margin-bottom:6px">📈 Resumen de la semana</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:11px;color:var(--text-muted)">
+            <div><strong style="color:var(--text-primary)">${report.total_activities}</strong> entrenamientos</div>
+            <div><strong style="color:var(--text-primary)">${report.total_tss}</strong> TSS acumulado</div>
+            <div><strong style="color:var(--text-primary)">${report.total_hours}h</strong> en bici</div>
+            <div><strong style="color:${summaryColor}">${report.adaptations_count}</strong> cambios automáticos</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">🔄 Cambios realizados</div>
+          ${report.adaptations_count === 0
+            ? `<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:16px">Sin cambios automáticos esta semana</div>`
+            : `
+              <div style="display:flex;gap:12px;margin-bottom:8px">
+                <div style="flex:1;text-align:center;padding:8px;background:rgba(96,165,250,.1);border-radius:6px">
+                  <div style="font-size:18px;font-weight:700;color:#3b82f6">${report.approved_count}</div>
+                  <div style="font-size:9px;color:var(--text-muted)">Aprobados</div>
+                </div>
+                <div style="flex:1;text-align:center;padding:8px;background:rgba(245,158,11,.1);border-radius:6px">
+                  <div style="font-size:18px;font-weight:700;color:#f59e0b">${report.adaptations_count - report.approved_count - report.rejected_count}</div>
+                  <div style="font-size:9px;color:var(--text-muted)">Pendientes</div>
+                </div>
+                <div style="flex:1;text-align:center;padding:8px;background:rgba(239,68,68,.1);border-radius:6px">
+                  <div style="font-size:18px;font-weight:700;color:#ef4444">${report.rejected_count}</div>
+                  <div style="font-size:9px;color:var(--text-muted)">Rechazados</div>
+                </div>
+              </div>
+            `}
+        </div>
+
+        ${report.major_changes.length > 0 ? `
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;color:#f59e0b;margin-bottom:8px">⚠️ Cambios significativos</div>
+            ${report.major_changes.slice(0, 3).map(c => `
+              <div style="padding:8px;background:rgba(245,158,11,.08);border-radius:6px;margin-bottom:6px;font-size:10px;color:var(--text-muted)">
+                <strong style="color:#f59e0b">${c.trigger_type.replace(/_/g, ' ')}</strong> — TSS: ${c.tss_total_before} → ${c.tss_total_after}
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+
+        <div style="padding:10px;background:rgba(158,214,43,.08);border:1px solid rgba(158,214,43,.2);border-radius:8px">
+          <div style="font-size:11px;color:#9ED62B;font-weight:600">💡 Consejo del entrenador</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:4px">
+            ${report.major_changes.length > 2
+              ? 'Muchos cambios en la semana — tu carga real ha diferido significativamente del plan. Considera reducir el objetivo semanal próximas semanas.'
+              : report.adaptations_count > 1
+              ? 'Semana con varios ajustes — el sistema está adaptándose a tu progreso real. Sigue registrando entrenamientos para mayor precisión.'
+              : 'Excelente adherencia — tu semana coincide con el plan. Continúa así.'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    showModal(reportHtml, '📊 Reporte semanal');
+  } catch (e) {
+    console.error('Error loading weekly report:', e);
+    showToast('❌ Error cargando reporte', 'var(--error-color)');
+  }
+}
+
 </script>
 <!-- Post-entreno modal -->
 <div id="post-modal-overlay" onclick="closePostModal()" style="display:none">
