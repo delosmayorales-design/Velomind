@@ -3605,7 +3605,7 @@ document.addEventListener('DOMContentLoaded', () => {
             : `Pulsa el botón de <strong>menú (⋮)</strong> y luego <strong>"Instalar aplicación"</strong>.`;
 
         banner.innerHTML = `
-            <img src="logo2.png" alt="VeloMind Logo" style="width: 48px; height: 48px; border-radius: 10px;">
+            <img src="icon-192.png" alt="VeloMind Logo" style="width: 48px; height: 48px; border-radius: 10px;">
             <div style="flex: 1;">
                 <h4 style="margin: 0 0 4px 0; font-size: 15px; font-family: 'Plus Jakarta Sans', sans-serif;">Instala VeloMind en tu móvil</h4>
                 <p style="margin: 0; font-size: 12px; color: var(--text-secondary, #CBD5E1); line-height: 1.5;">
@@ -3795,7 +3795,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!document.querySelector('link[rel="apple-touch-icon"]')) {
     const ati = document.createElement('link');
     ati.rel  = 'apple-touch-icon';
-    ati.href = 'logo2.png';
+    ati.href = 'apple-touch-icon.png';
     document.head.appendChild(ati);
   }
 

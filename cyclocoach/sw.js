@@ -1,11 +1,13 @@
-const CACHE_NAME = 'velomind-v7';
+const CACHE_NAME = 'velomind-v8';
 const ASSETS = [
   './',
   './css/style.css',
   './js/app.js',
   './js/auth.js',
   './js/backend-sync.js',
-  './logo2.png',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png',
   './logoPerfil.PNG',
   './manifest.json'
 ];
