@@ -1344,7 +1344,7 @@ const TrainingPlanGenerator = {
           // Semana 2: umbral + volumen aeróbico de soporte
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso. La semana 1 fue intensa — recupérate bien.' },
-            { day: 'Martes',   type: 'threshold', name: 'FTP clásico — bloques medios', description: 'Series de 10-12 min al FTP. Un escalón más que la semana pasada.', tssShare: 0.20, ifTarget: 0.83, emoji: '🟡' },
+            { day: 'Martes',   type: 'threshold', name: 'FTP clásico — bloques medios', description: 'Bloques de umbral al FTP. Un escalón más que la semana pasada.', tssShare: 0.20, ifTarget: 0.83, emoji: '🟡' },
             { day: 'Miércoles',type: 'recovery', name: 'Recuperación activa', description: 'Pedaleo muy suave. El cuerpo está construyendo ahora mismo — no lo interrumpas.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'tempo',   name: 'Sweetspot largo', description: 'Bloque continuo de sweetspot más largo que el martes. Más tiempo cerca del umbral aeróbico.', tssShare: 0.18, ifTarget: 0.78, emoji: '🟢' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso — prepara el fin de semana de mayor carga' },
@@ -1741,7 +1741,7 @@ const TrainingPlanGenerator = {
           // Semana 4: back-to-back largo — dos jornadas largas consecutivas
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso total. El back-to-back del fin de semana es el objetivo.' },
-            { day: 'Martes',   type: 'threshold', name: 'Umbral específico de gran fondo', description: 'Series de 10-12 min al FTP. Potencia de puerto mantenida con técnica perfecta.', tssShare: 0.19, ifTarget: 0.83, emoji: '🟡' },
+            { day: 'Martes',   type: 'threshold', name: 'Umbral específico de gran fondo', description: 'Series largas al FTP simulando el ritmo de puerto del gran fondo. Potencia mantenida con técnica perfecta.', tssShare: 0.19, ifTarget: 0.83, emoji: '🟡' },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Pedaleo suave para asimilar el umbral del martes. El fin de semana será el pico de la semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'endurance', name: 'Z2 de volumen y práctica nutricional', description: 'Dos horas aeróbicas con ingesta cada 25 min. Practica el protocolo completo de avituallamiento.', tssShare: 0.16, ifTarget: 0.65, emoji: '🔵' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso activo — carga de carbohidratos para el back-to-back' },
@@ -1780,7 +1780,7 @@ const TrainingPlanGenerator = {
             { day: 'Lunes',    isRest: true,  description: 'Descanso activo — movilidad y estiramientos.' },
             { day: 'Martes',   type: 'vo2max',   name: 'Intro VO₂ Max — series cortas', description: 'Primera toma de contacto con el VO₂ Max. Series de 2 min con igual recuperación.', tssShare: 0.16, ifTarget: 0.85, emoji: '🔴' },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación obligatoria Z1', description: 'El VO₂ Max requiere recuperación real. Sin compromisos hoy.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Jueves',   type: 'threshold', name: 'Umbral sostenido base', description: 'Dos series de 10-12 min al FTP. Construye la base aeróbica de alta velocidad.', tssShare: 0.18, ifTarget: 0.82, emoji: '🟡' },
+            { day: 'Jueves',   type: 'threshold', name: 'Umbral sostenido base', description: 'Series al FTP. Construye la base aeróbica de alta velocidad.', tssShare: 0.18, ifTarget: 0.82, emoji: '🟡' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso. Nutrición e hidratación correctas.' },
             { day: 'Sábado',   type: 'tempo',    name: 'Tempo largo + acelerones', description: 'Z3 sostenido con 5 arrancadas de 20 s al final de cada bloque. Simula los cambios de ritmo en carrera.', tssShare: 0.22, ifTarget: 0.79, emoji: '🟢' },
             { day: 'Domingo',  type: 'long',    name: 'Fondo moderado Z2', description: 'Fondón a ritmo aeróbico. Carreras cortas también requieren base, pero no exagerada.', tssShare: 0.24, ifTarget: 0.65, emoji: '💙' },
