@@ -1719,7 +1719,10 @@ const G = (() => {
     const dash = p.toFixed(1);
     const val = fmtVal(comp);
     const m = CM[comp.type] || {};
-    const hc = hist.filter(h => h.component_id === comp.id).length;
+    // El backend crea un ID de componente nuevo en cada reset/cambio (la fila vieja
+    // queda inactiva), así que además del id exacto hay que hacer match por bici+tipo
+    // para no perder el historial de reseteos anteriores de este mismo "slot" lógico.
+    const hc = hist.filter(h => h.component_id === comp.id || (h.bike_id === comp.bike_id && h.component_type === comp.type)).length;
     const bm = [comp.brand, comp.model].filter(Boolean).join(' ');
     
     const shopHtml = `
@@ -1758,7 +1761,7 @@ const G = (() => {
         <button class="btn-checkin" onclick="G.openCheckin('${comp.id}','${comp.bike_id}')">
           <i class="fas ${comp.threshold_days ? 'fa-fill-drip' : 'fa-check-circle'}"></i> ${comp.threshold_days ? 'Rellenado' : 'Cambiado'}
         </button>
-        <button class="btn-hist" onclick="G.openHistory('${comp.id}')" title="Historial${hc?' ('+hc+')':''}">
+        <button class="btn-hist" onclick="G.openHistory('${comp.id}','${comp.bike_id}','${comp.type}')" title="Historial${hc?' ('+hc+')':''}">
           <i class="fas fa-history"></i>${hc ? ` <span style="font-size:10px">${hc}</span>` : ''}
         </button>
       </div>
@@ -1818,13 +1821,15 @@ const G = (() => {
     comp.status = 'green';
     save();
 
-    // Para componentes por fecha (sellante, líquido), llamar al backend para
-    // crear un nuevo registro con created_at = hoy; así el timer persiste tras recarga.
-    if (comp.threshold_days && comp.id && comp.id.length === 36) {
+    // Persistir el cambio en Supabase para CUALQUIER tipo de componente (antes solo se
+    // hacía para los basados en fecha, así que reemplazar cadena/cassette/cubiertas/etc.
+    // nunca se guardaba y se perdía al recargar). Se manda la fecha real elegida por el
+    // usuario (performed_at) para que el contador ancle ahí y no en "ahora".
+    if (comp.id && comp.id.length === 36) {
       fetch(`${window.API_URL}/garage/${bikeId}/components/${comp.id}/change`, {
         method: 'POST',
         headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: notes || 'Relleno/cambio', new_name: newName, new_brand: brand || null, new_model: model || null, new_notes: notes || null }),
+        body: JSON.stringify({ reason: notes || 'Relleno/cambio', new_name: newName, new_brand: brand || null, new_model: model || null, new_notes: notes || null, performed_at: date }),
       }).then(async r => {
         if (r.ok && typeof BackendSync !== 'undefined') {
           await BackendSync.loadGarage().catch(() => {});
@@ -2229,8 +2234,11 @@ const G = (() => {
   }
 
   // ─── Modal: History ───────────────────────────────────────
-  function openHistory(compId) {
-    const items = hist.filter(h => h.component_id === compId)
+  function openHistory(compId, bikeId, componentType) {
+    // Match por id exacto o por bici+tipo, porque cada reset crea un componente con id
+    // nuevo en el backend (ver comentario en confirmCheckin) y si no, el historial de
+    // resets anteriores del mismo componente "lógico" desaparece de la vista.
+    const items = hist.filter(h => h.component_id === compId || (bikeId && componentType && h.bike_id === bikeId && h.component_type === componentType))
       .sort((a,b) => new Date(b.date) - new Date(a.date));
     let name = 'Componente';
     st.bikes.forEach(bike => { const c = bike.components.find(c => c.id === compId); if (c) name = c.name; });

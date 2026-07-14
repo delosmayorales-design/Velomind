@@ -310,17 +310,23 @@ router.post('/:bikeId/components', async (req, res) => {
 
 // POST /api/garage/:bikeId/components/:componentId/change
 router.post('/:bikeId/components/:componentId/change', async (req, res) => {
-  const { new_component_type, new_name, new_brand, new_model, new_notes, reason } = req.body;
+  const { new_component_type, new_name, new_brand, new_model, new_notes, reason, performed_at } = req.body;
 
-  const { data: component } = await supabase.from('bike_components').select('*, bikes(type, user_id)').eq('id', req.params.componentId).single();
+  const { data: component } = await supabase.from('bike_components').select('*, bikes(type, user_id, total_km, total_hours)').eq('id', req.params.componentId).single();
   if (!component || component.bikes?.user_id !== req.user.id) return res.status(404).json({ error: 'Componente no encontrado' });
+
+  // Fecha real en la que el usuario dice haber hecho el cambio/relleno — si no se manda,
+  // usar ahora. Ancla tanto el historial como el contador del componente nuevo a esa fecha,
+  // en vez de siempre "ahora mismo" (que rompía el reset de componentes por fecha).
+  const performedAtISO = performed_at ? new Date(performed_at).toISOString() : new Date().toISOString();
 
   await supabase.from('component_history').insert({
     component_id: component.id,
     km_at_install: component.km_installed, hours_at_install: component.hours_installed,
     km_at_remove: component.km_installed + (component.km_remaining || 0),
     hours_at_remove: component.hours_installed + (component.hours_remaining || 0),
-    reason, notes: component.notes
+    reason, notes: component.notes,
+    created_at: performedAtISO,
   });
 
   await supabase.from('bike_components').update({ is_active: false }).eq('id', component.id);
@@ -330,9 +336,12 @@ router.post('/:bikeId/components/:componentId/change', async (req, res) => {
     bike_id: component.bike_id,
     component_type: new_component_type || component.component_type,
     name: new_name || component.name, brand: new_brand, model: new_model,
-    km_installed: 0, hours_installed: 0,
+    // Odómetro actual de la bici al momento de instalar, no 0 — si no, el componente
+    // nace ya "gastado" (km_since_install se calcula como total_km - km_installed).
+    km_installed: component.bikes?.total_km || 0, hours_installed: component.bikes?.total_hours || 0,
     km_remaining: threshold?.lifespan_km || 0, hours_remaining: threshold?.lifespan_hours || 0,
-    notes: new_notes
+    notes: new_notes,
+    created_at: performedAtISO,
   });
 
   res.json({ message: 'Componente cambiado correctamente' });
