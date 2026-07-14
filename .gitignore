@@ -3,6 +3,13 @@ backend/node_modules/
 backend/database.db
 backend/.env
 
+# Base de datos legacy (ya no se usa, el backend real corre sobre Supabase)
+database.db
+
+# Cualquier .env suelto fuera de backend/ (antes solo se cubría backend/.env)
+.env
+*.env
+
 # Frontend
 cyclocoach/.DS_Store
 
