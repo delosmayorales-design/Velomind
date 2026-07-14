@@ -10,8 +10,6 @@
  */
 
 const BiomechanicsUtils = (() => {
-  const DEBUG_BIOMECHANICS = false;
-
   // ══════════════════════════════════════════════════════════
   // 1. RANGOS BIOMECÁNICOS PROFESIONALES
   //    Estructura: BIKE_FIT_RANGES[disciplina][objetivo]

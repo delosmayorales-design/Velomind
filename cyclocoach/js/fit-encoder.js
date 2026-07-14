@@ -41,9 +41,70 @@ const FITWorkoutEncoder = (() => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  // Convierte los intervalos YA calculados por TrainingPlanGenerator._buildIntervals
+  // (session.intervals/alt_intervals, mostrados tal cual en pantalla) a pasos FIT/TCX/ZWO.
+  // Evita reimplementar el cálculo de duraciones/reps por separado — la fuente de verdad
+  // es una sola, así que el archivo exportado no puede volver a divergir de lo que se ve.
+  function stepsFromIntervals(intervals) {
+    if (!Array.isArray(intervals) || !intervals.length) return null;
+
+    const parseWatts = (str) => {
+      const nums = String(str || '').match(/\d+/g);
+      if (!nums || !nums.length) return { lo: 0, hi: 0 };
+      const vals = nums.map(Number);
+      return vals.length === 1
+        ? { lo: vals[0], hi: vals[0] }
+        : { lo: Math.min(...vals), hi: Math.max(...vals) };
+    };
+    const repsOf     = (label) => { const m = String(label || '').match(/\(×(\d+)/); return m ? parseInt(m[1], 10) : 1; };
+    const minutesOf  = (dur)   => { const m = String(dur   || '').match(/[\d.]+/);   return m ? parseFloat(m[0]) : 0; };
+    const isRestLbl  = (label) => /recuperaci[oó]n|descanso/i.test(label || '');
+    const intensityOf = (label) => {
+      const l = String(label || '').toLowerCase();
+      if (l.includes('calentamiento')) return 2;
+      if (l.includes('vuelta a la calma') || l.includes('enfriamiento')) return 3;
+      if (isRestLbl(l)) return 1;
+      return 0;
+    };
+    const baseName = (label) => String(label || 'Paso').split(' (×')[0].trim() || 'Paso';
+    // Deja hueco para el sufijo " N/M" antes de truncar a los 15 caracteres que acepta
+    // el nombre de paso en FIT/TCX — si no, el sufijo se pierde en el corte.
+    const withSuffix = (name, suffix) => (name.slice(0, 15 - suffix.length) + suffix).slice(0, 15);
+
+    const steps = [];
+    for (let i = 0; i < intervals.length; i++) {
+      const iv = intervals[i];
+      const reps = repsOf(iv.label);
+      const perRepSec = Math.round(minutesOf(iv.dur) * 60);
+      const { lo, hi } = parseWatts(iv.watts);
+      const intensity = intensityOf(iv.label);
+      const name = baseName(iv.label);
+
+      if (reps <= 1) {
+        steps.push({ name: name.slice(0, 15), sec: perRepSec, intensity, lo, hi });
+        continue;
+      }
+
+      // Si el siguiente intervalo es la recuperación emparejada de estas repeticiones
+      // (mismo patrón que usa _buildIntervals: un renglón de trabajo ×N seguido de un
+      // renglón de recuperación ×N-1), intercalarlos igual que se ve en pantalla.
+      const next = intervals[i + 1];
+      const pairedRest = next && isRestLbl(next.label) && repsOf(next.label) === reps - 1;
+      const restSec = pairedRest ? Math.round(minutesOf(next.dur) * 60) : 0;
+      const restWatts = pairedRest ? parseWatts(next.watts) : { lo: 0, hi: 0 };
+
+      for (let r = 0; r < reps; r++) {
+        steps.push({ name: withSuffix(name, ` ${r + 1}/${reps}`), sec: perRepSec, intensity, lo, hi });
+        if (r < reps - 1 && pairedRest) {
+          steps.push({ name: 'Recuperacion', sec: restSec, intensity: 1, lo: restWatts.lo, hi: restWatts.hi });
+        }
+      }
+      if (pairedRest) i++; // ya consumido el intervalo de recuperación emparejado
+    }
+    return steps;
+  }
+
   // Build structured workout steps from a TrainingPlanGenerator session.
-  // Replicates the EXACT same duration/rep calculations as _buildIntervals() in app.js
-  // so that the exported FIT matches what VeloMind shows on screen.
   function buildSteps(session, ftp) {
     if (!ftp || ftp < 50) ftp = 200;
     const p  = (r) => Math.round(ftp * r);
@@ -53,6 +114,13 @@ const FITWorkoutEncoder = (() => {
       return [{ name:'Descanso', open:true, intensity:1, lo:0, hi:0 }];
     }
 
+    // Camino principal: usar los intervalos reales de la sesión si ya están calculados
+    // (siempre es el caso para una sesión generada por TrainingPlanGenerator).
+    const fromPlan = stepsFromIntervals(session.intervals);
+    if (fromPlan && fromPlan.length) return fromPlan;
+
+    // Fallback: si por lo que sea la sesión no trae intervalos (ej. objeto construido a
+    // mano en otro flujo), se simula la estructura como antes para no romper la exportación.
     const type    = session.type || 'endurance';
     const durMin  = Math.max(30, session.durationMin || 60);
     const variant = session.intervalVariant || 'main';

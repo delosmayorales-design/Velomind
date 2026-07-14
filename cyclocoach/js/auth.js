@@ -217,13 +217,6 @@ const Auth = (() => {
     window.location.href = 'login.html';
   }
 
-  // Función para resetear TODO en caso de error grave
-  function hardReset() {
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.href = 'login.html';
-  }
-
   // ─── Proteger página: redirige a login si no hay token ───────
   async function requireAuth() {
     const token = getToken();
@@ -546,7 +539,6 @@ const Auth = (() => {
     resendVerification,
     demoLogin,
     logout,
-    hardReset,
     verifyToken,
     requireAuth,
     saveStravaToken,
