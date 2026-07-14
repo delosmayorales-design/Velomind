@@ -931,6 +931,15 @@ const TrainingPlanGenerator = {
     return phaseMessages[phase] || phaseMessages.base;
   },
 
+  // Endurance: IF máx 0.68 para mantener estabilidad aeróbica y baja fatiga.
+  // Long: techo 0.72 — algunas plantillas piden 0.70-0.72 a propósito para simular
+  // ritmo real de carrera/gran fondo, y antes se recortaban igual que endurance.
+  _capAerobicIF(type, rawIF) {
+    if (type === 'endurance') return Math.min(0.68, rawIF);
+    if (type === 'long')      return Math.min(0.72, rawIF);
+    return rawIF;
+  },
+
   // Vatios representativos del bloque principal (no calentamiento/recuperación/vuelta a
   // la calma) para el badge "~XXXW" de la tarjeta de sesión.
   _mainBlockWatts(intervals, ftp, ifTarget) {
@@ -1046,13 +1055,7 @@ const TrainingPlanGenerator = {
       // Progresión: intensidad sube 1-2% en sesiones de calidad conforme avanza el ciclo 3:1
       const isQuality = ['threshold', 'vo2max', 'tempo', 'sprint', 'strength'].includes(t.type);
       const rawIF  = t.ifTarget || 0.65;
-      // Endurance: IF máx 0.68 para mantener estabilidad aeróbica y baja fatiga.
-      // Long: techo 0.72 — algunas plantillas piden 0.70-0.72 a propósito para simular
-      // ritmo real de carrera/gran fondo, y antes se recortaban igual que endurance.
-      const cappedIF =
-        t.type === 'endurance' ? Math.min(0.68, rawIF) :
-        t.type === 'long'      ? Math.min(0.72, rawIF) :
-        rawIF;
+      const cappedIF = this._capAerobicIF(t.type, rawIF);
       let ifTarget = isQuality ? Math.min(1.05, Math.round(cappedIF * intensityBoost * 100) / 100) : cappedIF;
 
       // Cap de TSS por sesión ANTES del cálculo de duración.

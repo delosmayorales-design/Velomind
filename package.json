@@ -1,0 +1,15 @@
+{
+  "name": "velomind-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Suite de tests de VeloMind (backend + logica de calculo del frontend). No es el paquete de la app -- ver backend/package.json para las dependencias de runtime.",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "supertest": "^6.3.4"
+  }
+}

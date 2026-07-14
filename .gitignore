@@ -3,6 +3,9 @@ backend/node_modules/
 backend/database.db
 backend/.env
 
+# Tests (raíz) -- ver package.json/jest.config.js
+node_modules/
+
 # Base de datos legacy (ya no se usa, el backend real corre sobre Supabase)
 database.db
 
