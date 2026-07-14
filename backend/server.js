@@ -87,6 +87,7 @@ app.post('/api/auth/login',    rateLimit(10, 15 * 60 * 1000)); // 10 intentos / 
 app.post('/api/auth/register', rateLimit(5,  60 * 60 * 1000)); // 5 registros / hora
 app.post('/api/auth/demo',     rateLimit(3,  60 * 60 * 1000)); // 3 demos / hora
 app.post('/api/auth/forgot-password', rateLimit(5, 60 * 60 * 1000));
+app.post('/api/auth/resend-verification', rateLimit(5, 60 * 60 * 1000));
 // Las rutas de IA de coach.js son las más costosas (llamadas a Anthropic/OpenAI/Gemini/Groq)
 // y antes no tenían ningún límite — un límite generoso alcanza para uso normal.
 app.use('/api/coach', rateLimit(40, 60 * 60 * 1000));

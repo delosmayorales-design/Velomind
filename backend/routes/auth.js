@@ -14,6 +14,56 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const avatarUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
+// Envía el email de verificación y crea el token — se usa desde /register y /resend-verification.
+async function sendVerificationEmail(user) {
+  await supabase.from('email_verification_tokens').delete().eq('user_id', user.id);
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+
+  await supabase.from('email_verification_tokens').insert({
+    user_id: user.id,
+    token,
+    expires_at: expiresAt.toISOString(),
+  });
+
+  const backendUrl = process.env.BACKEND_URL || 'https://velomind-backend.onrender.com';
+  const verifyUrl = `${backendUrl}/api/auth/verify-email?token=${token}`;
+
+  await sgMail.send({
+    from: { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || 'info@velomind.org' },
+    to: user.email,
+    subject: 'Confirma tu email — VeloMind',
+    html: `
+      <div style="font-family:'DM Sans',Arial,sans-serif;max-width:520px;margin:0 auto;background:#0a0b0f;color:#f0f2f5;border-radius:16px;overflow:hidden">
+        <div style="background:linear-gradient(135deg,#1a1d26,#0a0b0f);padding:40px 40px 32px;border-bottom:1px solid rgba(255,255,255,0.06)">
+          <div style="font-size:28px;font-weight:800;font-family:'Space Grotesk',Arial,sans-serif">
+            🚴 VeloMind
+          </div>
+        </div>
+        <div style="padding:40px">
+          <h2 style="margin:0 0 12px;font-size:22px;font-weight:700">Hola, ${user.name || 'ciclista'}</h2>
+          <p style="color:#9ca3af;line-height:1.6;margin:0 0 28px">
+            Confirma tu email para activar tu cuenta de VeloMind. El enlace es válido por
+            <strong style="color:#f0f2f5">24 horas</strong>.
+          </p>
+          <a href="${verifyUrl}" style="display:inline-block;background:#9ED62B;color:#111;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px;font-family:'Space Grotesk',Arial,sans-serif">
+            Confirmar email
+          </a>
+          <p style="color:#6b7280;font-size:13px;margin:28px 0 0;line-height:1.5">
+            Si no creaste esta cuenta, podés ignorar este correo.
+          </p>
+        </div>
+        <div style="padding:20px 40px;background:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.06)">
+          <p style="color:#4b5563;font-size:12px;margin:0">
+            VeloMind — Tu entrenador de ciclismo con IA
+          </p>
+        </div>
+      </div>
+    `,
+  });
+}
+
 // Registro
 router.post('/register', async (req, res) => {
   try {
@@ -31,10 +81,16 @@ router.post('/register', async (req, res) => {
     const { data: user, error } = await supabase.from('users').insert({
       email: emailNorm,
       password: hash,
-      name: name?.trim() || emailNorm.split('@')[0]
+      name: name?.trim() || emailNorm.split('@')[0],
+      email_verified: false,
     }).select('*').single();
 
     if (error) throw error;
+
+    // No bloqueamos el alta por un email que no llegue a enviarse — el usuario
+    // puede pedir que se lo reenvíen desde /resend-verification.
+    sendVerificationEmail(user).catch(e => console.error('[auth/register] error enviando verificación:', e.message));
+
     res.status(201).json({ message: '✅ Cuenta creada', token: signToken(user), user: safeUser(user) });
   } catch (e) {
     console.error('[auth/register]', e.message);
@@ -50,10 +106,66 @@ router.post('/login', async (req, res) => {
     const { data: user } = await supabase.from('users').select('*').eq('email', email.trim().toLowerCase()).maybeSingle();
     if (!user || !(await bcrypt.compare(password, user.password || '')))
       return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+    if (user.email_verified === false) {
+      return res.status(403).json({
+        error: 'Confirma tu email antes de iniciar sesión. Revisa tu bandeja de entrada.',
+        code: 'EMAIL_NOT_VERIFIED',
+      });
+    }
     res.json({ message: '✅ Sesión iniciada', token: signToken(user), user: safeUser(user) });
   } catch (e) {
     console.error('[auth/login]', e.message);
     res.status(500).json({ error: 'Error al iniciar sesión. Inténtalo de nuevo.' });
+  }
+});
+
+// Confirmar email desde el enlace del correo (GET porque se abre directo desde el navegador)
+router.get('/verify-email', async (req, res) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://velomind-liard.vercel.app';
+  const { token } = req.query;
+  if (!token) return res.redirect(`${frontendUrl}/verify-email.html?status=missing`);
+
+  try {
+    const { data: vt } = await supabase
+      .from('email_verification_tokens')
+      .select('*')
+      .eq('token', token)
+      .eq('used', false)
+      .maybeSingle();
+
+    if (!vt) return res.redirect(`${frontendUrl}/verify-email.html?status=invalid`);
+    if (new Date(vt.expires_at) < new Date()) {
+      return res.redirect(`${frontendUrl}/verify-email.html?status=expired`);
+    }
+
+    await supabase.from('users').update({ email_verified: true }).eq('id', vt.user_id);
+    await supabase.from('email_verification_tokens').update({ used: true }).eq('id', vt.id);
+
+    res.redirect(`${frontendUrl}/verify-email.html?status=ok`);
+  } catch (e) {
+    console.error('[auth/verify-email]', e.message);
+    res.redirect(`${frontendUrl}/verify-email.html?status=error`);
+  }
+});
+
+// Reenviar el email de verificación
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email requerido' });
+
+    const emailNorm = email.trim().toLowerCase();
+    const { data: user } = await supabase.from('users').select('*').eq('email', emailNorm).maybeSingle();
+
+    // Misma respuesta exista o no la cuenta, o ya esté verificada, para no filtrar info.
+    const ok = { message: 'Si la cuenta existe y no está verificada, te reenviamos el email.' };
+    if (!user || user.email_verified !== false) return res.json(ok);
+
+    await sendVerificationEmail(user);
+    res.json(ok);
+  } catch (e) {
+    console.error('[auth/resend-verification]', e.message);
+    res.status(500).json({ error: 'Error al reenviar el email. Inténtalo de nuevo.' });
   }
 });
 

@@ -125,7 +125,11 @@ const Auth = (() => {
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Credenciales incorrectas');
+    if (!res.ok) {
+      const err = new Error(data.error || 'Credenciales incorrectas');
+      err.code = data.code;
+      throw err;
+    }
     setToken(data.token, remember);
     setUser(data.user, remember);
     // Sincronizar perfil completo al appState si existe
@@ -138,6 +142,18 @@ const Auth = (() => {
         sessionStorage.setItem('velomind_athlete', JSON.stringify(data.user));
       }
     }
+    return data;
+  }
+
+  // ─── Reenviar email de verificación ───────────────────────────
+  async function resendVerification(email) {
+    const res = await fetch(`${API_URL}/auth/resend-verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'No se pudo reenviar el email');
     return data;
   }
 
@@ -527,6 +543,7 @@ const Auth = (() => {
     updateUI: injectUserUI,
     login,
     register,
+    resendVerification,
     demoLogin,
     logout,
     hardReset,

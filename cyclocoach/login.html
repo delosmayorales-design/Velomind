@@ -591,6 +591,15 @@
     btn.innerHTML = `<i class="fas fa-eye${showing ? '' : '-slash'}"></i>`;
   }
 
+  async function resendVerificationFromLogin(email) {
+    try {
+      const data = await Auth.resendVerification(email);
+      showAlert(data.message || 'Si la cuenta existe, te reenviamos el email.', 'success');
+    } catch (e) {
+      showAlert(e.message || 'No se pudo reenviar el email.');
+    }
+  }
+
   async function doLogin(e) {
     e.preventDefault();
     const email = document.getElementById('login-email').value.trim().toLowerCase();
@@ -613,6 +622,10 @@
       setTimeout(() => window.location.href = hasProfile ? 'dashboard.html' : 'index.html', 700);
     } catch(e) {
       setLoading('spinner-login', 'login-label', 'btn-login', false);
+      if (e.code === 'EMAIL_NOT_VERIFIED') {
+        showAlert(`${e.message} <a href="#" onclick="resendVerificationFromLogin('${email}');return false;" style="color:inherit;text-decoration:underline;font-weight:600">Reenviar email</a>`);
+        return;
+      }
       showAlert(e.message || 'Email o contraseña incorrectos.');
     }
   }
