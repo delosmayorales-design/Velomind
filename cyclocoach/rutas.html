@@ -2469,6 +2469,18 @@ function estimateRideTime(distKm, elevGainM, type) {
   return _calcTime(distKm, elevGainM, type, getRiderExperience());
 }
 
+// Duración real de una ruta grabada por GPS: preferir el campo numérico
+// estimated_minutes (fiable); si una ruta antigua no lo tiene guardado, se recupera
+// del texto de "notes" buscando un patrón de hora (H:MM:SS / MM:SS) en vez de cortar
+// por posición -- así nunca se puede confundir con la fecha que también va en notes
+// (antes "GPS · 2026-07-05 · 2:57:03".split(' · ')[2] podía romperse y devolver la
+// fecha si el formato de notes no coincidía exactamente).
+function _extractGpsDuration(route) {
+  if (route.estimated_minutes) return formatTime(route.estimated_minutes);
+  const m = String(route.notes || '').match(/\b\d{1,2}:\d{2}:\d{2}\b|\b\d{1,2}:\d{2}\b/);
+  return m ? m[0] : null;
+}
+
 // Devuelve los 3 tiempos (lento / medio / rápido) y actualiza el panel de stats
 function setTimeStat(distKm, elevGainM, type, gpsTime = null) {
   const exp = getRiderExperience();
@@ -3354,7 +3366,7 @@ function openRouteOnMap(id) {
   _computedElevGain = route.elevation_gain_m ? Math.round(route.elevation_gain_m) : null;
   document.getElementById('stat-dist').textContent = route.distance_km?.toFixed(1) ?? '—';
   document.getElementById('stat-elev').textContent = _computedElevGain ?? '—';
-  const gpsDur = isGps ? route.notes?.split(' · ')[2] : null;
+  const gpsDur = isGps ? _extractGpsDuration(route) : null;
   if (gpsDur) {
     setTimeStat(route.distance_km ?? 0, route.elevation_gain_m ?? 0, route.type ?? 'road', gpsDur);
   } else {
@@ -5801,6 +5813,9 @@ async function saveTrackingActivity() {
     geojson: _buildTrackGeoJSON(),
     distance_km: Math.round(distKm * 10) / 10,
     elevation_gain_m: Math.round(_trkElevGain),
+    // Guardar la duración real como campo numérico (no solo dentro de "notes" en
+    // texto) para que el panel de detalle no tenga que parsear notes por posición.
+    estimated_minutes: Math.round(elapsed / 60),
     notes: `GPS · ${dateStr} · ${_fmtTime(elapsed)}`,
   };
 
