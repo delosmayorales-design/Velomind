@@ -86,7 +86,7 @@ router.get('/status', requireAuth, async (req, res) => {
   });
 });
 
-// POST /api/payments/webhook  (raw body — registered in server.js before express.json)
+// POST /api/payments/webhook  (raw body — montada con express.raw() antes de express.json() en server.js)
 async function handleWebhook(req, res) {
   const stripe = getStripe();
   const sig = req.headers['stripe-signature'];
@@ -103,6 +103,14 @@ async function handleWebhook(req, res) {
     return res.status(400).send(`Webhook Error: ${e.message}`);
   }
 
+  // Idempotencia: Stripe puede reenviar el mismo evento (reintentos de red, etc.).
+  // Si ya lo procesamos, respondemos ok sin volver a aplicar el cambio.
+  const { error: dupError } = await supabase.from('stripe_webhook_events').insert({ event_id: event.id });
+  if (dupError) {
+    console.log('[webhook] evento ya procesado, se ignora:', event.id);
+    return res.json({ received: true, duplicate: true });
+  }
+
   const obj = event.data.object;
 
   if (event.type === 'checkout.session.completed') {
@@ -114,8 +122,23 @@ async function handleWebhook(req, res) {
   }
 
   if (event.type === 'customer.subscription.updated') {
-    const active = ['active', 'trialing'].includes(obj.status);
-    await supabase.from('users').update({ subscription_tier: active ? 'premium' : 'free' }).eq('stripe_customer_id', obj.customer);
+    const status = obj.status;
+    if (['active', 'trialing'].includes(status)) {
+      await supabase.from('users').update({ subscription_tier: 'premium' }).eq('stripe_customer_id', obj.customer);
+    } else if (status === 'past_due' || status === 'unpaid') {
+      // Periodo de gracia: Stripe todavía está reintentando el cobro (dunning). No cortamos
+      // el acceso de golpe — requirePremium también acepta 'past_due' mientras dura.
+      await supabase.from('users').update({ subscription_tier: 'past_due' }).eq('stripe_customer_id', obj.customer);
+      console.log('[webhook] pago pendiente, periodo de gracia customer:', obj.customer);
+    } else {
+      await supabase.from('users').update({ subscription_tier: 'free' }).eq('stripe_customer_id', obj.customer);
+    }
+  }
+
+  if (event.type === 'invoice.payment_failed') {
+    // Aquí es donde, cuando se active el cobro, se debería enviar un email de aviso
+    // de pago fallido (dunning) — de momento solo se deja constancia en el log.
+    console.log('[webhook] pago fallido customer:', obj.customer);
   }
 
   if (

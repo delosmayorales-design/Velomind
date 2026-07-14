@@ -299,7 +299,7 @@ router.get('/power-curve', async (req, res) => {
 });
 
 // POST /api/coach/biomechanics
-router.post('/biomechanics', async (req, res) => {
+router.post('/biomechanics', requirePremium, async (req, res) => {
   const { photos = [], rider = {}, user_points = {} } = req.body || {};
   if (!Array.isArray(photos) || photos.length < 1) {
     return res.status(400).json({ error: 'Debes enviar al menos 1 foto' });
@@ -350,7 +350,7 @@ router.post('/biomechanics', async (req, res) => {
 });
 
 // ── POST /api/coach/biomechanics-video (ANÁLISIS DINÁMICO) ──
-router.post('/biomechanics-video', upload.single('video'), async (req, res) => {
+router.post('/biomechanics-video', requirePremium, upload.single('video'), async (req, res) => {
   try {
     const file = req.file;
     const googleKey = process.env.GOOGLE_API_KEY || '';
@@ -1318,7 +1318,7 @@ function buildMealPlan(carbsG, proteinG, fatG) {
 }
 
 // ── POST /api/coach/ai-analysis ──────────────────────────────
-router.post('/ai-analysis', async (req, res) => {
+router.post('/ai-analysis', requirePremium, async (req, res) => {
   try {
     const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
     const openaiKey    = process.env.OPENAI_API_KEY    || '';
@@ -1575,7 +1575,7 @@ Incluye los 7 días de la semana en plan_semanal. Para días de entreno duracion
 
 // ── POST /api/coach/today-adaptation ─────────────────────────
 // Devuelve solo la recomendación para HOY en base al estado del atleta
-router.post('/today-adaptation', async (req, res) => {
+router.post('/today-adaptation', requirePremium, async (req, res) => {
   try {
     const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
     const openaiKey    = process.env.OPENAI_API_KEY    || '';
@@ -1802,7 +1802,7 @@ Devuelve SOLO este JSON (sin texto adicional):
 });
 
 // ── POST /api/coach/daily-menus ──────────────────────────────
-router.post('/daily-menus', async (req, res) => {
+router.post('/daily-menus', requirePremium, async (req, res) => {
   const { weight, experience, preferences, likes, dislikes, calories, carbs, protein, fat } = req.body;
   if (!calories || !carbs || !protein || !fat)
     return res.status(400).json({ error: 'calories, carbs, protein y fat son obligatorios' });
@@ -1989,7 +1989,7 @@ Devuelve ÚNICAMENTE JSON válido con esta estructura exacta:
 }`;
 
 // ── POST /api/coach/recalculate-week ─────────────────────────
-router.post('/recalculate-week', async (req, res) => {
+router.post('/recalculate-week', requirePremium, async (req, res) => {
   try {
     const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
     const openaiKey    = process.env.OPENAI_API_KEY    || '';
@@ -2429,7 +2429,7 @@ Si el plan ya es óptimo → devolver "modifications": []`;
 });
 
 // POST /api/coach/design-kit-ai
-router.post('/design-kit-ai', async (req, res) => {
+router.post('/design-kit-ai', requirePremium, async (req, res) => {
   try {
     const { prompt, currentDesign } = req.body;
     if (!prompt) {
@@ -2483,7 +2483,7 @@ Si pide un rediseño completo con una temática (ej: "modelo militar", "estilo r
 });
 
 // POST /api/coach/mechanic-ai
-router.post('/mechanic-ai', async (req, res) => {
+router.post('/mechanic-ai', requirePremium, async (req, res) => {
   try {
     const { prompt, component } = req.body;
     if (!prompt) {
@@ -2537,7 +2537,7 @@ Devuelve un JSON con esta estructura exacta:
 // ── POST /api/coach/session-guidance ─────────────────────────
 // Planifica una sesión personalizada desde cero (NO adapta una existente).
 // El usuario describe lo que quiere hacer y la IA devuelve plan completo.
-router.post('/session-guidance', async (req, res) => {
+router.post('/session-guidance', requirePremium, async (req, res) => {
   try {
     const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -2591,7 +2591,7 @@ El atleta quiere hacer:
 // ── GET /api/coach/smart-insights ─────────────────────────────────────────
 // Traduce métricas a lenguaje natural + alertas mantenimiento + detección FTP
 // Query params: tomorrow_code, tomorrow_precip, tomorrow_wind, tomorrow_temp
-router.get('/smart-insights', async (req, res) => {
+router.get('/smart-insights', requirePremium, async (req, res) => {
   try {
     const uid = req.user.id;
 
@@ -2803,7 +2803,7 @@ Objetivo del atleta: ${user.goal || 'resistencia'}`;
 
 // ── POST /api/coach/analyze-race-profile ─────────────────────────────────────
 // Analiza una imagen del perfil de carrera con Claude Vision y extrae los datos
-router.post('/analyze-race-profile', async (req, res) => {
+router.post('/analyze-race-profile', requirePremium, async (req, res) => {
   const { imageBase64 } = req.body;
   if (!imageBase64) return res.status(400).json({ error: 'Imagen requerida' });
 
@@ -2970,7 +2970,7 @@ Si un campo no es legible, usa null o [].`;
 
 // ── POST /api/coach/race-day ──────────────────────────────────────────────────
 // Genera estrategia personalizada a partir de datos estructurados del recorrido
-router.post('/race-day', async (req, res) => {
+router.post('/race-day', requirePremium, async (req, res) => {
   const { raceData, athleteData } = req.body;
   if (!athleteData?.ftp) return res.status(400).json({ error: 'Datos del atleta requeridos' });
 
@@ -3201,7 +3201,7 @@ Usa ## para secciones, ### para nombres de puertos, - para listas, tablas markdo
 
 // ── POST /api/coach/race-strategy ─────────────────────────────────────────────
 // Genera un plan de carrera personalizado con IA usando los datos reales del ciclista
-router.post('/race-strategy', async (req, res) => {
+router.post('/race-strategy', requirePremium, async (req, res) => {
   const { athleteData, raceProfile } = req.body;
   if (!athleteData || !athleteData.ftp) {
     return res.status(400).json({ error: 'Datos del atleta requeridos (ftp)' });

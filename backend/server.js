@@ -68,6 +68,14 @@ function rateLimit(max, windowMs) {
   };
 }
 
+// Webhook de Stripe: Stripe firma el body crudo (Buffer), así que esta ruta debe montarse
+// con express.raw() ANTES del express.json() global — si no, la verificación de firma
+// siempre falla porque el body ya llegaría parseado a JSON. Sigue sin haber tráfico real
+// aquí hasta que se instale el paquete `stripe` y se configuren las claves (ver payments.js).
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
+  Promise.resolve(require('./routes/payments').handleWebhook(req, res)).catch(next);
+});
+
 // Body parser (necesario para POST con JSON)
 app.use(express.json({ limit: '5mb' }));
 
