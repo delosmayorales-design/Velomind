@@ -48,7 +48,7 @@ router.post('/create-checkout', requireAuth, async (req, res) => {
     res.json({ url: session.url });
   } catch (e) {
     console.error('[payments/checkout]', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'No se pudo iniciar el pago. Inténtalo de nuevo.' });
   }
 });
 
@@ -68,7 +68,7 @@ router.post('/portal', requireAuth, async (req, res) => {
     res.json({ url });
   } catch (e) {
     console.error('[payments/portal]', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'No se pudo abrir el portal de facturación. Inténtalo de nuevo.' });
   }
 });
 

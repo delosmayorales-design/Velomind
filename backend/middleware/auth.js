@@ -1,12 +1,12 @@
 const jwt = require('jsonwebtoken');
 const supabase = require('../db'); // ← ahora apunta a Supabase
 
-const SECRET       = process.env.JWT_SECRET || 'cyclocoach_dev_secret_change_in_prod';
 const ADMIN_EMAIL  = process.env.ADMIN_EMAIL || '';
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-  console.error('🚨 SEGURIDAD: JWT_SECRET no está configurado. Añádelo como variable de entorno en producción.');
-  process.exit(1); // No arrancar en producción sin secret
+if (!process.env.JWT_SECRET) {
+  console.error('🚨 SEGURIDAD: JWT_SECRET no está configurado. Añádelo como variable de entorno antes de arrancar.');
+  process.exit(1); // Nunca arrancar sin secret, en ningún entorno — firmar/verificar tokens con un valor por defecto es forjable por cualquiera que lea el código fuente.
 }
+const SECRET = process.env.JWT_SECRET;
 
 async function requireAuth(req, res, next) {
   const header = req.headers['authorization'];

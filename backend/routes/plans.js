@@ -6,6 +6,8 @@ const PlanRecalculator = require('../services/planRecalculator');
 const router    = express.Router();
 router.use(requireAuth);
 
+const SERVER_ERROR = 'Error del servidor. Inténtalo de nuevo.';
+
 // ── Training Plan ───────────────────────────────────────────────
 
 router.get('/training', async (req, res) => {
@@ -16,7 +18,7 @@ router.get('/training', async (req, res) => {
     .order('week_start', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[plans/training GET]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
   res.json(data || null);
 });
 
@@ -40,7 +42,7 @@ router.post('/training', async (req, res) => {
       .select('id')
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) { console.error('[plans/training POST]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
 
     // 📝 Si es generación inicial, guardar en histórico
     if (is_initial_generation) {
@@ -121,7 +123,8 @@ router.post('/training', async (req, res) => {
 
     res.status(201).json({ message: 'Plan guardado', id: data.id });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[plans/training POST]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -145,7 +148,8 @@ router.post('/training/regenerate', async (req, res) => {
       newSessions: result.newSessions || [],
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[plans/training/regenerate]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -166,11 +170,12 @@ router.get('/training/history', async (req, res) => {
     }
 
     const { data, error } = await query.limit(50);
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) { console.error('[plans/training/history]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
 
     res.json({ history: data || [] });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[plans/training/history]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -180,17 +185,28 @@ router.get('/training/history/:historyId/sessions', async (req, res) => {
   const { historyId } = req.params;
 
   try {
+    // Verificar que este historial pertenece al usuario antes de devolver sus sesiones —
+    // si no, cualquiera que adivine/conozca un historyId ajeno podía leer sus sesiones.
+    const { data: history } = await supabase
+      .from('training_plans_history')
+      .select('id')
+      .eq('id', historyId)
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+    if (!history) return res.status(404).json({ error: 'Historial no encontrado' });
+
     const { data, error } = await supabase
       .from('training_sessions_initial')
       .select('*')
       .eq('plan_history_id', historyId)
       .order('session_index', { ascending: true });
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) { console.error('[plans/history/sessions]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
 
     res.json({ sessions: data || [] });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[plans/history/sessions]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -211,11 +227,12 @@ router.get('/training/adaptations', async (req, res) => {
     }
 
     const { data, error } = await query.limit(Math.min(parseInt(limit) || 20, 100));
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) { console.error('[plans/adaptations GET]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
 
     res.json({ adaptations: data || [] });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[plans/adaptations GET]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -237,14 +254,16 @@ router.patch('/training/adaptations/:adaptationId', async (req, res) => {
         updated_at: new Date().toISOString(),
       })
       .eq('id', adaptationId)
+      .eq('user_id', req.user.id)
       .select()
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return res.status(404).json({ error: 'Adaptación no encontrada' });
 
     res.json({ message: approved ? 'Adaptación aprobada' : 'Adaptación rechazada', adaptation: data });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[plans/adaptations/patch]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -262,7 +281,8 @@ router.post('/training/adaptations/:adaptationId/revert', async (req, res) => {
     const result = await PlanRecalculator.revertAdaptation(req.user.id, week_start, adaptationId);
     res.json(result);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[plans/adaptations/revert]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -283,7 +303,7 @@ router.get('/training/weekly-report', async (req, res) => {
     }
 
     const { data: adaptations, error: adaptError } = await query.order('created_at', { ascending: true });
-    if (adaptError) throw new Error(adaptError.message);
+    if (adaptError) throw adaptError;
 
     // Obtener histórico de planes
     const { data: history, error: histError } = await supabase
@@ -294,7 +314,7 @@ router.get('/training/weekly-report', async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(10);
 
-    if (histError) throw new Error(histError.message);
+    if (histError) throw histError;
 
     // Obtener actividades reales de la semana
     const weekStart = week_start || (() => {
@@ -314,7 +334,7 @@ router.get('/training/weekly-report', async (req, res) => {
       .gte('date', weekStart)
       .lte('date', weekEndStr);
 
-    if (actError) throw new Error(actError.message);
+    if (actError) throw actError;
 
     // Compilar reporte
     const report = {
@@ -334,7 +354,8 @@ router.get('/training/weekly-report', async (req, res) => {
 
     res.json(report);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[plans/weekly-report]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -348,7 +369,7 @@ router.get('/nutrition', async (req, res) => {
     .order('date', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[plans/nutrition GET]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
   res.json(data || null);
 });
 
@@ -374,7 +395,7 @@ router.post('/nutrition', async (req, res) => {
     .select('id')
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[plans/nutrition POST]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
   res.status(201).json({ message: 'Nutrición guardada', id: data.id });
 });
 
@@ -388,7 +409,7 @@ router.get('/biomechanics', async (req, res) => {
     .order('date', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[plans/biomechanics GET]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
   res.json(data || null);
 });
 
@@ -411,7 +432,7 @@ router.post('/biomechanics', async (req, res) => {
     .select('id')
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[plans/biomechanics POST]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
   res.status(201).json({ message: 'Biomecánica guardada', id: data.id });
 });
 
@@ -424,7 +445,7 @@ router.get('/biomechanics-snapshots', async (req, res) => {
     .eq('user_id', req.user.id)
     .order('created_at', { ascending: false })
     .limit(50);
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[plans/biomechanics-snapshots GET]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
   res.json({ snapshots: data || [] });
 });
 
@@ -447,7 +468,7 @@ router.post('/biomechanics-snapshot', async (req, res) => {
     .select('id, created_at')
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[plans/biomechanics-snapshot POST]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
   res.status(201).json({ ok: true, snapshot: data });
 });
 
@@ -468,7 +489,7 @@ router.delete('/biomechanics-snapshot/:id', async (req, res) => {
     .delete()
     .eq('id', req.params.id)
     .eq('user_id', req.user.id);
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[plans/biomechanics-snapshot DELETE]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
   res.json({ ok: true });
 });
 
@@ -504,8 +525,8 @@ router.post('/export-fit', async (req, res) => {
     });
     res.end(fitBuf);
   } catch (err) {
-    console.error('[export-fit]', err);
-    res.status(500).json({ error: err.message });
+    console.error('[export-fit]', err.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 

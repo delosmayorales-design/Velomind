@@ -93,7 +93,7 @@ function randomPkceVerifier() {
 function encodeState(payload) {
   const body = base64Url(JSON.stringify(payload));
   const sig = require('crypto')
-    .createHmac('sha256', process.env.JWT_SECRET || 'velomind-dev-secret')
+    .createHmac('sha256', process.env.JWT_SECRET)
     .update(body)
     .digest('base64url');
   return `${body}.${sig}`;
@@ -103,7 +103,7 @@ function decodeState(state) {
   const [body, sig] = String(state || '').split('.');
   if (!body || !sig) return null;
   const expected = require('crypto')
-    .createHmac('sha256', process.env.JWT_SECRET || 'velomind-dev-secret')
+    .createHmac('sha256', process.env.JWT_SECRET)
     .update(body)
     .digest('base64url');
   if (sig !== expected) return null;
@@ -117,10 +117,7 @@ router.get('/strava/connect', requireAuth, (req, res) => {
     return res.status(500).json({ error: 'Strava no configurado' });
   }
 
-  const state = Buffer.from(JSON.stringify({
-    userId: req.user.id,
-    ts: Date.now()
-  })).toString('base64');
+  const state = encodeState({ userId: req.user.id, ts: Date.now() });
 
   const url = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_ID}&redirect_uri=${encodeURIComponent(STRAVA_RDR)}&response_type=code&scope=read,activity:read_all,profile:read_all&approval_prompt=force&state=${state}`;
 
@@ -139,12 +136,10 @@ async function handleStravaExchange(req, res) {
   if (req.user) {
     userId = req.user.id;
   } else if (state) {
-    try {
-      const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
-      userId = decoded.userId;
-    } catch {
-      userId = null;
-    }
+    // decodeState verifica la firma HMAC — un state con la firma alterada o inventada
+    // (p.ej. apuntando al userId de otra persona) se descarta en vez de aceptarse.
+    const decoded = decodeState(state);
+    userId = decoded?.userId || null;
   }
 
   if (!userId) {
@@ -187,7 +182,8 @@ async function handleStravaExchange(req, res) {
     }
 
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 }
 
@@ -510,7 +506,8 @@ rowsToInsert.push({
 
   } catch (e) {
     console.error('\n❌ [Strava Sync] ERROR FATAL:', e.message || e, '\nStack:', e.stack || '(sin stack)');
-    res.status(500).json({ error: e.message || 'Error interno al sincronizar con Strava' });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error interno al sincronizar con Strava' });
   }
 });
 
@@ -562,7 +559,8 @@ router.get('/strava/streams/:activityId', requireAuth, async (req, res) => {
     res.json(streams);
   } catch (e) {
     console.error('[Streams] Error:', e.message);
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -612,7 +610,8 @@ router.get('/strava/polylines', requireAuth, async (req, res) => {
     res.json(result);
   } catch (e) {
     console.error('[Polylines]', e.message);
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -695,7 +694,7 @@ async function handleGarminCallback(req, res) {
     if (req.method === 'POST') return res.json({ message: 'Garmin conectado', userId: garminUserId });
     res.redirect(`${FRONTEND_URL}/integrations.html?garmin=connected`);
   } catch (e) {
-    if (req.method === 'POST') return res.status(500).json({ error: e.message });
+    if (req.method === 'POST') return console.error('[providers]', e.message); res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
     res.redirect(`${FRONTEND_URL}/integrations.html?garmin=error&reason=${encodeURIComponent(e.message)}`);
   }
 }
@@ -831,7 +830,8 @@ router.post('/garmin/sync', requireAuth, async (req, res) => {
     });
     res.json({ message: 'Garmin Sync OK', downloaded: Array.isArray(acts) ? acts.length : 0, cycling_filtered: rows.length, synced: rows.length - failed, failed });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -883,7 +883,8 @@ router.post('/garmin/push-workout', requireAuth, async (req, res) => {
 
     res.json({ ok: true, message: 'Workout enviado a Garmin Connect. Sincroniza tu reloj para verlo.' });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -972,7 +973,8 @@ router.post('/garmin/push-structured-workout', requireAuth, async (req, res) => 
     res.json({ ok: true, workoutId: gcData?.workoutId || null,
       message: 'Workout creado en Garmin Connect. Sincroniza tu reloj para verlo en Entrenamientos.' });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -994,7 +996,8 @@ router.delete('/garmin/disconnect', requireAuth, async (req, res) => {
     }).eq('id', req.user.id);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -1050,7 +1053,8 @@ router.post('/garmin/wellness-sync', requireAuth, async (req, res) => {
     if (rows.length) await supabase.from('wellness_log').upsert(rows, { onConflict: 'user_id,date,source' });
     res.json({ message: 'Wellness sync OK', days: rows.length });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -1198,7 +1202,8 @@ router.post('/fitbit/wellness-sync', requireAuth, async (req, res) => {
     if (rows.length) await supabase.from('wellness_log').upsert(rows, { onConflict: 'user_id,date,source' });
     res.json({ message: 'Google Fit wellness sync OK', days: rows.length });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -1209,7 +1214,8 @@ router.delete('/fitbit/disconnect', requireAuth, async (req, res) => {
     }).eq('id', req.user.id);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -1227,7 +1233,8 @@ router.get('/status', requireAuth, async (req, res) => {
       fitbit: { connected: !!user?.fitbit_token, configured: !!GFIT_ID }
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -1264,7 +1271,8 @@ router.get('/strava/debug-activities', requireAuth, async (req, res) => {
 
     res.json(formatted);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -1357,7 +1365,8 @@ router.get('/strava/activity-segments/:stravaId', requireAuth, async (req, res) 
     }));
     res.json(efforts);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -1409,7 +1418,8 @@ router.get('/strava/segment-leaderboard/:segmentId', requireAuth, async (req, re
       })),
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 
@@ -1442,7 +1452,8 @@ router.get('/strava/segments', requireAuth, async (req, res) => {
     const data = await r.json();
     res.json(data.segments || []);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[providers]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
 

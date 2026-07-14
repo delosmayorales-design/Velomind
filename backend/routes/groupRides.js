@@ -4,6 +4,8 @@ const supabase   = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const router     = express.Router();
 
+const SERVER_ERROR = 'Error del servidor. Inténtalo de nuevo.';
+
 // ── Push helper ───────────────────────────────────────────────────────────────
 async function sendPushToUser(userId, payload) {
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
@@ -61,7 +63,8 @@ router.get('/', requireAuth, async (req, res) => {
     if (error) throw error;
     res.json((rides || []).map(r => formatRide(r, req.user.id)));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides GET]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -97,7 +100,8 @@ router.get('/mine', requireAuth, async (req, res) => {
 
     res.json(all);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides/mine]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -115,7 +119,8 @@ router.get('/users/search', requireAuth, async (req, res) => {
     if (error) throw error;
     res.json(data || []);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides/users/search]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -139,11 +144,21 @@ router.get('/:id', requireAuth, async (req, res) => {
     if (error) return res.status(404).json({ error: 'Salida no encontrada' });
 
     const confirmed = (ride.group_ride_participants || []).filter(p => p.status === 'confirmed');
+    const isMine    = ride.creator_id === userId;
+    const isJoined  = !!confirmed.find(p => p.user_id === userId);
+
+    // Una salida privada solo es visible para su creador o sus participantes confirmados —
+    // antes se devolvía el detalle completo (punto de encuentro, coordenadas, lista de
+    // participantes) a cualquier usuario autenticado que conociera el id.
+    if (!ride.is_public && !isMine && !isJoined) {
+      return res.status(404).json({ error: 'Salida no encontrada' });
+    }
+
     res.json({
       ...ride,
       participant_count: confirmed.length,
-      is_joined: !!confirmed.find(p => p.user_id === userId),
-      is_mine:   ride.creator_id === userId,
+      is_joined: isJoined,
+      is_mine:   isMine,
       creator_name:   ride.users?.name || 'Ciclista',
       creator_avatar: ride.users?.avatar_url || null,
       participants: confirmed.map(p => ({
@@ -156,7 +171,8 @@ router.get('/:id', requireAuth, async (req, res) => {
       users: undefined,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides/:id]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -204,7 +220,8 @@ router.post('/', requireAuth, async (req, res) => {
 
     res.status(201).json({ ...data, participant_count: 1, is_joined: true, is_mine: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides POST]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -231,11 +248,12 @@ router.patch('/:id', requireAuth, async (req, res) => {
       .select('*')
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return res.status(404).json({ error: 'No encontrado o sin permiso' });
     if (!data)  return res.status(404).json({ error: 'No encontrado o sin permiso' });
     res.json(data);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides PATCH]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -279,7 +297,8 @@ router.post('/:id/join', requireAuth, async (req, res) => {
 
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides/:id/join POST]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -294,7 +313,8 @@ router.delete('/:id/join', requireAuth, async (req, res) => {
     if (error) throw error;
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides/:id/join DELETE]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -309,7 +329,8 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (error) throw error;
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides/:id DELETE]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -353,7 +374,8 @@ router.get('/:id/comments', requireAuth, async (req, res) => {
       user_avatar: c.users?.avatar_url || null,
     })));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides/:id/comments GET]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -415,7 +437,8 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
       } catch (_) {}
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides/:id/comments POST]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -443,7 +466,8 @@ router.get('/:id/invitations', requireAuth, async (req, res) => {
       invited_at:  i.created_at,
     })));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides/:id/invitations GET]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 
@@ -493,7 +517,8 @@ router.post('/:id/invite', requireAuth, async (req, res) => {
 
     res.json({ ok: true, invited: user_ids.length });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[group-rides/:id/invite POST]', e.message);
+    res.status(500).json({ error: SERVER_ERROR });
   }
 });
 

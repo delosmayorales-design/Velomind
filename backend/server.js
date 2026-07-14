@@ -35,8 +35,6 @@ app.use(cors({
     // Peticiones sin origen (Postman, curl, server-to-server) se permiten en dev
     if (!origin) return cb(null, process.env.NODE_ENV !== 'production');
     if (!_allowedOrigins) return cb(null, true); // dev sin env var: abierto
-    // Permitir cualquier subdominio de Vercel del proyecto velomind
-    if (/^https:\/\/velomind[^.]*\.vercel\.app$/.test(origin)) return cb(null, true);
     if (_allowedOrigins.includes(origin)) return cb(null, true);
     console.warn('[CORS] Origen bloqueado:', origin);
     cb(new Error(`Origen no permitido: ${origin}`));
@@ -81,6 +79,9 @@ app.post('/api/auth/login',    rateLimit(10, 15 * 60 * 1000)); // 10 intentos / 
 app.post('/api/auth/register', rateLimit(5,  60 * 60 * 1000)); // 5 registros / hora
 app.post('/api/auth/demo',     rateLimit(3,  60 * 60 * 1000)); // 3 demos / hora
 app.post('/api/auth/forgot-password', rateLimit(5, 60 * 60 * 1000));
+// Las rutas de IA de coach.js son las más costosas (llamadas a Anthropic/OpenAI/Gemini/Groq)
+// y antes no tenían ningún límite — un límite generoso alcanza para uso normal.
+app.use('/api/coach', rateLimit(40, 60 * 60 * 1000));
 
 app.use('/api/auth',       require('./routes/auth'));
 app.use('/api/activities', require('./routes/activities'));
@@ -117,7 +118,7 @@ app.use((req, res) => {
 // ─────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error('❌ ERROR:', err.message);
-  res.status(500).json({ error: err.message });
+  res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
 });
 
 // ─────────────────────────────────────────

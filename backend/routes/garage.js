@@ -15,51 +15,9 @@ const COMPONENT_LABELS = {
   tubeless_sealant:'Sellante Tubeless'
 };
 
-// GET /api/garage/debug  — diagnóstico completo
-router.get('/debug', async (req, res) => {
-  const uid = req.user.id;
-
-  // 1. Test insert
-  const { data: testBike, error: testErr } = await supabase.from('bikes').insert({
-    user_id: uid, name: 'TEST_DEBUG', type: 'road', total_km: 0, is_active: true,
-  }).select().single();
-  if (testErr) {
-    return res.json({ insert_ok: false, error: testErr.message, code: testErr.code });
-  }
-  await supabase.from('bikes').delete().eq('id', testBike.id);
-
-  // 2. Token de Strava
-  const { data: user } = await supabase.from('users').select('strava_token, strava_athlete_id').eq('id', uid).single();
-  if (!user?.strava_token) return res.json({ insert_ok: true, strava: 'NO TOKEN' });
-
-  // 3. Raw athlete desde Strava
-  const r = await fetch('https://www.strava.com/api/v3/athlete', {
-    headers: { Authorization: `Bearer ${user.strava_token}` }
-  });
-  const athlete = await r.json();
-
-  return res.json({
-    insert_ok: true,
-    strava_status: r.status,
-    athlete_id: athlete.id,
-    athlete_name: `${athlete.firstname} ${athlete.lastname}`,
-    bikes_count: (athlete.bikes || []).length,
-    bikes_raw: athlete.bikes || [],
-  });
-});
-
 // GET /api/garage  — devuelve { garage: { bikes:[...] }, history:[] }
 router.get('/', async (req, res) => {
   const uid = req.user.id;
-  console.log('\n[GET /garage] ══════════════════════════');
-  console.log('[GET /garage] user autenticado:', JSON.stringify(req.user));
-
-  // DEBUG: ver TODAS las bicis en la BD (sin filtro de usuario)
-  const { data: allBikes } = await supabase.from('bikes').select('id, user_id, name');
-  console.log('[GET /garage] Total bicis en BD:', allBikes?.length || 0);
-  console.log('[GET /garage] Distribución por user_id:', JSON.stringify(
-    (allBikes || []).reduce((acc, b) => { acc[b.user_id] = (acc[b.user_id] || 0) + 1; return acc; }, {})
-  ));
 
   const { data: bikes, error: bikesErr } = await supabase
     .from('bikes').select('*')
@@ -67,11 +25,10 @@ router.get('/', async (req, res) => {
     .order('is_active', { ascending: false })
     .order('updated_at',  { ascending: false });
 
-  console.log('[GET /garage] Bicis devueltas para user_id=' + uid + ':', bikes?.length || 0);
-  if (bikes?.length) console.log('[GET /garage] Nombres:', bikes.map(b => `${b.name} (uid=${b.user_id})`).join(', '));
-  if (bikesErr) console.error('[GET /garage] ERROR Supabase:', bikesErr.message);
-
-  if (bikesErr) return res.status(500).json({ error: bikesErr.message });
+  if (bikesErr) {
+    console.error('[GET /garage]', bikesErr.message);
+    return res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
+  }
 
   const TUBELESS_ELIGIBLE = new Set(['road', 'carretera', 'gravel', 'mtb_full', 'mtb_hardtail']);
 
@@ -221,7 +178,7 @@ router.post('/', async (req, res) => {
   const { data: newBike, error } = await supabase.from('bikes')
     .insert({ user_id: req.user.id, name, type, brand, model, year, frame_number, photo_url, strava_gear_id, notes, total_km: kmInit, total_hours: hoursInit })
     .select().single();
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[garage POST]', error.message); return res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' }); }
 
   await createDefaultComponents(newBike.id, type, kmInit, hoursInit);
   res.json({ id: newBike.id, message: 'Bici creada correctamente' });
@@ -258,7 +215,7 @@ router.post('/:bikeId/photo', async (req, res) => {
   if (!bike) return res.status(404).json({ error: 'Bici no encontrada' });
   const photoVal = photo_base64 || null;
   const { error } = await supabase.from('bikes').update({ photo_url: photoVal }).eq('id', req.params.bikeId);
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[garage/photo POST]', error.message); return res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' }); }
   res.json({ ok: true });
 });
 
@@ -288,7 +245,7 @@ router.put('/component/:componentId', async (req, res) => {
   if (hours_installed  !== undefined) updates.hours_installed  = parseFloat(hours_installed) || 0;
 
   const { error } = await supabase.from('bike_components').update(updates).eq('id', comp.id);
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[garage/component PUT]', error.message); return res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' }); }
   res.json({ ok: true });
 });
 
@@ -304,7 +261,7 @@ router.post('/:bikeId/components', async (req, res) => {
     km_installed: 0, hours_installed: 0,
     km_remaining: threshold?.lifespan_km || 0, hours_remaining: threshold?.lifespan_hours || 0, notes
   });
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) { console.error('[garage/components POST]', error.message); return res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' }); }
   res.json({ message: 'Componente añadido' });
 });
 
@@ -436,7 +393,8 @@ router.post('/import-strava', async (req, res) => {
         strava_gear_id: String(gid), total_km: totalKm, total_hours: totalBikeHours, is_active: true,
       }).select('id').single();
       if (error) {
-        errors.push({ bike: bikeName, error: error.message, code: error.code });
+        console.error('[garage/import-strava]', error.message);
+        errors.push({ bike: bikeName, error: 'No se pudo importar esta bici.' });
       } else if (newBike) {
         await createDefaultComponents(newBike.id, bikeType, totalKm, totalBikeHours);
         imported++;
