@@ -1092,6 +1092,30 @@ const TrainingPlanGenerator = {
         sessTSS = Math.round((durMin / 60) * Math.pow(ifTarget, 2) * 100);
       }
 
+      // Calibrar la duración para que el TSS REAL (NP) de los intervalos prescritos
+      // coincida con el TSS objetivo — corrige la dilución del calentamiento/vuelta a la
+      // calma sin tocar los vatios de cada zona (que se mantienen exactamente como están
+      // diseñados). Se amortigua el paso (0.5) y se conserva el mejor candidato visto
+      // porque algunos tipos (ej. VO₂max con reps enteras) cambian de estructura a saltos
+      // y pueden oscilar entre dos duraciones sin converger nunca de forma monótona.
+      {
+        let _bestDur = durMin, _bestDiff = Infinity;
+        for (let _cal = 0; _cal < 8; _cal++) {
+          const _testIvs = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, intervalVariant);
+          const _real = this._realTSS(_testIvs, ftp);
+          if (!_real || _real.tss <= 0) break;
+          const _diff = Math.abs(_real.tss - sessTSS);
+          if (_diff < _bestDiff) { _bestDiff = _diff; _bestDur = durMin; }
+          if (_diff / sessTSS < 0.015) break;
+          const _ratio = sessTSS / _real.tss;
+          const _damped = durMin + 0.5 * (durMin * _ratio - durMin);
+          const _nextDur = Math.max(minDur, Math.min(maxDur, Math.round(_damped)));
+          if (_nextDur === durMin) break;
+          durMin = _nextDur;
+        }
+        durMin = _bestDur;
+      }
+
       // Generar intervalos: variante activa según semana del ciclo, alternando cada semana
       const intervals     = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, intervalVariant);
       const altVariant    = intervalVariant === 'main' ? 'alt' : 'main';
@@ -1115,7 +1139,7 @@ const TrainingPlanGenerator = {
         description: dynamicDesc,
         alt_description: altDesc,
         terrain: terrainAdvice.trim(),
-        advice: t.description + terrainAdvice,
+        advice: t.description,
         intervals,
         alt_intervals,
         intervalVariant,
@@ -1269,7 +1293,7 @@ const TrainingPlanGenerator = {
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa Z1', description: 'Muy suave. Hoy el cuerpo asimila el trabajo del martes.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'tempo',    name: 'Sweetspot en bloques cortos', description: 'Bloques de 10-12 min al 88-93% FTP. Más intenso que el tempo clásico pero sin cruzar el umbral anaeróbico.', tssShare: 0.15, ifTarget: 0.78, emoji: '🟢' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso — descansa bien para el fondo del domingo' },
-            { day: 'Sábado',   type: 'endurance', name: 'Z2 largo continuo', description: 'Dos o tres horas en Z2 puro. Practica la ingesta de carbohidratos en bici.', tssShare: 0.24, ifTarget: 0.65, emoji: '🔵' },
+            { day: 'Sábado',   type: 'endurance', name: 'Z2 largo continuo', description: 'Z2 puro y sostenido. Practica la ingesta de carbohidratos en bici.', tssShare: 0.24, ifTarget: 0.65, emoji: '🔵' },
             { day: 'Domingo',  type: 'long',    name: 'Fondón con final progresivo', description: 'Base larga y en los últimos 20 min sube gradualmente hasta Z3. Simula el final de una salida real.', tssShare: 0.28, ifTarget: 0.64, emoji: '💙' },
           ],
           // Semana 3: calidad + volumen acumulado (semana de mayor carga antes del descanso)
@@ -1350,7 +1374,7 @@ const TrainingPlanGenerator = {
             { day: 'Lunes',    isRest: true,  description: 'Descanso. Semana polarizada: intensidad alta o muy baja.' },
             { day: 'Martes',   type: 'threshold', name: 'Umbral concentrado', description: 'Series de umbral concentradas. Calidad máxima en el día más duro de la semana.', tssShare: 0.21, ifTarget: 0.84, emoji: '🟡' },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Solo movilidad y circulación. Nada de estrés muscular.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Jueves',   type: 'endurance', name: 'Z2 aeróbico puro', description: 'Dos horas en Z2 estricto. Sin cruzar el umbral aeróbico — recuperación con volumen.', tssShare: 0.16, ifTarget: 0.65, emoji: '🔵' },
+            { day: 'Jueves',   type: 'endurance', name: 'Z2 aeróbico puro', description: 'Z2 estricto y extenso. Sin cruzar el umbral aeróbico — recuperación con volumen.', tssShare: 0.16, ifTarget: 0.65, emoji: '🔵' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso activo — caminar o nadar suave' },
             { day: 'Sábado',   type: 'vo2max',   name: 'VO₂ Max — el motor se expande', description: 'Series de VO₂ Max concentradas en la jornada de mayor frescura de la segunda mitad de semana.', tssShare: 0.22, ifTarget: 0.88, emoji: '🔴' },
             { day: 'Domingo',  type: 'long',    name: 'Fondón largo de cierre Z1-Z2', description: 'Fondón aeróbico puro. Consolida el estrés de la semana con volumen tranquilo.', tssShare: 0.30, ifTarget: 0.64, emoji: '💙' },
@@ -1501,7 +1525,7 @@ const TrainingPlanGenerator = {
           // Semana 4: base neuromuscular — sweetspot en viernes, VO2 en sábado
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso. Semana de calidad concentrada en la segunda mitad.' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 de preparación aeróbica', description: 'Dos horas en Z2 estricto. Construye la base aeróbica que soporta las sesiones VO₂.', tssShare: 0.15, ifTarget: 0.65, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 de preparación aeróbica', description: 'Z2 estricto y extenso. Construye la base aeróbica que soporta las sesiones VO₂.', tssShare: 0.15, ifTarget: 0.65, emoji: '🔵' },
             { day: 'Miércoles',type: 'tempo',    name: 'Sweetspot con sprints de activación', description: 'Bloque de sweetspot con 4 sprints de 10 s al final de cada intervalo. Mezcla aeróbica-neuromuscular.', tssShare: 0.18, ifTarget: 0.80, emoji: '🟢' },
             { day: 'Jueves',   type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Pedaleo suave. Guarda las piernas para las dos sesiones de calidad del fin de semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Viernes',  type: 'tempo',     name: 'Sweetspot de activación pre-VO₂', description: 'Bloque continuo en sweetspot (88-92% FTP). Activa el sistema aeróbico sin la fatiga residual del umbral anaeróbico — llega fresco al VO₂ del sábado.', tssShare: 0.17, ifTarget: 0.79, emoji: '🟢' },
@@ -1729,7 +1753,7 @@ const TrainingPlanGenerator = {
             { day: 'Lunes',    isRest: true,  description: 'Descanso. Esta semana practicamos la estrategia nutricional del gran fondo.' },
             { day: 'Martes',   type: 'tempo',    name: 'Tempo aeróbico de mantenimiento', description: 'Bloque de Z3 moderado para mantener el umbral activo. Sin exceder la zona de confort.', tssShare: 0.17, ifTarget: 0.75, emoji: '🟢' },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Pedaleo muy suave. Asimilación del tempo del martes.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Jueves',   type: 'endurance', name: 'Z2 con práctica nutricional enfocada', description: 'Rodada de 2-3h en Z2. El objetivo es practicar metódicamente la ingesta: gel cada 25 min, bebida cada 15 min.', tssShare: 0.20, ifTarget: 0.65, emoji: '🔵' },
+            { day: 'Jueves',   type: 'endurance', name: 'Z2 con práctica nutricional enfocada', description: 'Rodada larga en Z2. El objetivo es practicar metódicamente la ingesta: gel cada 25 min, bebida cada 15 min.', tssShare: 0.20, ifTarget: 0.65, emoji: '🔵' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso activo — preparar la mochila y el material del fin de semana' },
             { day: 'Sábado',   type: 'long',    name: 'Simulacro completo gran fondo', description: 'Sal con el mismo material, comida y ritmo que el día de carrera. Estrategia nutricional exacta de principio a fin.', tssShare: 0.34, ifTarget: 0.68, emoji: '💙' },
             { day: 'Domingo',  type: 'endurance', name: 'Segunda jornada — asimilación y resistencia mental', description: 'Sal a rodar con fatiga acumulada. Practica la gestión del esfuerzo cuando el cuerpo no quiere más.', tssShare: 0.19, ifTarget: 0.65, emoji: '🔵' },
@@ -1772,7 +1796,7 @@ const TrainingPlanGenerator = {
             { day: 'Lunes',    isRest: true,  description: 'Descanso total. El back-to-back del fin de semana es el objetivo.' },
             { day: 'Martes',   type: 'threshold', name: 'Umbral específico de gran fondo', description: 'Series largas al FTP simulando el ritmo de puerto del gran fondo. Potencia mantenida con técnica perfecta.', tssShare: 0.19, ifTarget: 0.83, emoji: '🟡' },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Pedaleo suave para asimilar el umbral del martes. El fin de semana será el pico de la semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Jueves',   type: 'endurance', name: 'Z2 de volumen y práctica nutricional', description: 'Dos horas aeróbicas con ingesta cada 25 min. Practica el protocolo completo de avituallamiento.', tssShare: 0.16, ifTarget: 0.65, emoji: '🔵' },
+            { day: 'Jueves',   type: 'endurance', name: 'Z2 de volumen y práctica nutricional', description: 'Rodada aeróbica extensa con ingesta cada 25 min. Practica el protocolo completo de avituallamiento.', tssShare: 0.16, ifTarget: 0.65, emoji: '🔵' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso activo — carga de carbohidratos para el back-to-back' },
             { day: 'Sábado',   type: 'long',    name: 'Jornada larga 1 — ritmo de gran fondo', description: 'Primera jornada del back-to-back. Sal al ritmo objetivo del evento. Estrategia nutricional completa.', tssShare: 0.34, ifTarget: 0.68, emoji: '💙' },
             { day: 'Domingo',  type: 'long',    name: 'Jornada larga 2 — aguantar con fatiga', description: 'Segunda jornada con las piernas cargadas. Aprende a gestionar el esfuerzo cuando el cuerpo pide parar.', tssShare: 0.24, ifTarget: 0.66, emoji: '💙' },
@@ -1903,10 +1927,10 @@ const TrainingPlanGenerator = {
             { day: 'Lunes',    isRest: true,  description: 'Descanso activo — movilidad y foam roller.' },
             { day: 'Martes',   type: 'tempo',    name: 'Sweetspot aeróbico', description: 'Bloques de 12-15 min al 88-93% FTP. Construye el motor para sostener ritmo de carrera largo.', tssShare: 0.17, ifTarget: 0.79, emoji: '🟢' },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1', description: 'Suave. Asimilación del sweetspot del martes.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Jueves',   type: 'endurance', name: 'Z2 de volumen', description: 'Hora y media a dos horas en Z2. La base aeróbica es el pilar de las carreras largas.', tssShare: 0.16, ifTarget: 0.65, emoji: '🔵' },
+            { day: 'Jueves',   type: 'endurance', name: 'Z2 de volumen', description: 'Z2 extenso y continuo. La base aeróbica es el pilar de las carreras largas.', tssShare: 0.16, ifTarget: 0.65, emoji: '🔵' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso. Prepara el fin de semana de volumen.' },
             { day: 'Sábado',   type: 'threshold', name: 'Umbral introductorio', description: 'Dos series de 10 min al FTP. Primer contacto con la intensidad de carrera.', tssShare: 0.20, ifTarget: 0.83, emoji: '🟡' },
-            { day: 'Domingo',  type: 'long',    name: 'Fondón largo Z2', description: 'Tres horas a ritmo conversacional. Desarrolla la resistencia específica de las carreras largas.', tssShare: 0.30, ifTarget: 0.65, emoji: '💙' },
+            { day: 'Domingo',  type: 'long',    name: 'Fondón largo Z2', description: 'Ritmo conversacional de principio a fin. Desarrolla la resistencia específica de las carreras largas.', tssShare: 0.30, ifTarget: 0.65, emoji: '💙' },
           ],
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso. El fondón de ayer lo requiere.' },
@@ -1933,8 +1957,8 @@ const TrainingPlanGenerator = {
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Pedaleo muy suave. El sweetspot del martes necesita asimilarse.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'threshold', name: 'Umbral base — series medias', description: 'Dos series de 10 min al FTP. El umbral es el factor decisivo en las carreras de 2-4 horas.', tssShare: 0.20, ifTarget: 0.83, emoji: '🟡' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso total — prepara el fin de semana de volumen' },
-            { day: 'Sábado',   type: 'endurance', name: 'Z2 largo con variaciones de cadencia', description: 'Dos horas y media en Z2 alternando bloques de 5 min a 70 rpm y 5 min a 95 rpm. Resistencia muscular.', tssShare: 0.24, ifTarget: 0.67, emoji: '🔵' },
-            { day: 'Domingo',  type: 'long',    name: 'Fondón dominical con ritmo progresivo', description: 'Tres horas con el último tercio a ritmo de carrera. Simula el esfuerzo de llegar al final con energía.', tssShare: 0.28, ifTarget: 0.67, emoji: '💙' },
+            { day: 'Sábado',   type: 'endurance', name: 'Z2 largo con variaciones de cadencia', description: 'Z2 largo alternando bloques de 5 min a 70 rpm y 5 min a 95 rpm. Resistencia muscular.', tssShare: 0.24, ifTarget: 0.67, emoji: '🔵' },
+            { day: 'Domingo',  type: 'long',    name: 'Fondón dominical con ritmo progresivo', description: 'Con el último tercio a ritmo de carrera. Simula el esfuerzo de llegar al final con energía.', tssShare: 0.28, ifTarget: 0.67, emoji: '💙' },
           ],
           // Semana 5: back-to-back con fondón doble — volumen y resistencia de carrera larga
           [
@@ -1943,8 +1967,8 @@ const TrainingPlanGenerator = {
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Pedaleo muy suave. Guarda energía para las dos jornadas largas del fin de semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'endurance', name: 'Z2 con práctica nutricional', description: 'Rodada aeróbica moderada. Practica el protocolo de ingesta que usarás en el back-to-back del fin de semana.', tssShare: 0.14, ifTarget: 0.65, emoji: '🔵' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso activo — carga de carbohidratos para el fin de semana' },
-            { day: 'Sábado',   type: 'long',    name: 'Primera jornada larga — ritmo de carrera', description: 'Tres horas y media a ritmo objetivo de carrera con estrategia nutricional completa. El simulacro del sábado.', tssShare: 0.34, ifTarget: 0.68, emoji: '💙' },
-            { day: 'Domingo',  type: 'long',    name: 'Segunda jornada — resistencia con fatiga', description: 'Dos horas y media con las piernas cargadas del sábado. Esto es exactamente lo que replica una carrera larga.', tssShare: 0.26, ifTarget: 0.66, emoji: '💙' },
+            { day: 'Sábado',   type: 'long',    name: 'Primera jornada larga — ritmo de carrera', description: 'Ritmo objetivo de carrera con estrategia nutricional completa. El simulacro del sábado.', tssShare: 0.34, ifTarget: 0.68, emoji: '💙' },
+            { day: 'Domingo',  type: 'long',    name: 'Segunda jornada — resistencia con fatiga', description: 'Con las piernas cargadas del sábado. Esto es exactamente lo que replica una carrera larga.', tssShare: 0.26, ifTarget: 0.66, emoji: '💙' },
           ],
         ][w],
 
@@ -1993,7 +2017,7 @@ const TrainingPlanGenerator = {
             { day: 'Miércoles',type: 'endurance', name: 'Z2 de soporte aeróbico puro', description: 'Rodada en Z2 estricto sin cruzar el umbral aeróbico. Volumen de soporte sin estrés metabólico.', tssShare: 0.14, ifTarget: 0.65, emoji: '🔵' },
             { day: 'Jueves',   type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Solo circulación. Prepara el cuerpo para el bloque de calidad del viernes.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Viernes',  type: 'threshold', name: 'Umbral de carrera — resistencia específica', description: 'Dos series de 15 min al FTP con énfasis en la gestión del esfuerzo y la posición aerodinámica.', tssShare: 0.21, ifTarget: 0.86, emoji: '🟡' },
-            { day: 'Sábado',   type: 'long',    name: 'Fondón con bloques de tempo integrados', description: 'Fondón de 3-4h con tres bloques de 15 min al sweetspot dentro. Simula la resistencia real de carrera.', tssShare: 0.32, ifTarget: 0.72, emoji: '💙' },
+            { day: 'Sábado',   type: 'long',    name: 'Fondón con bloques de tempo integrados', description: 'Fondón largo con tres bloques de 15 min al sweetspot dentro. Simula la resistencia real de carrera.', tssShare: 0.32, ifTarget: 0.72, emoji: '💙' },
             { day: 'Domingo',  type: 'endurance', name: 'Z2 de asimilación post-fondón', description: 'Rodada aeróbica suave tras el fondón intenso del sábado. Facilita la recuperación activa.', tssShare: 0.14, ifTarget: 0.65, emoji: '🔵' },
           ],
         ][w],
@@ -2004,11 +2028,11 @@ const TrainingPlanGenerator = {
         base: [
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso. Los ultras se construyen con paciencia.' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 aeróbico largo', description: 'Dos horas cómodas en Z2. Desarrolla la oxidación de grasa que será tu combustible en los ultras.', tssShare: 0.16, ifTarget: 0.63, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 aeróbico largo', description: 'Z2 cómodo y sostenido. Desarrolla la oxidación de grasa que será tu combustible en los ultras.', tssShare: 0.16, ifTarget: 0.63, emoji: '🔵' },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Mueve las piernas suavemente. Facilita la recuperación.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'endurance', name: 'Z2 con bloque sweetspot', description: 'Una hora Z2 + 2 bloques de 10 min sweetspot. La única intensidad de la semana.', tssShare: 0.18, ifTarget: 0.72, emoji: '🔵' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso. Duerme bien — el fin de semana es el bloque clave.' },
-            { day: 'Sábado',   type: 'long',    name: 'Salida larga Z2 — día 1', description: 'Tres o cuatro horas a ritmo conversacional. Aprende a nutrirte, gestiona el ritmo.', tssShare: 0.30, ifTarget: 0.63, emoji: '💙' },
+            { day: 'Sábado',   type: 'long',    name: 'Salida larga Z2 — día 1', description: 'Ritmo conversacional de principio a fin. Aprende a nutrirte, gestiona el ritmo.', tssShare: 0.30, ifTarget: 0.63, emoji: '💙' },
             { day: 'Domingo',  type: 'endurance', name: 'Segunda jornada — back-to-back', description: 'Rueda de nuevo con las piernas cargadas. Este es el estímulo específico del ultra.', tssShare: 0.22, ifTarget: 0.63, emoji: '🔵' },
           ],
           [
@@ -2017,7 +2041,7 @@ const TrainingPlanGenerator = {
             { day: 'Miércoles',type: 'tempo',    name: 'Sweetspot de resistencia', description: 'Bloques de sweetspot para mantener el umbral aeróbico activo sin acumular excesiva fatiga.', tssShare: 0.18, ifTarget: 0.78, emoji: '🟢' },
             { day: 'Jueves',   type: 'recovery',  name: 'Recuperación Z1', description: 'Muy suave. Prepara el cuerpo para el gran volumen del fin de semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Viernes',  type: 'endurance', name: 'Z2 de preparación', description: 'Rodada moderada para activar sin fatigar de cara al fin de semana largo.', tssShare: 0.12, ifTarget: 0.63, emoji: '🔵' },
-            { day: 'Sábado',   type: 'long',    name: 'Salida muy larga Z2 — día 1', description: 'Cuatro a cinco horas. Practica tu estrategia nutricional real. Come cada 45 min.', tssShare: 0.34, ifTarget: 0.63, emoji: '💙' },
+            { day: 'Sábado',   type: 'long',    name: 'Salida muy larga Z2 — día 1', description: 'La salida más larga de la semana. Practica tu estrategia nutricional real. Come cada 45 min.', tssShare: 0.34, ifTarget: 0.63, emoji: '💙' },
             { day: 'Domingo',  type: 'long',    name: 'Back-to-back máximo', description: 'Segunda jornada larga consecutiva. El adaptador más específico del ultra. Ritmo muy cómodo.', tssShare: 0.26, ifTarget: 0.62, emoji: '💙' },
           ],
           [
@@ -2026,27 +2050,27 @@ const TrainingPlanGenerator = {
             { day: 'Miércoles',type: 'tempo',    name: 'Sweetspot + resistencia aeróbica', description: 'Bloque largo de sweetspot que sube el umbral aeróbico. Lo más intenso de la semana.', tssShare: 0.20, ifTarget: 0.80, emoji: '🟢' },
             { day: 'Jueves',   type: 'recovery',  name: 'Recuperación Z1', description: 'Solo girar las piernas. El fin de semana será el mayor volumen del bloque.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Viernes',  type: 'endurance', name: 'Z2 moderado de activación', description: 'Mantiene las piernas activas de cara al mega fin de semana.', tssShare: 0.12, ifTarget: 0.63, emoji: '🔵' },
-            { day: 'Sábado',   type: 'long',    name: 'Máximo volumen del bloque base', description: 'La salida más larga del ciclo base. 5-6h a ritmo conversacional. Nutrición perfecta.', tssShare: 0.38, ifTarget: 0.63, emoji: '💙' },
+            { day: 'Sábado',   type: 'long',    name: 'Máximo volumen del bloque base', description: 'La salida más larga del ciclo base. Ritmo conversacional. Nutrición perfecta.', tssShare: 0.38, ifTarget: 0.63, emoji: '💙' },
             { day: 'Domingo',  type: 'endurance', name: 'Segunda jornada acumulada — pico', description: 'Cierra el bloque con la segunda jornada más larga. El cuerpo aprende a gestionar la fatiga.', tssShare: 0.24, ifTarget: 0.62, emoji: '🔵' },
           ],
           // Semana 4: jornadas largas en terreno variado — practica la gestión del ritmo
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso. El ultra se construye ladrillo a ladrillo.' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 aeróbico largo de base', description: 'Dos horas y media en Z2 estricto. Desarrolla la oxidación de grasa que será tu combustible en el ultra.', tssShare: 0.16, ifTarget: 0.63, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 aeróbico largo de base', description: 'Z2 estricto y largo. Desarrolla la oxidación de grasa que será tu combustible en el ultra.', tssShare: 0.16, ifTarget: 0.63, emoji: '🔵' },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Muy suave. Asimilación del volumen del martes antes del sweetspot del jueves.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'tempo',    name: 'Sweetspot — calidad semanal específica', description: 'Dos bloques de 15 min al 88-92% FTP. El único estímulo de calidad real de la semana en el ultra.', tssShare: 0.20, ifTarget: 0.80, emoji: '🟢' },
             { day: 'Viernes',  type: 'recovery',  name: 'Z1 de preparación para el back-to-back', description: 'Solo circulación. Guarda energía para las dos jornadas largas del fin de semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Sábado',   type: 'long',    name: 'Salida larga — gestión del ritmo y la nutrición', description: 'Cuatro horas a ritmo ultra conversacional. Practica la estrategia de avituallamiento cada 40 min.', tssShare: 0.34, ifTarget: 0.63, emoji: '💙' },
-            { day: 'Domingo',  type: 'endurance', name: 'Segunda jornada — aprender a rodar con fatiga', description: 'Dos horas con las piernas cargadas. Este back-to-back es el estímulo más específico del ultra.', tssShare: 0.22, ifTarget: 0.62, emoji: '🔵' },
+            { day: 'Sábado',   type: 'long',    name: 'Salida larga — gestión del ritmo y la nutrición', description: 'Ritmo ultra conversacional de principio a fin. Practica la estrategia de avituallamiento cada 40 min.', tssShare: 0.34, ifTarget: 0.63, emoji: '💙' },
+            { day: 'Domingo',  type: 'endurance', name: 'Segunda jornada — aprender a rodar con fatiga', description: 'Con las piernas cargadas del día anterior. Este back-to-back es el estímulo más específico del ultra.', tssShare: 0.22, ifTarget: 0.62, emoji: '🔵' },
           ],
           // Semana 5: volumen puro — tiempo en sillín máximo con nutrición planificada
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso. Esta semana el volumen es el protagonista absoluto.' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 aeróbico con práctica nutricional', description: 'Tres horas en Z2. Practica el protocolo nutricional completo del ultra: come cada 30 min sin excepción.', tssShare: 0.16, ifTarget: 0.63, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 aeróbico con práctica nutricional', description: 'Z2 extenso. Practica el protocolo nutricional completo del ultra: come cada 30 min sin excepción.', tssShare: 0.16, ifTarget: 0.63, emoji: '🔵' },
             { day: 'Miércoles',type: 'tempo',    name: 'Sweetspot + bloques de fuerza baja cadencia', description: 'Sweetspot con bloques intermedios a 60-65 rpm. Desarrolla la resistencia muscular que el ultra demanda.', tssShare: 0.16, ifTarget: 0.78, emoji: '🟢' },
             { day: 'Jueves',   type: 'recovery',  name: 'Z1 de recuperación profunda', description: 'Muy suave. El volumen acumulado de la semana necesita recuperación activa.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Viernes',  type: 'endurance', name: 'Z2 moderado de preparación', description: 'Rodada aeróbica para llegar activo al fin de semana de máximo volumen. Sin sobrepasar el umbral aeróbico.', tssShare: 0.10, ifTarget: 0.63, emoji: '🔵' },
-            { day: 'Sábado',   type: 'long',    name: 'Jornada ultra de máximo volumen', description: 'La salida más larga del bloque base. 5-7h a ritmo ultra. Aprende a gestionar el esfuerzo hora tras hora.', tssShare: 0.36, ifTarget: 0.63, emoji: '💙' },
+            { day: 'Sábado',   type: 'long',    name: 'Jornada ultra de máximo volumen', description: 'La salida más larga del bloque base, a ritmo ultra. Aprende a gestionar el esfuerzo hora tras hora.', tssShare: 0.36, ifTarget: 0.63, emoji: '💙' },
             { day: 'Domingo',  type: 'long',    name: 'Back-to-back máximo del bloque', description: 'Segunda jornada larga tras el máximo del sábado. El ultra empieza cuando el cuerpo quiere parar.', tssShare: 0.22, ifTarget: 0.62, emoji: '💙' },
           ],
         ][w],
@@ -2058,7 +2082,7 @@ const TrainingPlanGenerator = {
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa Z1', description: 'Mover las piernas suavemente. Esencial para aguantar el volumen del fin de semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'tempo',    name: 'Sweetspot sostenido largo', description: 'El único bloque de calidad de la semana. Mantiene el umbral activo sin sacrificar la recuperación.', tssShare: 0.20, ifTarget: 0.80, emoji: '🟢' },
             { day: 'Viernes',  type: 'recovery',  name: 'Z1 de preparación', description: 'Muy suave. Prepara el cuerpo para el mega fin de semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Sábado',   type: 'long',    name: 'Ultra-simulacro día 1', description: 'Salida de 5-7h. Ritmo constante, estrategia nutricional exacta del evento. Practica comer sin parar.', tssShare: 0.38, ifTarget: 0.63, emoji: '💙' },
+            { day: 'Sábado',   type: 'long',    name: 'Ultra-simulacro día 1', description: 'Ritmo constante toda la salida, estrategia nutricional exacta del evento. Practica comer sin parar.', tssShare: 0.38, ifTarget: 0.63, emoji: '💙' },
             { day: 'Domingo',  type: 'long',    name: 'Ultra-simulacro día 2', description: 'Segunda jornada larga con piernas cargadas. Esto es exactamente lo que vivirás en el ultra.', tssShare: 0.28, ifTarget: 0.62, emoji: '💙' },
           ],
           [
@@ -2067,7 +2091,7 @@ const TrainingPlanGenerator = {
             { day: 'Miércoles',type: 'tempo',    name: 'Sweetspot — calidad semanal', description: 'Bloques de sweetspot. Es la única sesión de calidad real de la semana en el ultra.', tssShare: 0.20, ifTarget: 0.80, emoji: '🟢' },
             { day: 'Jueves',   type: 'recovery',  name: 'Z1 de recuperación', description: 'Pedaleo suave para facilitar la recuperación de mitad de semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Viernes',  type: 'endurance', name: 'Z2 moderado de carga', description: 'Añade volumen aeróbico moderado de cara al fin de semana. Sin forzar.', tssShare: 0.14, ifTarget: 0.63, emoji: '🔵' },
-            { day: 'Sábado',   type: 'long',    name: 'Jornada ultra máxima', description: 'La salida más larga del bloque build. 6-8h si el evento lo requiere. Estrategia de ultra real.', tssShare: 0.42, ifTarget: 0.63, emoji: '💙' },
+            { day: 'Sábado',   type: 'long',    name: 'Jornada ultra máxima', description: 'La salida más larga del bloque build, ajustada a la duración de tu evento. Estrategia de ultra real.', tssShare: 0.42, ifTarget: 0.63, emoji: '💙' },
             { day: 'Domingo',  type: 'endurance', name: 'Segunda jornada de acumulación', description: 'Rodada moderada-larga para acumular fatiga específica de ultra. Ritmo muy cómodo.', tssShare: 0.22, ifTarget: 0.62, emoji: '🔵' },
           ],
           [
@@ -2082,17 +2106,17 @@ const TrainingPlanGenerator = {
           // Semana 4: volumen específico ultra — sweetspot + back-to-back enorme
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso. El ultra se entrena con paciencia y volumen estratégico.' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 largo con fuerza integrada', description: 'Tres horas en Z2 con cinco bloques de 8 min a 60 rpm intercalados. Resistencia muscular de ultra.', tssShare: 0.14, ifTarget: 0.67, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 largo con fuerza integrada', description: 'Z2 extenso con cinco bloques de 8 min a 60 rpm intercalados. Resistencia muscular de ultra.', tssShare: 0.14, ifTarget: 0.67, emoji: '🔵' },
             { day: 'Miércoles',type: 'recovery',  name: 'Z1 de recuperación activa', description: 'Pedaleo suave para asimilar el volumen y la fuerza del martes. Estiramientos de isquiotibiales.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'tempo',    name: 'Sweetspot de calidad semanal', description: 'Tres bloques de 15 min al 90% FTP. La sesión de mayor intensidad de la semana para mantener el umbral activo.', tssShare: 0.16, ifTarget: 0.80, emoji: '🟢' },
             { day: 'Viernes',  type: 'recovery',  name: 'Z1 de preparación del fin de semana', description: 'Muy suave. El back-to-back del fin de semana es el mayor estímulo de la semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Sábado',   type: 'long',    name: 'Jornada ultra día 1 — ritmo y nutrición', description: 'Seis horas a ritmo ultra sostenible. Estrategia nutricional exacta del evento. Come y bebe como en carrera.', tssShare: 0.36, ifTarget: 0.63, emoji: '💙' },
-            { day: 'Domingo',  type: 'long',    name: 'Jornada ultra día 2 — gestión de la fatiga', description: 'Cuatro horas con las piernas muy cargadas. Aprende a gestionar el esfuerzo cuando el cuerpo rechaza el ritmo.', tssShare: 0.22, ifTarget: 0.62, emoji: '💙' },
+            { day: 'Sábado',   type: 'long',    name: 'Jornada ultra día 1 — ritmo y nutrición', description: 'Ritmo ultra sostenible de principio a fin. Estrategia nutricional exacta del evento. Come y bebe como en carrera.', tssShare: 0.36, ifTarget: 0.63, emoji: '💙' },
+            { day: 'Domingo',  type: 'long',    name: 'Jornada ultra día 2 — gestión de la fatiga', description: 'Con las piernas muy cargadas del día anterior. Aprende a gestionar el esfuerzo cuando el cuerpo rechaza el ritmo.', tssShare: 0.22, ifTarget: 0.62, emoji: '💙' },
           ],
           // Semana 5: densidad específica ultra — volumen máximo con calidad integrada
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso absoluto — la semana de mayor volumen total del bloque build.' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 extenso con práctica nutricional completa', description: 'Tres horas en Z2 practicando la estrategia nutricional real: gel cada 25 min, bebida isotónica cada 15 min.', tssShare: 0.14, ifTarget: 0.63, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 extenso con práctica nutricional completa', description: 'Z2 largo practicando la estrategia nutricional real: gel cada 25 min, bebida isotónica cada 15 min.', tssShare: 0.14, ifTarget: 0.63, emoji: '🔵' },
             { day: 'Miércoles',type: 'tempo',    name: 'Sweetspot + bloques de resistencia mental', description: 'Bloques de sweetspot de larga duración. Practica la gestión mental de mantener el esfuerzo cuando duele.', tssShare: 0.16, ifTarget: 0.80, emoji: '🟢' },
             { day: 'Jueves',   type: 'recovery',  name: 'Z1 de recuperación profunda', description: 'Solo moverse con mucha suavidad. El volumen acumulado necesita recuperación activa real.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Viernes',  type: 'recovery',  name: 'Z1 de preparación activa', description: 'Muy suave. El simulacro final del fin de semana es el mayor estímulo del bloque — llega fresco.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
@@ -2123,6 +2147,79 @@ const TrainingPlanGenerator = {
     return segs.reduce((best, s) =>
       Math.abs(s[intensityKey] - targetMin) < Math.abs(best[intensityKey] - targetMin) ? s : best
     );
+  },
+
+  // ── Verificación de TSS real (NP) de los intervalos ya construidos ──
+  // El ifTarget de la plantilla asume una intensidad plana para toda la sesión, pero el
+  // calentamiento y la vuelta a la calma van a baja potencia y diluyen la Potencia
+  // Normalizada real por debajo de ese ifTarget. Estos helpers recalculan el TSS que
+  // producirían de verdad los vatios prescritos, con el mismo algoritmo (ventana móvil
+  // de 30s → 4ª potencia → media → raíz 4ª) que usa FileParser._calcNP para actividades reales,
+  // de forma que "planificado" y "realizado" se puedan comparar en igualdad de condiciones.
+  _expandIntervalsToTrace(intervals, ftp) {
+    const parseDurSec = (durStr) => {
+      const m = String(durStr).match(/([\d.]+)\s*(min|s)/);
+      if (!m) return 0;
+      const val = parseFloat(m[1]);
+      return Math.round(m[2] === 'min' ? val * 60 : val);
+    };
+    const parseReps = (label) => {
+      const m = String(label).match(/\(×\s*(\d+)/);
+      return m ? parseInt(m[1], 10) : 1;
+    };
+    const parseWattsSegs = (wattsStr) => {
+      const s = String(wattsStr || '');
+      if (/m[áa]x/i.test(s) && !s.includes('/')) return [Math.round(ftp * 1.5)];
+      const nums = (s.match(/\d+(\.\d+)?/g) || []).map(Number);
+      if (s.includes('/') && nums.length >= 2) return [nums[0], nums[1]];
+      if (nums.length >= 2) return [(nums[0] + nums[1]) / 2];
+      if (nums.length === 1) return [nums[0]];
+      return [Math.round(ftp * 0.5)];
+    };
+
+    const trace = [];
+    for (const iv of (intervals || [])) {
+      const reps = parseReps(iv.label);
+      const perRepSec = parseDurSec(iv.dur);
+      if (!perRepSec) continue;
+      const wSegs = parseWattsSegs(iv.watts);
+      for (let r = 0; r < reps; r++) {
+        if (wSegs.length === 2) {
+          const half = Math.round(perRepSec / 2);
+          for (let s = 0; s < half; s++) trace.push(wSegs[0]);
+          for (let s = 0; s < perRepSec - half; s++) trace.push(wSegs[1]);
+        } else {
+          for (let s = 0; s < perRepSec; s++) trace.push(wSegs[0]);
+        }
+      }
+    }
+    return trace;
+  },
+
+  _npFromTrace(trace) {
+    const WIN = 30;
+    if (!trace.length) return 0;
+    if (trace.length < WIN) return trace.reduce((a, b) => a + b, 0) / trace.length;
+    let sum = 0;
+    for (let i = 0; i < WIN; i++) sum += trace[i];
+    let pow4sum = 0;
+    const count = trace.length - WIN + 1;
+    for (let i = WIN - 1; i < trace.length; i++) {
+      if (i >= WIN) sum += trace[i] - trace[i - WIN];
+      const avg = sum / WIN;
+      pow4sum += avg * avg * avg * avg;
+    }
+    return Math.pow(pow4sum / count, 0.25);
+  },
+
+  /** TSS real (vía NP) que producirían los vatios ya prescritos en `intervals` */
+  _realTSS(intervals, ftp) {
+    const trace = this._expandIntervalsToTrace(intervals, ftp);
+    if (!trace.length || !ftp) return null;
+    const np = this._npFromTrace(trace);
+    const ifReal = np / ftp;
+    const hours = trace.length / 3600;
+    return { tss: hours * ifReal * ifReal * 100, ifReal, durSec: trace.length };
   },
 
   /** Genera estructura de intervalos detallada */
