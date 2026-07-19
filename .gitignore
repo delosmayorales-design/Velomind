@@ -25,3 +25,7 @@ npm-debug.log*
 Thumbs.db
 
 .vercel
+
+# Capacitor (mobile/)
+mobile/node_modules/
+mobile/www/

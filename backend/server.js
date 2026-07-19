@@ -24,6 +24,7 @@ const _envOrigins = process.env.ALLOWED_ORIGINS
 // Orígenes de la app siempre permitidos (Vercel + dominios propios)
 const _builtinOrigins = [
   'https://velomind-liard.vercel.app',
+  'https://localhost', // app nativa Android (Capacitor) — origen por defecto del WebView
 ];
 
 const _allowedOrigins = _envOrigins.length > 0

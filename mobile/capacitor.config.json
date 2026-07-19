@@ -1,0 +1,8 @@
+{
+  "appId": "com.velomind.app",
+  "appName": "VeloMind",
+  "webDir": "www",
+  "android": {
+    "useLegacyBridge": true
+  }
+}
