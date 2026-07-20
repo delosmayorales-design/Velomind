@@ -341,11 +341,17 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       if (!['cycling', 'strength', 'running', 'walking'].includes(type)) continue;
 
       // Calcular TSS e Intensity Factor (IF)
-      const np = a.weighted_average_watts || 0;
+      // weighted_average_watts solo es comparable con el FTP de ciclismo cuando la
+      // actividad ES ciclismo. Para running/walking, Strava rellena ese mismo campo con
+      // una potencia ESTIMADA (modelo GAP + peso, sin potenciómetro real) que no tiene
+      // relación con el FTP de bici del atleta — usarla ahí daba TSS sin sentido
+      // (ej. una caminata con "IF" de ciclista alto solo por la estimación de Strava).
+      const isCycling = type === 'cycling';
+      const np = isCycling ? (a.weighted_average_watts || 0) : 0;
       const duration = a.moving_time || a.elapsed_time || 0;
       let tss = 0, ifValue = 0;
       let finalNp = np;
-      let finalAvgPower = a.average_watts || 0;
+      let finalAvgPower = isCycling ? (a.average_watts || 0) : 0;
 
       if (np && duration && ftp > 0) {
         ifValue = Math.round((np / ftp) * 100) / 100;
