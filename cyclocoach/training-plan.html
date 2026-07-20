@@ -3655,7 +3655,16 @@ function syncPlanWithReality() {
       else if (maxIF > 0.80)  actType = 'threshold';
       else if (maxIF > 0.70)  actType = 'tempo';
       else if (maxIF > 0 && maxIF < 0.60) actType = 'recovery';
-      else if (maxIF === 0)   actType = sess.isRest ? 'endurance' : (sess.type || 'endurance'); // sin potencia: usar tipo planificado
+      else if (maxIF === 0) {
+        // Sin potencia (típico de caminata/running sin sensor): usar el tipo real de
+        // la actividad grabada si es cross-training, en vez de asumir que fue la
+        // sesión ciclista planificada (bug: mostraba "Rodaje" para una caminata).
+        const realCrossType = dayActs
+          .map(a => (a.type || a.sport_type || '').toLowerCase())
+          .find(t => ['walking', 'running', 'gym', 'strength'].includes(t));
+        actType = realCrossType ? (realCrossType === 'strength' ? 'gym' : realCrossType)
+          : (sess.isRest ? 'endurance' : (sess.type || 'endurance'));
+      }
 
       accumTSSDeviation += diffTSS;
       if (!sess.completed && !sess.manuallyUnmarked) {
@@ -3684,7 +3693,25 @@ function syncPlanWithReality() {
           changed = true;
         }
       } else {
-        if (Math.abs(diffTSS) <= 15 && (sess.type === actType || actTSS > 0)) {
+        const CROSS_TYPES = ['walking', 'running', 'gym'];
+        const isCrossInsteadOfRide = CROSS_TYPES.includes(actType) && !CROSS_TYPES.includes(sess.type);
+        if (isCrossInsteadOfRide) {
+          // El día tenía una sesión ciclista planificada, pero lo registrado fue una
+          // actividad complementaria (caminata/running/gimnasio). Actualizamos tipo/nombre
+          // para que el plan no siga mostrando el nombre de la sesión de bici no realizada
+          // (bug reportado: el dashboard mostraba "Rodaje" para una caminata registrada).
+          const plannedName = sess.name || sess.type;
+          sess.type        = actType;
+          sess.name        = actTypeStr || 'Actividad realizada';
+          sess.tss         = actTSS;
+          sess.durationMin = actDur;
+          const _wt = window.WORKOUT_TYPES || {};
+          sess.emoji       = (_wt[actType] || {}).emoji
+            || (actType === 'walking' ? '🚶' : actType === 'running' ? '🏃' : '🏋️');
+          sess.advice      = `Hoy tocaba "${plannedName}" en bici, pero registraste ${actTypeStr || 'otra actividad'} (${actDur} min, ${actTSS} TSS). La sesión de bici planificada queda pendiente.`;
+          changesSummary.push({ icon: 'ℹ️', day: sess.day, desc: `Registraste ${actTypeStr || 'una actividad complementaria'} en vez de la sesión de bici planificada.` });
+          changed = true;
+        } else if (Math.abs(diffTSS) <= 15 && (sess.type === actType || actTSS > 0)) {
           // Sesión cumplida aceptablemente
         } else {
           if (!sess.advice || !sess.advice.includes('Planificado:')) {

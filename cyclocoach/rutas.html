@@ -1890,7 +1890,7 @@
         <option value="road">🚴 Road</option>
         <option value="gravel">🪨 Gravel</option>
         <option value="mtb">🏔️ MTB</option>
-        <option value="caminata">🥾 Caminata</option>
+        <option value="walking">🥾 Caminata</option>
         <option value="running">🏃 Running</option>
       </select>
       <div class="modal-row">
@@ -1918,7 +1918,7 @@
         <button class="trk-type-btn" data-type="gravel" onclick="selectTrkType(this)">
           <span class="trk-type-icon">🪨</span>Gravel
         </button>
-        <button class="trk-type-btn" data-type="caminata" onclick="selectTrkType(this)">
+        <button class="trk-type-btn" data-type="walking" onclick="selectTrkType(this)">
           <span class="trk-type-icon">🥾</span>Caminata
         </button>
         <button class="trk-type-btn" data-type="running" onclick="selectTrkType(this)">
@@ -5781,9 +5781,28 @@ async function saveTrackingActivity() {
   const ftp    = AppState.athlete?.ftp || 0;
   const ifVal  = (np && ftp) ? Math.round((np / ftp) * 100) / 100 : undefined;
   // TSS = (duración_h × NP × IF) / FTP × 100
-  const tss    = (np && ifVal && ftp)
+  let tss = (np && ifVal && ftp)
     ? Math.round((elapsed / 3600) * np * ifVal / ftp * 100)
     : undefined;
+  // Fallback hrTSS: sin potenciómetro pero con FC media y LTHR configurado
+  if (!tss && avgHr && elapsed) {
+    const lthr = AppState.athlete?.lthr
+      || (AppState.athlete?.max_hr ? Math.round(AppState.athlete.max_hr * 0.88) : null);
+    if (lthr) tss = Utils.calcHRTSS(elapsed, avgHr, lthr);
+  }
+  // Último recurso: estimación por MET para caminata/running sin sensores (fórmula ACSM simplificada)
+  if (!tss && elapsed > 0 && distKm > 0 && (type === 'walking' || type === 'running')) {
+    const durationH = elapsed / 3600;
+    const weight = Math.max(40, Number(AppState.athlete?.weight) || 70);
+    const speedKmh = distKm / durationH;
+    if (type === 'walking') {
+      const MET = Math.min(8, Math.max(2.0, 0.5 * speedKmh + 2.0));
+      tss = Math.round(MET * weight * durationH * 0.10);
+    } else {
+      const MET = Math.min(16, Math.max(6, 0.9 * speedKmh + 0.5));
+      tss = Math.round(MET * weight * durationH * 0.08);
+    }
+  }
   // Recalcular calorías si tenemos potencia (más preciso)
   const calFinal = avgPow > 0
     ? Math.round(avgPow * elapsed * 0.00024)  // W × s × eficiencia ~24%
