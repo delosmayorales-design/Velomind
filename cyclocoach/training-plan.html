@@ -1898,17 +1898,20 @@ function _sanitizeCyclingContent(plan) {
     sprint:    '⚡ Subida corta o llano recto para los sprints máximos.',
     strength:  '⛰️ Subida larga con cadencia baja para trabajo de fuerza.',
   };
-  const _wh = AppState.athlete?.weekly_hours  || 8;
-  const _dpw = AppState.athlete?.days_per_week || 5;
-  const _userMinMin = Math.max(30, Math.round((_wh * 60) / _dpw));
+  // Mínimos fisiológicos fijos por tipo de sesión — NO deben depender del promedio
+  // horas/días del atleta (weekly_hours / days_per_week), porque ese promedio es una
+  // referencia de volumen semanal total, no un suelo físico por sesión individual.
+  // Bug previo: con perfiles como 10h/4días (=150 min de promedio), ese promedio se
+  // usaba como Math.max(...) y terminaba forzando threshold/endurance/long/tempo/etc
+  // a converger todos en el mismo número (150 min) en vez de tener duraciones distintas.
   const MIN_DUR = {
-    long:        Math.max(90,         _userMinMin),
-    endurance:   Math.max(_userMinMin, 45),
-    threshold:   Math.max(_userMinMin, 40),
-    vo2max:      Math.max(_userMinMin, 35),
-    tempo:       Math.max(_userMinMin, 40),
-    sweet_spot:  Math.max(_userMinMin, 40),
-    sprint:      Math.max(_userMinMin, 30),
+    long:        90,
+    endurance:   45,
+    threshold:   40,
+    vo2max:      35,
+    tempo:       40,
+    sweet_spot:  40,
+    sprint:      30,
     recovery:    20,
   };
   const DEFAULT_IF_SYNC = { z2: 0.62, long: 0.60, endurance: 0.65, recovery: 0.52, tempo: 0.82, threshold: 0.95, sweet_spot: 0.90, vo2max: 1.05, sprint: 0.90, strength: 0.80 };
@@ -1918,7 +1921,7 @@ function _sanitizeCyclingContent(plan) {
     // Reparar duración mínima solo para sesiones de ciclismo sin adaptar.
     const _isCyclingType = !s.isGym && !s.isRunning && !s.isWalking && !s.isOther && !['gym','running','walking'].includes(s.type);
     if (!s.isRest && !s._adapted && _isCyclingType && typeof s.durationMin === 'number' && s.durationMin > 0) {
-      const minD = MIN_DUR[s.type] || _userMinMin;
+      const minD = MIN_DUR[s.type] || 45;
       if (s.durationMin < minD) {
         s.durationMin = minD;
         const ifRef = s.ifTarget || DEFAULT_IF_SYNC[s.type] || 0.65;
@@ -3269,11 +3272,10 @@ async function saveAdaptation(idx) {
   const _isCyclingSess = !sess.isGym && !sess.isRunning && !sess.isWalking && !sess.isOther && !['gym','running','walking'].includes(sess.type);
   let _minDurBump = false;
   if (_isCyclingSess) {
-    const _wh2  = AppState.athlete?.weekly_hours  || 8;
-    const _dpw2 = AppState.athlete?.days_per_week || 5;
-    const _userMin2 = Math.max(30, Math.round((_wh2 * 60) / _dpw2));
-    const _MIN_DUR = { long: Math.max(90, _userMin2), endurance: Math.max(_userMin2, 45), threshold: Math.max(_userMin2, 40), vo2max: Math.max(_userMin2, 35), tempo: Math.max(_userMin2, 40), sweet_spot: Math.max(_userMin2, 40), sprint: Math.max(_userMin2, 30), recovery: 20 };
-    const _minForType = _MIN_DUR[sess.type] || _userMin2;
+    // Mínimos fisiológicos fijos por tipo — ver misma nota en _sanitizeCyclingContent
+    // (no depender del promedio weekly_hours/days_per_week, que no es un suelo por sesión).
+    const _MIN_DUR = { long: 90, endurance: 45, threshold: 40, vo2max: 35, tempo: 40, sweet_spot: 40, sprint: 30, recovery: 20 };
+    const _minForType = _MIN_DUR[sess.type] || 45;
     if (sess.durationMin < _minForType) { sess.durationMin = _minForType; _minDurBump = true; }
   }
   sess.tss = t.tss_estimado || sess.tss;
