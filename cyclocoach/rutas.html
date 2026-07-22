@@ -5066,6 +5066,7 @@ let _trkAltSmooth    = null;  // altitud suavizada (EMA) para evitar saltos de p
 let _trkSegmentId    = 0;     // separa pausas/reconexiones para no dibujar rectas falsas
 let _trkActiveSecs   = 0;     // segundos de tiempo activo (sin contar pausas) — para el display
 let _trkActivityType = 'road'; // tipo seleccionado antes de iniciar
+let _trkHiddenAt     = null;  // timestamp (ms) al pasar a 2º plano, para avisar de huecos largos al volver
 
 // ── IndexedDB backup ──────────────────────────────────────────────
 const _IDB_NAME = 'velotrack_v1';
@@ -5162,7 +5163,8 @@ async function recoverTrackSession() {
   _trkMovingTime   = saved.movingTime;
   _trkActiveSecs   = saved.activeSecs ?? Math.round(saved.movingTime || 0);
   _trkActivityType = saved.activityType || 'road';
-  const elapsed    = _trkActiveSecs;
+  // Mismo criterio que en _stopTracking(): preferir tiempo en movimiento real.
+  const elapsed    = _trkMovingTime > 0 ? Math.round(_trkMovingTime) : _trkActiveSecs;
   const distKm     = _trkDist / 1000;
   const avgSpeed   = elapsed > 0 ? distKm / (elapsed / 3600) : 0;
   const now      = new Date();
@@ -5659,8 +5661,15 @@ function _stopTracking() {
     return;
   }
 
-  // Armar resumen en el modal
-  const elapsed  = _trkActiveSecs;  // tiempo activo (sin pausas)
+  // Armar resumen en el modal.
+  // Tiempo en movimiento real (excluye paradas y huecos en 2º plano, p.ej. pantalla
+  // bloqueada durante horas): _trkMovingTime solo suma dt entre fixes con velocidad
+  // >= 3 km/h, así que un hueco largo sin movimiento nunca se contabiliza aquí, a
+  // diferencia de _trkActiveSecs (reloj de pared, ver _trkTick) que sí podía inflarse
+  // si el auto-pause no llegaba a activarse por estar la app en background.
+  // Fallback a _trkActiveSecs solo si no se detectó nada de movimiento (p.ej. prueba
+  // muy corta y estática), para no guardar una duración de 0.
+  const elapsed  = _trkMovingTime > 0 ? Math.round(_trkMovingTime) : _trkActiveSecs;
   const distKm   = _trkDist / 1000;
   const avgSpeed = elapsed > 0 ? distKm / (elapsed / 3600) : 0;
   const now      = new Date();
@@ -5890,7 +5899,23 @@ document.addEventListener('DOMContentLoaded', () => setTimeout(_checkAndOfferRes
 
 // Re-adquirir wake lock y reiniciar GPS si la página vuelve al foco (llamada, cambio de app)
 document.addEventListener('visibilitychange', async () => {
-  if (document.visibilityState !== 'visible' || !_trkActive) return;
+  if (!_trkActive) return;
+
+  if (document.visibilityState !== 'visible') {
+    _trkHiddenAt = Date.now();
+    return;
+  }
+
+  // Avisar si el hueco en 2º plano fue largo: ese tiempo sin movimiento no se
+  // contabiliza en la duración final (ver _trkMovingTime en _stopTracking), pero
+  // el usuario debe saber que la app lo detectó en vez de creer que se perdió algo.
+  if (_trkHiddenAt != null) {
+    const hiddenMin = Math.round((Date.now() - _trkHiddenAt) / 60000);
+    if (hiddenMin >= 10) {
+      showToast(`${hiddenMin} min en 2º plano sin movimiento no se contarán en la duración`, 'info');
+    }
+    _trkHiddenAt = null;
+  }
 
   // Resetear contador de autopause: los conteos acumulados mientras la pantalla
   // estaba bloqueada no deben disparar un pause inmediato al volver.

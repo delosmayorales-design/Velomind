@@ -2560,11 +2560,16 @@ const FileParser = {
         }
         const date = d.toISOString().substring(0, 10);
 
-        const duration = eff.total_elapsed_time
-          ? Math.round(eff.total_elapsed_time)
-          : records.length > 1
-            ? Math.round((new Date(records[records.length - 1].timestamp) - new Date(records[0].timestamp)) / 1000)
-            : 0;
+        // total_timer_time = tiempo con el cronómetro corriendo (excluye pausas);
+        // total_elapsed_time incluye cualquier pausa entre inicio y fin, así que
+        // NO debe usarse para los cálculos (TSS, velocidad media, etc).
+        const duration = eff.total_timer_time
+          ? Math.round(eff.total_timer_time)
+          : eff.total_elapsed_time
+            ? Math.round(eff.total_elapsed_time)
+            : records.length > 1
+              ? Math.round((new Date(records[records.length - 1].timestamp) - new Date(records[0].timestamp)) / 1000)
+              : 0;
 
         const distance = Math.round(eff.total_distance || 0);
 
@@ -2662,10 +2667,25 @@ const FileParser = {
     const distance = this._calcDistance(points);
     const elevation = this._calcElevation(points);
     
-    // 1. Intentar sacar tiempo real de los puntos
-    const startTime = points[0].time.getTime();
-    const endTime = points[points.length - 1].time.getTime();
-    let durationSec = (startTime > 0 && endTime > startTime) ? (endTime - startTime) / 1000 : 0;
+    // 1. Intentar sacar tiempo real de los puntos.
+    // Si el GPX tiene varios <trkseg>, cada segmento nuevo suele nacer de una
+    // pausa/reanudación (o pérdida de señal) del dispositivo: sumamos la duración
+    // de cada segmento por separado para excluir el hueco entre ellos, en vez de
+    // usar el primer y último punto de todo el archivo (que incluiría la pausa).
+    const trksegs = Array.from(doc.querySelectorAll('trkseg'));
+    let durationSec = 0;
+    if (trksegs.length > 1) {
+      for (const seg of trksegs) {
+        const segTimes = Array.from(seg.querySelectorAll('trkpt'))
+          .map(pt => new Date(pt.querySelector('time')?.textContent || 0).getTime())
+          .filter(t => t > 0);
+        if (segTimes.length >= 2) durationSec += (segTimes[segTimes.length - 1] - segTimes[0]) / 1000;
+      }
+    } else {
+      const startTime = points[0].time.getTime();
+      const endTime = points[points.length - 1].time.getTime();
+      durationSec = (startTime > 0 && endTime > startTime) ? (endTime - startTime) / 1000 : 0;
+    }
 
     // 2. Fallback: Si no hay tiempo en los puntos (es una ruta planificada), buscar en metadatos o estimar
     if (durationSec <= 0) {
@@ -2755,8 +2775,15 @@ const FileParser = {
       if (alt != null && !isNaN(alt) && alt > -500 && alt < 9000) alts.push(alt);
     }
 
-    const durationSec = times.length >= 2
-      ? Math.round((times[times.length - 1] - times[0]) / 1000) : 0;
+    // TotalTimeSeconds de cada Lap es el tiempo con el cronómetro del dispositivo
+    // corriendo (excluye pausas); usar el primer/último Trackpoint en su lugar
+    // incluiría cualquier pausa larga entre el inicio y el fin de la grabación.
+    const lapNodesForDuration = Array.from(doc.querySelectorAll('Lap'));
+    const lapDurationSum = Math.round(lapNodesForDuration.reduce(
+      (s, lap) => s + (parseFloat(lap.querySelector('TotalTimeSeconds')?.textContent || 0) || 0), 0));
+    const durationSec = lapDurationSum > 0
+      ? lapDurationSum
+      : (times.length >= 2 ? Math.round((times[times.length - 1] - times[0]) / 1000) : 0);
 
     // Distancia: último DistanceMeters del último trackpoint (más preciso que el primero del doc)
     const distNodes = doc.querySelectorAll('Trackpoint > DistanceMeters');
@@ -2777,7 +2804,7 @@ const FileParser = {
     const maxHR = hrs.length ? Math.max(...hrs) : null;
     const avgCad = cads.length ? Math.round(cads.reduce((a, b) => a + b, 0) / cads.length) : null;
     // Intentar leer AvgSpeed de las extensiones de los laps (valor de Garmin = tiempo en movimiento)
-    const laps = Array.from(doc.querySelectorAll('Lap'));
+    const laps = lapNodesForDuration;
     let avgSpeed = null;
     if (laps.length) {
       let totalWeight = 0, weightedSpeed = 0;

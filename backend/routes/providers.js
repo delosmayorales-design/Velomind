@@ -751,7 +751,11 @@ function stravaToAppType(sportType) {
 function mapGarminActivity(a, uid, ftp, user) {
   const id = a.summaryId || a.activityId || a.startTimeInSeconds || a.startTimeOffsetInSeconds;
   const startSec = Number(a.startTimeInSeconds || a.startTimeOffsetInSeconds || 0);
-  const duration = Math.round(Number(a.durationInSeconds || a.activeTimeInSeconds || a.elapsedDurationInSeconds || 0));
+  // activeTimeInSeconds = tiempo en movimiento (excluye pausas); durationInSeconds
+  // en la Garmin Health API es el tiempo total transcurrido, incluidas las pausas
+  // (p.ej. una salida en bici pausada varias horas). Priorizamos el tiempo activo
+  // para que TSS/IF no se calculen sobre tiempo parado.
+  const duration = Math.round(Number(a.activeTimeInSeconds || a.durationInSeconds || a.elapsedDurationInSeconds || 0));
   const avgPower = Math.round(Number(a.averagePowerInWatts || a.avgPower || 0));
   const avgHr = Math.round(Number(a.averageHeartRateInBeatsPerMinute || a.averageHR || 0));
   const np = (a.normalizedPowerInWatts || a.normPower)
