@@ -14,6 +14,19 @@ const supabase = require('../db');
 
 class PlanRecalculator {
   /**
+   * Fecha en formato YYYY-MM-DD según el calendario LOCAL del servidor, no UTC.
+   * Usar `date.toISOString().split('T')[0]` aquí sería un bug: en un huso horario
+   * adelantado a UTC (p.ej. Europe/Madrid, UTC+2 en verano) entre las 00:00 y ~02:00
+   * hora local, `toISOString()` (siempre UTC) todavía da el día ANTERIOR -- el backend
+   * creería que "hoy" es "ayer" justo después de medianoche, y podría tratar la sesión
+   * de hoy como un día futuro ajustable (o al revés). Todas las comparaciones de fecha
+   * de este archivo deben pasar por aquí para quedar en el mismo calendario.
+   */
+  static _localDateStr(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  /**
    * MAIN: Recalcular plan semanal si hay cambios desde lo planificado
    * @param {string} userId - User ID
    * @param {Date} weekStart - Monday of the week (ISO format YYYY-MM-DD)
@@ -63,12 +76,12 @@ class PlanRecalculator {
         .maybeSingle();
 
       if (stateError) throw new Error(`Error loading PMC: ${stateError.message}`);
-      const today = new Date().toISOString().split('T')[0];
+      const today = this._localDateStr(new Date());
 
       // 3️⃣ Calcular actividades REALES de la semana hasta hoy
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
-      const weekEndStr = weekEnd.toISOString().split('T')[0];
+      const weekEndStr = this._localDateStr(weekEnd);
 
       const { data: realActivities, error: activError } = await supabase
         .from('activities')
@@ -169,7 +182,7 @@ class PlanRecalculator {
     plannedSessions.forEach((sess, idx) => {
       const sessionDate = new Date(weekStart);
       sessionDate.setDate(sessionDate.getDate() + idx);
-      const dateStr = sessionDate.toISOString().split('T')[0];
+      const dateStr = this._localDateStr(sessionDate);
       plannedByDate[dateStr] = sess.tss || 0;
     });
 
@@ -260,7 +273,7 @@ class PlanRecalculator {
       if (!sess || sess.isRest || sess.completed) return false;
       const sessionDate = new Date(weekStart);
       sessionDate.setDate(sessionDate.getDate() + dayIdx);
-      const dateStr = sessionDate.toISOString().split('T')[0];
+      const dateStr = this._localDateStr(sessionDate);
       if (dateStr < today) return false; // días pasados no se tocan (los repara _sanitizeStoredSessions)
 
       const key = this._crossTrainingKey(sess);
@@ -436,7 +449,7 @@ class PlanRecalculator {
    * los días que quedan absorben (objetivo - hecho), no una cadena de ajustes sueltos.
    */
   static async _redistributeSessions(plannedSessions, realTSSByDay, weekStart, athleteState, weeklyTarget) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = this._localDateStr(new Date());
     const newSessions = JSON.parse(JSON.stringify(plannedSessions)); // Deep copy
     const MAX_DUR = this._MAX_DUR;
 
@@ -447,23 +460,32 @@ class PlanRecalculator {
     const isCrossTraining = sess => this._crossTrainingKey(sess) !== null;
 
     let doneTSS = 0; // TSS real conseguido esta semana hasta hoy (única fuente de "lo hecho")
-    const remainingDays = [];  // sesiones ciclistas futuras: absorben el ajuste
-    const remainingCross = []; // cross-training futuro: fijo, solo se sanea si está roto
+    const remainingDays = [];      // sesiones ciclistas futuras: absorben el ajuste
+    const remainingCross = [];     // cross-training futuro: fijo, solo se sanea si está roto
+    // recovery/descanso futuro: fijo, NUNCA se reescala por objetivo semanal -- si no,
+    // una sesión de recuperación podía inflarse (p.ej. 40->90 min) para "ayudar" a
+    // alcanzar el objetivo antes de que la regla de fatiga (más abajo) llegara a
+    // protegerla, contradiciendo el propio sentido de tener un día de recuperación.
+    const remainingProtected = [];
 
     plannedSessions.forEach((sess, dayIdx) => {
       const sessionDate = new Date(weekStart);
       sessionDate.setDate(sessionDate.getDate() + dayIdx);
-      const dateStr = sessionDate.toISOString().split('T')[0];
+      const dateStr = this._localDateStr(sessionDate);
       const real = realTSSByDay[dateStr] || 0;
 
       if (dateStr > today || (dateStr === today && real === 0)) {
         if (sess.isRest || sess.completed) return;
         if (isCrossTraining(sess)) remainingCross.push(dayIdx);
+        else if (sess.type === 'recovery' || sess.type === 'descanso') remainingProtected.push(dayIdx);
         else remainingDays.push(dayIdx);
       } else {
         doneTSS += real; // días ya vividos: cuenta lo REAL, no lo planificado
       }
     });
+    // Días futuros ajustables de cualquier tipo (para acotar la regla de fatiga de más
+    // abajo a solo estos -- nunca a un día ya pasado/vivido de la semana).
+    const remainingIdxSet = new Set([...remainingDays, ...remainingCross, ...remainingProtected]);
 
     // Reparar cross-training que ya hubiera quedado inflado por una ejecución anterior
     // del bug de redistribución (más del doble de su duración por defecto no tiene
@@ -482,12 +504,18 @@ class PlanRecalculator {
       }
     });
 
-    const fixedTSS = remainingCross.reduce((sum, dayIdx) => sum + (newSessions[dayIdx].tss || 0), 0);
+    const fixedTSS = [...remainingCross, ...remainingProtected].reduce((sum, dayIdx) => sum + (newSessions[dayIdx].tss || 0), 0);
     const remainingTarget = Math.max(0, (weeklyTarget || 0) - doneTSS);
     const cyclingTarget = Math.max(0, remainingTarget - fixedTSS);
     const engineSumTSS = remainingDays.reduce((sum, dayIdx) => sum + (newSessions[dayIdx].tss || 0), 0);
 
-    if (remainingDays.length && engineSumTSS > 0 && cyclingTarget > 0) {
+    // cyclingTarget puede llegar a 0 (objetivo semanal ya agotado o superado antes de
+    // llegar a estos días): antes eso desactivaba el reparto entero y dejaba los días
+    // futuros con su tamaño original sin recortar -- un salto brusco justo en ese punto
+    // (1 TSS de margen sí recortaba hasta el mínimo, 0 TSS de margen no tocaba nada). Con
+    // >=0 el caso límite cae por el mismo camino que cualquier otro exceso: se recorta
+    // hasta el suelo de 70 min, no se deja el plan original intacto.
+    if (remainingDays.length && engineSumTSS > 0) {
       const factor = cyclingTarget / engineSumTSS;
       if (Math.abs(factor - 1) >= 0.05) {
         remainingDays.forEach(dayIdx => {
@@ -506,9 +534,13 @@ class PlanRecalculator {
       }
     }
 
-    // Aplicar restricción de fatiga si TSB < -30
+    // Aplicar restricción de fatiga si TSB < -30 -- SOLO a días futuros/ajustables
+    // (remainingIdxSet). Iterar sobre newSessions completo tocaba también días ya
+    // PASADOS de esta misma semana (su TSS/duración ya son un hecho consumado), algo que
+    // ninguna otra regla de este archivo se permite hacer.
     if (athleteState?.tsb < -30) {
-      newSessions.forEach((sess, idx) => {
+      remainingIdxSet.forEach(idx => {
+        const sess = newSessions[idx];
         // Reducir intensidad de sesiones futuras
         if (sess.type !== 'recovery' && sess.type !== 'descanso') {
           const reductionFactor = 0.70; // 30% reducción

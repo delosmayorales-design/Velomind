@@ -3256,13 +3256,17 @@ async function saveAdaptation(idx) {
   sess.advice      = t.razon || sess.advice;
   sess._adapted    = true;
 
-  // Si había TSS excess scaling activo, la adaptación manual del coach tiene prioridad.
-  // Eliminar los flags para que savePlan() guarde los valores adaptados y no el snapshot previo.
+  // Lo que el usuario acaba de decidir manda sobre cualquier sugerencia automática:
+  // se marca SIEMPRE (no solo cuando venía de un recorte por exceso previo), para que
+  // _applyWeekTSSExcessScaling() nunca reescale/rebaje esta sesión después (p.ej. el
+  // usuario pide "3 horas" y el auto-ajuste se la recorta a 58min sin que haya pasado
+  // nada nuevo). Si además venía de un recorte por exceso, se descarta ese snapshot para
+  // que savePlan() guarde el valor adaptado y no lo restaure.
   if (sess._tssExcess) {
     delete sess._tssExcess;
     delete sess._excessOrig;
-    sess._manualAdaptDay = idx; // evita que _applyWeekTSSExcessScaling() reaplique el escalado
   }
+  sess._manualAdaptDay = idx; // evita que _applyWeekTSSExcessScaling() reaplique el escalado
 
   // Actualizar métricas clave desde la IA
   const _aiDurationMin = t.duracion_min > 0 ? t.duracion_min : sess.durationMin;
@@ -3593,12 +3597,14 @@ function syncPlanWithReality() {
 
     const isToday = i === todayIdx;
     if (isToday) {
-      if (sess._manualAdaptDay === todayIdx) {
-        // El plan fue guardado manualmente hoy: no re-evaluar para no
-        // deshacer los ajustes del plan regenerado.
-        sess._evaluated = true;
-        continue;
-      }
+      // OJO: _manualAdaptDay NO debe saltarse esta evaluación. Su único propósito es
+      // impedir que _applyWeekTSSExcessScaling() reescale una sesión que el usuario
+      // acaba de fijar a mano (eso ya lo respeta esa función por su cuenta, ver su
+      // propio chequeo de _manualAdaptDay). Si esto también saltara la reconciliación
+      // de aquí abajo, una sesión adaptada manualmente a "descanso" quedaría congelada
+      // así para siempre aunque el usuario saliera después a entrenar 3 horas — la
+      // actividad real de hoy SIEMPRE debe prevalecer sobre cualquier sugerencia,
+      // manual o automática (bug reportado: "hizo 3.2h y el plan seguía diciendo descanso").
       delete sess._evaluated; // Permitir reevaluar hoy si hay nuevos datos
     }
 
@@ -3819,6 +3825,9 @@ async function _applyActivitySubstitution(idx, sub, feedback, isFuture, btn, res
   sess.feedback    = feedback;
   sess._adapted    = true;
   sess._substituted = sub.type;
+  // Lo que el usuario dice que va a hacer/ha hecho manda: protegido de que
+  // _applyWeekTSSExcessScaling() lo rebaje después (mismo criterio que saveAdaptation()).
+  sess._manualAdaptDay = idx;
 
   if (!sub.cycling) {
     sess.intervals     = [];
@@ -5419,7 +5428,14 @@ function _regeneratePlanRespectingProgress(allowTargetChange = false) {
   const todayIdx     = (new Date().getDay() + 6) % 7;
   const oldSessions  = currentPlan?.sessions || [];
   // Si hoy ya está completado no lo tocamos; si no, se regenera junto al resto.
-  const cutoffIdx    = oldSessions[todayIdx]?.completed ? todayIdx + 1 : todayIdx;
+  // No basta con mirar el flag `completed` (puede no haberse marcado aún por una
+  // reconciliación pendiente): si ya hay actividad real registrada hoy, hoy tampoco
+  // se toca — nunca se le pisa al usuario lo que ya hizo con una sesión generada desde
+  // cero (bug reportado: 3.2h reales y el botón "Regenerar" lo volvía a poner "Descanso").
+  const _today = new Date();
+  const _todayKey = `${_today.getFullYear()}-${String(_today.getMonth() + 1).padStart(2, '0')}-${String(_today.getDate()).padStart(2, '0')}`;
+  const _todayHasRealActivity = (AppState.activities || []).some(a => a.date?.slice(0, 10) === _todayKey);
+  const cutoffIdx    = (oldSessions[todayIdx]?.completed || _todayHasRealActivity) ? todayIdx + 1 : todayIdx;
   const preserved    = oldSessions.slice(0, cutoffIdx).map(s => ({ ...s }));
   const doneTSS      = preserved.reduce((sum, s) => sum + (s.completed ? (s.tss || 0) : 0), 0);
 
