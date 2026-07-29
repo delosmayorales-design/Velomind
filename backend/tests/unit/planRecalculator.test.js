@@ -112,11 +112,14 @@ describe('PlanRecalculator._shouldAdapt', () => {
   test('desviación total de más de 50 dispara recalculo aunque ningún día individual la supere', () => {
     expect(PlanRecalculator._shouldAdapt({ ...base, totalDelta: 55 }, {})).toBe(true);
   });
-  test('TSB < -30 (sobreentrenamiento) dispara recalculo aunque no haya ninguna desviación', () => {
-    expect(PlanRecalculator._shouldAdapt(base, { tsb: -31 })).toBe(true);
+  test('TSB < -20 (fatiga acumulada) dispara recalculo aunque no haya ninguna desviación', () => {
+    expect(PlanRecalculator._shouldAdapt(base, { tsb: -21 })).toBe(true);
   });
-  test('TSB exactamente -30 NO dispara (umbral estrictamente menor)', () => {
-    expect(PlanRecalculator._shouldAdapt(base, { tsb: -30 })).toBe(false);
+  test('TSB exactamente -20 NO dispara (umbral estrictamente menor)', () => {
+    expect(PlanRecalculator._shouldAdapt(base, { tsb: -20 })).toBe(false);
+  });
+  test('TSB -25 dispara recalculo -- zona que antes (umbral -30) el plan ignoraba pese al aviso de fatiga del dashboard', () => {
+    expect(PlanRecalculator._shouldAdapt(base, { tsb: -25 })).toBe(true);
   });
   test('todo dentro de umbrales -> no recalcula', () => {
     expect(PlanRecalculator._shouldAdapt({ ...base, exceedingDays: [{ date: 'x', delta: 10 }], totalDelta: 20 }, { tsb: 5 })).toBe(false);
@@ -307,7 +310,7 @@ describe('PlanRecalculator._redistributeSessions', () => {
     expect(result[4].durationMin).toBe(60);
   });
 
-  test('fatiga crítica (TSB < -30) reduce un 30% las sesiones futuras EXCEPTO recovery/descanso', async () => {
+  test('fatiga acumulada (TSB < -20) reduce un 30% las sesiones futuras EXCEPTO recovery/descanso', async () => {
     const todayIdx = 2;
     const weekStart = weekStartForTodayIdx(todayIdx);
     const sessions = Array(7).fill(null).map((_, i) =>
@@ -323,7 +326,7 @@ describe('PlanRecalculator._redistributeSessions', () => {
     // puede inflarla o recortarla también -- eso se cubre en el test de "hallazgo" de abajo).
     const weeklyTarget = 100 /* hoy, idx2 */ + 100 + 100 + 20 + 100;
 
-    const result = await PlanRecalculator._redistributeSessions(sessions, real, weekStart, { tsb: -35 }, weeklyTarget);
+    const result = await PlanRecalculator._redistributeSessions(sessions, real, weekStart, { tsb: -21 }, weeklyTarget);
 
     // Sesión futura normal: reducida al 70%
     const normalFutureIdx = todayIdx + 1 === 5 ? todayIdx + 2 : todayIdx + 1;
@@ -332,7 +335,29 @@ describe('PlanRecalculator._redistributeSessions', () => {
     expect(result[5].tss).toBe(20);
   });
 
-  test('FIX: la fatiga crítica (TSB < -30) NO toca los días ya PASADOS de la semana', async () => {
+  test('TSB -25 también reduce las sesiones futuras -- zona que con el umbral anterior (-30) el plan dejaba intacta', async () => {
+    const todayIdx = 2;
+    const weekStart = weekStartForTodayIdx(todayIdx);
+    const sessions = Array(7).fill(null).map(() => makeSession({ tss: 100, durationMin: 100 }));
+    const weeklyTarget = 100 * 5; // hoy + 4 futuros, factor de reparto neutro (no-op)
+
+    const result = await PlanRecalculator._redistributeSessions(sessions, {}, weekStart, { tsb: -25 }, weeklyTarget);
+
+    expect(result[todayIdx + 1].tss).toBe(Math.round(100 * 0.7));
+  });
+
+  test('TSB -15 NO reduce las sesiones futuras (dentro del umbral, igual que antes)', async () => {
+    const todayIdx = 2;
+    const weekStart = weekStartForTodayIdx(todayIdx);
+    const sessions = Array(7).fill(null).map(() => makeSession({ tss: 100, durationMin: 100 }));
+    const weeklyTarget = 100 * 5;
+
+    const result = await PlanRecalculator._redistributeSessions(sessions, {}, weekStart, { tsb: -15 }, weeklyTarget);
+
+    expect(result[todayIdx + 1].tss).toBe(100);
+  });
+
+  test('FIX: la fatiga acumulada (TSB < -20) NO toca los días ya PASADOS de la semana', async () => {
     // Antes: el recorte del 30% por fatiga iteraba sobre newSessions COMPLETO (los 7
     // días), incluidos los ya vividos -- su TSS/duración ya son un hecho consumado y
     // ninguna otra regla de este archivo se permite reescribirlos. Ahora solo toca los
@@ -350,12 +375,12 @@ describe('PlanRecalculator._redistributeSessions', () => {
     }
   });
 
-  test('FIX: una sesión de recovery futura NUNCA se infla por el reparto de objetivo semanal, ni siquiera con mucho margen y TSB crítico', async () => {
+  test('FIX: una sesión de recovery futura NUNCA se infla por el reparto de objetivo semanal, ni siquiera con mucho margen y TSB en fatiga', async () => {
     // Antes: la exención de recovery/descanso solo aplicaba al recorte del 30% por
     // fatiga, NO al reparto por objetivo semanal (que usaba el mismo factor para toda
     // sesión no-cross-training sin distinguir tipo) -- con margen de sobra en el
     // objetivo, una sesión de recovery pasaba de 40 a más de una hora el mismo día en que
-    // el atleta estaba en fatiga crítica. Ahora recovery/descanso se tratan como "fijos"
+    // el atleta estaba en fatiga. Ahora recovery/descanso se tratan como "fijos"
     // (igual que el cross-training) en AMBOS pasos, no solo en el de fatiga.
     const todayIdx = 2;
     const weekStart = weekStartForTodayIdx(todayIdx);

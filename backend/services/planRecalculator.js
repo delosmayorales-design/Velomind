@@ -7,7 +7,7 @@
  * - Nueva actividad registrada
  * - Actividad modificada (TSS, NP, duración)
  * - Manual regeneration (botón "Regenerar")
- * - Diariamente: Verificar fatiga (TSB < -30)
+ * - Diariamente: Verificar fatiga (TSB < -20)
  */
 
 const supabase = require('../db');
@@ -234,7 +234,7 @@ class PlanRecalculator {
     // ✅ Recalcular si:
     // - User se pasó por +30 TSS en algún día
     // - User faltó una sesión (TSS 0)
-    // - TSB < -30 (sobreentrenamiento)
+    // - TSB < -20 (fatiga acumulada, alineado con el aviso "En carga" del dashboard)
     // - Desviación total > 50 TSS
 
     const { exceedingDays, missingDays, totalDelta } = deltas;
@@ -254,8 +254,11 @@ class PlanRecalculator {
       return true;
     }
 
-    // Si sobreentrenamiento crítico
-    if (athleteState?.tsb < -30) {
+    // Fatiga acumulada: mismo umbral que usa el dashboard para avisar "En carga"
+    // (cyclocoach/dashboard.html) -- antes este umbral era -30 y el plan seguía
+    // prescribiendo sesiones duras (ej. umbral) mientras el dashboard ya sugería
+    // descansar, un mensaje incongruente para el usuario en la zona -10/-30 de TSB.
+    if (athleteState?.tsb < -20) {
       return true;
     }
 
@@ -534,11 +537,14 @@ class PlanRecalculator {
       }
     }
 
-    // Aplicar restricción de fatiga si TSB < -30 -- SOLO a días futuros/ajustables
+    // Aplicar restricción de fatiga si TSB < -20 -- SOLO a días futuros/ajustables
     // (remainingIdxSet). Iterar sobre newSessions completo tocaba también días ya
     // PASADOS de esta misma semana (su TSS/duración ya son un hecho consumado), algo que
-    // ninguna otra regla de este archivo se permite hacer.
-    if (athleteState?.tsb < -30) {
+    // ninguna otra regla de este archivo se permite hacer. Umbral alineado con el aviso
+    // "En carga" del dashboard (cyclocoach/dashboard.html): antes era -30, así que el plan
+    // podía seguir prescribiendo sesiones duras (ej. umbral) en la misma zona de TSB donde
+    // el dashboard ya sugería entrenar suave o descansar.
+    if (athleteState?.tsb < -20) {
       remainingIdxSet.forEach(idx => {
         const sess = newSessions[idx];
         // Reducir intensidad de sesiones futuras
