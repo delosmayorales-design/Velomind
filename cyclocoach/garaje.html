@@ -1722,13 +1722,13 @@ const G = (() => {
 
   // ─── Render Component Card ────────────────────────────────
   function renderCompCard(comp) {
-    // Un componente recién "Cambiado" también arranca en 0 km, pero eso es un dato
-    // real y completo (se acaba de instalar), no una ausencia de datos — a diferencia
-    // de un componente de bici recién creada, donde el 0 es solo un valor por defecto
-    // y conviene pedir el km inicial real. Si ya tiene historial de reemplazo, se trata
-    // como dato válido y se muestra el anillo normal en vez del cartel "Añadir km iniciales".
-    const hasHistory = hist.some(h => h.component_id === comp.id || (h.bike_id === comp.bike_id && h.component_type === comp.type));
-    const hasKm = !!(comp.threshold_days) || (comp.current_km > 0) || (comp.current_hours > 0) || hasHistory;
+    // El cartel "Añadir km iniciales" solo tiene sentido cuando no hay ningún umbral
+    // con el que calcular desgaste. current_km/current_hours en 0 es un dato real y
+    // completo (recién instalado, recién cambiado), no una ausencia de datos — usar
+    // ">0" como condición (como antes) ocultaba el anillo en cualquier componente
+    // nuevo o recién reemplazado. El backend siempre manda un threshold por defecto,
+    // así que en la práctica esto casi nunca cae en el cartel.
+    const hasKm = comp.threshold_km != null || comp.threshold_hours != null || comp.threshold_days != null;
     if (!hasKm) {
       const bm = [comp.brand, comp.model].filter(Boolean).join(' ');
       return `
