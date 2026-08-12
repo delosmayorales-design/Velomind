@@ -191,6 +191,16 @@ async function sendReminders({ force = false } = {}) {
             let pct = 0;
             const label = MAINT_LABELS[c.component_type] || c.component_type;
 
+            // Posposición manual ("el mecánico dice que aguanta más") — no notificar
+            // hasta que se supere el km/hora objetivo que eligió el usuario.
+            if (c.snooze_until_km != null) {
+              const currentKm = Math.max(0, (bike.total_km || 0) - (c.km_installed || 0));
+              if (currentKm < c.snooze_until_km) continue;
+            } else if (c.snooze_until_hours != null) {
+              const currentHours = Math.max(0, (bike.total_hours || 0) - (c.hours_installed || 0));
+              if (currentHours < c.snooze_until_hours) continue;
+            }
+
             if (MAINT_DATE_TYPES.has(c.component_type)) {
               const days = Math.floor((Date.now() - new Date(c.created_at)) / 86400000);
               const threshold = c.component_type === 'tubeless_sealant'

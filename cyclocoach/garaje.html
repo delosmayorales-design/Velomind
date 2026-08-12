@@ -208,6 +208,7 @@
     .comp-card.status-red    { border-left: 3px solid var(--danger); }
     .comp-card.status-yellow { border-left: 3px solid var(--warning); }
     .comp-card.status-green  { border-left: 3px solid var(--success); }
+    .comp-card.status-blue   { border-left: 3px solid #38BDF8; }
     .comp-card-top { display: flex; align-items: flex-start; gap: 14px; }
 
     /* ── SVG Ring ──────────────────────────────────────────── */
@@ -218,6 +219,7 @@
     .ring-fill.green  { stroke: #34D399; }
     .ring-fill.yellow { stroke: #FBBF24; }
     .ring-fill.red    { stroke: #F87171; }
+    .ring-fill.blue   { stroke: #38BDF8; }
     .ring-label {
       position: absolute; inset: 0; display: flex;
       align-items: center; justify-content: center;
@@ -249,6 +251,7 @@
     .comp-bar-fill.green  { background: var(--success); }
     .comp-bar-fill.yellow { background: var(--warning); }
     .comp-bar-fill.red    { background: var(--danger); }
+    .comp-bar-fill.blue   { background: #38BDF8; }
     .comp-badge {
       display: inline-flex; align-items: center; gap: 4px;
       font-size: 10px; font-weight: 700; padding: 2px 8px;
@@ -257,6 +260,9 @@
     .comp-badge.green  { background: rgba(52,211,153,0.12); color: var(--success); }
     .comp-badge.yellow { background: rgba(251,191,36,0.12);  color: var(--warning); }
     .comp-badge.red    { background: rgba(248,113,113,0.15); color: var(--danger); }
+    .comp-badge.blue   { background: rgba(56,189,248,0.12);  color: #38BDF8; }
+    .btn-snooze { flex:1; padding:10px 14px; background:var(--bg-input); color:var(--text-muted); border:1px solid var(--border); border-radius:var(--radius-md,8px); font-size:12px; font-weight:600; cursor:pointer; transition:all .2s ease; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+    .btn-snooze:hover { border-color:#38BDF8; color:#38BDF8; }
     .comp-actions { display: flex; gap: 8px; }
     .btn-checkin {
       flex: 1; padding: 10px 14px; background: var(--primary); color: #111;
@@ -1350,7 +1356,17 @@ const G = (() => {
     return 0;
   }
 
+  // Posposición manual ("revisar en +X km/h"): el mecánico/usuario decide que el
+  // componente aguanta más de lo que marca el cálculo automático. No toca threshold_km
+  // ni km_remaining — solo silencia la alerta hasta llegar al km/hora objetivo.
+  function isSnoozed(comp) {
+    if (comp.snooze_until_km    != null) return (comp.current_km    || 0) < comp.snooze_until_km;
+    if (comp.snooze_until_hours != null) return (comp.current_hours || 0) < comp.snooze_until_hours;
+    return false;
+  }
+
   function calcStatus(comp) {
+    if (isSnoozed(comp)) return 'blue';
     const p = pct(comp);
     return p >= 100 ? 'red' : p >= 80 ? 'yellow' : 'green';
   }
@@ -1373,10 +1389,18 @@ const G = (() => {
     return Math.round(avg);
   }
 
-  function statusLabel(s) { return {green:'OK', yellow:'Revisar pronto', red:'Cambio urgente'}[s] || 'OK'; }
-  function statusEmoji(s) { return {green:'🟢', yellow:'🟡', red:'🔴'}[s] || '🟢'; }
+  function statusLabel(s) { return {green:'OK', yellow:'Revisar pronto', red:'Cambio urgente', blue:'Revisión pospuesta'}[s] || 'OK'; }
+  function statusEmoji(s) { return {green:'🟢', yellow:'🟡', red:'🔴', blue:'🔧'}[s] || '🟢'; }
 
   function fmtVal(comp) {
+    if (isSnoozed(comp)) {
+      if (comp.snooze_until_hours != null) {
+        const restH = Math.max(0, Math.round((comp.snooze_until_hours - (comp.current_hours || 0)) * 10) / 10);
+        return `<span style="color:var(--text)">Mecánico OK</span> <span style="color:var(--text-muted)">·</span> <span style="color:#38BDF8">revisar en ${restH}h</span>`;
+      }
+      const restKm = Math.max(0, Math.round(comp.snooze_until_km - (comp.current_km || 0)));
+      return `<span style="color:var(--text)">Mecánico OK</span> <span style="color:var(--text-muted)">·</span> <span style="color:#38BDF8">revisar en ${restKm.toLocaleString('es')} km</span>`;
+    }
     if (comp.threshold_hours) {
       const used = Math.round(comp.current_hours || 0);
       const remH = Math.max(0, comp.threshold_hours - used);
@@ -1520,6 +1544,7 @@ const G = (() => {
     st.bikes.forEach(bike => {
       const urgent = [], warning = [];
       bike.components.forEach(comp => {
+        if (isSnoozed(comp)) return;
         const p = pct(comp);
         if (p >= 100) urgent.push(CM[comp.type]?.name || comp.type);
         else if (p >= 80) warning.push(`${CM[comp.type]?.name || comp.type} (${Math.round(p)}%)`);
@@ -1765,6 +1790,11 @@ const G = (() => {
           <i class="fas fa-history"></i>${hc ? ` <span style="font-size:10px">${hc}</span>` : ''}
         </button>
       </div>
+      ${!comp.threshold_days ? (isSnoozed(comp)
+        ? `<div class="comp-actions"><button class="btn-snooze" onclick="G.cancelSnooze('${comp.id}','${comp.bike_id}')"><i class="fas fa-undo"></i> Cancelar posposición</button></div>`
+        : (s === 'yellow' || s === 'red')
+          ? `<div class="comp-actions"><button class="btn-snooze" onclick="G.openSnooze('${comp.id}','${comp.bike_id}')" title="El mecánico lo revisó y todavía tiene vida"><i class="fas fa-wrench"></i> El mecánico dice que aguanta más</button></div>`
+          : '') : ''}
     </div>`;
   }
 
@@ -2195,6 +2225,52 @@ const G = (() => {
     }
   }
 
+  // ─── Posponer revisión ("el mecánico dice que aguanta más") ─
+  function openSnooze(compId, bikeId) {
+    const bike = st.bikes.find(b => b.id === bikeId);
+    const comp = bike?.components.find(c => c.id === compId);
+    if (!comp || !comp.id || comp.id.length !== 36) return;
+    const isHours = comp.threshold_hours != null;
+    const unit = isHours ? 'horas' : 'km';
+    const input = prompt(`¿En cuántos ${unit} más querés que te avisemos para revisar "${comp.name}" de nuevo?`, '1000');
+    if (input === null) return;
+    const amount = parseFloat(input);
+    if (!amount || amount <= 0) { toast('red', 'Error', `Introducí un número de ${unit} válido.`); return; }
+
+    const body = isHours ? { hours_amount: amount } : { km_amount: amount };
+    fetch(`${window.API_URL}/garage/component/${comp.id}/snooze`, {
+      method: 'POST',
+      headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(async r => {
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) { toast('red', 'Error', data.error || 'No se pudo posponer la revisión.'); return; }
+      if (isHours) { comp.snooze_until_hours = data.snooze_until_hours; comp.snooze_until_km = null; }
+      else         { comp.snooze_until_km    = data.snooze_until_km;    comp.snooze_until_hours = null; }
+      comp.status = calcStatus(comp);
+      save();
+      render();
+      toast('green', '🔧 Revisión pospuesta', `Te avisaremos de nuevo en ${amount.toLocaleString('es')} ${unit}.`);
+    }).catch(() => toast('red', 'Error', 'No se pudo conectar con el servidor.'));
+  }
+
+  function cancelSnooze(compId, bikeId) {
+    const bike = st.bikes.find(b => b.id === bikeId);
+    const comp = bike?.components.find(c => c.id === compId);
+    if (!comp || !comp.id || comp.id.length !== 36) return;
+    fetch(`${window.API_URL}/garage/component/${comp.id}/snooze`, {
+      method: 'DELETE',
+      headers: Auth.getHeaders(),
+    }).then(async r => {
+      if (!r.ok) { toast('red', 'Error', 'No se pudo cancelar la posposición.'); return; }
+      comp.snooze_until_km = null; comp.snooze_until_hours = null;
+      comp.status = calcStatus(comp);
+      save();
+      render();
+      toast('green', 'Posposición cancelada', 'Volvió a la alerta normal de desgaste.');
+    }).catch(() => toast('red', 'Error', 'No se pudo conectar con el servidor.'));
+  }
+
   // ─── Modal: Add KM ────────────────────────────────────────
   function openAddKm(id) {
     const bike = st.bikes.find(b => b.id === id);
@@ -2438,7 +2514,7 @@ const G = (() => {
     }
   }
 
-  return { init, showOverview, showBike, showTools, openCheckin, confirmCheckin, openEditComp, saveCompEdit, searchPrice, searchInModal, openEditBike, saveBikeConfig, openAddKm, confirmAddKm, openHistory, openModal, closeModal, syncActivities, syncComponents, exportPDF, importFromStrava, openAddBike, saveNewBike, deleteBike, _onBikePhotoChange, _removeBikePhoto };
+  return { init, showOverview, showBike, showTools, openCheckin, confirmCheckin, openEditComp, saveCompEdit, searchPrice, searchInModal, openEditBike, saveBikeConfig, openAddKm, confirmAddKm, openHistory, openModal, closeModal, syncActivities, syncComponents, exportPDF, importFromStrava, openAddBike, saveNewBike, deleteBike, openSnooze, cancelSnooze, _onBikePhotoChange, _removeBikePhoto };
 })();
 
 

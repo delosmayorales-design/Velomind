@@ -97,6 +97,10 @@ router.get('/', async (req, res) => {
           km_remaining:  (isHours || isDateBased) ? 0 : Math.max(0, c.km_remaining || 0),
           threshold_km:    (isHours || isDateBased) ? null : lifespan_km,
           threshold_hours: isHours ? lifespan_h : null,
+          // Posposición manual ("revisar en +X km/h") — independiente del cálculo de desgaste.
+          snooze_until_km:    c.snooze_until_km    ?? null,
+          snooze_until_hours: c.snooze_until_hours ?? null,
+          snooze_note:        c.snooze_note        || null,
           status: 'green',
         };
       });
@@ -246,6 +250,49 @@ router.put('/component/:componentId', async (req, res) => {
 
   const { error } = await supabase.from('bike_components').update(updates).eq('id', comp.id);
   if (error) { console.error('[garage/component PUT]', error.message); return res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' }); }
+  res.json({ ok: true });
+});
+
+// POST /api/garage/component/:componentId/snooze — "revisar en +X km/h" sin resetear el desgaste
+router.post('/component/:componentId/snooze', async (req, res) => {
+  const { km_amount, hours_amount, note } = req.body;
+  const { data: comp } = await supabase.from('bike_components')
+    .select('*, bikes(user_id, total_km, total_hours)').eq('id', req.params.componentId).single();
+  if (!comp || comp.bikes?.user_id !== req.user.id) return res.status(404).json({ error: 'Componente no encontrado' });
+
+  const HOUR_BASED = new Set(['fork', 'shock']);
+  const isHourBased = HOUR_BASED.has(comp.component_type);
+  const updates = { snoozed_at: new Date().toISOString(), snooze_note: note || null };
+
+  if (isHourBased) {
+    const amount = Math.max(0, parseFloat(hours_amount) || 0);
+    if (!amount) return res.status(400).json({ error: 'Se requiere hours_amount' });
+    const hoursUsed = Math.max(0, (comp.bikes?.total_hours || 0) - (comp.hours_installed || 0));
+    updates.snooze_until_hours = hoursUsed + amount;
+    updates.snooze_until_km = null;
+  } else {
+    const amount = Math.max(0, parseFloat(km_amount) || 0);
+    if (!amount) return res.status(400).json({ error: 'Se requiere km_amount' });
+    const kmUsed = Math.max(0, (comp.bikes?.total_km || 0) - (comp.km_installed || 0));
+    updates.snooze_until_km = kmUsed + amount;
+    updates.snooze_until_hours = null;
+  }
+
+  const { error } = await supabase.from('bike_components').update(updates).eq('id', comp.id);
+  if (error) { console.error('[garage/component/snooze POST]', error.message); return res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' }); }
+  res.json({ ok: true, snooze_until_km: updates.snooze_until_km, snooze_until_hours: updates.snooze_until_hours });
+});
+
+// DELETE /api/garage/component/:componentId/snooze — cancelar posposición
+router.delete('/component/:componentId/snooze', async (req, res) => {
+  const { data: comp } = await supabase.from('bike_components')
+    .select('id, bikes(user_id)').eq('id', req.params.componentId).single();
+  if (!comp || comp.bikes?.user_id !== req.user.id) return res.status(404).json({ error: 'Componente no encontrado' });
+
+  const { error } = await supabase.from('bike_components')
+    .update({ snooze_until_km: null, snooze_until_hours: null, snoozed_at: null, snooze_note: null })
+    .eq('id', comp.id);
+  if (error) { console.error('[garage/component/snooze DELETE]', error.message); return res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' }); }
   res.json({ ok: true });
 });
 
