@@ -1722,7 +1722,13 @@ const G = (() => {
 
   // ─── Render Component Card ────────────────────────────────
   function renderCompCard(comp) {
-    const hasKm = !!(comp.threshold_days) || (comp.current_km > 0) || (comp.current_hours > 0);
+    // Un componente recién "Cambiado" también arranca en 0 km, pero eso es un dato
+    // real y completo (se acaba de instalar), no una ausencia de datos — a diferencia
+    // de un componente de bici recién creada, donde el 0 es solo un valor por defecto
+    // y conviene pedir el km inicial real. Si ya tiene historial de reemplazo, se trata
+    // como dato válido y se muestra el anillo normal en vez del cartel "Añadir km iniciales".
+    const hasHistory = hist.some(h => h.component_id === comp.id || (h.bike_id === comp.bike_id && h.component_type === comp.type));
+    const hasKm = !!(comp.threshold_days) || (comp.current_km > 0) || (comp.current_hours > 0) || hasHistory;
     if (!hasKm) {
       const bm = [comp.brand, comp.model].filter(Boolean).join(' ');
       return `
