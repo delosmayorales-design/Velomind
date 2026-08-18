@@ -435,6 +435,7 @@ async function loadPolylineCache() {
 let _selA = null, _selB = null;
 let _dragEndpoint = null; // 'left' | 'right' — extremo que se está arrastrando
 let _sOrig = null, _sOrigN = 900, _sFTP = 200;
+let _sSampledIdx = null; // índices del array original elegidos al downsamplear (uno por punto mostrado)
 let _lastChart = null; // chart con el que el usuario interactuó por última vez
 
 const _streamSelPlugin = {
@@ -493,9 +494,11 @@ function _showIntervalStats() {
   if (_selA === null || _selB === null || !_sOrig) return;
   const s = _sOrig;
   const origLen = s.time.length;
-  const step = origLen > _sOrigN ? origLen / _sOrigN : 1;
-  const i1 = Math.max(0, Math.min(Math.round(_selA * step), origLen - 1));
-  const i2 = Math.max(0, Math.min(Math.round(_selB * step), origLen - 1));
+  // Usar los índices reales elegidos al downsamplear (mapeo exacto por tiempo,
+  // no una aproximación proporcional que asume muestreo uniforme).
+  const idxMap = _sSampledIdx || [];
+  const i1 = Math.max(0, Math.min(idxMap[_selA] ?? _selA, origLen - 1));
+  const i2 = Math.max(0, Math.min(idxMap[_selB] ?? _selB, origLen - 1));
   const sl = arr => arr ? arr.slice(i1, i2 + 1) : [];
 
   const tSl   = sl(s.time);
@@ -1379,18 +1382,31 @@ function rollingAvg(values, times, windowSec) {
   return out;
 }
 
-function dsample(arr, n) {
-  if (!arr || arr.length <= n) return [...arr];
-  const step = arr.length / n;
-  return Array.from({ length: n }, (_, i) => arr[Math.round(i * step)]);
+// Elige n índices del array original de forma que queden equiespaciados en TIEMPO
+// real (timeArr), no en posición/índice. Los streams de Strava (sobre todo en salidas
+// largas de MTB con paradas o tramos técnicos) no llegan con intervalos uniformes entre
+// muestras: bajar de resolución por índice fijo comprime o estira tramos
+// reales de tiempo y desplaza visualmente los picos (p.ej. de altitud) respecto a donde
+// ocurrieron de verdad. Devuelve los índices ORIGINALES elegidos (no downsampleados) para
+// poder reusar el mismo mapeo en distintas series y para el back-mapping exacto de
+// _showIntervalStats.
+function buildTimeIndices(timeArr, n) {
+  const len = timeArr.length;
+  if (len <= n) return Array.from({ length: len }, (_, i) => i);
+  const t0 = timeArr[0], t1 = timeArr[len - 1];
+  const dur = (t1 - t0) || 1;
+  const indices = [];
+  let j = 0;
+  for (let i = 0; i < n; i++) {
+    const targetT = t0 + (dur * i) / (n - 1);
+    while (j < len - 1 && timeArr[j + 1] <= targetT) j++;
+    if (j < len - 1 && Math.abs(timeArr[j + 1] - targetT) < Math.abs(timeArr[j] - targetT)) j++;
+    indices.push(j);
+  }
+  return indices;
 }
-
-function dsampleAll(arrays, n) {
-  const len = arrays[0]?.length || 0;
-  if (len <= n) return arrays.map(a => a ? [...a] : []);
-  const step = len / n;
-  const indices = Array.from({ length: n }, (_, i) => Math.round(i * step));
-  return arrays.map(a => a ? indices.map(i => a[i]) : []);
+function sampleByIdx(arr, idx) {
+  return arr ? idx.map(i => arr[i]) : [];
 }
 
 async function fetchAndRenderStreams(sid, ftp, act) {
@@ -1521,6 +1537,7 @@ function renderStreamCharts(s, ftp, act) {
   let calculatedNP = null;
   const MAX_PTS = 900;
   _sOrigN = Math.min(MAX_PTS, s.time.length);
+  _sSampledIdx = buildTimeIndices(s.time, MAX_PTS);
 
   // Aplicar caps si el usuario los ha definido
   const powerCap = act?.power_cap || null;
@@ -1551,7 +1568,7 @@ function renderStreamCharts(s, ftp, act) {
   const wattsCanvas = document.getElementById('chart-stream-watts');
   if (wattsCanvas && s.watts?.length) {
     const ma30 = rollingAvg(s.watts, s.time, 30);
-    const [tDs, rawDs, maDs] = dsampleAll([s.time, s.watts, ma30], MAX_PTS);
+    const tDs = sampleByIdx(s.time, _sSampledIdx), rawDs = sampleByIdx(s.watts, _sSampledIdx), maDs = sampleByIdx(ma30, _sSampledIdx);
 
     const maxW = Math.max(...s.watts), avgW = Math.round(s.watts.reduce((a,b)=>a+b,0)/s.watts.length);
     // NP algoritmo TrainingPeaks/Garmin: interpolar a 1s → rolling 30s (con ceros) → 4ª potencia → media → raíz 4ª
@@ -1618,7 +1635,7 @@ function renderStreamCharts(s, ftp, act) {
   const hrCanvas = document.getElementById('chart-stream-hr');
   if (hrCanvas && s.heartrate?.length) {
     document.getElementById('cwrap-stream-hr').style.display = '';
-    const [, hrDs] = dsampleAll([s.time, s.heartrate], MAX_PTS);
+    const hrDs = sampleByIdx(s.heartrate, _sSampledIdx);
     const maxHR = Math.max(...s.heartrate), avgHR = Math.round(s.heartrate.reduce((a,b)=>a+b,0)/s.heartrate.length);
     document.getElementById('stats-hr').innerHTML =
       `<span style="color:var(--text-muted)">Media</span> ${avgHR} &nbsp;<span style="color:#ef4444">Máx</span> ${maxHR} bpm` +
@@ -1643,7 +1660,7 @@ function renderStreamCharts(s, ftp, act) {
   if (speedCanvas && s.velocity_smooth?.length) {
     document.getElementById('cwrap-stream-speed').style.display = '';
     const kmh = s.velocity_smooth.map(v => Math.round(v * 3.6 * 10) / 10);
-    const [, spdDs] = dsampleAll([s.time, kmh], MAX_PTS);
+    const spdDs = sampleByIdx(kmh, _sSampledIdx);
     const maxSpd = Math.max(...kmh), avgSpd = Math.round(kmh.reduce((a,b)=>a+b,0)/kmh.length * 10) / 10;
     document.getElementById('stats-speed').innerHTML =
       `<span style="color:var(--text-muted)">Med</span> ${avgSpd} &nbsp;<span style="color:#38bdf8">Máx</span> ${maxSpd} km/h`;
@@ -1666,7 +1683,7 @@ function renderStreamCharts(s, ftp, act) {
   const elevCanvas = document.getElementById('chart-stream-elev');
   if (elevCanvas && s.altitude?.length) {
     document.getElementById('cwrap-stream-elev').style.display = '';
-    const [, elevDs] = dsampleAll([s.time, s.altitude], MAX_PTS);
+    const elevDs = sampleByIdx(s.altitude, _sSampledIdx);
     const minElev = Math.round(Math.min(...s.altitude)), maxElev = Math.round(Math.max(...s.altitude));
     document.getElementById('stats-elev').innerHTML =
       `<span style="color:var(--text-muted)">${minElev}m</span> → <span style="color:#94a3b8">${maxElev}m</span>`;
@@ -1695,7 +1712,7 @@ function renderStreamCharts(s, ftp, act) {
   const cadCanvas = document.getElementById('chart-stream-cadence');
   if (cadCanvas && s.cadence?.length) {
     document.getElementById('cwrap-stream-cadence').style.display = '';
-    const [, cadDs] = dsampleAll([s.time, s.cadence], MAX_PTS);
+    const cadDs = sampleByIdx(s.cadence, _sSampledIdx);
     const cadNZ = s.cadence.filter(v => v > 0);
     const avgCad = cadNZ.length ? Math.round(cadNZ.reduce((a, b) => a + b, 0) / cadNZ.length) : 0;
     const maxCad = s.cadence.length ? Math.max(...s.cadence) : 0;

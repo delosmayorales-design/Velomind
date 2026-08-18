@@ -1211,6 +1211,7 @@
 
     <!-- PLAN SEMANAL -->
     <div id="coach-alerts-section" class="hidden" style="margin-bottom:12px"></div>
+    <div id="hours-warning-banner" style="display:none;margin-bottom:12px"></div>
     <div id="event-phase-banner" style="display:none;margin-bottom:12px"></div>
     <div id="events-list-banner" style="display:none;margin-bottom:12px"></div>
     <div id="ramp-rate-bar" style="display:none;margin-bottom:16px;padding:8px 14px;background:var(--bg-input);border-radius:8px;font-size:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"></div>
@@ -2393,6 +2394,32 @@ function renderPlan(plan, athlete) {
     } else {
       alertSection.classList.add('hidden');
       alertSection.innerHTML = '';
+    }
+  }
+
+  // ── Banner de horas semanales insuficientes para el objetivo ──
+  const hoursBanner = document.getElementById('hours-warning-banner');
+  if (hoursBanner) {
+    if (plan.hoursWarning) {
+      const w = plan.hoursWarning;
+      const raceLine = w.raceHoursEst
+        ? ` Se estima que completar el evento puede llevar unas ${w.raceHoursEst}h, así que conviene acercar el volumen semanal a esa cifra a medida que te acerques a la fecha.`
+        : '';
+      hoursBanner.innerHTML = `
+        <div style="background:rgba(255,150,50,0.10);border:1px solid rgba(255,150,50,0.35);border-radius:12px;padding:14px 18px;display:flex;align-items:flex-start;gap:14px">
+          <div style="font-size:22px;line-height:1;flex-shrink:0">⏱️</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#FF9632;margin-bottom:3px">Horas semanales por debajo de lo orientativo para este objetivo</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.55">
+              Tienes configuradas ${w.hours}h/semana; para este objetivo lo orientativo suele rondar ${w.minHours}h/semana o más.${raceLine}
+              Es una referencia general, no un mínimo estricto — puedes seguir entrenando con las horas actuales, pero considera si es realista llegar en forma a tiempo.
+            </div>
+          </div>
+        </div>`;
+      hoursBanner.style.display = 'block';
+    } else {
+      hoursBanner.style.display = 'none';
+      hoursBanner.innerHTML = '';
     }
   }
 
@@ -5635,6 +5662,20 @@ async function applyAdjustments() {
     ? window.GoalUtils.normalize(goalEl?.value || 'resistencia')
     : (goalEl?.value || 'resistencia');
 
+  // Aviso bloqueante (con opción de continuar) si las horas configuradas quedan por
+  // debajo de lo orientativo para el objetivo — especialmente relevante en ultras,
+  // donde meter pocas horas sin avisar puede dejar al usuario mal preparado.
+  if (hours !== null && !isNaN(hours) && hours > 0 && typeof TrainingPlanGenerator !== 'undefined') {
+    const eventsForCheck = TrainingPlanGenerator._parseEvents(AppState.athlete || {});
+    const checkFtp    = (ftp    !== null && ftp    >= 50) ? ftp    : (AppState.athlete?.ftp    || 200);
+    const checkWeight = (weight !== null && weight > 0)  ? weight : (AppState.athlete?.weight || 70);
+    const hoursCheck = TrainingPlanGenerator._checkMinRecommendedHours(goal, eventsForCheck, hours, checkFtp, checkWeight);
+    if (hoursCheck) {
+      const proceed = await _confirmLowHours(hoursCheck);
+      if (!proceed) return;
+    }
+  }
+
   // Solo horas/objetivo/CTL alimentan la fórmula de targetTSS (ver app.js ~360-431);
   // FTP, peso, días de gym/running/etc., HR máx. y LTHR no la tocan. Un coach solo
   // renegocia el objetivo semanal comprometido cuando cambia algo que de verdad
@@ -6875,6 +6916,40 @@ function closeModal(id) {
   const overlay = document.getElementById(id + '-overlay');
   if (overlay) overlay.style.display = 'none';
   document.body.style.overflow = '';
+}
+
+// Confirmación al guardar horas semanales por debajo de lo orientativo para el objetivo.
+// Devuelve una Promise<boolean>: true si el usuario decide guardar igualmente.
+// Construye su propio overlay (no reutiliza showModal: hay dos funciones showModal
+// distintas definidas en este archivo con firmas incompatibles y la segunda gana en
+// tiempo de ejecución, así que depender de ella aquí sería frágil).
+function _confirmLowHours(w) {
+  return new Promise(resolve => {
+    const raceLine = w.raceHoursEst
+      ? ` Se estima que completar el evento puede llevar unas ${w.raceHoursEst}h.`
+      : '';
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px';
+    overlay.innerHTML = `
+      <div style="background:var(--bg-primary);border-radius:16px;max-width:420px;padding:28px 24px 24px" onclick="event.stopPropagation()">
+        <div style="font-size:24px;margin-bottom:10px">⏱️</div>
+        <div style="font-size:15px;font-weight:700;color:#FF9632;margin-bottom:8px">Horas semanales bajas para este objetivo</div>
+        <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:22px">
+          Estás guardando <strong>${w.hours}h/semana</strong>; para este objetivo lo orientativo suele rondar
+          <strong>${w.minHours}h/semana</strong> o más.${raceLine}
+          Puedes seguir así, pero considera si es realista llegar en forma al objetivo con este volumen.
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="_lowHoursCancel" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-primary);cursor:pointer;font-family:inherit;font-size:13px">Ajustar horas</button>
+          <button id="_lowHoursConfirm" style="padding:8px 16px;border-radius:8px;border:none;background:#FF9632;color:#111;font-weight:600;cursor:pointer;font-family:inherit;font-size:13px">Guardar de todas formas</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const cleanup = (result) => { overlay.remove(); resolve(result); };
+    overlay.onclick = () => cleanup(false);
+    overlay.querySelector('#_lowHoursCancel').onclick  = () => cleanup(false);
+    overlay.querySelector('#_lowHoursConfirm').onclick = () => cleanup(true);
+  });
 }
 
 // ── Panel lateral flotante de herramientas (solo móvil) ────────────

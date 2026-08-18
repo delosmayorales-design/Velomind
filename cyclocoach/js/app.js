@@ -352,6 +352,9 @@ const TrainingPlanGenerator = {
     const events = this._parseEvents(athlete);
     const primaryEventDate = this._getPrimaryEventDate(events);
 
+    // ── Aviso orientativo: ¿alcanzan las horas configuradas para el objetivo? ──
+    const hoursWarning = this._checkMinRecommendedHours(goal, events, hours, ftp, weight);
+
     // ── Fase unificada (combina fecha de evento + ramp rate CTL) ──
     const effectivePhase = this._detectPhase(primaryEventDate, pmcArr, tsb);
 
@@ -485,6 +488,38 @@ const TrainingPlanGenerator = {
       macrocycle,
       adherence: Math.round(adherence * 100),
       upcomingEvents,
+      hoursWarning,
+    };
+  },
+
+  // ── Horas semanales mínimas orientativas por objetivo ──────────────
+  // Referencia general de coaching, no un mínimo estricto: por debajo de estas
+  // cifras el riesgo de llegar mal preparado al objetivo aumenta bastante.
+  _MIN_HOURS_BY_GOAL: {
+    sprint: 4, vo2max: 5, ftp: 6, resistencia: 6, perdida_peso: 5,
+    carrera_corta: 6, gran_fondo: 8, carrera_larga: 9, ultra: 10,
+  },
+
+  _checkMinRecommendedHours(goal, events, hours, ftp, weight) {
+    let minHours = this._MIN_HOURS_BY_GOAL[goal] || 6;
+    let raceHoursEst = null;
+
+    // Para objetivos de larga/ultra distancia, si el evento A trae distancia (y desnivel)
+    // reales, afinamos el mínimo orientativo a partir del tiempo estimado de carrera.
+    const aEvent = events.find(e => e.priority === 'A' && e.distance_km);
+    if (aEvent && ['ultra', 'carrera_larga', 'gran_fondo'].includes(goal)) {
+      const raceSec = Utils.estimateCyclingTime(aEvent.distance_km * 1000, aEvent.elevation_m || 0, ftp, weight);
+      raceHoursEst = raceSec / 3600;
+      // El volumen semanal en pico debería acercarse al tiempo estimado de carrera;
+      // por debajo de ~70% de esa cifra el riesgo de no llegar preparado sube mucho.
+      minHours = Math.max(minHours, Math.round(raceHoursEst * 0.7));
+    }
+
+    if (hours >= minHours) return null;
+    return {
+      hours,
+      minHours,
+      raceHoursEst: raceHoursEst != null ? Math.round(raceHoursEst * 10) / 10 : null,
     };
   },
 
