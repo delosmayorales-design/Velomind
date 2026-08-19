@@ -1156,6 +1156,27 @@ dropZoneVideo.addEventListener('dragleave', () => dropZoneVideo.classList.remove
 dropZoneVideo.addEventListener('drop', e => { e.preventDefault(); dropZoneVideo.classList.remove('dragover'); loadFiles(e.dataTransfer.files, 'video'); });
 fileInputVideo.addEventListener('change', e => { loadFiles(e.target.files, 'video'); e.target.value = ''; });
 
+// Comprime una dataUrl a JPEG y un lado máximo, sin tocar el original que
+// usa el canvas de edición — solo se usa para lo que se manda por red.
+// Reduce fotos de móvil (varias MB) a unos cientos de KB sin perder detalle
+// relevante para el análisis (posición corporal, ángulos), y evita chocar
+// con el límite de payload del backend (5MB por request).
+function compressDataUrl(dataUrl, maxDim = 1600, quality = 0.82) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl); // si falla, se manda el original
+    img.src = dataUrl;
+  });
+}
+
 function loadFiles(files, type) {
   Array.from(files).forEach(f => {
     if (type === 'video' || f.type.startsWith('video/')) {
@@ -1435,7 +1456,7 @@ function draw() {
 // VIDEO ANALYSIS PANEL
 // ═══════════════════════════════════════════════════════════
 async function handleVideoFile(file) {
-  if (file.size > 100 * 1024 * 1024) { alert('El video no puede superar 100 MB.'); return; }
+  if (file.size > 40 * 1024 * 1024) { alert('El video no puede superar 40 MB. Prueba a grabar un clip más corto o con menos resolución.'); return; }
   const token = Auth.getToken ? Auth.getToken() : localStorage.getItem('velomind_token');
   if (!token) { alert('Inicia sesión primero.'); return; }
 
@@ -2082,11 +2103,12 @@ async function analyzeAI() {
   }
 
   try {
+    const compressedPhotos = await Promise.all(photos.map(p => compressDataUrl(p.dataUrl)));
     const res = await fetch(`${window.API_URL}/coach/biomechanics`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ 
-        photos: photos.map(p => ({ dataUrl: p.dataUrl, view: 'lateral_izq' })), 
+      body: JSON.stringify({
+        photos: compressedPhotos.map(dataUrl => ({ dataUrl, view: 'lateral_izq' })),
         rider,
         user_points: Object.keys(user_points).length ? user_points : undefined
       }),

@@ -9,7 +9,7 @@ const { computeWBal } = require('../services/wbal');
 const router = express.Router();
 const fs = require('fs');
 const multer = require('multer');
-const upload = multer({ dest: '/tmp/', limits: { fileSize: 100 * 1024 * 1024 } }); // /tmp siempre existe; 100MB
+const upload = multer({ dest: '/tmp/', limits: { fileSize: 40 * 1024 * 1024 } }); // /tmp siempre existe; 40MB — un clip corto de biomecánica no necesita más, y ahorra ancho de banda
 
 router.use(requireAuth);
 
