@@ -121,10 +121,38 @@ router.get('/', async (req, res) => {
     };
   }));
 
+  // Historial real de cambios de componentes de todas las bicis del usuario.
+  // !inner fuerza a PostgREST a filtrar por la bici del join, no solo a adjuntarla.
+  const bikeIds = (bikes || []).map(b => b.id);
+  let history = [];
+  if (bikeIds.length) {
+    const { data: histRows, error: histErr } = await supabase
+      .from('component_history')
+      .select('*, bike_components!inner(bike_id, name, component_type)')
+      .in('bike_components.bike_id', bikeIds)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (histErr) console.error('[GET /garage] history:', histErr.message);
+    history = (histRows || []).map(h => ({
+      id:                 h.id,
+      bike_id:            h.bike_id || h.bike_components?.bike_id || null,
+      component_id:       h.component_id,
+      component_type:     h.component_type || h.bike_components?.component_type || null,
+      component_name:     h.component_name || h.bike_components?.name || 'Componente',
+      new_component_name: h.new_component_name || null,
+      action:             'replacement',
+      date:               h.created_at,
+      cost:               h.cost || 0,
+      notes:              h.notes || h.reason || null,
+      km_used:            (h.km_at_remove != null && h.km_at_install != null) ? Math.max(0, Math.round((h.km_at_remove - h.km_at_install) * 10) / 10) : 0,
+      hours_used:         (h.hours_at_remove != null && h.hours_at_install != null) ? Math.max(0, Math.round((h.hours_at_remove - h.hours_at_install) * 10) / 10) : 0,
+    }));
+  }
+
   // Wrapper en formato { garage, history } que espera BackendSync.loadGarage()
   res.json({
     garage:  { version: 2, bikes: mappedBikes, processed_ids: [] },
-    history: [],
+    history,
   });
 });
 
@@ -314,7 +342,7 @@ router.post('/:bikeId/components', async (req, res) => {
 
 // POST /api/garage/:bikeId/components/:componentId/change
 router.post('/:bikeId/components/:componentId/change', async (req, res) => {
-  const { new_component_type, new_name, new_brand, new_model, new_notes, reason, performed_at } = req.body;
+  const { new_component_type, new_name, new_brand, new_model, new_notes, reason, performed_at, cost } = req.body;
 
   const { data: component } = await supabase.from('bike_components').select('*, bikes(type, user_id, total_km, total_hours)').eq('id', req.params.componentId).single();
   if (!component || component.bikes?.user_id !== req.user.id) return res.status(404).json({ error: 'Componente no encontrado' });
@@ -326,10 +354,17 @@ router.post('/:bikeId/components/:componentId/change', async (req, res) => {
 
   await supabase.from('component_history').insert({
     component_id: component.id,
+    bike_id: component.bike_id,
+    component_type: component.component_type,
+    component_name: component.name,
+    new_component_name: new_name || component.name,
     km_at_install: component.km_installed, hours_at_install: component.hours_installed,
-    km_at_remove: component.km_installed + (component.km_remaining || 0),
-    hours_at_remove: component.hours_installed + (component.hours_remaining || 0),
-    reason, notes: component.notes,
+    // Odómetro real de la bici en el momento del cambio, no el km_remaining "restante"
+    // (ese campo es de un sistema de contabilidad legacy y puede haber quedado desfasado).
+    km_at_remove: component.bikes?.total_km ?? (component.km_installed + (component.km_remaining || 0)),
+    hours_at_remove: component.bikes?.total_hours ?? (component.hours_installed + (component.hours_remaining || 0)),
+    reason, notes: reason || component.notes || null,
+    cost: cost != null ? (parseFloat(cost) || 0) : 0,
     created_at: performedAtISO,
   });
 
