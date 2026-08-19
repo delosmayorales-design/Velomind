@@ -2,6 +2,8 @@ const express = require('express');
 const supabase = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { recalculatePMC } = require('../services/pmc');
+const { extractBestEfforts } = require('../services/powerCurve');
+const { recalculateCP } = require('../services/criticalPower');
 
 const router  = express.Router();
 
@@ -49,6 +51,28 @@ async function refreshStravaToken(user, uid) {
     console.error('[Strava] Error refrescando token:', e.message);
     return user.strava_token; // Intentar con el token existente
   }
+}
+
+// Trae el stream de una actividad de Strava ya con el array `data` desenvuelto
+// por tipo ({ watts: [...], time: [...], ... }). Compartido entre el endpoint
+// GET /strava/streams/:activityId y la recolección de best_efforts del sync.
+// Lanza en caso de error de red/HTTP — el llamador decide cómo tratarlo.
+async function fetchStravaStreams(token, activityId, keys = 'time,watts,heartrate,velocity_smooth,altitude,cadence,grade_smooth,latlng') {
+  const r = await fetch(
+    `https://www.strava.com/api/v3/activities/${activityId}/streams?keys=${keys}&key_by_type=true`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!r.ok) {
+    const err = new Error(`Strava streams HTTP ${r.status}`);
+    err.status = r.status;
+    throw err;
+  }
+  const raw = await r.json();
+  const streams = {};
+  for (const [key, stream] of Object.entries(raw)) {
+    if (stream?.data) streams[key] = stream.data;
+  }
+  return streams;
 }
 
 async function refreshGarminToken(user, uid) {
@@ -311,6 +335,36 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       }
     }
 
+    // Recolección incremental de la curva de potencia real (best_efforts).
+    // Solo en syncs incrementales (los frecuentes/automáticos) — el backfill completo
+    // ya usa buena parte del presupuesto de 100 req/15min con la paginación + detalle,
+    // así que aquí no se compite por ese mismo presupuesto. Solo actividades NUEVAS de
+    // este run (por eso no hace falta consultar si ya tienen best_efforts en BD).
+    const bestEffortsMap = new Map();
+    if (isIncremental) {
+      const STREAM_BACKFILL_LIMIT = 3;
+      let streamRequests = 0;
+      for (const act of actsToDetail) {
+        if (streamRequests >= STREAM_BACKFILL_LIMIT) break;
+        const duration = act.moving_time || act.elapsed_time || 0;
+        if (!act.device_watts || duration < 60) continue;
+        try {
+          const streams = await fetchStravaStreams(token, act.id);
+          streamRequests++;
+          if (streams.time && streams.watts) {
+            const efforts = extractBestEfforts(streams.time, streams.watts);
+            if (Object.keys(efforts).length) bestEffortsMap.set(act.id, efforts);
+          }
+        } catch (e) {
+          if (e.status === 429) {
+            console.warn('[Strava Sync] ⚠️ Rate limit alcanzado recolectando best_efforts, se detiene este bloque.');
+            break;
+          }
+          console.error(`[Strava Sync] Error obteniendo stream para ${act.id}:`, e.message);
+        }
+      }
+    }
+
     // Mapear los gear_id de Strava (texto) a los id locales (UUID) para evitar errores en BD
     const { data: userBikes } = await supabase.from('bikes').select('id, strava_gear_id').eq('user_id', uid);
     const bikeMap = {};
@@ -372,6 +426,11 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       // Traducir el código de bici de Strava a nuestro UUID
       const localGearId = (a.gear_id && bikeMap[a.gear_id]) ? bikeMap[a.gear_id] : null;
 
+      // Solo se añade la clave cuando hay dato real recolectado en este run —
+      // así una BD sin la columna `best_efforts` todavía (migración no ejecutada)
+      // solo pierde el puñado de filas recién recolectadas, no el resto del sync.
+      const bestEfforts = bestEffortsMap.get(a.id);
+
 rowsToInsert.push({
         id: `strava_${a.id}`,
         user_id: uid,
@@ -393,7 +452,8 @@ rowsToInsert.push({
         if_value:    Number(ifValue) || 0,
         strava_id: a.id ? String(a.id) : null,
         gear_id: localGearId,
-        source: 'Strava'
+        source: 'Strava',
+        ...(bestEfforts ? { best_efforts: bestEfforts } : {}),
       });
     }
     
@@ -490,6 +550,11 @@ rowsToInsert.push({
       } catch (err) {
         console.error('⚠️ [Strava Sync] Error recalculando PMC en background:', err.message);
       }
+      try {
+        await recalculateCP(uid);
+      } catch (err) {
+        console.error('⚠️ [Strava Sync] Error recalculando CP/W\' en background:', err.message);
+      }
       // Actualizar odómetro de todas las bicis desde Strava /gear/{id}
       // (fuente autoritativa: incluye km previos a VeloMind y actividades sin gear_id local)
       try {
@@ -541,31 +606,12 @@ router.get('/strava/streams/:activityId', requireAuth, async (req, res) => {
   if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
 
   try {
-    const keys = 'time,watts,heartrate,velocity_smooth,altitude,cadence,grade_smooth,latlng';
-    const r = await fetch(
-      `https://www.strava.com/api/v3/activities/${activityId}/streams?keys=${keys}&key_by_type=true`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    if (r.status === 404) return res.status(404).json({ error: 'Actividad no encontrada en Strava' });
-    if (r.status === 429) return res.status(429).json({ error: 'Límite de Strava alcanzado. Inténtalo en unos minutos.' });
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      return res.status(r.status).json({ error: err.message || 'Error al obtener streams de Strava' });
-    }
-
-    const raw = await r.json();
-
-    // Extraer solo el array data de cada stream
-    const streams = {};
-    for (const [key, stream] of Object.entries(raw)) {
-      if (stream?.data) streams[key] = stream.data;
-    }
-
+    const streams = await fetchStravaStreams(token, activityId);
     res.json(streams);
   } catch (e) {
+    if (e.status === 404) return res.status(404).json({ error: 'Actividad no encontrada en Strava' });
+    if (e.status === 429) return res.status(429).json({ error: 'Límite de Strava alcanzado. Inténtalo en unos minutos.' });
     console.error('[Streams] Error:', e.message);
-    console.error('[providers]', e.message);
     res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
   }
 });
@@ -837,6 +883,7 @@ router.post('/garmin/sync', requireAuth, async (req, res) => {
     }
     setImmediate(async () => {
       try { await recalculatePMC(uid); } catch (err) { console.error('[Garmin Sync] PMC:', err.message); }
+      try { await recalculateCP(uid); } catch (err) { console.error('[Garmin Sync] CP/W\':', err.message); }
     });
     res.json({ message: 'Garmin Sync OK', downloaded: Array.isArray(acts) ? acts.length : 0, cycling_filtered: rows.length, synced: rows.length - failed, failed });
   } catch (e) {
@@ -1468,3 +1515,7 @@ router.get('/strava/segments', requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+// Reutilizados por otras rutas (ej. coach.js para W'balance bajo demanda) sin
+// duplicar la lógica de auth/refresh de Strava.
+module.exports.refreshStravaToken = refreshStravaToken;
+module.exports.fetchStravaStreams = fetchStravaStreams;

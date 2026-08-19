@@ -50,6 +50,7 @@ class QueryBuilder {
   gte(...a)     { return this._record('gte', a); }
   lte(...a)     { return this._record('lte', a); }
   in(...a)      { return this._record('in', a); }
+  or(...a)      { return this._record('or', a); }
   not(...a)     { return this._record('not', a); }
   ilike(...a)   { return this._record('ilike', a); }
   order(...a)   { return this._record('order', a); }

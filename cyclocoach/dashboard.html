@@ -1056,6 +1056,7 @@ const DAY_NAMES_FULL = ['lunes','martes','miércoles','jueves','viernes','sábad
 const MONTH_NAMES    = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const todayIdx       = (new Date().getDay() + 6) % 7;
 let dashPlan = null;
+let dashGarageAlerts = [];
 
 const PHRASES = {
   fresh:   [
@@ -1772,6 +1773,42 @@ function buildHourlyRow(hourly) {
     </div>`;
 }
 
+async function loadGarageAlerts() {
+  try {
+    dashGarageAlerts = await fetch(`${window.API_URL}/garage/alerts`, { headers: Auth.getHeaders() }).then(r => r.json());
+    if (!Array.isArray(dashGarageAlerts)) dashGarageAlerts = [];
+  } catch { dashGarageAlerts = []; }
+}
+
+// Aviso cruzado garaje↔plan: si hoy o mañana toca una sesión dura/larga y hay
+// un componente de la bici en rojo ("CAMBIAR YA"), avisar aquí — el amarillo
+// ("revisar pronto") se omite a propósito para no generar fatiga de alertas.
+function buildGarageAlert() {
+  const redAlerts = dashGarageAlerts.filter(a => a.status === 'red');
+  if (!redAlerts.length) return '';
+
+  const HARD = ['threshold', 'vo2max', 'sprint', 'race', 'long'];
+  const todaySess = dashPlan?.sessions?.[todayIdx];
+  const tmDow = ((new Date().getDay() + 6) % 7 + 1) % 7;
+  const tmSess = dashPlan?.sessions?.[tmDow];
+
+  const warnings = [];
+  if (todaySess && !todaySess.isRest && HARD.includes(todaySess.type)) warnings.push({ when: 'Hoy', sess: todaySess });
+  if (tmSess && !tmSess.isRest && HARD.includes(tmSess.type)) warnings.push({ when: 'Mañana', sess: tmSess });
+  if (!warnings.length) return '';
+
+  const parts = redAlerts.map(a => `${a.component} (${a.bike})`).join(', ');
+  return warnings.map(({ when, sess }) => `
+    <div style="margin-top:10px;padding:12px 14px;border-radius:10px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:20px;flex-shrink:0">🔧</span>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#F87171;margin-bottom:3px">${when} toca "${sess.name || sess.type}" y tienes componentes en rojo</div>
+        <div style="font-size:11px;color:var(--text-secondary);line-height:1.5">${parts} — revísalo antes de salir, sobre todo en una sesión así de exigente.</div>
+        <a href="garaje.html" style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:10px;font-weight:700;color:#F87171;text-decoration:none">Ver garaje <i class="fas fa-arrow-right" style="font-size:8px"></i></a>
+      </div>
+    </div>`).join('');
+}
+
 function buildRainAlert(todayCode, todayPrec, daily) {
   const RAIN  = [51,53,55,61,63,65,80,81,82,95,96,99];
   const HEAVY = [65,82,95,96,99];
@@ -1919,6 +1956,7 @@ function _renderWeather(el, data) {
       </div>
     </div>
     ${buildRainAlert(code, prec, data.daily)}
+    ${buildGarageAlert()}
     ${buildHourlyRow(data.hourly)}`;
 }
 
@@ -2828,6 +2866,8 @@ function renderMacrocycle() {
   renderMacrocycle();
   loadWellness();
   renderProjection();
+  if (typeof BackendSync !== 'undefined') BackendSync.loadGarage().catch(() => {});
+  loadGarageAlerts().then(refreshWeatherCard);
 
   BackendSync.loadActivities().then(() => {
     const m = AppState.pmcData?.length ? AppState.getCurrentMetrics() : null;

@@ -1,0 +1,76 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`GET /api/coach/power-curve sin best_efforts, la heurística de respaldo se mantiene exactamente igual (snapshot) 1`] = `
+[
+  {
+    "dur": 5,
+    "label": "5s",
+    "pctFTP": 280,
+    "power": 560,
+    "wkg": 8,
+  },
+  {
+    "dur": 10,
+    "label": "10s",
+    "pctFTP": 253,
+    "power": 506,
+    "wkg": 7.23,
+  },
+  {
+    "dur": 30,
+    "label": "30s",
+    "pctFTP": 181,
+    "power": 362,
+    "wkg": 5.17,
+  },
+  {
+    "dur": 60,
+    "label": "1min",
+    "pctFTP": 145,
+    "power": 289,
+    "wkg": 4.13,
+  },
+  {
+    "dur": 120,
+    "label": "2min",
+    "pctFTP": 136,
+    "power": 272,
+    "wkg": 3.89,
+  },
+  {
+    "dur": 300,
+    "label": "5min",
+    "pctFTP": 125,
+    "power": 250,
+    "wkg": 3.57,
+  },
+  {
+    "dur": 600,
+    "label": "10min",
+    "pctFTP": 118,
+    "power": 235,
+    "wkg": 3.36,
+  },
+  {
+    "dur": 1200,
+    "label": "20min",
+    "pctFTP": 111,
+    "power": 221,
+    "wkg": 3.16,
+  },
+  {
+    "dur": 1800,
+    "label": "30min",
+    "pctFTP": 107,
+    "power": 213,
+    "wkg": 3.04,
+  },
+  {
+    "dur": 3600,
+    "label": "60min",
+    "pctFTP": 100,
+    "power": 200,
+    "wkg": 2.86,
+  },
+]
+`;

@@ -523,6 +523,14 @@
       <div id="decoupling-content"></div>
     </div>
 
+    <!-- ROW 9: Proyección de forma (TSB a 4 semanas) -->
+    <div class="card mb-6" id="projection-card" style="display:none">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-chart-line" style="color:#60A5FA"></i> Proyección de Forma (4 semanas)</div>
+      </div>
+      <div id="projection-content"></div>
+    </div>
+
   </div>
 </main>
 
@@ -646,6 +654,7 @@ async function init() {
   renderZones();
   loadPowerCurve();
   loadDecouplingCard();
+  loadProjectionCard();
 }
 
 async function recalculate() {
@@ -679,6 +688,7 @@ async function recalculate() {
     render();
     renderZones();
     loadDecouplingCard();
+    loadProjectionCard();
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '⟳ Actualizar'; }
   }
@@ -2233,6 +2243,47 @@ async function loadDecouplingCard() {
     '</div>';
 
   document.getElementById('decoupling-card').style.display = '';
+}
+
+async function loadProjectionCard() {
+  var card = document.getElementById('projection-card');
+  var el   = document.getElementById('projection-content');
+  if (!el || !card || typeof window.API_URL === 'undefined') return;
+
+  var data;
+  try {
+    data = await fetch(window.API_URL + '/analytics/projection', { headers: Auth.getHeaders() }).then(function(r) { return r.json(); });
+  } catch(e) { return; }
+
+  var projection = data && data.projection;
+  if (!projection || !projection.length) return;
+
+  var weeks = [7, 14, 21, 28].map(function(d) {
+    return projection.filter(function(p) { return p.day === d; })[0];
+  }).filter(Boolean);
+  if (!weeks.length) return;
+
+  var stateColor = function(tsb) {
+    return tsb > 20 ? '#60A5FA' : tsb > 5 ? '#10B981' : tsb > -10 ? '#9ED62B' : tsb > -20 ? '#F59E0B' : '#EF4444';
+  };
+  var stateEmoji = function(tsb) {
+    return tsb > 20 ? '🚀' : tsb > 5 ? '✅' : tsb > -10 ? '💪' : tsb > -20 ? '⚠️' : '🔴';
+  };
+
+  el.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px;margin-bottom:12px">' +
+      weeks.map(function(w, i) {
+        var c = stateColor(w.tsb);
+        return '<div style="text-align:center;padding:14px 6px;border-radius:10px;border:1px solid ' + c + '40;background:' + c + '0d">' +
+          '<div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;letter-spacing:.3px">Semana ' + (i + 1) + '</div>' +
+          '<div style="font-size:20px;line-height:1">' + stateEmoji(w.tsb) + '</div>' +
+          '<div style="font-size:12px;font-weight:800;color:' + c + ';margin-top:4px">TSB ' + (w.tsb > 0 ? '+' : '') + w.tsb + '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);line-height:1.5">' + (weeks[weeks.length - 1].advice || '') + '</div>';
+
+  card.style.display = '';
 }
 </script>
 </body>

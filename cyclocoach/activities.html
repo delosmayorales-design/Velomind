@@ -1259,6 +1259,16 @@ function showActivityDetail(actId) {
           </div>
         </div>
 
+        <div id="cwrap-stream-wbal" class="stream-card" style="display:none">
+          <div class="stream-header">
+            <span class="stream-label"><i class="fas fa-battery-half" style="color:#a78bfa;margin-right:4px"></i>W'balance · J</span>
+            <span class="stream-stats" id="stats-wbal"></span>
+          </div>
+          <div class="stream-canvas-wrap">
+            <canvas id="chart-stream-wbal"></canvas>
+          </div>
+        </div>
+
         <div id="cwrap-stream-hr" class="stream-card" style="display:none">
           <div class="stream-header">
             <span class="stream-label"><i class="fas fa-heartbeat" style="color:#ef4444;margin-right:4px"></i>Frecuencia Cardíaca · bpm</span>
@@ -1437,6 +1447,9 @@ async function fetchAndRenderStreams(sid, ftp, act) {
     _sOrig = s; _sFTP = ftp; _selA = null; _selB = null;
 
     const npCalculated = renderStreamCharts(s, ftp, act);
+    // Independiente del resto del panel — si el usuario aún no tiene CP/W' calculados
+    // (poco historial), el endpoint devuelve 400 y la tarjeta simplemente se oculta.
+    fetchAndRenderWBal(sid);
 
     // ── Mini-mapa GPS ─────────────────────────────────────
     if (s.latlng?.length >= 2) {
@@ -1530,6 +1543,60 @@ async function fetchAndRenderStreams(sid, ftp, act) {
     errEl.textContent = `Sin telemetría disponible — ${e.message}`;
     badge.textContent = '· Sin datos';
     badge.style.color = 'var(--text-muted)';
+  }
+}
+
+// W'balance bajo demanda (backend/services/wbal.js) — no reutiliza el stream
+// ya descargado por fetchAndRenderStreams porque el endpoint necesita traerlo
+// él mismo para poder aplicar el CP/W' guardado del usuario server-side.
+async function fetchAndRenderWBal(sid) {
+  const wrap = document.getElementById('cwrap-stream-wbal');
+  if (!wrap) return;
+  try {
+    const r = await fetch(`${window.API_URL}/coach/wbal/${sid}`, { headers: Auth.getHeaders() });
+    if (!r.ok) { wrap.style.display = 'none'; return; }
+    const d = await r.json();
+    if (!d.time?.length) { wrap.style.display = 'none'; return; }
+
+    wrap.style.display = '';
+    document.getElementById('stats-wbal').innerHTML =
+      `<span style="color:var(--text-muted)">CP</span> ${d.cp}W &nbsp;
+       <span style="color:var(--text-muted)">W'</span> ${(d.wPrime / 1000).toFixed(1)}kJ &nbsp;
+       <span style="color:#a78bfa">Mín</span> ${(d.minWbal / 1000).toFixed(1)}kJ (${d.pctDepleted}% agotado)`;
+
+    if (chartInsts.streamWbal) chartInsts.streamWbal.destroy();
+    const idx = buildTimeIndices(d.time, Math.min(900, d.time.length));
+    const tDs = sampleByIdx(d.time, idx), wDs = sampleByIdx(d.wbal, idx);
+
+    chartInsts.streamWbal = new Chart(document.getElementById('chart-stream-wbal'), {
+      type: 'line',
+      data: {
+        labels: tDs,
+        datasets: [{
+          label: "W'bal", data: wDs,
+          borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.10)',
+          borderWidth: 2, pointRadius: 0, tension: 0.15, fill: true,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 400 },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: true, callbacks: { label: ctx => `${(ctx.parsed.y / 1000).toFixed(1)} kJ` } },
+        },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 7 }, maxTicksLimit: 8, callback: (_, i, arr) => {
+            const ix = Math.round(i * (tDs.length - 1) / (arr.length - 1));
+            return fmtTime(tDs[ix] ?? 0);
+          } }, grid: { display: false } },
+          y: { ticks: { color: '#64748b', font: { size: 8 }, callback: v => (v / 1000).toFixed(0) + 'kJ' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        },
+      },
+    });
+  } catch (e) {
+    wrap.style.display = 'none';
   }
 }
 

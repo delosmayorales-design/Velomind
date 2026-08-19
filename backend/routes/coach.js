@@ -5,6 +5,7 @@ const { requirePremium } = require('../middleware/subscriptionMiddleware');
 const Anthropic = require('@anthropic-ai/sdk');
 const { callAI } = require('../services/ai');
 const { calcIF, calcTSS, getZone, getTSBStatus } = require('../utils/training');
+const { computeWBal } = require('../services/wbal');
 const router = express.Router();
 const fs = require('fs');
 const multer = require('multer');
@@ -296,6 +297,49 @@ router.get('/power-curve', async (req, res) => {
 
   // Añadir FTP como referencia
   res.json({ curve, ftp, weight, wkg_ftp: Math.round(ftp / weight * 100) / 100 });
+});
+
+// ── GET /api/coach/wbal/:activityId ───────────────────────────
+// W'balance bajo demanda para UNA actividad concreta (no se precalcula ni
+// guarda en bloque — ver backend/services/wbal.js). Requiere que el usuario
+// ya tenga critical_power/w_prime calculados (se recalculan solos tras cada
+// sync de Strava/Garmin si hay suficiente historial de best_efforts reales).
+router.get('/wbal/:activityId', async (req, res) => {
+  const { activityId } = req.params;
+  if (!activityId || !/^\d+$/.test(activityId)) {
+    return res.status(400).json({ error: 'activityId inválido' });
+  }
+
+  const { data: user } = await supabase.from('users')
+    .select('critical_power, w_prime, strava_token, strava_refresh, strava_expires_at')
+    .eq('id', req.user.id).single();
+
+  if (!user?.critical_power || !user?.w_prime) {
+    return res.status(400).json({ error: 'Aún no hay suficiente historial para calcular tu Potencia Crítica. Sigue sincronizando salidas con potenciómetro.' });
+  }
+  if (!user?.strava_token) {
+    return res.status(400).json({ error: 'Strava no conectado' });
+  }
+
+  try {
+    // Requeridos en caliente para evitar cualquier dependencia circular con providers.js
+    const { refreshStravaToken, fetchStravaStreams } = require('./providers');
+    const token = await refreshStravaToken(user, req.user.id);
+    if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
+
+    const streams = await fetchStravaStreams(token, activityId);
+    if (!streams.time || !streams.watts) {
+      return res.status(422).json({ error: 'Esta actividad no tiene datos de potencia' });
+    }
+
+    const result = computeWBal(streams.time, streams.watts, user.critical_power, user.w_prime);
+    res.json({ ...result, cp: user.critical_power, wPrime: user.w_prime });
+  } catch (e) {
+    if (e.status === 404) return res.status(404).json({ error: 'Actividad no encontrada en Strava' });
+    if (e.status === 429) return res.status(429).json({ error: 'Límite de Strava alcanzado. Inténtalo en unos minutos.' });
+    console.error('[coach/wbal] Error:', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
+  }
 });
 
 // POST /api/coach/biomechanics
