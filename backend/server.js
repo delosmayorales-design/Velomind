@@ -139,12 +139,17 @@ if (process.env.NODE_ENV !== 'test') require('./services/pushScheduler').start()
 // Demo user cleanup (diario 3:00 AM)
 if (process.env.NODE_ENV !== 'test') require('./services/demoCleanup').start();
 
-// Keepalive: evita que Render free tier duerma el servidor
+// Keepalive: evita que el free tier del proveedor duerma el servidor (algunos,
+// como el Render antiguo, sí lo hacen; otros no lo necesitan). Sin URL propia
+// configurada, no hay ningún dominio fijo al que hacerle ping — se omite en
+// vez de asumir un proveedor concreto.
 if (process.env.NODE_ENV === 'production') {
-  const SELF = process.env.RENDER_EXTERNAL_URL || 'https://velomind-backend.onrender.com';
-  setInterval(() => {
-    fetch(`${SELF}/api/health`).catch(() => {});
-  }, 14 * 60 * 1000); // cada 14 minutos
+  const SELF = process.env.RENDER_EXTERNAL_URL || process.env.BACKEND_URL || process.env.APP_URL;
+  if (SELF) {
+    setInterval(() => {
+      fetch(`${SELF}/api/health`).catch(() => {});
+    }, 14 * 60 * 1000); // cada 14 minutos
+  }
 }
 
 if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
