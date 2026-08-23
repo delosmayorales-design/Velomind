@@ -847,7 +847,16 @@ const TrainingPlanGenerator = {
 
   // ── Ciclo 3:1: detectar semana del microciclo desde historial ────
   _detectCycleWeek(activities) {
-    const now = new Date();
+    // Ancla las ventanas semanales al lunes de la semana en curso (no a la hora exacta
+    // de la llamada): si no, cada día que pasa desplaza las ventanas de 7 días y el TSS
+    // de "esta semana" cambia de bucket, lo que podía voltear weekInCycle (y por tanto
+    // la plantilla de sesiones elegida) de un día para otro sin ningún cambio real del
+    // atleta. Con el ancla en el lunes, el resultado es estable toda la semana y solo
+    // avanza al cruzar el lunes siguiente.
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    const now = new Date(monday.getTime() + 7 * 86400000); // próximo lunes = fin exclusivo de la semana actual
     // TSS de cada una de las últimas 4 semanas
     const weekTSS = [];
     for (let w = 0; w < 4; w++) {
@@ -1028,6 +1037,23 @@ const TrainingPlanGenerator = {
     // ── Selección de plantilla según goal y phase ──
     let templates = this._getTemplate(goal, phase, exp, tsb, weekInCycle, globalWeekIdx);
 
+    // ── Normalizar tssShare para que la semana siempre sume exactamente el targetTSS ──
+    // Solo en base/build: ahí la intención SIEMPRE es entregar el 100% del targetTSS semanal,
+    // y las plantillas escritas a mano no siempre sumaban 1.0 (verificado: de 180 combinaciones
+    // goal×fase×semana de base/build, solo el 20% sumaba 0.99-1.01, con casos desde 0.76 hasta
+    // 1.26). Sin esto, el "TSS objetivo semanal" que ve el atleta no coincide con el TSS real
+    // prescrito en las sesiones.
+    // En peak/race/recovery NO se normaliza: ahí la suma reducida es intencional (es el propio
+    // mecanismo de bajar el volumen en el taper/recuperación), y en la semana de carrera del
+    // objetivo 'ultra' el día del evento usa a propósito un tssShare > 1 para concentrar en un
+    // solo día mucho más TSS del que cabría en una semana normal de entreno (ver _getRaceWeekTemplate).
+    if (phase === 'base' || phase === 'build') {
+      const shareSum = templates.reduce((s, t) => s + (t.tssShare || 0), 0);
+      if (shareSum > 0 && Math.abs(shareSum - 1) > 0.01) {
+        templates = templates.map(t => t.tssShare ? { ...t, tssShare: t.tssShare / shareSum } : t);
+      }
+    }
+
     // ── Respetar días de entrenamiento configurados por el atleta ──
     // Prioridad de eliminación: recuperación primero, luego endurance, calidad al final.
     // Los fondos (long) son la base aeróbica más valiosa — se eliminan los últimos.
@@ -1053,7 +1079,7 @@ const TrainingPlanGenerator = {
 
       templates = templates.map(t =>
         toRemove.has(t.day)
-          ? { day: t.day, isRest: true, description: 'Descanso activo — movilidad, estiramientos o caminar.' }
+          ? { day: t.day, isRest: true, _daysLimitRest: true, description: 'Descanso activo — movilidad, estiramientos o caminar.' }
           : t
       );
       const remainingTotal = templates.filter(t => !t.isRest && t.tssShare).reduce((s, t) => s + t.tssShare, 0);
@@ -1095,8 +1121,11 @@ const TrainingPlanGenerator = {
 
       // Cap de TSS por sesión ANTES del cálculo de duración.
       // Evita que la normalización de días_semana concentre TSS absurdos en una sola sesión.
+      // t._maxTSSOverride existe solo en el día del evento de goal='ultra' (ver
+      // _getRaceWeekTemplate): un ultra real dura 8-20h+ y ningún cap genérico de tipo 'long'
+      // (pensado para un fondo de entreno normal) tiene sentido para ese único día del año.
       const MAX_TSS_PER_TYPE = { long: 185, endurance: 140, recovery: 45, tempo: 115, threshold: 115, vo2max: 115, sprint: 100, strength: 100 };
-      sessTSS = Math.min(MAX_TSS_PER_TYPE[t.type] || 140, sessTSS);
+      sessTSS = Math.min(t._maxTSSOverride || MAX_TSS_PER_TYPE[t.type] || 140, sessTSS);
 
       // Duración: TSS = (dur_h * NP * IF) / (FTP * 3600) * 100 → dur_h = TSS/(IF²*100) h
       let durMin = Math.round((sessTSS / (Math.pow(ifTarget, 2) * 100)) * 60);
@@ -1114,6 +1143,8 @@ const TrainingPlanGenerator = {
       } else if (t.type === 'recovery') {
         maxDur = 90;
       }
+      if (t._minDurOverride) minDur = t._minDurOverride;
+      if (t._maxDurOverride) maxDur = t._maxDurOverride;
 
       if (durMin < minDur) {
         // Mantener el TSS objetivo bajando el IF en lugar de subir el TSS
@@ -1207,15 +1238,233 @@ const TrainingPlanGenerator = {
     }
 
     // Regla 2: Dos descansos seguidos → el segundo se convierte en recuperación activa
+    // (salvo que el descanso venga del recorte por days_per_week: convertirlo de vuelta en
+    // sesión activa violaría la disponibilidad que el atleta indicó — ver _daysLimitRest arriba)
     for (let i = 1; i < sessions.length; i++) {
       const prev = sessions[i - 1], curr = sessions[i];
-      if (prev.isRest && curr.isRest) {
+      if (prev.isRest && curr.isRest && !curr._daysLimitRest && !prev._daysLimitRest) {
         sessions[i] = _makeRecovery(curr.day,
           'Dos días de descanso seguidos ralentizan la recuperación. Pedaleo muy suave en Z1 para activar la circulación y acelerar la regeneración muscular.');
       }
     }
 
     return this._injectEventMarkers(sessions, events);
+  },
+
+  /* ── Peak (taper) y semana de carrera: contenido específico por modalidad ──
+     Antes _getTemplate() devolvía exactamente la misma plantilla de taper/día de carrera
+     (pensada para crono corto) sin mirar `goal`: un ultra, un gran fondo y un sprint
+     recibían el mismo "DÍA DE CARRERA" de ~140 TSS / 4h. Se agrupan las 8 modalidades en
+     perfiles con necesidades de taper y de día de evento realmente distintas, siguiendo
+     principios estándar de periodización (Mujika/Padilla, Joe Friel) y cómo lo modelan
+     TrainingPeaks/TrainerRoad: reducción de volumen manteniendo intensidad para eventos
+     cortos/intensos, énfasis en tempo/sweetspot y ensayo de ritmo para fondo de un día,
+     taper mucho más suave (menos corte de volumen) y cero intensidad dura para ultra-distancia,
+     y un protocolo de test (no una "carrera") para los objetivos de FTP/VO2max. */
+  _peakProfile(goal) {
+    if (goal === 'ultra') return 'ultra';
+    if (goal === 'sprint' || goal === 'carrera_corta' || goal === 'ftp' || goal === 'vo2max') return 'sharp';
+    return 'endurance'; // gran_fondo, carrera_larga, resistencia (y cualquier valor no reconocido)
+  },
+
+  _raceWeekProfile(goal) {
+    if (goal === 'sprint' || goal === 'carrera_corta') return 'punch';
+    if (goal === 'gran_fondo' || goal === 'carrera_larga') return 'endurance_race';
+    if (goal === 'ultra') return 'ultra';
+    if (goal === 'ftp' || goal === 'vo2max') return 'benchmark';
+    return 'personal'; // resistencia (y cualquier valor no reconocido)
+  },
+
+  _getPeakTemplate(goal, weekInCycle = 1) {
+    const profile = this._peakProfile(goal);
+
+    if (profile === 'sharp') {
+      // Sprint/crit/XCO y objetivos de FTP/VO2max: el taper clásico de eventos cortos e
+      // intensos — cortar volumen pero conservar toques de umbral/VO2max para llegar con
+      // agudeza neuromuscular (para ftp/vo2max, "el evento" es el propio test de la semana
+      // que viene, así que interesa exactamente el mismo tipo de frescura).
+      const variants = [
+        [
+          { day: 'Lunes',    isRest: true,  description: 'Descanso — inicio del taper. Menos volumen, mantén la intensidad.' },
+          { day: 'Martes',   type: 'threshold', name: 'Intervalos al umbral (taper)', description: 'Calidad sobre cantidad. Mantén la sensación de velocidad sin acumular fatiga.', tssShare: 0.13, ifTarget: 0.82, emoji: '🟡' },
+          { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa', description: 'Rodaje fluido, enfocándote en cadencia alta y soltura.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
+          { day: 'Jueves',   type: 'vo2max',   name: 'VO₂ Max — agudeza neuromuscular', description: 'Activa el sistema aeróbico superior sin generar fatiga residual. Volumen reducido, intensidad conservada.', tssShare: 0.12, ifTarget: 0.85, emoji: '🔴' },
+          { day: 'Viernes',  isRest: true,  description: 'Descanso. Preparación mental y logística.' },
+          { day: 'Sábado',   type: 'endurance', name: 'Rodada moderada con acelerones', description: 'Mantén la tensión muscular. 3-4 acelerones de 20 s al final para mantener la chispa.', tssShare: 0.16, ifTarget: 0.66, emoji: '🔵' },
+          { day: 'Domingo',  type: 'recovery',  name: 'Recuperación activa', description: 'Pedaleo muy suave. Visualiza la semana que viene.', tssShare: 0.05, ifTarget: 0.52, emoji: '😴' },
+        ],
+        [
+          { day: 'Lunes',    isRest: true,  description: 'Descanso absoluto. El taper funciona descansando, no entrenando más.' },
+          { day: 'Martes',   type: 'vo2max',   name: 'Micro-intervalos de agudeza', description: 'Series muy cortas e intensas para mantener la chispa sin acumular estrés.', tssShare: 0.11, ifTarget: 0.88, emoji: '🔴' },
+          { day: 'Miércoles',type: 'endurance', name: 'Z2 con sprints finales', description: 'Rueda tranquilo y añade 5 sprints de 10 s al final. Mantén las fibras rápidas despiertas.', tssShare: 0.10, ifTarget: 0.64, emoji: '🔵' },
+          { day: 'Jueves',   type: 'recovery',  name: 'Recuperación Z1', description: 'Piernas ligeras. Sin presión, solo mantener el flujo sanguíneo.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
+          { day: 'Viernes',  isRest: true,  description: 'Descanso. Carga de carbohidratos si el evento es mañana.' },
+          { day: 'Sábado',   type: 'threshold', name: 'Activación umbral corta', description: 'Una sola serie de 8-10 min al FTP para confirmar que las piernas responden. Nada más.', tssShare: 0.14, ifTarget: 0.83, emoji: '🟡' },
+          { day: 'Domingo',  type: 'recovery',  name: 'Pedaleo de movilidad', description: 'Muy suave. Soltura, cadencia alta. El cuerpo está listo para el esfuerzo.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
+        ],
+        [
+          { day: 'Lunes',    isRest: true,  description: 'Descanso total. El taper ya está hecho.' },
+          { day: 'Martes',   type: 'endurance', name: 'Z2 suave de mantenimiento', description: 'Rueda tranquilo para mantener el flujo sin generar ninguna fatiga.', tssShare: 0.09, ifTarget: 0.62, emoji: '🔵' },
+          { day: 'Miércoles',isRest: true,  description: 'Descanso. Hidratación activa, 3 L de agua mínimo.' },
+          { day: 'Jueves',   type: 'recovery',  name: 'Activación pre-evento', description: '20-30 min muy suaves con 3-4 acelerones cortos al final. Que las piernas recuerden lo que saben hacer.', tssShare: 0.06, ifTarget: 0.52, emoji: '😴' },
+          { day: 'Viernes',  isRest: true,  description: 'Descanso absoluto. Come bien, duerme más, descansa.' },
+          { day: 'Sábado',   type: 'endurance', name: 'Rodada de activación final', description: 'Salida muy suave con 3-4 acelerones cortos al final para despertar las piernas. Nada de carga — solo mantener el flujo.', tssShare: 0.10, ifTarget: 0.62, emoji: '🔵' },
+          { day: 'Domingo',  isRest: true,  description: 'Descanso total. Cuerpo fresco y listo para el evento.' },
+        ],
+      ];
+      return variants[(weekInCycle - 1) % 3];
+    }
+
+    if (profile === 'ultra') {
+      // Ultra-distancia: los coaches de ultra-endurance (a diferencia de los de ruta/crit)
+      // recomiendan tapers más cortos y suaves — la fatiga central de un fondo largo tarda
+      // más en disiparse que la de intervalos duros, así que se recorta la intensidad casi
+      // a cero pero se conserva bastante volumen hasta la última semana. El foco pasa a
+      // ensayar nutrición/hidratación y priorizar el sueño, no a "afilar" el sistema anaeróbico.
+      const variants = [
+        [
+          { day: 'Lunes',    isRest: true,  description: 'Descanso. El taper de ultra recorta intensidad, no tanto volumen.' },
+          { day: 'Martes',   type: 'endurance', name: 'Z2 con fuerza integrada — sin intensidad', description: 'Z2 con bloques de baja cadencia. Nada de umbral ni VO₂ Max esta semana: el sistema nervioso ya está listo.', tssShare: 0.14, ifTarget: 0.65, emoji: '🔵' },
+          { day: 'Miércoles',type: 'recovery',  name: 'Z1 de recuperación', description: 'Muy suave. Prioriza el sueño esta semana más que nunca.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
+          { day: 'Jueves',   type: 'endurance', name: 'Z2 con práctica nutricional', description: 'Ritmo cómodo. Practica exactamente los geles/comida sólida que usarás en el evento.', tssShare: 0.14, ifTarget: 0.63, emoji: '🔵' },
+          { day: 'Viernes',  type: 'recovery',  name: 'Z1 de preparación', description: 'Muy suave. Guarda energía para el fin de semana.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
+          { day: 'Sábado',   type: 'long',    name: 'Último ensayo largo', description: 'Última salida larga con el material y la nutrición exactos del evento. Ritmo muy conservador.', tssShare: 0.24, ifTarget: 0.62, emoji: '💙' },
+          { day: 'Domingo',  type: 'endurance', name: 'Z2 corta de cierre', description: 'Rodada corta y suave. A partir de aquí, solo recortar.', tssShare: 0.14, ifTarget: 0.60, emoji: '🔵' },
+        ],
+        [
+          { day: 'Lunes',    isRest: true,  description: 'Descanso absoluto.' },
+          { day: 'Martes',   type: 'endurance', name: 'Z2 moderado', description: 'Ritmo cómodo, cadencia alta. Sigue sin haber intensidad esta semana.', tssShare: 0.12, ifTarget: 0.63, emoji: '🔵' },
+          { day: 'Miércoles',type: 'recovery',  name: 'Z1 de recuperación', description: 'Pedaleo muy suave. El sueño y la hidratación pesan más que el entreno ya.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
+          { day: 'Jueves',   type: 'endurance', name: 'Z2 con práctica nutricional', description: 'Repite el protocolo de nutrición del evento — cuanto más lo ensayes, menos sorpresas el día clave.', tssShare: 0.10, ifTarget: 0.62, emoji: '🔵' },
+          { day: 'Viernes',  type: 'recovery',  name: 'Z1 de preparación', description: 'Muy suave.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
+          { day: 'Sábado',   type: 'long',    name: 'Rodada larga moderada', description: 'Más corta que la semana pasada. Ritmo de evento, sin forzar.', tssShare: 0.18, ifTarget: 0.60, emoji: '💙' },
+          { day: 'Domingo',  type: 'endurance', name: 'Z2 corta', description: 'Rodada corta y muy cómoda.', tssShare: 0.10, ifTarget: 0.58, emoji: '🔵' },
+        ],
+        [
+          { day: 'Lunes',    isRest: true,  description: 'Descanso. Última semana antes del evento.' },
+          { day: 'Martes',   type: 'endurance', name: 'Z2 suave', description: 'Ritmo muy cómodo. El trabajo duro ya está hecho.', tssShare: 0.08, ifTarget: 0.60, emoji: '🔵' },
+          { day: 'Miércoles',isRest: true,  description: 'Descanso. Hidratación y sueño por delante de todo.' },
+          { day: 'Jueves',   type: 'recovery',  name: 'Activación suave', description: '20-30 min muy suaves. Revisa que el material esté listo.', tssShare: 0.05, ifTarget: 0.55, emoji: '😴' },
+          { day: 'Viernes',  isRest: true,  description: 'Descanso absoluto. Duerme todo lo que puedas.' },
+          { day: 'Sábado',   type: 'endurance', name: 'Ensayo general con material completo', description: 'Salida corta con toda la equipación del evento puesta — bolsas, luces, ropa. El último chequeo.', tssShare: 0.08, ifTarget: 0.58, emoji: '🔵' },
+          { day: 'Domingo',  isRest: true,  description: 'Descanso total. Cuerpo fresco y listo para el evento.' },
+        ],
+      ];
+      return variants[(weekInCycle - 1) % 3];
+    }
+
+    // 'endurance': gran_fondo, carrera_larga, resistencia — taper orientado a resistencia
+    // muscular y ritmo sostenido (tempo/sweetspot) en vez de picos anaeróbicos, con una
+    // salida larga que va bajando de duración cada semana para ensayar ritmo y nutrición.
+    const variants = [
+      [
+        { day: 'Lunes',    isRest: true,  description: 'Descanso — inicio del taper. Baja el volumen, mantén algo de ritmo.' },
+        { day: 'Martes',   type: 'tempo', name: 'Sweetspot de mantenimiento', description: 'Bloques de sweetspot cortos. Mantén la sensación de ritmo sin acumular fatiga.', tssShare: 0.14, ifTarget: 0.80, emoji: '🟢' },
+        { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa', description: 'Rodaje suave, cadencia alta.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
+        { day: 'Jueves',   type: 'endurance', name: 'Z2 con toques de ritmo', description: 'Base aeróbica con algunos minutos a ritmo de evento intercalados.', tssShare: 0.12, ifTarget: 0.68, emoji: '🔵' },
+        { day: 'Viernes',  isRest: true,  description: 'Descanso. Prepara la logística del fin de semana.' },
+        { day: 'Sábado',   type: 'long', name: 'Ensayo de ritmo y nutrición', description: 'Salida moderada-larga al ritmo objetivo del evento. Practica exactamente lo que comerás y beberás.', tssShare: 0.24, ifTarget: 0.70, emoji: '💙' },
+        { day: 'Domingo',  type: 'recovery',  name: 'Recuperación activa', description: 'Pedaleo muy suave.', tssShare: 0.06, ifTarget: 0.52, emoji: '😴' },
+      ],
+      [
+        { day: 'Lunes',    isRest: true,  description: 'Descanso absoluto.' },
+        { day: 'Martes',   type: 'tempo', name: 'Sweetspot corto', description: 'Bloques cortos de sweetspot. Menos volumen que la semana pasada.', tssShare: 0.11, ifTarget: 0.78, emoji: '🟢' },
+        { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1', description: 'Piernas ligeras.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
+        { day: 'Jueves',   type: 'endurance', name: 'Z2 moderado', description: 'Base aeróbica cómoda.', tssShare: 0.10, ifTarget: 0.65, emoji: '🔵' },
+        { day: 'Viernes',  isRest: true,  description: 'Descanso. Carga de carbohidratos si el evento está cerca.' },
+        { day: 'Sábado',   type: 'long', name: 'Rodada moderada de ritmo', description: 'Más corta que la semana pasada, mismo ritmo objetivo. Confirma la estrategia de nutrición.', tssShare: 0.18, ifTarget: 0.68, emoji: '💙' },
+        { day: 'Domingo',  type: 'recovery',  name: 'Recuperación activa', description: 'Muy suave.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
+      ],
+      [
+        { day: 'Lunes',    isRest: true,  description: 'Descanso total. El taper ya está hecho.' },
+        { day: 'Martes',   type: 'endurance', name: 'Z2 suave de mantenimiento', description: 'Rueda tranquilo, sin acumular fatiga.', tssShare: 0.08, ifTarget: 0.62, emoji: '🔵' },
+        { day: 'Miércoles',isRest: true,  description: 'Descanso. Hidratación activa.' },
+        { day: 'Jueves',   type: 'recovery',  name: 'Activación pre-evento', description: '20-30 min suaves con algún acelerón corto.', tssShare: 0.05, ifTarget: 0.55, emoji: '😴' },
+        { day: 'Viernes',  isRest: true,  description: 'Descanso absoluto. Come bien, duerme más.' },
+        { day: 'Sábado',   type: 'endurance', name: 'Rodada de activación final', description: 'Salida corta y suave con algún acelerón. Solo mantener el flujo.', tssShare: 0.09, ifTarget: 0.62, emoji: '🔵' },
+        { day: 'Domingo',  isRest: true,  description: 'Descanso total. Cuerpo fresco y listo para el evento.' },
+      ],
+    ];
+    return variants[(weekInCycle - 1) % 3];
+  },
+
+  _getRaceWeekTemplate(goal) {
+    const profile = this._raceWeekProfile(goal);
+
+    if (profile === 'punch') {
+      // Crit/XCO/carretera corta y sprint: evento corto y muy intenso — activación,
+      // carga de carbohidratos y el día de carrera en sí (sin script: la táctica manda).
+      return [
+        { day: 'Lunes',    isRest: true,  description: 'Descanso absoluto. Últimas 72h previas.' },
+        { day: 'Martes',   type: 'recovery', name: 'Pedaleo de activación', description: 'Mover piernas sin fatigarse en absoluto.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
+        { day: 'Miércoles',type: 'endurance', name: 'Z2 con sprints cortos', description: 'Sprints al final para mantener agudeza neuromuscular.', tssShare: 0.10, ifTarget: 0.62, emoji: '🔵' },
+        { day: 'Jueves',   isRest: true,  description: 'Descanso. Carga de carbohidratos: 8-10 g/kg.' },
+        { day: 'Viernes',  type: 'z2', isPreRaceB: true, name: 'Activación pre-carrera', description: 'Despierta las piernas sin vaciar los depósitos.', tssShare: 0.07, ifTarget: 0.65, emoji: '🚴' },
+        { day: 'Sábado',   type: 'race',  name: '🏁 DÍA DE CARRERA', description: 'Guarda energía para los momentos clave. Posiciónate bien antes de cada punto caliente y el sprint final.', tssShare: 0.30, ifTarget: 0.85, emoji: '🏁' },
+        { day: 'Domingo',  isRest: true,  description: 'Recuperación post-carrera. Come bien y descansa.' },
+      ];
+    }
+
+    if (profile === 'endurance_race') {
+      // Gran fondo / carrera larga: un único día largo (4-7h) a ritmo sostenido, no un
+      // sprint. El tipo 'long' (no 'race') genera una descripción de ritmo Z2/tempo real
+      // en vez de "solo activación", y se levanta el tope genérico de 4h/185 TSS del tipo
+      // 'long' — pensado para un fondo de entreno normal, no para el día del evento.
+      return [
+        { day: 'Lunes',    isRest: true,  description: 'Descanso absoluto. Últimos días previos.' },
+        { day: 'Martes',   type: 'recovery', name: 'Pedaleo de activación', description: 'Mover piernas, sin fatiga.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
+        { day: 'Miércoles',type: 'endurance', name: 'Z2 con toques de ritmo', description: 'Corto, con algún minuto a ritmo de evento para activar sin fatigar.', tssShare: 0.08, ifTarget: 0.65, emoji: '🔵' },
+        { day: 'Jueves',   isRest: true,  description: 'Descanso. Empieza la carga de carbohidratos.' },
+        { day: 'Viernes',  type: 'z2', isPreRaceB: true, name: 'Activación pre-evento', description: 'Suave, solo despertar las piernas. Deja el material preparado.', tssShare: 0.06, ifTarget: 0.62, emoji: '🚴' },
+        { day: 'Sábado',   type: 'long',  name: '🏁 DÍA DEL EVENTO', description: 'Ejecuta el ritmo y la nutrición que has ensayado. Empieza conservador — el gran fondo se gana en la segunda mitad.', tssShare: 0.90, ifTarget: 0.72, emoji: '🏁', _maxDurOverride: 380, _maxTSSOverride: 320 },
+        { day: 'Domingo',  isRest: true,  description: 'Recuperación post-evento. Come bien y descansa.' },
+      ];
+    }
+
+    if (profile === 'ultra') {
+      // Ultra-distancia: el "día de carrera" real dura 8-20+ horas — nada que ver con el
+      // tope de 4h/185 TSS del tipo 'long' pensado para un fondo de entreno. Se usa un
+      // override amplio (hasta 24h/900 TSS) para que la duración/TSS salgan del cálculo
+      // real (tssShare × targetTSS del atleta) en vez de quedar recortados a un
+      // criterium. El domingo se deja como margen de seguridad/recuperación en vez de
+      // prescribir una segunda jornada obligatoria: si el evento continúa, prioriza
+      // seguridad y raciones sobre ritmo; si ya terminó, es descanso total.
+      return [
+        { day: 'Lunes',    isRest: true,  description: 'Descanso absoluto. Últimos días previos.' },
+        { day: 'Martes',   type: 'recovery', name: 'Pedaleo de activación', description: 'Mover piernas, sin fatiga.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
+        { day: 'Miércoles',type: 'endurance', name: 'Z2 muy ligera con práctica nutricional', description: 'Corta y suave. Última prueba de la nutrición exacta del evento.', tssShare: 0.08, ifTarget: 0.62, emoji: '🔵' },
+        { day: 'Jueves',   isRest: true,  description: 'Descanso. Hidratos complejos, sin excederte para evitar problemas digestivos.' },
+        { day: 'Viernes',  type: 'z2', isPreRaceB: true, name: 'Activación y revisión de material', description: 'Muy suave. Revisa luces, GPS, bolsas y ropa — todo lo que llevarás puesto.', tssShare: 0.05, ifTarget: 0.55, emoji: '🚴' },
+        { day: 'Sábado',   type: 'long',  name: '🏁 DÍA DEL EVENTO — ULTRA', description: 'Ritmo muy conservador desde el minuto uno: en un ultra se sufre por ir demasiado fuerte al principio, no por ir despacio. Nutrición e hidratación constantes, aunque no tengas hambre ni sed.', tssShare: 1.7, ifTarget: 0.60, emoji: '🏁', _minDurOverride: 300, _maxDurOverride: 1440, _maxTSSOverride: 900 },
+        { day: 'Domingo',  isRest: true,  description: 'Si tu evento continúa hoy: seguridad y raciones antes que ritmo. Si ya cruzaste meta: descanso total, come bien y duerme todo lo que puedas.' },
+      ];
+    }
+
+    if (profile === 'benchmark') {
+      // FTP/VO₂ Max: no hay carrera — el "evento" es un test físico. Semana corta y ligera
+      // que llega fresca al día del test.
+      return [
+        { day: 'Lunes',    isRest: true,  description: 'Descanso.' },
+        { day: 'Martes',   isRest: true,  description: 'Descanso. Llega fresco al test.' },
+        { day: 'Miércoles',type: 'recovery', name: 'Activación suave', description: 'Pedaleo ligero para mantener el flujo, sin fatigar.', tssShare: 0.06, ifTarget: 0.55, emoji: '😴' },
+        { day: 'Jueves',   isRest: true,  description: 'Descanso. Duerme bien esta noche.' },
+        { day: 'Viernes',  type: 'recovery', name: 'Activación pre-test', description: 'Muy suave, solo despertar las piernas para mañana.', tssShare: 0.04, ifTarget: 0.55, emoji: '😴' },
+        { day: 'Sábado',   type: 'threshold', name: '🎯 Test de FTP (protocolo 20 min)', description: 'Calienta 15 min e incluye un esfuerzo de 5 min fuerte + 10 min suave para vaciar. Después, 20 min al máximo esfuerzo que puedas sostener. Tu nuevo FTP ≈ 95% de la potencia media de esos 20 min.', tssShare: 0.14, ifTarget: 0.90, emoji: '🟡' },
+        { day: 'Domingo',  isRest: true,  description: 'Recuperación. Anota el resultado y ajusta tus zonas.' },
+      ];
+    }
+
+    // 'personal': resistencia (y perdida_peso, que se mapea a resistencia) — reto personal
+    // o evento sin categoría competitiva formal. Menos táctica, más "hazlo a tu ritmo".
+    return [
+      { day: 'Lunes',    isRest: true,  description: 'Descanso absoluto. Últimos días previos.' },
+      { day: 'Martes',   type: 'recovery', name: 'Pedaleo de activación', description: 'Mover piernas, sin fatiga.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
+      { day: 'Miércoles',type: 'endurance', name: 'Z2 suave con acelerones', description: 'Corta y cómoda, con algún acelerón para mantener la chispa.', tssShare: 0.08, ifTarget: 0.62, emoji: '🔵' },
+      { day: 'Jueves',   isRest: true,  description: 'Descanso. Prepara la logística del día.' },
+      { day: 'Viernes',  type: 'z2', isPreRaceB: true, name: 'Activación suave', description: 'Despierta las piernas sin cansarte.', tssShare: 0.05, ifTarget: 0.60, emoji: '🚴' },
+      { day: 'Sábado',   type: 'race',  name: '🏁 Tu reto personal', description: 'Hoy es tu día. Ritmo propio, disfruta el recorrido — sin presión de resultado.', tssShare: 0.35, ifTarget: 0.68, emoji: '🏁' },
+      { day: 'Domingo',  isRest: true,  description: 'Recuperación. Date el mérito que te has ganado.' },
+    ];
   },
 
   /* ── Plantillas semanales según goal/phase ── */
@@ -1256,52 +1505,11 @@ const TrainingPlanGenerator = {
     }
 
     if (phase === 'race') {
-      return [
-        { day: 'Lunes',    isRest: true,  description: 'Descanso absoluto. Últimas 72h previas' },
-        { day: 'Martes',   type: 'recovery', name: 'Pedaleo de activación', description: 'Mover piernas sin fatigarse en absoluto.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-        { day: 'Miércoles',type: 'endurance', name: 'Z2 con sprints cortos', description: 'Sprints al final para mantener agudeza neuromuscular.', tssShare: 0.10, ifTarget: 0.62, emoji: '🔵' },
-        { day: 'Jueves',   isRest: true,  description: 'Descanso. Carga de carbohidratos: 8-10g/kg' },
-        { day: 'Viernes',  type: 'z2', isPreRaceB: true, name: 'Activación pre-carrera', description: 'Despierta las piernas sin vaciar los depósitos.', tssShare: 0.07, ifTarget: 0.65, emoji: '🚴' },
-        { day: 'Sábado',   type: 'race',  name: '🏁 DÍA DE CARRERA', description: 'Ejecuta tu plan de carrera. ¡A darlo todo!', tssShare: 0.30, ifTarget: 0.85, emoji: '🏁' },
-        { day: 'Domingo',  isRest: true,  description: 'Recuperación post-carrera. Come bien y descansa' },
-      ];
+      return this._getRaceWeekTemplate(goal);
     }
 
     if (phase === 'peak') {
-      // Peak: 3 variantes para el bloque de tapering
-      const peakVariants = [
-        // Semana 1 peak: calidad + activación aeróbica
-        [
-          { day: 'Lunes',    isRest: true,  description: 'Descanso — inicio del taper. Menos volumen, mantén la intensidad.' },
-          { day: 'Martes',   type: 'threshold', name: 'Intervalos al umbral (taper)', description: 'Calidad sobre cantidad. Mantén la sensación de velocidad sin acumular fatiga.', tssShare: 0.13, ifTarget: 0.82, emoji: '🟡' },
-          { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa', description: 'Rodaje fluido, enfocándote en cadencia alta y soltura.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
-          { day: 'Jueves',   type: 'vo2max',   name: 'VO₂ Max — agudeza neuromuscular', description: 'Activa el sistema aeróbico superior sin generar fatiga residual. Vollúmen reducido, intensidad conservada.', tssShare: 0.12, ifTarget: 0.85, emoji: '🔴' },
-          { day: 'Viernes',  isRest: true,  description: 'Descanso. Preparación mental y logística de carrera.' },
-          { day: 'Sábado',   type: 'endurance', name: 'Rodada moderada con acelerones', description: 'Mantén la tensión muscular. 3-4 acelerones de 20 s al final para mantener la chispa.', tssShare: 0.16, ifTarget: 0.66, emoji: '🔵' },
-          { day: 'Domingo',  type: 'recovery',  name: 'Recuperación activa', description: 'Pedaleo muy suave. Visualiza tu estrategia de carrera.', tssShare: 0.05, ifTarget: 0.52, emoji: '😴' },
-        ],
-        // Semana 2 peak: más énfasis en agudeza, menos volumen
-        [
-          { day: 'Lunes',    isRest: true,  description: 'Descanso absoluto. El taper funciona descansando, no entrenando más.' },
-          { day: 'Martes',   type: 'vo2max',   name: 'Micro-intervalos de agudeza', description: 'Series muy cortas e intensas para mantener la chispa sin acumular estrés.', tssShare: 0.11, ifTarget: 0.88, emoji: '🔴' },
-          { day: 'Miércoles',type: 'endurance', name: 'Z2 con sprints finales', description: 'Rueda tranquilo y añade 5 sprints de 10 s al final. Mantén las fibras rápidas despiertas.', tssShare: 0.10, ifTarget: 0.64, emoji: '🔵' },
-          { day: 'Jueves',   type: 'recovery',  name: 'Recuperación Z1', description: 'Piernas ligeras. Sin presión, solo mantener el flujo sanguíneo.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
-          { day: 'Viernes',  isRest: true,  description: 'Descanso. Carga de carbohidratos si el evento es mañana.' },
-          { day: 'Sábado',   type: 'threshold', name: 'Activación umbral corta', description: 'Una sola serie de 8-10 min al FTP para confirmar que las piernas responden. Nada más.', tssShare: 0.14, ifTarget: 0.83, emoji: '🟡' },
-          { day: 'Domingo',  type: 'recovery',  name: 'Pedaleo de movilidad', description: 'Muy suave. Soltura, cadencia alta. El cuerpo está listo para el esfuerzo.', tssShare: 0.05, ifTarget: 0.50, emoji: '😴' },
-        ],
-        // Semana 3 peak: preparación final, casi todo descanso
-        [
-          { day: 'Lunes',    isRest: true,  description: 'Descanso total. El taper ya está hecho.' },
-          { day: 'Martes',   type: 'endurance', name: 'Z2 suave de mantenimiento', description: 'Rueda tranquilo para mantener el flujo sin generar ninguna fatiga.', tssShare: 0.09, ifTarget: 0.62, emoji: '🔵' },
-          { day: 'Miércoles',isRest: true,  description: 'Descanso. Hidratación activa, 3 L de agua mínimo.' },
-          { day: 'Jueves',   type: 'recovery',  name: 'Activación pre-evento', description: '20-30 min muy suaves con 3-4 acelerones cortos al final. Que las piernas recuerden lo que saben hacer.', tssShare: 0.06, ifTarget: 0.52, emoji: '😴' },
-          { day: 'Viernes',  isRest: true,  description: 'Descanso absoluto. Come bien, duerme más, descansa.' },
-          { day: 'Sábado',   type: 'endurance', name: 'Rodada de activación final', description: 'Salida muy suave con 3-4 acelerones cortos al final para despertar las piernas. Nada de carga — solo mantener el flujo.', tssShare: 0.10, ifTarget: 0.62, emoji: '🔵' },
-          { day: 'Domingo',  isRest: true,  description: 'Descanso total. Cuerpo fresco y listo para el evento.' },
-        ],
-      ];
-      return peakVariants[(weekInCycle - 1) % 3];
+      return this._getPeakTemplate(goal, weekInCycle);
     }
 
     // ── BASE y BUILD — 5 plantillas rotativas por goal ──────────────
