@@ -4471,48 +4471,28 @@ function showSessionDetail(idx, showAlt = false) {
       </div>`;
   } else if (sess.isGym) {
     const color = '#F97316';
+    const gymImg = /inferior/i.test(sess.name || '') ? 'img/tren_inf.jpeg'
+      : /superior/i.test(sess.name || '') ? 'img/tren_sup.jpeg'
+      : null;
     document.getElementById('modal-title').textContent = `🏋️ ${sess.name || 'Gimnasio'}`;
     document.getElementById('modal-content').innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
-        <span style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">Gimnasio — Fuerza y movilidad</span>
+        <span style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">${sess.name || 'Gimnasio — Fuerza y movilidad'}</span>
       </div>
       <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
         <span style="background:rgba(249,115,22,.12);color:#F97316;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px"><i class="fas fa-clock"></i> ${sess.durationMin || 60} min</span>
         <span style="background:rgba(249,115,22,.12);color:#F97316;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px"><i class="fas fa-star"></i> ~${sess.tss || 45} TSS</span>
-        <span style="background:rgba(249,115,22,.12);color:#F97316;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px">RPE 7-8 · 3-4 series × 8-12 reps</span>
+        <span style="background:rgba(249,115,22,.12);color:#F97316;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px">RPE 7-8 · 3-4 series × 10-15 reps</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#F97316;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🦵 Tren inferior</div>
-          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
-            <div style="display:flex;justify-content:space-between"><span>Sentadilla</span><span style="color:var(--text-muted);font-weight:600">3 × 10 reps</span></div>
-            <div style="display:flex;justify-content:space-between"><span>Peso muerto rumano</span><span style="color:var(--text-muted);font-weight:600">3 × 10 reps</span></div>
-            <div style="display:flex;justify-content:space-between"><span>Prensa de piernas</span><span style="color:var(--text-muted);font-weight:600">3 × 12 reps</span></div>
-            <div style="display:flex;justify-content:space-between"><span>Estocadas</span><span style="color:var(--text-muted);font-weight:600">3 × 10 reps/lado</span></div>
-          </div>
-        </div>
-        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#F97316;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">💪 Tren superior</div>
-          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
-            <div style="display:flex;justify-content:space-between"><span>Remo (barra o mancuerna)</span><span style="color:var(--text-muted);font-weight:600">3 × 10 reps</span></div>
-            <div style="display:flex;justify-content:space-between"><span>Press de hombro</span><span style="color:var(--text-muted);font-weight:600">3 × 10 reps</span></div>
-            <div style="display:flex;justify-content:space-between"><span>Dominadas / Jalón</span><span style="color:var(--text-muted);font-weight:600">3 × 8-10 reps</span></div>
-          </div>
-        </div>
-        <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#F97316;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🧘 Core</div>
-          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
-            <div style="display:flex;justify-content:space-between"><span>Plancha frontal</span><span style="color:var(--text-muted);font-weight:600">3 × 30-45 s</span></div>
-            <div style="display:flex;justify-content:space-between"><span>Crunch bicicleta</span><span style="color:var(--text-muted);font-weight:600">3 × 15 reps</span></div>
-            <div style="display:flex;justify-content:space-between"><span>Puente de glúteo</span><span style="color:var(--text-muted);font-weight:600">3 × 12 reps</span></div>
-          </div>
-        </div>
-        <div style="background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.2);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#F97316;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🧴 Movilidad final — 10 min</div>
-          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">Psoas · Isquiotibiales · Gemelos · Movilidad de cadera y tobillo. Clave para recuperar la posición en bici.</div>
-        </div>
-      </div>`;
+      ${gymImg
+        ? `<img src="${gymImg}" alt="${sess.name}" onclick="_openImgLightbox('${gymImg}', this.alt)" style="width:100%;border-radius:10px;display:block;cursor:zoom-in">
+          <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:6px"><i class="fas fa-magnifying-glass-plus"></i> Toca la imagen para ampliarla</div>`
+        : `<div style="display:flex;flex-direction:column;gap:12px">
+          <img src="img/tren_inf.jpeg" alt="Rutina tren inferior y core" onclick="_openImgLightbox(this.src, this.alt)" style="width:100%;border-radius:10px;display:block;cursor:zoom-in">
+          <img src="img/tren_sup.jpeg" alt="Rutina tren superior y core" onclick="_openImgLightbox(this.src, this.alt)" style="width:100%;border-radius:10px;display:block;cursor:zoom-in">
+          <div style="text-align:center;font-size:11px;color:var(--text-muted)"><i class="fas fa-magnifying-glass-plus"></i> Toca una imagen para ampliarla</div>
+        </div>`}`;
   } else if (sess.isRunning) {
     const color = '#EF4444';
     document.getElementById('modal-title').textContent = `🏃 ${sess.name || 'Running'}`;
@@ -4833,6 +4813,25 @@ function closeSessionModal() {
   document.getElementById('session-modal').style.display = 'none';
   document.getElementById('plan-side-tab')?.classList.remove('sp-hidden');
   document.getElementById('plan-side-panel')?.classList.remove('sp-hidden');
+}
+
+// Abre una imagen a pantalla casi completa (útil en móvil: el texto de las
+// infografías de gimnasio es ilegible dentro del modal, que va con padding).
+// El pinch-to-zoom nativo del navegador sigue funcionando encima (viewport
+// permite user-scaling), así el usuario puede acercar aún más si lo necesita.
+function _openImgLightbox(src, alt) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:99999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:12px;overflow:auto';
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = alt || '';
+  img.style.cssText = 'max-width:none;width:96vw;border-radius:10px;margin:auto;display:block';
+  overlay.appendChild(img);
+  overlay.addEventListener('click', () => overlay.remove());
+  document.addEventListener('keydown', function escListener(e) {
+    if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', escListener); }
+  });
+  document.body.appendChild(overlay);
 }
 
 function showToast(text, color = 'var(--primary)', duration = 3500) {

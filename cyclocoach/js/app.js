@@ -644,6 +644,21 @@ const TrainingPlanGenerator = {
   },
 
   // Inyecta días de gimnasio reemplazando los slots de menor prioridad
+  // Rutinas de gimnasio en casa: combinan peso corporal (sin material) con el único
+  // material disponible (pesa rusa de 8kg, rueda abdominal, goma elástica) — sin barra
+  // ni máquinas de prensa/jalón/dominadas. Se alternan A/B entre los días de gym de la
+  // semana para no repetir la misma sesión.
+  _GYM_ROUTINES: [
+    {
+      name: 'Gimnasio A — Tren inferior y core',
+      description: 'Sentadilla goblet con pesa rusa (8kg), zancada búlgara a una pierna (peso corporal), peso muerto rumano a una pierna con pesa rusa, puente de glúteo a una pierna (peso corporal), rueda abdominal (rollout desde rodillas) y plancha frontal (peso corporal). 3-4 series × 10-15 reps (rueda: 6-10 reps; plancha: 30-45 seg) a RPE 7-8. Finaliza con 10 min de estiramientos de piernas y cadera.',
+    },
+    {
+      name: 'Gimnasio B — Tren superior y core',
+      description: 'Remo a una mano con pesa rusa (8kg), remo con goma elástica, press militar con pesa rusa, flexiones (push-ups, peso corporal), fondos de tríceps en silla/banco (peso corporal), face-pull con goma y swing con pesa rusa. 3-4 series × 10-15 reps (swing: 15-20 reps) a RPE 7-8. Finaliza con 10 min de estiramientos de hombros y pecho.',
+    },
+  ],
+
   _injectGymSessions(sessions, gymDays, previousDayTypes = {}, excludeDayIndices = []) {
     if (!gymDays || gymDays <= 0) return sessions;
     const result = sessions.map(s => ({ ...s }));
@@ -660,14 +675,15 @@ const TrainingPlanGenerator = {
       .filter(c => c.ts < 99 && !excludeSet.has(c.i))
       .sort((a, b) => a.st !== b.st ? a.st - b.st : a.ts !== b.ts ? a.ts - b.ts : a.ds - b.ds)
       .slice(0, gymDays);
-    for (const { i } of candidates) {
+    candidates.forEach(({ i }, idx) => {
+      const routine = this._GYM_ROUTINES[idx % this._GYM_ROUTINES.length];
       result[i] = {
         day: result[i].day, type: 'gym', emoji: '🏋️',
-        name: 'Gimnasio — Fuerza y movilidad',
-        description: 'Sesión de fuerza en sala: tren inferior (sentadilla, peso muerto, prensa), tren superior (press, dominadas/remo) y core. 3-4 series × 8-12 reps a RPE 7-8. Finaliza con 10 min de estiramientos y movilidad de cadera.',
+        name: routine.name,
+        description: routine.description,
         isGym: true, isRest: false, tss: 45, durationMin: 60, tssShare: 0, ifTarget: null, intervals: null,
       };
-    }
+    });
     // Renormalizar tssShare entre las sesiones ciclistas restantes
     const total = result.reduce((s, r) => s + (r.tssShare || 0), 0);
     if (total > 0 && Math.abs(total - 1) > 0.01)
