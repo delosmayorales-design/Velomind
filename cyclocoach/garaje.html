@@ -1385,7 +1385,13 @@ const G = (() => {
 
   function bikeHealth(bike) {
     if (!bike.components.length) return 100;
-    const avg = bike.components.reduce((s, c) => s + Math.max(0, 100 - Math.min(pct(c), 100)), 0) / bike.components.length;
+    // Un componente pospuesto ("el mecánico dice que aguanta más") no debe seguir
+    // contando como agotado en la salud general — se limita su desgaste al umbral
+    // amarillo (79%) para que no arrastre la bici a rojo mientras está en revisión pospuesta.
+    const avg = bike.components.reduce((s, c) => {
+      const p = isSnoozed(c) ? Math.min(pct(c), 79) : pct(c);
+      return s + Math.max(0, 100 - Math.min(p, 100));
+    }, 0) / bike.components.length;
     return Math.round(avg);
   }
 

@@ -167,6 +167,12 @@ router.get('/alerts', async (req, res) => {
       if (!threshold) continue;
       const lifespan = threshold.lifespan_km || threshold.lifespan_hours;
       const used = lifespan - (c.km_remaining || c.hours_remaining || lifespan);
+      // Componente pospuesto ("revisar en +X km/h"): no generar alerta hasta llegar
+      // al km/hora objetivo, igual que hace el frontend (garaje.html isSnoozed()).
+      const isSnoozed = c.snooze_until_km != null ? used < c.snooze_until_km
+        : c.snooze_until_hours != null ? used < c.snooze_until_hours
+        : false;
+      if (isSnoozed) continue;
       const pct = lifespan ? Math.round((used / lifespan) * 100) : 0;
       if (pct >= threshold.alert_yellow_pct) {
         alerts.push({ bike: bike.name, bike_id: bike.id, component: COMPONENT_LABELS[c.component_type] || c.component_type, component_id: c.id, pct, status: pct >= threshold.alert_red_pct ? 'red' : 'yellow', action: pct >= threshold.alert_red_pct ? 'CAMBIAR YA' : 'Revisar pronto' });
