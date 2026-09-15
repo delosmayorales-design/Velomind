@@ -85,7 +85,7 @@ app.use(express.json({ limit: '5mb' }));
 // ─────────────────────────────────────────
 // Rate limits en rutas sensibles
 app.post('/api/auth/login',    rateLimit(10, 15 * 60 * 1000)); // 10 intentos / 15 min
-app.post('/api/auth/register', rateLimit(5,  60 * 60 * 1000)); // 5 registros / hora
+app.post('/api/auth/register', rateLimit(20, 60 * 60 * 1000)); // 20 registros / hora (IPs compartidas: NAT, wifi de oficina/universidad)
 app.post('/api/auth/demo',     rateLimit(3,  60 * 60 * 1000)); // 3 demos / hora
 app.post('/api/auth/forgot-password', rateLimit(5, 60 * 60 * 1000));
 app.post('/api/auth/resend-verification', rateLimit(5, 60 * 60 * 1000));
