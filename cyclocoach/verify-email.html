@@ -51,11 +51,10 @@
     .card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 20px;
+      border-radius: var(--radius, 12px);
       padding: 48px 40px;
       width: 100%;
       max-width: 420px;
-      box-shadow: 0 0 60px rgba(158,214,43,0.06);
       text-align: center;
     }
     .logo {
@@ -94,7 +93,7 @@
       gap: 8px;
       text-decoration: none;
     }
-    .btn:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(158,214,43,0.3); }
+    .btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
     .btn-secondary {
       background: transparent;
       border: 1px solid var(--border);

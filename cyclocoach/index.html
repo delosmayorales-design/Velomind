@@ -70,7 +70,7 @@
     .progress-step.done::after{background:var(--primary);}
     .progress-step.active::after{background:linear-gradient(to bottom,var(--primary),var(--border));}
     .step-circle{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;color:var(--text-muted);flex-shrink:0;background:var(--bg-input);transition:var(--transition);position:relative;z-index:1;}
-    .progress-step.active .step-circle{border-color:var(--primary);color:var(--primary);background:rgba(158,214,43,0.1);box-shadow:0 0 12px rgba(158,214,43,0.25);}
+    .progress-step.active .step-circle{border-color:var(--primary);color:var(--primary);background:rgba(158,214,43,0.1);}
     .progress-step.done .step-circle{border-color:var(--success);background:rgba(52,211,153,0.12);color:var(--success);}
     .step-info{flex:1;padding-top:5px;}
     .step-info .step-name{font-size:13px;font-weight:600;color:var(--text-muted);transition:var(--transition);}
@@ -113,7 +113,7 @@
     .btn-row{display:flex;gap:10px;margin-top:22px;}
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:var(--radius-md, 8px);font-size:13px;cursor:pointer;transition:all 0.2s ease;}
     .btn-primary{background:var(--primary);color:#111;flex:1;border:none;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;}
-    .btn-primary:hover{background:var(--primary-dark, #84B422);box-shadow:0 4px 16px rgba(158,214,43,0.3);transform:translateY(-1px);}
+    .btn-primary:hover{background:var(--primary-dark, #84B422);transform:translateY(-1px);}
     .btn-back{background:var(--bg-input, rgba(255,255,255,0.05));color:var(--text-secondary, #cbd5e1);border:1px solid var(--border, rgba(255,255,255,0.1));font-weight:600;font-family:inherit;flex:1;}
     .btn-back:hover{background:var(--bg-card-hover, rgba(255,255,255,0.08));color:var(--text-primary, #fff);border-color:var(--primary);transform:translateY(-1px);}
 

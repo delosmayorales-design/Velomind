@@ -33,44 +33,21 @@
        HERO BANNER  — estático, sin elementos que se muevan
     ───────────────────────────────────────────────────────── */
     .coach-hero {
-      border-radius: 20px;
-      padding: 36px 32px 32px;
+      border-radius: var(--radius-xl, 12px);
+      padding: 32px 28px 28px;
       margin-bottom: 18px;
       position: relative;
       overflow: hidden;
-      border-left: 5px solid var(--hero-accent, #9ED62B);
-      /* El fondo es un gradiente estático (sin animación) */
-      background: var(--hero-bg, linear-gradient(135deg,#0a0f14 0%,#080c10 100%));
-      transition: border-color .5s ease, background .5s ease;
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--hero-accent, #9ED62B);
+      background: var(--bg-card);
+      transition: border-color .5s ease;
     }
-    /* State variants — solo cambia background + accent, nada se mueve */
-    .coach-hero.fresh {
-      --hero-accent: #10b981;
-      --hero-glow: rgba(16,185,129,.14);
-      background:
-        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(16,185,129,.13) 0%, transparent 68%),
-        linear-gradient(135deg, #0b1f12 0%, #091510 100%);
-    }
-    .coach-hero.optimal {
-      --hero-accent: #f59e0b;
-      --hero-glow: rgba(245,158,11,.12);
-      background:
-        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(245,158,11,.11) 0%, transparent 68%),
-        linear-gradient(135deg, #181209 0%, #110e06 100%);
-    }
-    .coach-hero.loaded {
-      --hero-accent: #ef4444;
-      --hero-glow: rgba(239,68,68,.12);
-      background:
-        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(239,68,68,.11) 0%, transparent 68%),
-        linear-gradient(135deg, #180a0a 0%, #110606 100%);
-    }
-    .coach-hero.no-data {
-      --hero-accent: #9ED62B;
-      background:
-        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(158,214,43,.08) 0%, transparent 68%),
-        linear-gradient(135deg, #0c1008 0%, #090d06 100%);
-    }
+    /* State variants — solo cambia el color del acento superior, sin degradado ni glow */
+    .coach-hero.fresh   { --hero-accent: #10b981; }
+    .coach-hero.optimal { --hero-accent: #f59e0b; }
+    .coach-hero.loaded  { --hero-accent: #ef4444; }
+    .coach-hero.no-data { --hero-accent: #9ED62B; }
     /* ── Animaciones del hero ─────────────────────────────── */
     @keyframes decoFloat {
       0%,100% { transform: translateY(-50%) scale(1); }
@@ -85,12 +62,6 @@
       0%     { transform: translateY(-50%) rotate(-8deg); }
       50%    { transform: translateY(-50%) rotate(8deg); }
       100%   { transform: translateY(-50%) rotate(-8deg); }
-    }
-    @keyframes heroBorderGlow {
-      0%,100% { box-shadow: -4px 0 0 0 var(--hero-accent,#9ED62B),
-                             0 0 0 0 transparent; }
-      50%     { box-shadow: -4px 0 0 0 var(--hero-accent,#9ED62B),
-                             0 0 28px 4px var(--hero-glow,rgba(158,214,43,.18)); }
     }
     @keyframes heroBgBreath {
       0%,100% { opacity: 1; }
@@ -114,7 +85,7 @@
     .coach-hero.loaded .hero-deco  { animation: decoWarn   2.4s ease-in-out infinite; }
     .coach-hero.no-data .hero-deco { animation: decoPedalear 1.6s ease-in-out infinite; }
     .coach-hero.fresh .hero-deco   { animation: decoFloat 2.8s ease-in-out infinite; }
-    .coach-hero { animation: fadeUp .35s ease both, heroBorderGlow 5s ease-in-out infinite .4s; }
+    .coach-hero { animation: fadeUp .35s ease both; }
     .hero-content { position: relative; z-index: 1; max-width: calc(100% - 130px); }
     .hero-eyebrow {
       font-size: 11px;
@@ -143,12 +114,12 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 5px 11px;
-      border-radius: 99px;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm, 6px);
       font-size: 12px;
-      font-weight: 700;
-      background: rgba(255,255,255,.07);
-      border: 1px solid rgba(255,255,255,.1);
+      font-weight: 600;
+      background: transparent;
+      border: 1px solid var(--border);
       white-space: nowrap;
     }
     .hero-date-chip {
@@ -762,33 +733,13 @@
     /* ─────────────────────────────────────────────────────────
        LIGHT MODE  — hero y componentes del dashboard
     ───────────────────────────────────────────────────────── */
-    html.light-theme .coach-hero.fresh {
-      background:
-        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(5,150,105,.10) 0%, transparent 68%),
-        linear-gradient(135deg, #e8f5ec 0%, #dff0e5 100%) !important;
-      border-left-color: #059669 !important;
-    }
-    html.light-theme .coach-hero.optimal {
-      background:
-        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(180,83,9,.09) 0%, transparent 68%),
-        linear-gradient(135deg, #fef3e2 0%, #fde9c8 100%) !important;
-      border-left-color: #b45309 !important;
-    }
-    html.light-theme .coach-hero.loaded {
-      background:
-        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(185,28,28,.08) 0%, transparent 68%),
-        linear-gradient(135deg, #fef0f0 0%, #fde8e8 100%) !important;
-      border-left-color: #b91c1c !important;
-    }
-    html.light-theme .coach-hero.no-data {
-      background:
-        radial-gradient(ellipse 55% 90% at 92% 50%, rgba(77,122,0,.09) 0%, transparent 68%),
-        linear-gradient(135deg, #f0f7e4 0%, #e8f2d8 100%) !important;
-      border-left-color: #4d7a00 !important;
-    }
+    html.light-theme .coach-hero.fresh   { border-top-color: #059669 !important; }
+    html.light-theme .coach-hero.optimal { border-top-color: #b45309 !important; }
+    html.light-theme .coach-hero.loaded  { border-top-color: #b91c1c !important; }
+    html.light-theme .coach-hero.no-data { border-top-color: #4d7a00 !important; }
     html.light-theme .hero-chip {
-      background: rgba(0,0,0,.06) !important;
-      border-color: rgba(0,0,0,.10) !important;
+      background: transparent !important;
+      border-color: var(--border) !important;
       color: var(--text-primary) !important;
     }
     html.light-theme .hero-eyebrow,
