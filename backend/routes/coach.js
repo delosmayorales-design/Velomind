@@ -24,7 +24,7 @@ const powerZone = (np, ftp) => getZone(np, ftp)?.id || 0;
 const formState = getTSBStatus;
 
 // Detectar fase de entrenamiento: misma lógica que frontend _detectPhase()
-function detectPhase(pmc, eventDate, tsb = 0) {
+function detectPhase(pmc, eventDate, tsb = 0, inactiveDays = null) {
   // Override crítico: sobreentrenamiento o fatiga extrema
   if (tsb < -30) return 'recovery';
 
@@ -45,8 +45,17 @@ function detectPhase(pmc, eventDate, tsb = 0) {
   const recent = pmc.slice(-7).reduce((s, p) => s + p.ctl, 0) / 7;
   const before = pmc.slice(-14, -7).reduce((s, p) => s + p.ctl, 0) / 7;
   const ramp   = recent - before;
-  if (ramp > 3)                  return 'build';
-  if (ramp < -3 && tsb > -15)   return 'peak';
+  if (ramp > 3) return 'build';
+  if (ramp < -3 && tsb > -15) {
+    // CTL bajando + TSB positivo suele ser tapering, pero también es justo lo que
+    // produce llevar varios días sin pedalear (viaje, enfermedad, trabajo): el ATL
+    // decae en 7 días mientras el CTL tarda 42, así que la inactividad "parece"
+    // frescura. Sin un mínimo de actividad reciente no es forma óptima, es
+    // destrenamiento — tratarlo como pico induce sesiones de calidad/test que no
+    // tocan cuando el cuerpo lleva tiempo parado.
+    if (inactiveDays !== null && inactiveDays >= 5) return 'base';
+    return 'peak';
+  }
   if (ramp < -3 && tsb <= -15)  return 'recovery';
   return 'base';
 }
@@ -182,13 +191,17 @@ router.get('/recommendations', async (req, res) => {
   const prevAvgTSS   = prev2w.length   ? Math.round(prev2w.reduce((s, a) => s + (a.tss || 0), 0) / prev2w.length)   : 0;
   const tssGrowth    = prevAvgTSS ? Math.round((recentAvgTSS - prevAvgTSS) / prevAvgTSS * 100) : 0;
 
-  const phase = detectPhase(pmc, user.event_date, tsb);
+  // acts viene ordenado por fecha descendente → acts[0] es la actividad más reciente
+  const lastActDate  = acts[0]?.date ? String(acts[0].date).substring(0, 10) : null;
+  const inactiveDays = lastActDate ? Math.floor((Date.now() - new Date(lastActDate + 'T00:00:00')) / 86400000) : null;
+
+  const phase = detectPhase(pmc, user.event_date, tsb, inactiveDays);
   const form  = formState(tsb);
   const wkg   = ftp && weight ? Math.round(ftp / weight * 100) / 100 : 0;
 
   // ── Generar recomendación de entrenamiento ──
   const training = buildTrainingRecommendation({ tsb, ctl, atl, ftp, weight, goal, phase, form,
-    zonePct, lowPct, midPct, hiPct, tssGrowth, avgTSS, avgDurMin, acts });
+    zonePct, lowPct, midPct, hiPct, tssGrowth, avgTSS, avgDurMin, acts, inactiveDays });
 
   // ── Generar recomendación de nutrición ──
   const nutrition = buildNutritionRecommendation({ ftp, weight, goal, phase, form,
@@ -1047,13 +1060,19 @@ function buildBiomechanicsFallback(rider, photos, userPoints = {}) {
 // ── Builders ─────────────────────────────────────────────────
 
 function buildTrainingRecommendation({ tsb, ctl, ftp, weight, goal, phase, form,
-  zonePct, lowPct, midPct, hiPct, tssGrowth, avgTSS, avgDurMin, acts }) {
+  zonePct, lowPct, midPct, hiPct, tssGrowth, avgTSS, avgDurMin, acts, inactiveDays = null }) {
 
   // Semana objetivo según estado de forma + fase
   let weekTarget, sessions, focus, alerts = [];
 
   // CTL mínimo para atletas nuevos sin historial: 25 TSS/día base
   const ctlBase = Math.max(ctl, 25);
+
+  // TSB positivo tras varios días sin actividad no es tapering: es descanso forzado.
+  // detectPhase() ya evita clasificarlo como 'peak', pero el atleta debe saber por qué.
+  if (tsb > 5 && inactiveDays !== null && inactiveDays >= 5) {
+    alerts.push(`👀 Llevas ${inactiveDays} días sin actividad registrada. El TSB (+${Math.round(tsb)}) refleja inactividad, no un tapering real — retoma con carga suave antes de exigirte al máximo.`);
+  }
 
   if (form.risk === 'muy alto' || tsb < -30) {
     weekTarget = Math.round(ctlBase * 0.5);

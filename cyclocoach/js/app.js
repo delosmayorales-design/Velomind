@@ -355,8 +355,11 @@ const TrainingPlanGenerator = {
     // ── Aviso orientativo: ¿alcanzan las horas configuradas para el objetivo? ──
     const hoursWarning = this._checkMinRecommendedHours(goal, events, hours, ftp, weight);
 
+    // ── Días sin actividad registrada (cualquier deporte) ──
+    const inactiveDays = this._daysSinceLastActivity(activities);
+
     // ── Fase unificada (combina fecha de evento + ramp rate CTL) ──
-    const effectivePhase = this._detectPhase(primaryEventDate, pmcArr, tsb);
+    const effectivePhase = this._detectPhase(primaryEventDate, pmcArr, tsb, inactiveDays);
 
     // ── Adherencia real: compara TSS completado vs esperado en últimas 4 semanas ──
     const adherence = this._calculateAdherence(cyclingActs, hours, exp);
@@ -413,6 +416,12 @@ const TrainingPlanGenerator = {
     } else if (cycleInfo.isRecoveryWeek) {
       adaptation = { level: 'info', icon: '🔄', title: `Semana ${cycleInfo.weekInCycle} — Recuperación programada`,
         text: `Llevas ${cycleInfo.weekInCycle - 1} semanas de carga progresiva. Esta semana es de recuperación activa (carga −25%) para que el cuerpo asimile las adaptaciones. La próxima semana retomará la carga completa.` };
+    } else if (tsb > -10 && inactiveDays !== null && inactiveDays >= 5) {
+      // TSB positivo por varios días sin actividad (viaje, enfermedad, trabajo) no es
+      // tapering: es descanso forzado. Etiquetarlo como "en forma"/"pico" induce carga
+      // de calidad o tests justo cuando el cuerpo puede estar destrenado, no listo.
+      adaptation = { level: 'caution', icon: '👀', title: `Semana ${cycleInfo.weekInCycle} — Retoma progresivo`,
+        text: `Llevas ${inactiveDays} días sin actividad registrada. El TSB (${tsbRound}) sube por inactividad, no por tapering — retoma con carga suave antes de exigirte al máximo.` };
     } else if (tsb >= -10 && tsb <= 5) {
       adaptation = { level: 'ok', icon: '💪', title: `Semana ${cycleInfo.weekInCycle} — En forma`,
         text: `TSB: ${tsbRound}. Equilibrio entre fitness y fatiga. ${macrocycle.blockLabel ? `Bloque actual: ${macrocycle.blockLabel}.` : 'Plan estándar.'}` };
@@ -811,7 +820,7 @@ const TrainingPlanGenerator = {
 
   // ── Detección de fase unificada ──────────────────────────────────
   // Combina fecha de evento + ramp rate CTL + TSB para una fase coherente
-  _detectPhase(eventDate, pmcArr, tsb) {
+  _detectPhase(eventDate, pmcArr, tsb, inactiveDays = null) {
     // Override crítico: sobreentrenamiento o fatiga extrema
     if (tsb < -30) return 'recovery';
 
@@ -834,7 +843,14 @@ const TrainingPlanGenerator = {
       const ramp = recent - before; // CTL ganado/perdido por semana
 
       if (ramp > 3)                        return 'build';    // CTL subiendo activamente
-      if (ramp < -3 && tsb > -15)          return 'peak';     // CTL bajando, TSB positivo → tapering
+      if (ramp < -3 && tsb > -15) {
+        // CTL bajando + TSB positivo suele ser tapering, pero es justo lo que produce
+        // llevar varios días sin pedalear: el ATL decae en 7 días y el CTL en 42, así
+        // que la inactividad "parece" frescura sin serlo. Sin actividad reciente no
+        // tratamos esto como pico de forma (sesiones de calidad/test), sino como base.
+        if (inactiveDays !== null && inactiveDays >= 5) return 'base';
+        return 'peak';                                        // tapering real
+      }
       if (ramp < -3 && tsb <= -15)         return 'recovery'; // CTL bajando, muy fatigado
     }
 
@@ -859,6 +875,20 @@ const TrainingPlanGenerator = {
 
     if (expectedTSS4w === 0) return 1.0;
     return Math.min(1.20, actualTSS4w / expectedTSS4w);
+  },
+
+  // Días desde la última actividad registrada (null si no hay ninguna). Un TSB
+  // positivo por varios días sin pedalear (viaje, enfermedad, trabajo) no es el
+  // mismo frescor que da un tapering: el cuerpo puede estar destrenado, no listo.
+  _daysSinceLastActivity(activities) {
+    if (!activities || !activities.length) return null;
+    let lastDate = '';
+    for (const a of activities) {
+      const d = String(a.date || '').substring(0, 10);
+      if (d > lastDate) lastDate = d;
+    }
+    if (!lastDate) return null;
+    return Math.floor((Date.now() - new Date(lastDate + 'T00:00:00')) / 86400000);
   },
 
   // ── Ciclo 3:1: detectar semana del microciclo desde historial ────
