@@ -18,19 +18,22 @@ const ZONES_COGGAN = [
 ];
 
 /* Tipos de sesión con etiquetas */
+// icon: clase Font Awesome (sin el prefijo "fas") — sustituye a emoji en la UI fija.
+// emoji se conserva para consumidores que no pueden renderizar iconos de fuente
+// (p.ej. notificaciones push del sistema).
 const WORKOUT_TYPES = {
-  recovery:  { label: 'Recuperación Activa', color: '#6B7280', emoji: '😴' },
-  endurance: { label: 'Resistencia Z2',      color: '#3B82F6', emoji: '🚴' },
-  tempo:     { label: 'Tempo Z3',            color: '#10B981', emoji: '⚡' },
-  threshold: { label: 'Umbral (FTP)',         color: '#F59E0B', emoji: '🎯' },
-  vo2max:    { label: 'VO₂ Max',             color: '#EF4444', emoji: '🔥' },
-  sprint:    { label: 'Sprints / Poten.',    color: '#8B5CF6', emoji: '💨' },
-  long:      { label: 'Fondón Z1-Z2',        color: '#00D4FF', emoji: '🚴' },
-  race:      { label: 'Activación Carrera',  color: '#EC4899', emoji: '🏁' },
-  strength:  { label: 'Fuerza (Baja cadencia)',color:'#A855F7',emoji: '💪' },
-  gym:       { label: 'Gimnasio / Fuerza',     color:'#F97316',emoji: '🏋️' },
-  running:   { label: 'Running',               color:'#EF4444',emoji: '🏃' },
-  walking:   { label: 'Caminata Activa',       color:'#10B981',emoji: '🚶' },
+  recovery:  { label: 'Recuperación Activa', color: '#6B7280', emoji: '😴', icon: 'fa-heart-pulse' },
+  endurance: { label: 'Resistencia Z2',      color: '#3B82F6', emoji: '🚴', icon: 'fa-bicycle' },
+  tempo:     { label: 'Tempo Z3',            color: '#10B981', emoji: '⚡', icon: 'fa-gauge-high' },
+  threshold: { label: 'Umbral (FTP)',         color: '#F59E0B', emoji: '🎯', icon: 'fa-bullseye' },
+  vo2max:    { label: 'VO₂ Max',             color: '#EF4444', emoji: '🔥', icon: 'fa-fire' },
+  sprint:    { label: 'Sprints / Poten.',    color: '#8B5CF6', emoji: '💨', icon: 'fa-bolt' },
+  long:      { label: 'Fondón Z1-Z2',        color: '#00D4FF', emoji: '🚴', icon: 'fa-route' },
+  race:      { label: 'Activación Carrera',  color: '#EC4899', emoji: '🏁', icon: 'fa-flag-checkered' },
+  strength:  { label: 'Fuerza (Baja cadencia)',color:'#A855F7',emoji: '💪', icon: 'fa-dumbbell' },
+  gym:       { label: 'Gimnasio / Fuerza',     color:'#F97316',emoji: '🏋️', icon: 'fa-dumbbell' },
+  running:   { label: 'Running',               color:'#EF4444',emoji: '🏃', icon: 'fa-person-running' },
+  walking:   { label: 'Caminata Activa',       color:'#10B981',emoji: '🚶', icon: 'fa-person-walking' },
 };
 
 /* Normalización de objetivos entre pantallas y motor */
@@ -91,12 +94,12 @@ const Utils = {
     return ZONES_COGGAN.find(z => ratio >= z.min && ratio < z.max) || ZONES_COGGAN[ZONES_COGGAN.length - 1];
   },
   getTSBStatus(tsb) {
-    if (tsb > 25)  return { label: 'Muy fresco',      color: '#64a0ff', icon: '🚀' };
-    if (tsb > 5)   return { label: 'Fresco',          color: '#00C882', icon: '✅' };
-    if (tsb > -10) return { label: 'En forma',        color: '#b4e600', icon: '💪' };
-    if (tsb > -20) return { label: 'Carga alta',        color: '#FFC800', icon: '⚖️' };
+    if (tsb > 25)  return { label: 'Muy fresco',      color: '#64a0ff', icon: 'fa-rocket' };
+    if (tsb > 5)   return { label: 'Fresco',          color: '#00C882', icon: 'fa-circle-check' };
+    if (tsb > -10) return { label: 'En forma',        color: '#b4e600', icon: 'fa-dumbbell' };
+    if (tsb > -20) return { label: 'Carga alta',        color: '#FFC800', icon: 'fa-scale-balanced' };
     if (tsb > -30) return { label: 'Fatiga acumulada', color: '#FF9632', icon: '🔥' };
-    return           { label: 'Sobreentrenado',   color: '#ff4757', icon: '🛑' };
+    return           { label: 'Sobreentrenado',   color: '#ff4757', icon: 'fa-circle-stop' };
   },
 
   /** Calcula TSS de una actividad con datos mínimos */
@@ -403,38 +406,38 @@ const TrainingPlanGenerator = {
 
     if (tsb < -30) {
       targetTSS = Math.round(targetTSS * 0.60);
-      adaptation = { level: 'danger', icon: '🛑', title: 'Semana de recuperación forzada',
+      adaptation = { level: 'danger', icon: 'fa-circle-stop', title: 'Semana de recuperación forzada',
         text: `TSB actual: ${tsbRound}. Zona de sobreentrenamiento. Plan sustituido por semana de recuperación activa.` };
     } else if (tsb < -20) {
       targetTSS = Math.round(targetTSS * 0.75);
-      adaptation = { level: 'warning', icon: '⚠️', title: 'Plan aligerado — Fatiga alta',
+      adaptation = { level: 'warning', icon: 'fa-triangle-exclamation', title: 'Plan aligerado — Fatiga alta',
         text: `TSB: ${tsbRound}. Volumen reducido un 25%. Prioriza el sueño y la nutrición.` };
     } else if (tsb < -10) {
       targetTSS = Math.round(targetTSS * 0.85);
-      adaptation = { level: 'caution', icon: '⚖️', title: 'Plan ajustado — Fatiga moderada',
+      adaptation = { level: 'caution', icon: 'fa-scale-balanced', title: 'Plan ajustado — Fatiga moderada',
         text: `TSB: ${tsbRound}. Volumen reducido un 15% para asimilar carga sin acumular más estrés.` };
     } else if (cycleInfo.isRecoveryWeek) {
-      adaptation = { level: 'info', icon: '🔄', title: `Semana ${cycleInfo.weekInCycle} — Recuperación programada`,
+      adaptation = { level: 'info', icon: 'fa-rotate', title: `Semana ${cycleInfo.weekInCycle} — Recuperación programada`,
         text: `Llevas ${cycleInfo.weekInCycle - 1} semanas de carga progresiva. Esta semana es de recuperación activa (carga −25%) para que el cuerpo asimile las adaptaciones. La próxima semana retomará la carga completa.` };
     } else if (tsb > -10 && inactiveDays !== null && inactiveDays >= 5) {
       // TSB positivo por varios días sin actividad (viaje, enfermedad, trabajo) no es
       // tapering: es descanso forzado. Etiquetarlo como "en forma"/"pico" induce carga
       // de calidad o tests justo cuando el cuerpo puede estar destrenado, no listo.
-      adaptation = { level: 'caution', icon: '👀', title: `Semana ${cycleInfo.weekInCycle} — Retoma progresivo`,
+      adaptation = { level: 'caution', icon: 'fa-eye', title: `Semana ${cycleInfo.weekInCycle} — Retoma progresivo`,
         text: `Llevas ${inactiveDays} días sin actividad registrada. El TSB (${tsbRound}) sube por inactividad, no por tapering — retoma con carga suave antes de exigirte al máximo.` };
     } else if (tsb >= -10 && tsb <= 5) {
-      adaptation = { level: 'ok', icon: '💪', title: `Semana ${cycleInfo.weekInCycle} — En forma`,
+      adaptation = { level: 'ok', icon: 'fa-dumbbell', title: `Semana ${cycleInfo.weekInCycle} — En forma`,
         text: `TSB: ${tsbRound}. Equilibrio entre fitness y fatiga. ${macrocycle.blockLabel ? `Bloque actual: ${macrocycle.blockLabel}.` : 'Plan estándar.'}` };
     } else if (tsb > 5 && tsb <= 20) {
-      adaptation = { level: 'good', icon: '✅', title: `Semana ${cycleInfo.weekInCycle} — Fresco y listo`,
+      adaptation = { level: 'good', icon: 'fa-circle-check', title: `Semana ${cycleInfo.weekInCycle} — Fresco y listo`,
         text: `TSB: ${tsbRound}. Fresco con buen fitness. ${macrocycle.blockLabel ? `Bloque: ${macrocycle.blockLabel}.` : ''} Carga completa planificada.` };
     } else if (tsb > 20) {
-      adaptation = { level: 'peak', icon: '🚀', title: 'Forma óptima — Sesiones de calidad',
+      adaptation = { level: 'peak', icon: 'fa-rocket', title: 'Forma óptima — Sesiones de calidad',
         text: `TSB: ${tsbRound}. Pico de forma. Plan prioriza calidad sobre volumen.` };
     }
 
     if (adherence < 0.65 && !adaptation) {
-      adaptation = { level: 'caution', icon: '📉', title: 'Adherencia baja — Plan ajustado',
+      adaptation = { level: 'caution', icon: 'fa-arrow-trend-down', title: 'Adherencia baja — Plan ajustado',
         text: `Has completado el ${Math.round(adherence * 100)}% de la carga esperada en las últimas 4 semanas. El plan se ha reducido para hacerlo más alcanzable. Cuando la consistencia mejore, la carga aumentará automáticamente.` };
     }
 
@@ -3442,22 +3445,22 @@ const NutritionPlanner = {
 
   _tips(goal, trainingDay) {
     const base = [
-      { icon: '💧', text: 'Empieza hidratado: 400-600 ml en la hora previa.' },
-      { icon: '🥩', text: 'Distribuye proteina en 4-5 tomas durante el dia.' },
+      { icon: 'fa-droplet', text: 'Empieza hidratado: 400-600 ml en la hora previa.' },
+      { icon: 'fa-drumstick-bite', text: 'Distribuye proteina en 4-5 tomas durante el dia.' },
     ];
     const goalTip = {
-      perdida_peso: { icon: '⚖️', text: 'Mantén deficit moderado, evita recortes agresivos en dias intensos.' },
-      resistencia: { icon: '🚴', text: 'Prioriza volumen de carbohidratos en salidas largas.' },
-      ftp: { icon: '🎯', text: 'Refuerza carbohidratos en sesiones de umbral.' },
-      vo2max: { icon: '🔥', text: 'No entrenes VO2 con glucogeno bajo.' },
-      sprint: { icon: '⚡', text: 'Creatina y carbohidrato pre-sesion pueden mejorar potencia pico.' },
-      gran_fondo: { icon: '🧃', text: 'Practica nutricion en bici exactamente como en carrera.' },
-      carrera_corta: { icon: '🏁', text: 'Alta densidad de carbohidrato pre-sesion para sostener intensidad en esfuerzos cortos.' },
-      carrera_larga: { icon: '🚴', text: 'Entrena la ingesta en bici: 60-90g de CH/h en salidas de mas de 2h.' },
-      ultra: { icon: '🏔️', text: 'Habituate a comer solido en bici; el estomago tambien se entrena.' },
+      perdida_peso: { icon: 'fa-scale-balanced', text: 'Mantén deficit moderado, evita recortes agresivos en dias intensos.' },
+      resistencia: { icon: 'fa-bicycle', text: 'Prioriza volumen de carbohidratos en salidas largas.' },
+      ftp: { icon: 'fa-bullseye', text: 'Refuerza carbohidratos en sesiones de umbral.' },
+      vo2max: { icon: 'fa-fire', text: 'No entrenes VO2 con glucogeno bajo.' },
+      sprint: { icon: 'fa-bolt', text: 'Creatina y carbohidrato pre-sesion pueden mejorar potencia pico.' },
+      gran_fondo: { icon: 'fa-bottle-water', text: 'Practica nutricion en bici exactamente como en carrera.' },
+      carrera_corta: { icon: 'fa-flag-checkered', text: 'Alta densidad de carbohidrato pre-sesion para sostener intensidad en esfuerzos cortos.' },
+      carrera_larga: { icon: 'fa-bicycle', text: 'Entrena la ingesta en bici: 60-90g de CH/h en salidas de mas de 2h.' },
+      ultra: { icon: 'fa-mountain', text: 'Habituate a comer solido en bici; el estomago tambien se entrena.' },
     }[goal];
     if (goalTip) base.push(goalTip);
-    if (!trainingDay) base.push({ icon: '😴', text: 'Dia suave: baja carbohidrato, no bajes proteina.' });
+    if (!trainingDay) base.push({ icon: 'fa-bed', text: 'Dia suave: baja carbohidrato, no bajes proteina.' });
     return base;
   },
 

@@ -2780,7 +2780,7 @@ function renderMacrocycle() {
           plan.adaptation.level === 'danger'  ? '#EF4444' :
           plan.adaptation.level === 'warning' ? '#F59E0B' :
           plan.adaptation.level === 'good'    ? '#10B981' : 'var(--border)'
-        }"><strong>${plan.adaptation.icon} ${plan.adaptation.title}</strong><br>${plan.adaptation.text}</div>`
+        }"><strong><i class="fas ${plan.adaptation.icon}"></i> ${plan.adaptation.title}</strong><br>${plan.adaptation.text}</div>`
       : '');
 
   card.style.display = '';
