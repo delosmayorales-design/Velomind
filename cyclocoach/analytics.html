@@ -552,12 +552,12 @@ function setStatus(msg) {
 }
 
 function getFormStatus(tsb) {
-  if (tsb > 25)  return { text: '🚀 Muy fresco',        color: '#64a0ff' };
-  if (tsb > 5)   return { text: '✅ Fresco',            color: '#00C882' };
-  if (tsb > -10) return { text: '💪 En forma',          color: '#b4e600' };
-  if (tsb > -20) return { text: '⚖️ Carga alta',        color: '#FFC800' };
-  if (tsb > -30) return { text: '🔥 Fatiga acumulada',  color: '#FF9632' };
-  return           { text: '🛑 Sobreentrenado',         color: '#ff4757' };
+  if (tsb > 25)  return { text: 'Muy fresco',        color: '#64a0ff' };
+  if (tsb > 5)   return { text: 'Fresco',            color: '#00C882' };
+  if (tsb > -10) return { text: 'En forma',          color: '#b4e600' };
+  if (tsb > -20) return { text: 'Carga alta',        color: '#FFC800' };
+  if (tsb > -30) return { text: 'Fatiga acumulada',  color: '#FF9632' };
+  return           { text: 'Sobreentrenado',         color: '#ff4757' };
 }
 
 function powerZoneIdx(power, ftp) {
@@ -997,7 +997,7 @@ function renderPMCChart(period) {
     var prev7 = filtered[Math.max(0, filtered.length - 8)];
     var ramp = Math.round((last.ctl - prev7.ctl) * 10) / 10;
     var rampColor = ramp > 7 ? '#EF4444' : ramp > 5 ? '#F59E0B' : ramp < -3 ? '#9CA3AF' : '#10B981';
-    var rampTxt = ramp > 7 ? '⚠ muy alta' : ramp > 5 ? '↑ alta' : ramp < -3 ? '↓ recuperación' : '✅ óptima';
+    var rampTxt = ramp > 7 ? '<i class="fas fa-triangle-exclamation"></i> muy alta' : ramp > 5 ? '<i class="fas fa-arrow-up"></i> alta' : ramp < -3 ? '<i class="fas fa-arrow-down"></i> recuperación' : '<i class="fas fa-circle-check"></i> óptima';
     statsBar.innerHTML =
       '<span style="color:var(--text-muted)">Hoy →</span>' +
       '<span>CTL <strong style="color:#3B82F6">' + last.ctl.toFixed(1) + '</strong></span>' +
@@ -1644,22 +1644,22 @@ function computeRiderProfile(acts, athlete, curve) {
   };
 
   var PROFILES = [
-    { id:'sprinter', name:'Sprinter', emoji:'⚡', color:'#EF4444',
+    { id:'sprinter', name:'Sprinter', emoji:'fa-bolt', color:'#EF4444',
       desc:'Tu arma es la potencia explosiva. Eres letal en llegadas al sprint y marcas diferencias en finales llanos. Tu entrenamiento debe incluir series cortas máximas y trabajo de velocidad.',
       condition: function(s){ return s.sprint > 62 && s.sprint >= s.escalada && s.sprint >= s.resistencia; } },
-    { id:'escalador', name:'Escalador', emoji:'🏔️', color:'#10B981',
+    { id:'escalador', name:'Escalador', emoji:'fa-mountain', color:'#10B981',
       desc:'La montaña es tu terreno. Tu relación W/kg y el desnivel acumulado en tus rutas te convierten en una amenaza en puerto. Trabaja la resistencia muscular y el ritmo en subidas largas.',
       condition: function(s){ return s.escalada > 62 && s.escalada >= s.sprint; } },
-    { id:'puncheur', name:'Puncheur', emoji:'💪', color:'#F59E0B',
+    { id:'puncheur', name:'Puncheur', emoji:'fa-bolt-lightning', color:'#F59E0B',
       desc:'Eres explosivo en los repechos cortos y aguantas en subidas duras. Combinas potencia anaeróbica con capacidad aeróbica. Tu baza son los finales en circuito y las clásicas con pavés.',
       condition: function(s){ return s.escalada > 52 && s.sprint > 52; } },
-    { id:'contrarrelojista', name:'Contrarrelojista', emoji:'🕐', color:'#8B5CF6',
+    { id:'contrarrelojista', name:'Contrarrelojista', emoji:'fa-stopwatch', color:'#8B5CF6',
       desc:'Eres una máquina de ritmo. Tu pedaleo es eficiente y constante. Aprovecha tu capacidad de mantener el umbral durante períodos largos — las CRI y los gran fondos son tu hábitat.',
       condition: function(s){ return s.regularidad > 62 && s.umbral > 52; } },
-    { id:'fondista', name:'Fondista', emoji:'🏅', color:'#3B82F6',
+    { id:'fondista', name:'Fondista', emoji:'fa-medal', color:'#3B82F6',
       desc:'La resistencia es tu fortaleza. Puedes mantener el ritmo durante horas y eres clave en fondos y audax. Trabaja la potencia en intervalos para elevar el techo aeróbico.',
       condition: function(s){ return s.resistencia > 62; } },
-    { id:'rodador', name:'Rodador', emoji:'🔄', color:'#6B7280',
+    { id:'rodador', name:'Rodador', emoji:'fa-rotate', color:'#6B7280',
       desc:'Eres completo y versátil. Te adaptas a diferentes terrenos y ritmos. Con trabajo específico de intervalos o montaña puedes decantar tu perfil hacia un rol más definido.',
       condition: function(){ return true; } },
   ];
@@ -1687,7 +1687,7 @@ function renderRiderProfile(acts, athlete, curve) {
   var badge = document.getElementById('rider-profile-badge');
   if (badge) badge.style.display = 'none';
   var nameEl = document.getElementById('rider-profile-name');
-  if (nameEl) nameEl.innerHTML = '<span style="color:' + p.color + '">' + p.emoji + ' ' + p.name + '</span>';
+  if (nameEl) nameEl.innerHTML = '<span style="color:' + p.color + '"><i class="fas ' + p.emoji + '"></i> ' + p.name + '</span>';
   var descEl = document.getElementById('rider-profile-desc');
   if (descEl) descEl.textContent = p.desc;
 
@@ -1990,7 +1990,7 @@ async function autoEstimateZones() {
         <button id="az-save-btn" onclick="applyAutoZoneValues()" class="btn btn-primary btn-sm" style="padding:8px 18px;height:36px">
           <i class="fas fa-save"></i> Guardar en perfil
         </button>
-        <span id="az-save-status" style="font-size:12px;color:var(--success);display:none">✅ Guardado</span>
+        <span id="az-save-status" style="font-size:12px;color:var(--success);display:none"><i class="fas fa-check"></i> Guardado</span>
       </div>`;
     infoBar.style.display = 'block';
     renderZones();
@@ -2202,8 +2202,8 @@ async function loadDecouplingCard() {
   var STATUS = {
     mejorando: { label: '▲ Mejorando',  color: '#10B981' },
     estable:   { label: '— Estable',    color: '#3B82F6' },
-    atencion:  { label: '⚠ Atención',   color: '#F59E0B' },
-    alerta:    { label: '🛑 Alerta',     color: '#EF4444' },
+    atencion:  { label: 'Atención',   color: '#F59E0B' },
+    alerta:    { label: 'Alerta',     color: '#EF4444' },
   };
   var st = STATUS[data.status] || { label: data.status || '—', color: '#9CA3AF' };
   var sign = (data.ef_trend_pct || 0) >= 0 ? '+' : '';
@@ -2267,7 +2267,7 @@ async function loadProjectionCard() {
     return tsb > 20 ? '#60A5FA' : tsb > 5 ? '#10B981' : tsb > -10 ? '#9ED62B' : tsb > -20 ? '#F59E0B' : '#EF4444';
   };
   var stateEmoji = function(tsb) {
-    return tsb > 20 ? '🚀' : tsb > 5 ? '✅' : tsb > -10 ? '💪' : tsb > -20 ? '⚠️' : '🔴';
+    return tsb > 20 ? '<i class="fas fa-rocket"></i>' : tsb > 5 ? '<i class="fas fa-circle-check"></i>' : tsb > -10 ? '<i class="fas fa-gauge"></i>' : tsb > -20 ? '<i class="fas fa-triangle-exclamation"></i>' : '<i class="fas fa-battery-empty"></i>';
   };
 
   el.innerHTML =
@@ -2276,7 +2276,7 @@ async function loadProjectionCard() {
         var c = stateColor(w.tsb);
         return '<div style="text-align:center;padding:14px 6px;border-radius:10px;border:1px solid ' + c + '40;background:' + c + '0d">' +
           '<div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;letter-spacing:.3px">Semana ' + (i + 1) + '</div>' +
-          '<div style="font-size:20px;line-height:1">' + stateEmoji(w.tsb) + '</div>' +
+          '<div style="font-size:16px;line-height:1;color:' + c + '">' + stateEmoji(w.tsb) + '</div>' +
           '<div style="font-size:12px;font-weight:800;color:' + c + ';margin-top:4px">TSB ' + (w.tsb > 0 ? '+' : '') + w.tsb + '</div>' +
         '</div>';
       }).join('') +
