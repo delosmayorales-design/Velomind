@@ -21,6 +21,14 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <style>
 
+    /* Simula un basemap oscuro invirtiendo tiles claros de OSM (sin depender de un
+       proveedor de pago para el modo oscuro) — ver _DASH_TILES.dark */
+    .map-tiles-dark { filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9); }
+    #dash-act-map .leaflet-control-attribution {
+      background: rgba(0,0,0,.45); color: #ccc; font-size: 9px; padding: 0 4px;
+    }
+    #dash-act-map .leaflet-control-attribution a { color: #ddd; }
+
     /* ─────────────────────────────────────────────────────────
        HERO BANNER  — estático, sin elementos que se muevan
     ───────────────────────────────────────────────────────── */
@@ -2425,10 +2433,14 @@ let _dashTileLayer = null;
 let _dashMapType = 'sat';
 const _DASH_SPEED = 200; // 200× velocidad real
 
+// CartoDB (antes usado en street/dark) ahora exige API key en sus basemaps gratuitos
+// y sin ella sirve un tile de aviso "API KEY REQUIRED" en vez del mapa. OSM no
+// necesita key; el modo oscuro invierte esos tiles claros por CSS (ver .map-tiles-dark)
+// en vez de depender de un basemap oscuro de pago.
 const _DASH_TILES = {
-  sat:    { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', opts: { maxZoom: 19 } },
-  street: { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',                    opts: { maxZoom: 19 } },
-  dark:   { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',                               opts: { maxZoom: 19 } },
+  sat:    { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', opts: { maxZoom: 19, attribution: '&copy; Esri' } },
+  street: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                                          opts: { maxZoom: 19, attribution: '&copy; OpenStreetMap' } },
+  dark:   { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                                          opts: { maxZoom: 19, attribution: '&copy; OpenStreetMap', className: 'map-tiles-dark' } },
 };
 
 function _dashSetMapType(type) {
@@ -2436,7 +2448,7 @@ function _dashSetMapType(type) {
   _dashMapType = type;
   if (_dashTileLayer) { _dashMap.removeLayer(_dashTileLayer); _dashTileLayer = null; }
   const t = _DASH_TILES[type];
-  _dashTileLayer = L.tileLayer(t.url, { ...t.opts, attribution: '' }).addTo(_dashMap);
+  _dashTileLayer = L.tileLayer(t.url, t.opts).addTo(_dashMap);
   _dashTileLayer.bringToBack();
   // Actualizar botones
   document.querySelectorAll('.dash-map-type-btn').forEach(b => {
@@ -2556,12 +2568,12 @@ async function _renderLastActMapElev(act) {
     const pts = _dashDecodePolyline(polylineEnc);
     if (pts.length >= 2) {
       _dashMap = L.map(mapEl, {
-        zoomControl: false, attributionControl: false,
+        zoomControl: false, attributionControl: true,
         scrollWheelZoom: false, dragging: false, tap: false
       });
       const initType = _dashMapType || 'sat';
       const initTile = _DASH_TILES[initType];
-      _dashTileLayer = L.tileLayer(initTile.url, { ...initTile.opts, attribution: '' }).addTo(_dashMap);
+      _dashTileLayer = L.tileLayer(initTile.url, initTile.opts).addTo(_dashMap);
       _dashTrack = L.polyline(pts, { color: LIME, weight: 3, opacity: 0.9 });
       _dashTrack.addTo(_dashMap);
       setTimeout(() => {
@@ -2617,10 +2629,10 @@ async function _renderLastActMapElev(act) {
       const initType = _dashMapType || 'sat';
       const initTile = _DASH_TILES[initType];
       _dashMap = L.map(mapEl, {
-        zoomControl: false, attributionControl: false,
+        zoomControl: false, attributionControl: true,
         scrollWheelZoom: false, dragging: false, tap: false
       });
-      _dashTileLayer = L.tileLayer(initTile.url, { ...initTile.opts, attribution: '' }).addTo(_dashMap);
+      _dashTileLayer = L.tileLayer(initTile.url, initTile.opts).addTo(_dashMap);
       _dashTrack = L.polyline(s.latlng, { color: LIME, weight: 3, opacity: 0.9 }).addTo(_dashMap);
       L.circleMarker(s.latlng[0],                  { radius: 5, color: '#fff', weight: 1.5, fillColor: '#10b981', fillOpacity: 1 }).addTo(_dashMap);
       L.circleMarker(s.latlng[s.latlng.length - 1],{ radius: 5, color: '#fff', weight: 1.5, fillColor: '#ef4444', fillOpacity: 1 }).addTo(_dashMap);

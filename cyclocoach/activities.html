@@ -77,7 +77,13 @@
       overflow: hidden;
       border: 1px solid var(--border);
     }
-    #strava-mini-map .leaflet-control-attribution { display: none; }
+    #strava-mini-map .leaflet-control-attribution {
+      background: rgba(0,0,0,.45); color: #ccc; font-size: 9px; padding: 0 4px;
+    }
+    #strava-mini-map .leaflet-control-attribution a { color: #ddd; }
+    /* Simula un basemap oscuro invirtiendo tiles claros de OSM (sin depender de un
+       proveedor de pago para el modo oscuro) */
+    .map-tiles-dark { filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9); }
     @media (max-width: 480px) {
       #strava-mini-map { height: 160px; border-radius: 10px; }
     }
@@ -1461,16 +1467,19 @@ async function fetchAndRenderStreams(sid, ftp, act) {
         const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
         _stravaMapInst = L.map(mapEl, {
           zoomControl: true,
-          attributionControl: false,
+          attributionControl: true,
           scrollWheelZoom: false,
           tap: false
         });
-        L.tileLayer(
-          isDark
-            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-          { maxZoom: 19 }
-        ).addTo(_stravaMapInst);
+        // CartoDB (antes usado aquí) ahora exige API key en sus basemaps gratuitos y sin
+        // ella sirve un tile de aviso "API KEY REQUIRED" en vez del mapa — de ahí el bug.
+        // OSM no necesita key; para el modo oscuro se invierten los tiles claros por CSS
+        // (truco estándar de Leaflet) en vez de depender de un basemap oscuro de pago.
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap',
+          className: isDark ? 'map-tiles-dark' : ''
+        }).addTo(_stravaMapInst);
 
         const track = L.polyline(s.latlng, { color: '#FC4C02', weight: 3.5, opacity: 0.9 });
         track.addTo(_stravaMapInst);
