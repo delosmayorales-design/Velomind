@@ -252,17 +252,9 @@
       color: #10b981;
     }
 
-    /* ── Sesión de hoy · diseño animado ── */
-    @keyframes floatEmoji {
-      0%,100% { transform: translateY(0) scale(1); }
-      50%      { transform: translateY(-7px) scale(1.08); }
-    }
-    @keyframes pulseGlow {
-      0%,100% { box-shadow: 0 0 0 0 var(--today-color,#9ED62B33); }
-      50%      { box-shadow: 0 0 20px 6px var(--today-color,#9ED62B22); }
-    }
+    /* ── Sesión de hoy ── */
     .today-hero {
-      border-radius: 16px;
+      border-radius: var(--radius-xl, 12px);
       padding: 20px 18px 16px;
       margin-bottom: 14px;
       position: relative;
@@ -283,13 +275,18 @@
       position: relative;
     }
     .today-emoji {
-      font-size: 46px;
+      font-size: 26px;
       line-height: 1;
-      display: inline-block;
-      animation: floatEmoji 3s ease-in-out infinite;
-      transition: opacity .25s, transform .25s;
-      filter: drop-shadow(0 4px 8px rgba(0,0,0,.3));
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 46px;
+      height: 46px;
+      flex-shrink: 0;
+      border-radius: var(--radius-md, 8px);
+      background: currentColor;
     }
+    .today-emoji i { color: var(--bg-card); }
     .today-emoji-badge {
       font-size: 11px;
       font-weight: 700;
@@ -427,7 +424,9 @@
     .ftp-banner.show { display: flex; }
     .ftp-banner.ready  { background: rgba(16,185,129,.07);  border-color: rgba(16,185,129,.3); }
     .ftp-banner.soon   { background: rgba(245,158,11,.07);  border-color: rgba(245,158,11,.3); }
-    .ftp-banner-icon { font-size: 36px; flex-shrink: 0; }
+    .ftp-banner-icon { font-size: 26px; flex-shrink: 0; color: var(--text-muted); }
+    .ftp-banner.ready .ftp-banner-icon { color: #10b981; }
+    .ftp-banner.soon  .ftp-banner-icon { color: #f59e0b; }
     .ftp-banner-title {
       font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: 16px;
@@ -471,14 +470,10 @@
       to   { transform: scale(1);   opacity: 1; }
     }
     .ftp-bt-emoji {
-      font-size: 60px;
+      font-size: 40px;
       display: block;
       margin-bottom: 14px;
-      animation: btBounce 1.2s ease infinite;
-    }
-    @keyframes btBounce {
-      0%,100% { transform: translateY(0);   }
-      50%      { transform: translateY(-8px);}
+      color: #10B981;
     }
     .ftp-bt-title {
       font-family: 'Plus Jakarta Sans', sans-serif;
@@ -718,7 +713,7 @@
     #wellness-card { animation: fadeUp .35s ease .20s both; }
     .w-pills { display:flex; flex-wrap:wrap; gap:8px; }
     .w-pill  { display:flex; flex-direction:column; align-items:center; background:var(--bg-input,rgba(255,255,255,0.05)); border:1px solid var(--border); border-radius:10px; padding:8px 12px; min-width:64px; gap:2px; }
-    .w-pill-icon { font-size:16px; }
+    .w-pill-icon { font-size:14px; color:var(--text-muted); }
     .w-val  { font-size:14px; font-weight:700; color:var(--text-primary); }
     .w-lbl  { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; }
 
@@ -830,7 +825,7 @@
         padding: 14px 16px;
         border-radius: 12px;
       }
-      .ftp-banner-icon  { font-size: 28px; }
+      .ftp-banner-icon  { font-size: 22px; }
       .ftp-banner-title { font-size: 14px; }
       .ftp-banner-msg   { font-size: 12px; }
 
@@ -880,7 +875,7 @@
     <a href="notificaciones.html" class="nav-item"><i class="fas fa-bell"></i> Notificaciones</a>
     <a href="feedback.html" class="nav-item"><i class="fas fa-comment-dots"></i> Feedback</a>
     <a href="soporte.html" class="nav-item"><i class="fas fa-life-ring"></i> Soporte</a>
-    <a href="https://ko-fi.com/velomind" target="_blank" rel="noopener" class="nav-item" style="color:#005FFF !important;font-weight:600">🚴 Impulsa VeloMind</a>
+    <a href="https://ko-fi.com/velomind" target="_blank" rel="noopener" class="nav-item" style="color:#005FFF !important;font-weight:600"><i class="fas fa-mug-hot"></i> Impulsa VeloMind</a>
   </div>
   <div class="sidebar-footer">
     <div class="athlete-card">
@@ -902,7 +897,7 @@
       <div class="hero-date-chip" id="hero-date"></div>
       <div class="hero-content">
         <div class="hero-eyebrow" id="hero-eyebrow">VeloMind · Tu coach personal</div>
-        <div class="hero-greeting" id="hero-greeting">Bienvenido 👋</div>
+        <div class="hero-greeting" id="hero-greeting">Bienvenido</div>
         <div class="hero-phrase" id="hero-phrase">Cargando tu briefing...</div>
         <div class="hero-chips" id="hero-chips"></div>
       </div>
@@ -932,7 +927,7 @@
 
     <!-- ── FTP READINESS ── -->
     <div class="ftp-banner" id="ftp-banner">
-      <div class="ftp-banner-icon" id="ftp-icon">🎯</div>
+      <div class="ftp-banner-icon" id="ftp-icon"><i class="fas fa-bullseye"></i></div>
       <div>
         <div class="ftp-banner-title" id="ftp-title">Test de FTP</div>
         <div class="ftp-banner-msg" id="ftp-msg"></div>
@@ -991,7 +986,7 @@
     <div style="margin-bottom:32px;padding:14px 16px;border-radius:12px;border:1px solid rgba(0,95,255,0.2);background:rgba(0,95,255,0.04)">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
         <div>
-          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">🚴 Impulsa VeloMind</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px"><i class="fas fa-mug-hot"></i> Impulsa VeloMind</div>
           <div style="font-size:11px;color:var(--text-muted);line-height:1.4">Si VeloMind te ayuda a entrenar mejor, puedes ayudarnos a seguir mejorándolo.</div>
         </div>
         <a href="https://ko-fi.com/velomind" target="_blank" rel="noopener"
@@ -1113,7 +1108,7 @@ function renderHero(athlete, metrics, plan) {
 
   document.getElementById('hero-date').textContent = dateStr;
 
-  let state = 'no_data', chips = [], deco = '💪';
+  let state = 'no_data', chips = [];
 
   if (metrics) {
     const { ctl, atl, tsb } = metrics;
@@ -1125,21 +1120,26 @@ function renderHero(athlete, metrics, plan) {
     else                state = 'loaded';   // Fatigado / sobrecarga
 
     const tsbSign = tsb >= 0 ? '+' : '';
-    chips.push(`🚴 CTL ${ctl.toFixed(0)}`);
-    chips.push(`⚡ ATL ${atl.toFixed(0)}`);
-    chips.push(
-      tsb > 20  ? `🚀 Forma óptima (TSB ${tsbSign}${tsb.toFixed(0)})` :
-      tsb > 5   ? `✅ Fresco (TSB ${tsbSign}${tsb.toFixed(0)})` :
-      tsb > -10 ? `💪 En forma (TSB ${tsbSign}${tsb.toFixed(0)})` :
-      tsb > -20 ? `🟡 En carga (TSB ${tsbSign}${tsb.toFixed(0)})` :
-                  `🔴 Fatigado (TSB ${tsbSign}${tsb.toFixed(0)})`
-    );
+    chips.push(`<i class="fas fa-gauge-high" style="color:#3B82F6"></i> CTL ${ctl.toFixed(0)}`);
+    chips.push(`<i class="fas fa-bolt" style="color:#EF4444"></i> ATL ${atl.toFixed(0)}`);
+    const tsbColor =
+      tsb > 20  ? '#64a0ff' :
+      tsb > 5   ? '#10b981' :
+      tsb > -10 ? '#9ED62B' :
+      tsb > -20 ? '#f59e0b' :
+                  '#ef4444';
+    const tsbLabel =
+      tsb > 20  ? 'Forma óptima' :
+      tsb > 5   ? 'Fresco' :
+      tsb > -10 ? 'En forma' :
+      tsb > -20 ? 'En carga' :
+                  'Fatigado';
+    chips.push(`<i class="fas fa-circle" style="color:${tsbColor};font-size:8px;vertical-align:middle"></i> ${tsbLabel} (TSB ${tsbSign}${tsb.toFixed(0)})`);
   }
 
   const sess = plan?.sessions?.[todayIdx];
   if (sess?.isRest) {
     state = metrics ? state : 'rest';
-    deco = '😴';
     chips.push('<i class="fas fa-bed" style="color:#9ca3af"></i> Día de descanso');
   } else if (sess && !sess.isRest) {
     const wt   = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || {};
@@ -1169,7 +1169,7 @@ function renderHero(athlete, metrics, plan) {
     state === 'loaded'  ? 'escucha a tu cuerpo hoy' :
     state === 'rest'    ? 'hoy tocas recarga total' :
                           'tu aventura empieza hoy'
-  } 👊`;
+  }`;
 
   // Consejo específico según TSB en lenguaje humano (sin jerga)
   const inactiveDays = daysSinceLastActivity();
@@ -1178,13 +1178,13 @@ function renderHero(athlete, metrics, plan) {
   const longBreak = tsbNow !== null && tsbNow > 5 && inactiveDays !== null && inactiveDays >= 4;
   const tsbAdvice =
     tsbNow === null   ? '' :
-    longBreak         ? `👀 Llevas ${inactiveDays} días sin actividad — el TSB alto aquí refleja inactividad, no un tapering real. Si notas piernas pesadas o cansancio, retoma con algo suave antes de exigirte al máximo.` :
-    tsbNow > 20       ? '🚀 Tu cuerpo está fresco y cargado. Ideal para una sesión exigente o competición.' :
-    tsbNow > 5        ? '✅ Buena forma. Es buen momento para entrenar con calidad.' :
-    tsbNow > -10      ? '💪 Equilibrio perfecto entre fitness y fatiga. Sigue el plan.' :
-    tsbNow > -20      ? '⚠️ Acumulas algo de fatiga. Entrena suave o descansa hoy.' :
-    tsbNow > -30      ? '🔴 Estás fatigado. Prioriza el descanso y el sueño esta noche.' :
-                        '🛑 Señal de sobrecarga. Para y descansa varios días antes de volver.';
+    longBreak         ? `Llevas ${inactiveDays} días sin actividad — el TSB alto aquí refleja inactividad, no un tapering real. Si notas piernas pesadas o cansancio, retoma con algo suave antes de exigirte al máximo.` :
+    tsbNow > 20       ? 'Tu cuerpo está fresco y cargado. Ideal para una sesión exigente o competición.' :
+    tsbNow > 5        ? 'Buena forma. Es buen momento para entrenar con calidad.' :
+    tsbNow > -10      ? 'Equilibrio perfecto entre fitness y fatiga. Sigue el plan.' :
+    tsbNow > -20      ? 'Acumulas algo de fatiga. Entrena suave o descansa hoy.' :
+    tsbNow > -30      ? 'Estás fatigado. Prioriza el descanso y el sueño esta noche.' :
+                        'Señal de sobrecarga. Para y descansa varios días antes de volver.';
   const phraseEl = document.getElementById('hero-phrase');
   if (tsbAdvice && tsbNow !== null) {
     phraseEl.innerHTML = `<span style="display:block;margin-bottom:6px">${tsbAdvice}</span><span style="color:var(--text-muted);font-size:13px">${pick(PHRASES[state])}</span>`;
@@ -1209,32 +1209,14 @@ const WHY = {
   running:   'Running para mejorar la capacidad cardiovascular y complementar el trabajo sobre la bici.',
   gym:       'Trabajo de fuerza para prevenir lesiones, equilibrar musculatura y mejorar potencia.',
 };
-const EMOJIS = {
-  z2:        ['🚴','💚','🌿','⛰️','☀️','🏔️'],
-  endurance: ['🚴','🌄','🏔️','💚','⛅','🗺️'],
-  long:      ['🚴','🗺️','🏔️','🌅','💪','⛰️'],
-  tempo:     ['⚡','🔥','💪','🎯','🚴','🌡️'],
-  threshold: ['🎯','🔥','💪','⚡','🏆','📈'],
-  vo2max:    ['🚀','💥','⚡','🏆','🔥','🫁'],
-  sprint:    ['💥','⚡','🚀','🏎️','🔥','💨'],
-  recovery:  ['😌','💆','🌊','✨','🛁','🍃'],
-  rest:      ['😴','🛌','🌙','💤','⭐','🧘'],
-  gym:       ['🏋️','💪','🏋️‍♂️','🦵','🔥','⚡'],
-  walking:   ['🚶','🌿','☀️','🌳','🍃','👟'],
-  running:   ['🏃','💨','👟','🌅','🔥','🏅'],
-  default:   ['🚴','💪','⚡','🎯','🏆','🔥'],
-};
-
-let _emojiTimer = null;
 
 function renderToday(plan, athlete) {
-  if (_emojiTimer) { clearInterval(_emojiTimer); _emojiTimer = null; }
   const wrap = document.getElementById('today-card');
 
   if (!plan?.sessions) {
     wrap.innerHTML = `
       <div style="text-align:center;padding:24px 0">
-        <div style="font-size:48px;margin-bottom:12px">📅</div>
+        <div style="font-size:40px;margin-bottom:12px;color:var(--text-muted)"><i class="fas fa-calendar-days"></i></div>
         <p style="color:var(--text-muted);margin-bottom:16px;font-size:14px">No tienes un plan activo todavía</p>
         <a href="training-plan.html" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
           <i class="fas fa-magic"></i> Crear mi plan con IA
@@ -1253,7 +1235,7 @@ function renderToday(plan, athlete) {
     wrap.innerHTML = `
       <div class="today-hero" style="--today-grad:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #1e293b">
         <div class="today-emoji-wrap">
-          <span class="today-emoji" id="today-anim-emoji">😴</span>
+          <span class="today-emoji" style="color:#64748b"><i class="fas fa-bed"></i></span>
           <span class="today-emoji-badge" style="color:#64748b;border-color:#334155;background:#1e293b">
             ${dayName} · Descanso
           </span>
@@ -1263,16 +1245,8 @@ function renderToday(plan, athlete) {
       </div>
       <div class="why-block" style="margin-bottom:14px">
         <b>Hoy toca</b>
-        💧 Hidratación · 🛌 8h de sueño · 🥗 Come bien · 🧘 Movilidad suave
+        Hidratación · 8h de sueño · Come bien · Movilidad suave
       </div>`;
-    const restEmojis = EMOJIS.rest;
-    let ri = 0;
-    _emojiTimer = setInterval(() => {
-      const el = document.getElementById('today-anim-emoji'); if (!el) return;
-      ri = (ri + 1) % restEmojis.length;
-      el.style.opacity = '0'; el.style.transform = 'scale(0.7)';
-      setTimeout(() => { el.textContent = restEmojis[ri]; el.style.opacity = '1'; el.style.transform = ''; }, 260);
-    }, 2200);
     return;
   }
 
@@ -1298,17 +1272,17 @@ function renderToday(plan, athlete) {
 
     // Use TSS ratio as primary metric (actual training load); fall back to duration ratio
     const primaryRatio = tssRatio ?? durRatio;
-    let evalEmoji, evalTitle, evalColor;
+    let evalIcon, evalTitle, evalColor;
     if (primaryRatio === null) {
-      evalEmoji = '✅'; evalTitle = 'Sesión completada'; evalColor = '#10b981';
+      evalIcon = 'fa-circle-check'; evalTitle = 'Sesión completada'; evalColor = '#10b981';
     } else if (primaryRatio >= 0.9 && primaryRatio <= 1.15) {
-      evalEmoji = '🎯'; evalTitle = 'Exactamente lo que pedía el plan'; evalColor = '#10b981';
+      evalIcon = 'fa-bullseye'; evalTitle = 'Exactamente lo que pedía el plan'; evalColor = '#10b981';
     } else if (primaryRatio > 1.15) {
-      evalEmoji = '⚡'; evalTitle = 'Te pasaste del plan'; evalColor = '#f59e0b';
+      evalIcon = 'fa-bolt'; evalTitle = 'Te pasaste del plan'; evalColor = '#f59e0b';
     } else if (primaryRatio >= 0.6) {
-      evalEmoji = '📉'; evalTitle = 'Algo por debajo del plan'; evalColor = '#f59e0b';
+      evalIcon = 'fa-arrow-trend-down'; evalTitle = 'Algo por debajo del plan'; evalColor = '#f59e0b';
     } else {
-      evalEmoji = '⚠️'; evalTitle = 'Bastante por debajo del plan'; evalColor = '#ef4444';
+      evalIcon = 'fa-triangle-exclamation'; evalTitle = 'Bastante por debajo del plan'; evalColor = '#ef4444';
     }
 
     const pros = [], cons = [];
@@ -1336,24 +1310,23 @@ function renderToday(plan, athlete) {
 
     let restRec;
     if (durRatio === null || (durRatio >= 0.85 && durRatio <= 1.1)) {
-      restRec = ['💧 Hidratación constante el resto del día', '🍽️ Proteína en las próximas 2h para recuperar músculo', '🛌 Asegura 8h de sueño esta noche', '🧘 Estiramientos suaves si te apetece'];
+      restRec = ['Hidratación constante el resto del día', 'Proteína en las próximas 2h para recuperar músculo', 'Asegura 8h de sueño esta noche', 'Estiramientos suaves si te apetece'];
     } else if (durRatio > 1.1) {
-      restRec = ['🛌 Prioriza el descanso total — nada más de carga', '💧 Extra de hidratación y electrolitos', '🍽️ Ingesta extra de carbohidratos para reponer', '❌ Evita cualquier actividad intensa adicional hoy'];
+      restRec = ['Prioriza el descanso total — nada más de carga', 'Extra de hidratación y electrolitos', 'Ingesta extra de carbohidratos para reponer', 'Evita cualquier actividad intensa adicional hoy'];
     } else {
-      restRec = ['💧 Hidratación y buena alimentación', '🍽️ Come bien para compensar la energía usada', '🚶 Un paseo suave si quieres sumar algo sin estrés', '🛌 Descansa bien esta noche para la próxima sesión'];
+      restRec = ['Hidratación y buena alimentación', 'Come bien para compensar la energía usada', 'Un paseo suave si quieres sumar algo sin estrés', 'Descansa bien esta noche para la próxima sesión'];
     }
 
-    const evalEmojis = ['🎯','✅','⚡','🏆','🔥','💪'];
     wrap.innerHTML = `
       <div class="today-hero" style="--today-grad:linear-gradient(135deg,${evalColor}1A,${evalColor}08);border:1px solid ${evalColor}44">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;position:relative;flex-wrap:wrap;gap:6px">
           <span class="today-emoji-badge" style="color:${evalColor};border-color:${evalColor}55;background:${evalColor}12">
             ${dayName} · ${wt.label}
           </span>
-          <span style="font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 10px;border-radius:20px;background:${evalColor}18;border:1px solid ${evalColor}44;color:${evalColor};white-space:nowrap">✓ Completada</span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 10px;border-radius:20px;background:${evalColor}18;border:1px solid ${evalColor}44;color:${evalColor};white-space:nowrap"><i class="fas fa-check"></i> Completada</span>
         </div>
         <div class="today-emoji-wrap">
-          <span class="today-emoji" id="today-anim-emoji" style="animation-duration:6s">${evalEmoji}</span>
+          <span class="today-emoji" style="color:${evalColor}"><i class="fas ${evalIcon}"></i></span>
           <div>
             <div class="today-title-big">${evalTitle}</div>
             ${todayAct ? `<div class="today-subtitle">${todayAct.name||'Actividad de hoy'} · ${actualMin} min${actualTSS ? ' · '+actualTSS+' TSS' : ''}</div>` : '<div class="today-subtitle">Sesión marcada como completada</div>'}
@@ -1362,14 +1335,14 @@ function renderToday(plan, athlete) {
       </div>
       ${pros.length ? `
       <div class="why-block" style="border-left-color:#10b981;margin-bottom:10px">
-        <b style="color:#10b981">✓ Puntos positivos</b>
+        <b style="color:#10b981"><i class="fas fa-check"></i> Puntos positivos</b>
         <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.7">
           ${pros.map(p=>`<li>${p}</li>`).join('')}
         </ul>
       </div>` : ''}
       ${cons.length ? `
       <div class="why-block" style="border-left-color:#f59e0b;margin-bottom:10px">
-        <b style="color:#f59e0b">⚠ A tener en cuenta</b>
+        <b style="color:#f59e0b"><i class="fas fa-triangle-exclamation"></i> A tener en cuenta</b>
         <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.7">
           ${cons.map(c=>`<li>${c}</li>`).join('')}
         </ul>
@@ -1383,29 +1356,20 @@ function renderToday(plan, athlete) {
       <button class="btn-done done" onclick="event.preventDefault();event.stopPropagation();toggleTodayDone();" style="position:relative;z-index:10;-webkit-tap-highlight-color:transparent">
         <i class="fas fa-rotate-left"></i> Desmarcar sesión
       </button>`;
-
-    let ei2 = 0;
-    _emojiTimer = setInterval(() => {
-      const el = document.getElementById('today-anim-emoji'); if (!el) return;
-      ei2 = (ei2 + 1) % evalEmojis.length;
-      el.style.opacity = '0'; el.style.transform = 'scale(0.75)';
-      setTimeout(() => { el.textContent = evalEmojis[ei2]; el.style.opacity = '1'; el.style.transform = ''; }, 260);
-    }, 3000);
     return;
   }
 
   const sessType = (sess.type||'').toLowerCase();
   const whyKey   = Object.keys(WHY).find(k => sessType.includes(k));
   const why      = plan.advice?.today || (whyKey ? WHY[whyKey] : 'Esta sesión encaja en tu bloque actual para progresar de forma continua.');
-  const emojiKey = Object.keys(EMOJIS).find(k => sessType.includes(k)) || 'default';
-  const emojis   = EMOJIS[emojiKey];
 
-  const hex2 = color.length === 7 ? color : '#9ED62B';
+  const hex2  = color.length === 7 ? color : '#9ED62B';
+  const faSess = sessFA(sess);
   wrap.innerHTML = `
     <div class="today-hero" style="--today-grad:linear-gradient(135deg,${hex2}1A,${hex2}06);border:1px solid ${hex2}33;${isDone?'opacity:.75':''}">
-      ${isDone ? '<div class="today-done-stamp">✓ Completada</div>' : ''}
+      ${isDone ? '<div class="today-done-stamp"><i class="fas fa-check"></i> Completada</div>' : ''}
       <div class="today-emoji-wrap">
-        <span class="today-emoji" id="today-anim-emoji" style="animation-duration:${isDone?'6s':'3s'}">${emojis[0]}</span>
+        <span class="today-emoji" style="color:${faSess.color}"><i class="fas ${faSess.icon}"></i></span>
         <div>
           <span class="today-emoji-badge" style="color:${color};border-color:${hex2}55;background:${hex2}12">
             ${dayName}
@@ -1428,17 +1392,6 @@ function renderToday(plan, athlete) {
       <i class="fas ${isDone?'fa-circle-check':'fa-circle'}"></i>
       ${isDone ? 'Sesión completada' : 'Marcar como hecha'}
     </button>`;
-
-  let ei = 0;
-  _emojiTimer = setInterval(() => {
-    const el = document.getElementById('today-anim-emoji'); if (!el) return;
-    ei = (ei + 1) % emojis.length;
-    el.style.opacity = '0'; el.style.transform = 'scale(0.75) rotate(-10deg)';
-    setTimeout(() => {
-      el.textContent = emojis[ei];
-      el.style.opacity = '1'; el.style.transform = '';
-    }, 260);
-  }, 2400);
 }
 
 function toggleTodayDone() {
@@ -1778,7 +1731,7 @@ function buildGarageAlert() {
   const parts = redAlerts.map(a => `${a.component} (${a.bike})`).join(', ');
   return warnings.map(({ when, sess }) => `
     <div style="margin-top:10px;padding:12px 14px;border-radius:10px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);display:flex;gap:10px;align-items:flex-start">
-      <span style="font-size:20px;flex-shrink:0">🔧</span>
+      <span style="font-size:18px;flex-shrink:0;color:#F87171"><i class="fas fa-screwdriver-wrench"></i></span>
       <div>
         <div style="font-size:12px;font-weight:700;color:#F87171;margin-bottom:3px">${when} toca "${sess.name || sess.type}" y tienes componentes en rojo</div>
         <div style="font-size:11px;color:var(--text-secondary);line-height:1.5">${parts} — revísalo antes de salir, sobre todo en una sesión así de exigente.</div>
@@ -1986,19 +1939,19 @@ function renderFTP(metrics) {
   // inactividad, no el frescor de un tapering, y el rendimiento real puede ser peor.
   if (tsb > 3 && inactiveDays !== null && inactiveDays >= 4) {
     el.className = 'ftp-banner soon show';
-    document.getElementById('ftp-icon').textContent  = '⚠️';
+    document.getElementById('ftp-icon').innerHTML  = '<i class="fas fa-triangle-exclamation"></i>';
     document.getElementById('ftp-title').textContent = 'Antes del test, retoma el ritmo';
     document.getElementById('ftp-msg').textContent   = `Llevas ${inactiveDays} días sin actividad — el TSB (+${tsb.toFixed(0)}) refleja descanso forzado, no necesariamente estar a punto. Haz 1-2 salidas suaves antes de testear.`;
     return;
   }
   if (tsb > 10) {
     el.className = 'ftp-banner ready show';
-    document.getElementById('ftp-icon').textContent  = '🎯';
+    document.getElementById('ftp-icon').innerHTML  = '<i class="fas fa-bullseye"></i>';
     document.getElementById('ftp-title').textContent = '¡Momento ideal para un test de FTP!';
     document.getElementById('ftp-msg').textContent   = `TSB en +${tsb.toFixed(0)} — estás fresco y con buena forma base (CTL ${ctl.toFixed(0)}). Esta semana es perfecta para testear y actualizar tus zonas.`;
   } else if (tsb > 3) {
     el.className = 'ftp-banner soon show';
-    document.getElementById('ftp-icon').textContent  = '📈';
+    document.getElementById('ftp-icon').innerHTML  = '<i class="fas fa-chart-line"></i>';
     document.getElementById('ftp-title').textContent = 'Casi listo para test de FTP';
     document.getElementById('ftp-msg').textContent   = `TSB en +${tsb.toFixed(0)} y base sólida (CTL ${ctl.toFixed(0)}). Con 1-2 días más de recuperación estarás en el punto óptimo.`;
   } else {
@@ -2056,20 +2009,20 @@ function renderWeek(plan) {
         : 'Esta semana no has entrenado aún.';
     }
     // Carga muy por encima
-    if (tssDevPct > 20) return `🔴 Carga un <strong>${tssDevPct}%</strong> por encima del objetivo — descansa bien los próximos días para absorber la adaptación.`;
+    if (tssDevPct > 20) return `Carga un <strong>${tssDevPct}%</strong> por encima del objetivo — descansa bien los próximos días para absorber la adaptación.`;
     // Carga ligeramente alta
-    if (tssDevPct > 8) return `🟡 Carga ligeramente elevada (<strong>+${tssDevPct}%</strong>) — sin problema si el siguiente entreno es suave.`;
+    if (tssDevPct > 8) return `Carga ligeramente elevada (<strong>+${tssDevPct}%</strong>) — sin problema si el siguiente entreno es suave.`;
     // Carga muy baja
-    if (tssDevPct < -30 && weekActs.length > 0) return `🔵 Semana ligera (<strong>${tssDevPct}%</strong> bajo objetivo) — las adaptaciones serán menores. ¿Fue semana de recuperación?`;
+    if (tssDevPct < -30 && weekActs.length > 0) return `Semana ligera (<strong>${tssDevPct}%</strong> bajo objetivo) — las adaptaciones serán menores. ¿Fue semana de recuperación?`;
     // Sesiones de alta intensidad perdidas
     const hiMissed = missedIdxs.filter(i => { const t=(plan.sessions[i]?.type||'').toLowerCase(); return t.includes('vo2')||t.includes('threshold')||t.includes('sprint')||t.includes('interval'); });
-    if (hiMissed.length) return `⚠️ Has perdido sesiones de alta intensidad (${hiMissed.map(i=>sessLabel(i)).join(', ')}) — impacto directo en adaptaciones neuromusculares esta semana.`;
+    if (hiMissed.length) return `Has perdido sesiones de alta intensidad (${hiMissed.map(i=>sessLabel(i)).join(', ')}) — impacto directo en adaptaciones neuromusculares esta semana.`;
     // Solo sesiones de base perdidas
-    if (missedIdxs.length && !hiMissed.length) return `ℹ️ Las sesiones sin realizar eran de base aeróbica — impacto moderado en la carga total.`;
+    if (missedIdxs.length && !hiMissed.length) return `Las sesiones sin realizar eran de base aeróbica — impacto moderado en la carga total.`;
     // Todo bien
-    if (doneIdxs.length === plannedIdxs.length && extraIdxs.length === 0) return `✅ Semana perfecta: todos los días del plan completados.`;
+    if (doneIdxs.length === plannedIdxs.length && extraIdxs.length === 0) return `Semana perfecta: todos los días del plan completados.`;
     // Extra sessions but plan ok
-    if (extraIdxs.length && doneIdxs.length === plannedIdxs.length) return `✅ Plan cumplido al 100%. El extra del ${extraIdxs.map(i=>DS[i]).join('/')} suma carga — ten en cuenta la recuperación.`;
+    if (extraIdxs.length && doneIdxs.length === plannedIdxs.length) return `Plan cumplido al 100%. El extra del ${extraIdxs.map(i=>DS[i]).join('/')} suma carga — ten en cuenta la recuperación.`;
     return `Semana en progreso.`;
   }
 
@@ -2210,7 +2163,7 @@ function renderWeek(plan) {
     adherenceAlert = `
       <div style="margin-top:12px;padding:10px 12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
         <div>
-          <div style="font-size:12px;font-weight:700;color:#f59e0b">⚠️ Llevas ${missedPast.length} sesiones sin hacer esta semana</div>
+          <div style="font-size:12px;font-weight:700;color:#f59e0b"><i class="fas fa-triangle-exclamation"></i> Llevas ${missedPast.length} sesiones sin hacer esta semana</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px">¿La carga es demasiada? Puedes ajustar el plan para adaptarlo a tu disponibilidad.</div>
         </div>
         <a href="training-plan.html" style="font-size:11px;font-weight:700;color:#f59e0b;text-decoration:none;white-space:nowrap;border:1px solid rgba(245,158,11,.4);border-radius:6px;padding:4px 10px">Ajustar plan →</a>
@@ -2218,13 +2171,13 @@ function renderWeek(plan) {
   } else if (adherence14 !== null && adherence14 < 50 && expectedDays >= 4) {
     adherenceAlert = `
       <div style="margin-top:12px;padding:10px 12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:10px">
-        <div style="font-size:12px;font-weight:700;color:#ef4444">📉 Adherencia baja: ${adherence14}% en las últimas 2 semanas</div>
+        <div style="font-size:12px;font-weight:700;color:#ef4444"><i class="fas fa-arrow-trend-down"></i> Adherencia baja: ${adherence14}% en las últimas 2 semanas</div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Si la rutina cuesta, adapta el plan a menos días o sesiones más cortas.</div>
       </div>`;
   } else if (doneIdxs.length === plannedIdxs.length && plannedIdxs.length >= 3) {
     adherenceAlert = `
       <div style="margin-top:12px;padding:8px 12px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.2);border-radius:10px">
-        <div style="font-size:12px;font-weight:600;color:#10b981">🎯 Semana perfecta. Sigues el plan al 100% — sigue así.</div>
+        <div style="font-size:12px;font-weight:600;color:#10b981"><i class="fas fa-bullseye"></i> Semana perfecta. Sigues el plan al 100% — sigue así.</div>
       </div>`;
   }
 
@@ -2313,14 +2266,14 @@ async function loadAndRenderAdaptations() {
 
     // Renderizar adaptaciones
     const html = adaptations.slice(0, 3).map(a => {
-      const emoji = {
-        'activity_inserted': '➕',
-        'activity_modified': '✏️',
-        'tss_exceeded': '⚠️',
-        'tss_missed': '📉',
-        'fatigue_threshold': '🛑',
-        'auto_recalculation': '📊',
-      }[a.trigger_type] || '•';
+      const icon = {
+        'activity_inserted': 'fa-plus',
+        'activity_modified': 'fa-pen',
+        'tss_exceeded': 'fa-triangle-exclamation',
+        'tss_missed': 'fa-arrow-trend-down',
+        'fatigue_threshold': 'fa-circle-stop',
+        'auto_recalculation': 'fa-chart-column',
+      }[a.trigger_type] || 'fa-circle';
 
       const createdDate = new Date(a.created_at);
       const hoursAgo = Math.floor((Date.now() - createdDate) / 3600000);
@@ -2329,7 +2282,7 @@ async function loadAndRenderAdaptations() {
       return `
         <div style="padding:10px;background:rgba(245,158,11,.06);border-left:3px solid #f59e0b;border-radius:4px;margin-bottom:8px">
           <div style="font-size:11px;color:#f59e0b;font-weight:600;margin-bottom:2px">
-            ${emoji} ${a.trigger_type.replace(/_/g, ' ').toUpperCase()} — ${timeStr}
+            <i class="fas ${icon}"></i> ${a.trigger_type.replace(/_/g, ' ').toUpperCase()} — ${timeStr}
           </div>
           <div style="font-size:10px;color:var(--text-muted)">${a.reason || 'Plan reajustado'}</div>
           ${a.tss_total_before !== undefined ? `
@@ -2355,7 +2308,7 @@ async function loadAndRenderAdaptations() {
           background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);
           color:#10b981;border-radius:4px;cursor:pointer;transition:all .2s;
         " onmouseover="this.style.background='rgba(16,185,129,.15)'" onmouseout="this.style.background='rgba(16,185,129,.1)'">
-          📊 Reporte
+          <i class="fas fa-chart-column"></i> Reporte
         </button>
       </div>
     `;
@@ -2755,15 +2708,15 @@ async function renderProjection() {
     tsb > 20 ? '#60a5fa' : tsb > 5 ? '#10b981' : tsb > -10 ? '#9ED62B' :
     tsb > -20 ? '#f59e0b' : '#ef4444';
 
-  const stateEmoji = tsb =>
-    tsb > 20 ? '🚀' : tsb > 5 ? '✅' : tsb > -10 ? '💪' : tsb > -20 ? '⚠️' : '🔴';
+  const stateIcon = tsb =>
+    tsb > 20 ? 'fa-rocket' : tsb > 5 ? 'fa-circle-check' : tsb > -10 ? 'fa-gauge' : tsb > -20 ? 'fa-triangle-exclamation' : 'fa-battery-empty';
 
   el.innerHTML = `
     <div style="display:flex;gap:6px;margin-bottom:8px">
       ${weeks.map((w, i) => `
         <div style="flex:1;text-align:center;padding:7px 4px;border-radius:8px;border:1px solid ${stateColor(w.tsb)}40;background:${stateColor(w.tsb)}0d">
           <div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;letter-spacing:.3px">S${i + 1}</div>
-          <div style="font-size:17px;line-height:1">${stateEmoji(w.tsb)}</div>
+          <div style="font-size:15px;line-height:1;color:${stateColor(w.tsb)}"><i class="fas ${stateIcon(w.tsb)}"></i></div>
           <div style="font-size:10px;font-weight:700;color:${stateColor(w.tsb)};margin-top:3px">TSB ${w.tsb > 0 ? '+' : ''}${w.tsb}</div>
         </div>`).join('')}
     </div>
@@ -2920,12 +2873,12 @@ async function loadWellness() {
     const label = pct >= 70 ? 'Buena recuperación' : pct >= 45 ? 'Recuperación moderada' : 'Recuperación baja';
 
     const pills = [
-      sleepH   ? `<div class="w-pill"><span class="w-pill-icon">😴</span><span class="w-val">${sleepH}h</span><span class="w-lbl">Sueño</span></div>` : '',
-      hrv      ? `<div class="w-pill"><span class="w-pill-icon">💓</span><span class="w-val">${hrv}</span><span class="w-lbl">HRV</span></div>` : '',
-      restHr   ? `<div class="w-pill"><span class="w-pill-icon">❤️</span><span class="w-val">${restHr}</span><span class="w-lbl">FC reposo</span></div>` : '',
-      battery  ? `<div class="w-pill"><span class="w-pill-icon">🔋</span><span class="w-val">${battery}%</span><span class="w-lbl">Body Battery</span></div>` : '',
-      stress   ? `<div class="w-pill"><span class="w-pill-icon">🧠</span><span class="w-val">${stress}</span><span class="w-lbl">Estrés</span></div>` : '',
-      spo2     ? `<div class="w-pill"><span class="w-pill-icon">🫁</span><span class="w-val">${spo2}%</span><span class="w-lbl">SpO2</span></div>` : '',
+      sleepH   ? `<div class="w-pill"><span class="w-pill-icon"><i class="fas fa-bed"></i></span><span class="w-val">${sleepH}h</span><span class="w-lbl">Sueño</span></div>` : '',
+      hrv      ? `<div class="w-pill"><span class="w-pill-icon"><i class="fas fa-wave-square"></i></span><span class="w-val">${hrv}</span><span class="w-lbl">HRV</span></div>` : '',
+      restHr   ? `<div class="w-pill"><span class="w-pill-icon"><i class="fas fa-heart-pulse"></i></span><span class="w-val">${restHr}</span><span class="w-lbl">FC reposo</span></div>` : '',
+      battery  ? `<div class="w-pill"><span class="w-pill-icon"><i class="fas fa-battery-three-quarters"></i></span><span class="w-val">${battery}%</span><span class="w-lbl">Body Battery</span></div>` : '',
+      stress   ? `<div class="w-pill"><span class="w-pill-icon"><i class="fas fa-brain"></i></span><span class="w-val">${stress}</span><span class="w-lbl">Estrés</span></div>` : '',
+      spo2     ? `<div class="w-pill"><span class="w-pill-icon"><i class="fas fa-lungs"></i></span><span class="w-val">${spo2}%</span><span class="w-lbl">SpO2</span></div>` : '',
     ].filter(Boolean).join('');
 
     content.innerHTML = `
@@ -3092,7 +3045,7 @@ function closeFTPBreakthrough() {
 <!-- FTP BREAKTHROUGH OVERLAY -->
 <div id="ftp-breakthrough">
   <div class="ftp-bt-card">
-    <span class="ftp-bt-emoji">🚀</span>
+    <span class="ftp-bt-emoji"><i class="fas fa-rocket"></i></span>
     <div class="ftp-bt-title">¡Nuevo FTP detectado!</div>
     <div class="ftp-bt-sub" id="ftp-bt-sub">Has superado tu umbral en una salida reciente.</div>
     <div class="ftp-bt-nums">
