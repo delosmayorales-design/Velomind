@@ -964,7 +964,7 @@
 <!-- ═══════ MODAL: CHECK-IN ═══════════════════════════════════ -->
 <div id="m-checkin" class="g-modal">
   <div class="modal-panel">
-    <h2 id="checkin-title">✅ Componente Reemplazado</h2>
+    <h2 id="checkin-title"><i class="fas fa-circle-check"></i> Componente Reemplazado</h2>
     <p class="modal-sub">El contador se reinicia a 0 y el uso anterior queda guardado en el historial.</p>
     <div class="ci-summary" id="ci-summary"></div>
     <div class="fg-row">
@@ -1054,7 +1054,7 @@
 <!-- ═══════ MODAL: ADD BIKE ═══════════════════════════════════ -->
 <div id="m-add-bike" class="g-modal">
   <div class="modal-panel">
-    <h2>🚲 Nueva Bicicleta</h2>
+    <h2><i class="fas fa-bicycle"></i> Nueva Bicicleta</h2>
     <div class="fg-row">
       <div class="fg"><label>Nombre *</label><input type="text" id="ab-name" placeholder="Mi Canyon Ultimate"></div>
       <div class="fg"><label>Tipo *</label>
@@ -1084,7 +1084,7 @@
 <!-- ═══════ MODAL: EDIT BIKE ══════════════════════════════════ -->
 <div id="m-edit-bike" class="g-modal">
   <div class="modal-panel">
-    <h2>⚙️ Configurar Bicicleta</h2>
+    <h2><i class="fas fa-gear"></i> Configurar Bicicleta</h2>
     <p class="modal-sub">Personaliza los datos y vincula con Strava para sincronización automática de kilómetros.</p>
     <input type="hidden" id="eb-id">
     <div class="fg-row">
@@ -1141,7 +1141,7 @@
 <!-- ═══════ MODAL: ADD KM ═════════════════════════════════════ -->
 <div id="m-add-km" class="g-modal">
   <div class="modal-panel">
-    <h2>📏 Registrar Actividad</h2>
+    <h2><i class="fas fa-ruler"></i> Registrar Actividad</h2>
     <p class="modal-sub" id="addkm-sub">Añade km manualmente a todos los componentes de esta bicicleta.</p>
     <input type="hidden" id="ak-bike-id">
     <div class="fg-row">
@@ -1170,7 +1170,7 @@
 <div id="m-history" class="g-modal">
   <div class="modal-panel" style="max-width:560px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-      <h2 style="margin:0" id="hist-title">📋 Historial</h2>
+      <h2 style="margin:0" id="hist-title"><i class="fas fa-list"></i> Historial</h2>
       <button onclick="G.closeModal('m-history')" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1">×</button>
     </div>
     <div class="hist-list" id="hist-content"></div>
@@ -1188,10 +1188,10 @@ const G = (() => {
   const HK = 'velomind_garage_history';
 
   const BIKES_META = {
-    road:         { label: 'Carretera',            emoji: '🏎️',  color: '#38BDF8' },
-    gravel:       { label: 'Gravel',               emoji: '🚵',  color: '#F97316' },
-    mtb_full:     { label: 'MTB Doble Suspensión', emoji: '🏔️',  color: '#34D399' },
-    mtb_hardtail: { label: 'MTB Rígida',           emoji: '⛰️',  color: '#9ED62B' }
+    road:         { label: 'Carretera',            emoji: 'fa-bicycle',  color: '#38BDF8' },
+    gravel:       { label: 'Gravel',               emoji: 'fa-person-biking',  color: '#F97316' },
+    mtb_full:     { label: 'MTB Doble Suspensión', emoji: 'fa-mountain',  color: '#34D399' },
+    mtb_hardtail: { label: 'MTB Rígida',           emoji: 'fa-hill-rockslide',  color: '#9ED62B' }
   };
 
   // Thresholds: km for most, hours for suspension, days for fluid
@@ -1396,7 +1396,7 @@ const G = (() => {
   }
 
   function statusLabel(s) { return {green:'OK', yellow:'Revisar pronto', red:'Cambio urgente', blue:'Revisión pospuesta'}[s] || 'OK'; }
-  function statusEmoji(s) { return {green:'🟢', yellow:'🟡', red:'🔴', blue:'🔧'}[s] || '🟢'; }
+  function statusEmoji(s) { return '<i class="fas fa-circle" style="font-size:8px;vertical-align:middle;color:' + ({green:'#22c55e', yellow:'#eab308', red:'#ef4444', blue:'#38BDF8'}[s] || '#22c55e') + '"></i>'; }
 
   function fmtVal(comp) {
     if (isSnoozed(comp)) {
@@ -1446,7 +1446,7 @@ const G = (() => {
       if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
       recalc();
       render();
-      toast('green', '✅ Bicis importadas', data.message || `${data.bikes?.length || 0} bici(s) importadas de Strava`);
+      toast('green', 'Bicis importadas', data.message || `${data.bikes?.length || 0} bici(s) importadas de Strava`);
     } catch(e) {
       toast('red', 'Error', 'Sin conexión con el servidor');
     } finally {
@@ -1470,7 +1470,7 @@ const G = (() => {
         try { st = JSON.parse(localStorage.getItem('velomind_garage') || 'null'); } catch(e) {}
         if (!st || !Array.isArray(st.bikes)) st = { version: 2, bikes: [], processed_ids: [] };
         recalc(); render();
-        toast('green', '✅ Componentes añadidos', `${data.added} componente(s) nuevo(s) sincronizado(s).`);
+        toast('green', 'Componentes añadidos', `${data.added} componente(s) nuevo(s) sincronizado(s).`);
       } else {
         toast('info', 'Sin cambios', 'Todas las bicis ya tienen sus componentes al día.');
       }
@@ -1508,7 +1508,7 @@ const G = (() => {
     // 2. Renderizar con los km ya recalculados por el backend
     recalc(); render(); save();
     const hasLinkedBike = st?.bikes?.some(b => b.strava_gear_id);
-    if (hasLinkedBike) { checkAlerts(); toast('green', '✅ Actualizado', 'Km actualizados con tus últimas actividades.'); }
+    if (hasLinkedBike) { checkAlerts(); toast('green', 'Actualizado', 'Km actualizados con tus últimas actividades.'); }
     else toast('info', 'Sin novedades', 'No hay actividades vinculadas a tus bicis (comprueba el Gear ID en Strava).');
 
     btns.forEach((b, i) => { b.disabled = false; b.innerHTML = origHtmls[i]; });
@@ -1525,9 +1525,9 @@ const G = (() => {
         else if (p >= 80) warning.push(`${CM[comp.type]?.name || comp.type} (${Math.round(p)}%)`);
       });
       if (urgent.length)
-        toast('red', `🔴 ${bike.name} — Cambio urgente`, urgent.join(' · '));
+        toast('red', `${bike.name} — Cambio urgente`, urgent.join(' · '));
       if (warning.length)
-        toast('yellow', `⚠️ ${bike.name} — Desgaste elevado`, warning.join(' · '));
+        toast('yellow', `${bike.name} — Desgaste elevado`, warning.join(' · '));
     });
   }
 
@@ -1598,14 +1598,14 @@ const G = (() => {
       .sort((a,b) => (b.status==='red'?1:0)-(a.status==='red'?1:0)).slice(0,4);
     const pills = alerts.length
       ? alerts.map(c => `<span class="alert-pill ${c.status}">${statusEmoji(c.status)} ${CM[c.type]?.name||c.name}</span>`).join('')
-      : `<span class="alert-pill ok">✅ Todo en orden</span>`;
+      : `<span class="alert-pill ok"><i class="fas fa-circle-check"></i> Todo en orden</span>`;
     const bm = [bike.brand, bike.model].filter(Boolean).join(' ');
     const strTag = bike.strava_gear_id
       ? `<span class="strava-badge linked" style="font-size:10px;padding:2px 7px"><i class="fab fa-strava"></i></span>` : '';
     const cardPhoto = _getBikePhoto(bike.id);
     const cardIcon = cardPhoto
       ? `<img class="bike-photo-thumb" src="${cardPhoto}" alt="${bike.name}" onclick="event.stopPropagation();_openPhotoLightbox(this.src)">`
-      : `<div class="bike-emoji">${m.emoji}</div>`;
+      : `<div class="bike-emoji"><i class="fas ${m.emoji}"></i></div>`;
     return `
     <div class="bike-card" style="--bike-color:${m.color}" onclick="G.showBike('${bike.id}')">
       <div class="bike-card-header">
@@ -1655,7 +1655,7 @@ const G = (() => {
     const detailPhoto = _getBikePhoto(bike.id);
     const detailIcon = detailPhoto
       ? `<img class="bike-photo-thumb-lg" src="${detailPhoto}" alt="${bike.name}" onclick="_openPhotoLightbox(this.src)">`
-      : `<div class="bike-detail-emoji">${m.emoji}</div>`;
+      : `<div class="bike-detail-emoji"><i class="fas ${m.emoji}"></i></div>`;
     const header = `
     <div class="bike-detail-header">
       ${detailIcon}
@@ -1709,7 +1709,7 @@ const G = (() => {
       return `
       <div class="comp-card status-green" style="opacity:0.7">
         <div class="comp-card-top" style="align-items:center;gap:12px">
-          <div style="font-size:28px">${(CM[comp.type]||{}).icon||'🔧'}</div>
+          <div style="font-size:22px"><i class="fas ${(CM[comp.type]||{}).fa||'fa-wrench'}"></i></div>
           <div class="comp-info">
             <div class="comp-name">${comp.name}</div>
             <div class="comp-brand">${bm || '<span style="opacity:0.4">Sin marca/modelo</span>'}</div>
@@ -1788,14 +1788,14 @@ const G = (() => {
     const p = Math.round(pct(comp));
     const pc = p >= 100 ? 'var(--danger)' : p >= 80 ? 'var(--warning)' : 'var(--success)';
     document.getElementById('ci-summary').innerHTML = `
-      <div class="ci-summary-title">${CM[comp.type]?.icon || '🔧'} ${comp.name}</div>
+      <div class="ci-summary-title"><i class="fas ${CM[comp.type]?.fa || 'fa-wrench'}"></i> ${comp.name}</div>
       <div class="ci-stats">
         <div class="ci-stat"><div class="ci-stat-val" style="color:${pc}">${p}%</div><div class="ci-stat-lbl">Desgaste</div></div>
         <div class="ci-stat"><div class="ci-stat-val">${fmtVal(comp)}</div><div class="ci-stat-lbl">Uso acumulado</div></div>
         <div class="ci-stat"><div class="ci-stat-val" style="color:var(--success)">0</div><div class="ci-stat-lbl">Resetear a</div></div>
       </div>`;
     const isFluid = !!(comp.threshold_days);
-    document.getElementById('checkin-title').textContent = isFluid ? '💧 Rellenar / Cambiar Líquido' : '🔄 Cambiar Componente';
+    document.getElementById('checkin-title').textContent = isFluid ? 'Rellenar / Cambiar Líquido' : 'Cambiar Componente';
     document.getElementById('ci-brand').value = comp.brand || '';
     document.getElementById('ci-model').value = comp.model || '';
     document.getElementById('ci-name').value = comp.name;
@@ -1854,7 +1854,7 @@ const G = (() => {
     closeModal('m-checkin');
     pendCI = null;
     const isFluid = comp.threshold_days;
-    toast('green', isFluid ? '💧 Relleno registrado' : '✅ Registrado', `${newName} reseteado a 0. Historial guardado.`);
+    toast('green', isFluid ? 'Relleno registrado' : 'Registrado', `${newName} reseteado a 0. Historial guardado.`);
     render();
   }
 
@@ -1934,7 +1934,7 @@ const G = (() => {
       }
       render();
       closeModal('m-edit-comp');
-      toast('green','✅ Actualizado','Datos del componente guardados.');
+      toast('green','Actualizado','Datos del componente guardados.');
     }
   }
 
@@ -2019,7 +2019,7 @@ const G = (() => {
 
       recalc(); render();
       closeModal('m-add-bike');
-      toast('green','✅ Bici creada', `${name} añadida al garaje.`);
+      toast('green','Bici creada', `${name} añadida al garaje.`);
     } catch(e) {
       toast('red','Error', 'Sin conexión con el servidor');
     } finally {
@@ -2177,7 +2177,7 @@ const G = (() => {
       }).catch(() => {});
     }
     closeModal('m-edit-bike');
-    toast('green','✅ Guardado', `${bike.name} configurada.`);
+    toast('green','Guardado', `${bike.name} configurada.`);
     render();
   }
 
@@ -2231,7 +2231,7 @@ const G = (() => {
       comp.status = calcStatus(comp);
       save();
       render();
-      toast('green', '🔧 Revisión pospuesta', `Te avisaremos de nuevo en ${amount.toLocaleString('es')} ${unit}.`);
+      toast('green', 'Revisión pospuesta', `Te avisaremos de nuevo en ${amount.toLocaleString('es')} ${unit}.`);
     }).catch(() => toast('red', 'Error', 'No se pudo conectar con el servidor.'));
   }
 
@@ -2285,7 +2285,7 @@ const G = (() => {
         .catch(e => console.warn('[Garaje] Odómetro no sincronizado:', e.message));
     }
     closeModal('m-add-km');
-    toast('green','📏 KM añadidos', `+${km} km · +${h}h → ${bike.name}`);
+    toast('green','KM añadidos', `+${km} km · +${h}h → ${bike.name}`);
     checkAlerts();
     render();
   }
@@ -2299,11 +2299,11 @@ const G = (() => {
       .sort((a,b) => new Date(b.date) - new Date(a.date));
     let name = 'Componente';
     st.bikes.forEach(bike => { const c = bike.components.find(c => c.id === compId); if (c) name = c.name; });
-    document.getElementById('hist-title').textContent = `📋 Historial — ${name}`;
+    document.getElementById('hist-title').textContent = `Historial — ${name}`;
     document.getElementById('hist-content').innerHTML = items.length
       ? items.map(h => `
         <div class="hist-item">
-          <div class="hist-icon">🔄</div>
+          <div class="hist-icon"><i class="fas fa-rotate"></i></div>
           <div class="hist-body">
             <div class="hist-title">${h.new_component_name || h.component_name}</div>
             <div class="hist-meta">${new Date(h.date).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}${h.cost > 0 ? ` · €${h.cost.toFixed(2)}` : ''}${h.notes ? ` · "${h.notes}"` : ''}</div>
@@ -2438,9 +2438,9 @@ const G = (() => {
   function toast(type, title, msg) {
     const wrap = document.getElementById('toast-wrap');
     const el = document.createElement('div');
-    const icons = { red:'🔴', yellow:'🟡', green:'✅', info:'ℹ️' };
+    const icons = { red:'fa-circle-exclamation', yellow:'fa-triangle-exclamation', green:'fa-circle-check', info:'fa-circle-info' };
     el.className = `toast ${type === 'info' ? '' : type}`;
-    el.innerHTML = `<span class="toast-ico">${icons[type]||'ℹ️'}</span><div><div class="toast-ttl">${title}</div><div class="toast-msg">${msg}</div></div>`;
+    el.innerHTML = `<span class="toast-ico"><i class="fas ${icons[type]||'fa-circle-info'}"></i></span><div><div class="toast-ttl">${title}</div><div class="toast-msg">${msg}</div></div>`;
     wrap.appendChild(el);
     setTimeout(() => { el.style.transition='opacity 0.3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 4500);
   }
@@ -2821,7 +2821,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') _closeLightb
 
 <!-- ── Photo lightbox ── -->
 <div id="bikePhotoLightbox" onclick="_closeLightbox()">
-  <button id="bikePhotoLightboxClose" onclick="_closeLightbox()" title="Cerrar">✕</button>
+  <button id="bikePhotoLightboxClose" onclick="_closeLightbox()" title="Cerrar"><i class="fas fa-xmark"></i></button>
   <img id="bikePhotoLightboxImg" src="" alt="Foto bici">
 </div>
 </body>
