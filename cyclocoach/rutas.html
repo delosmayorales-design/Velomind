@@ -5243,8 +5243,20 @@ function _showTrackScreenWarning() {
       Safari → <i class="fas fa-arrow-up-from-bracket"></i> Compartir → <strong>Añadir a inicio</strong><br>
       Así funciona mejor en background.
     </div>`;
-  } else if (isAndroid && !isPwa) {
-    body  = 'En Android, instala la app (menú ⋮ → "Añadir a pantalla de inicio") para mejor grabación en background.';
+  } else if (isAndroid) {
+    // El Wake Lock evita que la pantalla se apague sola, pero no protege de que el
+    // fabricante (Xiaomi/MIUI, Samsung, Huawei, OnePlus…) mate el navegador en 2º
+    // plano por ahorro de batería — la causa más común de cortes en Android que
+    // ningún truco de JS puede evitar sin este ajuste manual del sistema.
+    title = 'Evita que Android corte la grabación';
+    body  = 'Algunos móviles cierran el navegador en segundo plano para ahorrar batería, aunque la pantalla se mantenga encendida.';
+    const installTip = !isPwa
+      ? `Instala VeloMind como app (menú ⋮ → "Añadir a pantalla de inicio") y `
+      : '';
+    extra = `<div style="margin-top:7px;padding:6px 8px;background:#1a2a00;border-radius:6px;font-size:11px;color:#9ED62B">
+      <strong>Consejo:</strong> ${installTip}desactiva la optimización de batería para tu navegador:<br>
+      Ajustes → Batería → Uso de batería por app → busca tu navegador → <strong>Sin restricciones</strong>.
+    </div>`;
   } else {
     body  = 'Mantén la pantalla encendida para asegurar la grabación continua.';
   }
@@ -5307,13 +5319,16 @@ function _startTracking() {
       _startBgPing();
 
       // Wake Lock: mantener pantalla activa durante la grabación
-      const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const _isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const _isAndroid = /Android/i.test(navigator.userAgent);
       if ('wakeLock' in navigator) {
         navigator.wakeLock.request('screen').then(wl => {
           _trkWakeLock = wl;
           _trkWakeLock.addEventListener('release', () => { _trkWakeLock = null; });
-          // En iOS mostramos el aviso siempre: el usuario puede pulsar Home o bloquearse la pantalla manualmente
-          if (_isIOS) _showTrackScreenWarning();
+          // En iOS/Android mostramos el aviso aunque el Wake Lock funcione: en iOS el
+          // usuario puede pulsar Home o bloquear manualmente, y en Android el Wake Lock
+          // no protege de que el fabricante mate el navegador en 2º plano por batería.
+          if (_isIOS || _isAndroid) _showTrackScreenWarning();
         }).catch(e => {
           console.warn('[Track] WakeLock no disponible:', e);
           _showTrackScreenWarning();
