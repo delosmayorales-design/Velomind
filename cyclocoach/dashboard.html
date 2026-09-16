@@ -1130,6 +1130,20 @@ const STATE_FA = {
   no_data: 'fa-bicycle',
 };
 
+/* Días desde la última actividad registrada (null si no hay ninguna).
+   Un TSB alto por varios días sin pedalear es "descanso forzado / inactividad",
+   no el mismo frescor que da un tapering corto tras entrenar con carga: el cuerpo
+   puede estar destrenado en vez de listo para rendir. */
+function daysSinceLastActivity() {
+  const acts = AppState.activities || [];
+  if (!acts.length) return null;
+  const lastDate = acts.reduce((max, a) => {
+    const d = String(a.date || '').substring(0, 10);
+    return d > max ? d : max;
+  }, '');
+  return lastDate ? Utils.daysAgo(lastDate) : null;
+}
+
 /* ── HERO ────────────────────────────────────────────────── */
 function renderHero(athlete, metrics, plan) {
   const hour = new Date().getHours();
@@ -1199,8 +1213,13 @@ function renderHero(athlete, metrics, plan) {
   } 👊`;
 
   // Consejo específico según TSB en lenguaje humano (sin jerga)
+  const inactiveDays = daysSinceLastActivity();
+  // Un TSB positivo tras varios días sin pedalear no es tapering: puede ser
+  // descanso forzado (viaje, enfermedad, vida) y el cuerpo puede notarse peor, no mejor.
+  const longBreak = tsbNow !== null && tsbNow > 5 && inactiveDays !== null && inactiveDays >= 4;
   const tsbAdvice =
     tsbNow === null   ? '' :
+    longBreak         ? `👀 Llevas ${inactiveDays} días sin actividad — el TSB alto aquí refleja inactividad, no un tapering real. Si notas piernas pesadas o cansancio, retoma con algo suave antes de exigirte al máximo.` :
     tsbNow > 20       ? '🚀 Tu cuerpo está fresco y cargado. Ideal para una sesión exigente o competición.' :
     tsbNow > 5        ? '✅ Buena forma. Es buen momento para entrenar con calidad.' :
     tsbNow > -10      ? '💪 Equilibrio perfecto entre fitness y fatiga. Sigue el plan.' :
@@ -2003,6 +2022,16 @@ function renderFTP(metrics) {
   const el = document.getElementById('ftp-banner');
   if (!metrics || metrics.ctl < 25) { el.className = 'ftp-banner'; return; }
   const { ctl, tsb } = metrics;
+  const inactiveDays = daysSinceLastActivity();
+  // No sugerir el test si el TSB alto viene de llevar días sin pedalear: eso es
+  // inactividad, no el frescor de un tapering, y el rendimiento real puede ser peor.
+  if (tsb > 3 && inactiveDays !== null && inactiveDays >= 4) {
+    el.className = 'ftp-banner soon show';
+    document.getElementById('ftp-icon').textContent  = '⚠️';
+    document.getElementById('ftp-title').textContent = 'Antes del test, retoma el ritmo';
+    document.getElementById('ftp-msg').textContent   = `Llevas ${inactiveDays} días sin actividad — el TSB (+${tsb.toFixed(0)}) refleja descanso forzado, no necesariamente estar a punto. Haz 1-2 salidas suaves antes de testear.`;
+    return;
+  }
   if (tsb > 10) {
     el.className = 'ftp-banner ready show';
     document.getElementById('ftp-icon').textContent  = '🎯';
