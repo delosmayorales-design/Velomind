@@ -522,9 +522,8 @@
       border-top-color:#C4EF44; border-radius:50%; animation:spin 1s linear infinite;
     }
     @keyframes spin { to { transform:rotate(360deg); } }
-    @keyframes flagWave { 0%,100%{transform:rotate(-6deg) scale(1);filter:drop-shadow(0 0 10px rgba(168,85,247,.55))} 50%{transform:rotate(6deg) scale(1.1);filter:drop-shadow(0 0 22px rgba(168,85,247,.85))} }
-    .race-flag-anim { display:inline-block; font-size:60px; animation:flagWave 1.6s ease-in-out infinite; line-height:1; }
-    .eve-flag-anim  { display:inline-block; font-size:40px; animation:flagWave 2s ease-in-out infinite; line-height:1; }
+    .race-flag-anim { display:inline-block; font-size:28px; line-height:1; color:#A855F7; }
+    .eve-flag-anim  { display:inline-block; font-size:22px; line-height:1; color:#38BDF8; }
 
     /* ── Plan params strip ───────────────────────────────────── */
     .plan-params-strip {
@@ -974,7 +973,7 @@
     <a href="notificaciones.html" class="nav-item"><i class="fas fa-bell"></i> Notificaciones</a>
     <a href="feedback.html" class="nav-item"><i class="fas fa-comment-dots"></i> Feedback</a>
     <a href="soporte.html" class="nav-item"><i class="fas fa-life-ring"></i> Soporte</a>
-    <a href="https://ko-fi.com/velomind" target="_blank" rel="noopener" class="nav-item" style="color:#005FFF !important;font-weight:600">🚴 Impulsa VeloMind</a>
+    <a href="https://ko-fi.com/velomind" target="_blank" rel="noopener" class="nav-item" style="color:#005FFF !important;font-weight:600"><i class="fas fa-mug-hot"></i> Impulsa VeloMind</a>
   </div>
   <div class="sidebar-footer">
     <div class="athlete-card">
@@ -1021,7 +1020,7 @@
             <i class="fas fa-chart-line" style="color:var(--primary)"></i> Estado de Forma
           </div>
           <div id="form-state-loading" class="top-card-loading">
-            <span class="loading-pulse">🧠</span>
+            <span class="loading-pulse"><i class="fas fa-chart-line"></i></span>
             <span style="font-size:10px;color:var(--text-muted)">Analizando...</span>
           </div>
           <div id="form-state-content" class="hidden top-card-body"></div>
@@ -1083,7 +1082,7 @@
               <div class="xtr-section-label">Entrenamiento complementario · días / semana</div>
               <div class="xtr-grid">
                 <div class="xtr-item">
-                  <label class="xtr-item-label"><span class="xtr-icon">🏋️</span> Gimnasio</label>
+                  <label class="xtr-item-label"><span class="xtr-icon"><i class="fas fa-dumbbell"></i></span> Gimnasio</label>
                   <select id="adj-gym-days" class="params-input params-select">
                     <option value="0">Sin días</option>
                     <option value="1">1 día / sem</option>
@@ -1091,7 +1090,7 @@
                   </select>
                 </div>
                 <div class="xtr-item">
-                  <label class="xtr-item-label"><span class="xtr-icon">🏃</span> Running</label>
+                  <label class="xtr-item-label"><span class="xtr-icon"><i class="fas fa-person-running"></i></span> Running</label>
                   <select id="adj-running-days" class="params-input params-select">
                     <option value="0">Sin días</option>
                     <option value="1">1 día / sem</option>
@@ -1099,7 +1098,7 @@
                   </select>
                 </div>
                 <div class="xtr-item">
-                  <label class="xtr-item-label"><span class="xtr-icon">🚶</span> Caminata</label>
+                  <label class="xtr-item-label"><span class="xtr-icon"><i class="fas fa-person-walking"></i></span> Caminata</label>
                   <select id="adj-walking-days" class="params-input params-select">
                     <option value="0">Sin días</option>
                     <option value="1">1 día / sem</option>
@@ -1107,7 +1106,7 @@
                   </select>
                 </div>
                 <div class="xtr-item">
-                  <label class="xtr-item-label"><span class="xtr-icon">⚡</span> Otros</label>
+                  <label class="xtr-item-label"><span class="xtr-icon"><i class="fas fa-bolt"></i></span> Otros</label>
                   <select id="adj-other-days" class="params-input params-select">
                     <option value="0">Sin días</option>
                     <option value="1">1 día / sem</option>
@@ -1354,8 +1353,8 @@ function renderProgTooltip(context) {
     html += `<div class="ptip-row"><span class="ptip-dot" style="background:${bg}"></span><span>${dp.dataset.label}: <strong style="color:#e5e7eb">${dp.formattedValue}</strong></span></div>`;
   });
   const i = tooltip.dataPoints[0]?.dataIndex;
-  if (i === 11) html += `<div class="ptip-note">🏁 La forma es máxima: CTL alto + fatiga mínima</div>`;
-  else if (i >= 7 && i <= 9) html += `<div class="ptip-note">↘ CTL baja levemente para que la Forma suba</div>`;
+  if (i === 11) html += `<div class="ptip-note"><i class="fas fa-flag-checkered"></i> La forma es máxima: CTL alto + fatiga mínima</div>`;
+  else if (i >= 7 && i <= 9) html += `<div class="ptip-note"><i class="fas fa-arrow-trend-down"></i> CTL baja levemente para que la Forma suba</div>`;
   el.innerHTML = html;
   el.style.display = 'block';
 }
@@ -1454,12 +1453,12 @@ function renderFormState(s, training) {
   const tsbSign = tsb > 0 ? '+' : '';
 
   function tsbState(v) {
-    if (v > 25)  return { label:'Muy fresco',       emoji:'🚀', color:'#64a0ff', bg:'rgba(100,160,255,.15)' };
-    if (v > 5)   return { label:'Fresco',           emoji:'✅', color:'#00C882', bg:'rgba(0,200,130,.15)'   };
-    if (v > -10) return { label:'En forma',         emoji:'💪', color:'#b4e600', bg:'rgba(180,230,0,.15)'   };
-    if (v > -20) return { label:'Carga alta',       emoji:'⚖️', color:'#FFC800', bg:'rgba(255,200,0,.15)'   };
-    if (v > -30) return { label:'Fatiga',           emoji:'🔥', color:'#FF9632', bg:'rgba(255,150,50,.15)'  };
-    return             { label:'Sobreentrenado',    emoji:'🛑', color:'#ff4757', bg:'rgba(255,71,87,.15)'   };
+    if (v > 25)  return { label:'Muy fresco',       icon:'fa-rocket',              color:'#64a0ff', bg:'rgba(100,160,255,.15)' };
+    if (v > 5)   return { label:'Fresco',           icon:'fa-circle-check',        color:'#00C882', bg:'rgba(0,200,130,.15)'   };
+    if (v > -10) return { label:'En forma',         icon:'fa-dumbbell',            color:'#b4e600', bg:'rgba(180,230,0,.15)'   };
+    if (v > -20) return { label:'Carga alta',       icon:'fa-scale-balanced',      color:'#FFC800', bg:'rgba(255,200,0,.15)'   };
+    if (v > -30) return { label:'Fatiga',           icon:'fa-fire',                color:'#FF9632', bg:'rgba(255,150,50,.15)'  };
+    return             { label:'Sobreentrenado',    icon:'fa-circle-stop',         color:'#ff4757', bg:'rgba(255,71,87,.15)'   };
   }
   const tsbs = tsbState(tsb);
 
@@ -1516,7 +1515,7 @@ function renderFormState(s, training) {
                  <circle cx="${aex}" cy="${aey}" r="3.5" fill="${tsbs.color}" style="filter:drop-shadow(0 0 7px ${tsbs.color})"/>`
               : `<circle cx="5" cy="28" r="3.5" fill="${tsbs.color}"/>`}
           </svg>
-          <div class="fs-tsb-chip" style="color:${tsbs.color};background:${tsbs.bg}">${tsbs.emoji} ${tsbs.label}</div>
+          <div class="fs-tsb-chip" style="color:${tsbs.color};background:${tsbs.bg}"><i class="fas ${tsbs.icon}"></i> ${tsbs.label}</div>
         </div>
       </div>
 
@@ -1608,7 +1607,11 @@ function renderCoachAlerts(alerts) {
   }
   section.innerHTML = alerts.map(a => {
     const type = a.startsWith('⚠️') ? 'alert-warning' : a.startsWith('📈') ? 'alert-warning' : 'alert-info';
-    return `<div class="coach-alert ${type}"><span style="font-size:18px;flex-shrink:0">${a.substring(0,2)}</span><span>${a.substring(2).trim()}</span></div>`;
+    const icon = type === 'alert-warning' ? 'fa-triangle-exclamation' : 'fa-circle-info';
+    // El backend sigue mandando un emoji delante (compatibilidad con otros canales
+    // como notificaciones) — aquí solo se usa para clasificar el tipo, no se muestra.
+    const text = a.replace(/^\p{Emoji_Presentation}️?\s*|^\p{Extended_Pictographic}️?\s*/u, '').trim();
+    return `<div class="coach-alert ${type}"><span style="font-size:14px;flex-shrink:0"><i class="fas ${icon}"></i></span><span>${text}</span></div>`;
   }).join('');
   section.classList.remove('hidden');
 }
@@ -1889,15 +1892,15 @@ function _sanitizeCyclingContent(plan) {
   if (!plan?.sessions) return;
   const RUN_RE = /zancada|tierra compacta|hierba|sendero suave|carrera a pie|kilómetro de carrera|impacto por zancada|rodillas.*carg|carg.*rodillas|superficies blandas|terreno blando reduce/i;
   const CLEAN_TERRAIN = {
-    endurance: '🛣️ Terreno llano y continuo para mantener los vatios estables.',
-    recovery:  '🛣️ Terreno llano y continuo para mantener los vatios estables.',
-    long:      '🛣️ Terreno llano o ligeramente ondulado para acumular volumen aeróbico.',
-    tempo:     '⛰️ Terreno ondulado o subida larga para sostener el ritmo en Z3.',
-    threshold: '⛰️ Subida constante o llano para mantener el FTP de inicio a fin.',
-    sweet_spot:'⛰️ Terreno ondulado para el sweet spot sostenido.',
-    vo2max:    '⛰️ Subida de 4-6 min para las series de alta intensidad.',
-    sprint:    '⚡ Subida corta o llano recto para los sprints máximos.',
-    strength:  '⛰️ Subida larga con cadencia baja para trabajo de fuerza.',
+    endurance: '<i class="fas fa-road"></i> Terreno llano y continuo para mantener los vatios estables.',
+    recovery:  '<i class="fas fa-road"></i> Terreno llano y continuo para mantener los vatios estables.',
+    long:      '<i class="fas fa-road"></i> Terreno llano o ligeramente ondulado para acumular volumen aeróbico.',
+    tempo:     '<i class="fas fa-mountain"></i> Terreno ondulado o subida larga para sostener el ritmo en Z3.',
+    threshold: '<i class="fas fa-mountain"></i> Subida constante o llano para mantener el FTP de inicio a fin.',
+    sweet_spot:'<i class="fas fa-mountain"></i> Terreno ondulado para el sweet spot sostenido.',
+    vo2max:    '<i class="fas fa-mountain"></i> Subida de 4-6 min para las series de alta intensidad.',
+    sprint:    '<i class="fas fa-bolt"></i> Subida corta o llano recto para los sprints máximos.',
+    strength:  '<i class="fas fa-mountain"></i> Subida larga con cadencia baja para trabajo de fuerza.',
   };
   // Mínimos fisiológicos fijos por tipo de sesión — NO deben depender del promedio
   // horas/días del atleta (weekly_hours / days_per_week), porque ese promedio es una
@@ -1963,7 +1966,7 @@ function _sanitizeCyclingContent(plan) {
     }
     // Limpiar terrain con lenguaje de running
     if (typeof s.terrain === 'string' && RUN_RE.test(s.terrain)) {
-      s.terrain = CLEAN_TERRAIN[s.type] || '🛣️ Terreno adecuado para ciclismo.';
+      s.terrain = CLEAN_TERRAIN[s.type] || '<i class="fas fa-road"></i> Terreno adecuado para ciclismo.';
     }
     // Sanear terrain/advice con segmento sintético (contienen "~" porque no hay segmentos reales)
     // → sustituir por el texto limpio del tipo; quita tiempo y km inventados
@@ -2019,7 +2022,7 @@ function _findMainInterval(intervals) {
 }
 
 function buildWorkoutSummary(desc, durMin, mainIv) {
-  if (!desc || desc === 'Descanso.') return durMin > 0 ? `⏱️ ${durMin} min` : '';
+  if (!desc || desc === 'Descanso.') return durMin > 0 ? `<i class="fas fa-clock"></i> ${durMin} min` : '';
   const SKIP = ['calentamiento', 'activación', 'vuelta', 'enfriamiento', 'pedaleo suave z1'];
   const parts = desc.split(' + ');
   const mainParts = parts.filter(p => !SKIP.some(k => p.toLowerCase().startsWith(k)));
@@ -2028,11 +2031,11 @@ function buildWorkoutSummary(desc, durMin, mainIv) {
   let line = '';
   if (repMatch) {
     const label = repMatch[3].trim().split(' ').slice(0, 3).join(' ');
-    line = `🔥 ${repMatch[1]}×${repMatch[2]} min ${label}`.trimEnd();
+    line = `<i class="fas fa-fire"></i> ${repMatch[1]}×${repMatch[2]} min ${label}`.trimEnd();
   } else {
     const durMatch = mainBlock.match(/^(\d+)\s*min(?:\s+(.+))?/);
     const label = durMatch?.[2]?.trim().split(' ').slice(0, 3).join(' ') || '';
-    line = durMatch ? `🚴 ${durMatch[1]} min${label ? ' ' + label : ''}` : (mainBlock ? `🚴 ${mainBlock.slice(0, 30)}` : '');
+    line = durMatch ? `<i class="fas fa-bicycle"></i> ${durMatch[1]} min${label ? ' ' + label : ''}` : (mainBlock ? `<i class="fas fa-bicycle"></i> ${mainBlock.slice(0, 30)}` : '');
   }
   if (mainIv?.watts) {
     const ivWp = _parseWattsRange(mainIv.watts);
@@ -2090,24 +2093,24 @@ function _buildRaceCoachPlan(ftp, athlete, metrics, isC, event) {
   const tsb = Math.round(metrics.tsb || 0);
   const lthr = athlete.lthr || (athlete.max_hr ? Math.round(athlete.max_hr * 0.88) : 0);
 
-  let flatIF, formTag, formColor, diagnosis;
+  let flatIF, formTag, formIcon, formColor, diagnosis;
   if (isC) {
-    flatIF = 0.84; formTag = 'Carrera de entrenamiento'; formColor = '#64a0ff';
+    flatIF = 0.84; formTag = 'Carrera de entrenamiento'; formIcon = 'fa-bicycle'; formColor = '#64a0ff';
     diagnosis = `Con tu base actual de ${ctl} CTL úsala como sesión de calidad con dorsales. Mantén un esfuerzo controlado (IF ~0.84), no te vacíes — el objetivo es llegar fresco al siguiente entreno de la semana.`;
   } else if (tsb >= 15) {
-    flatIF = 0.91; formTag = '🟢 Pico de forma'; formColor = '#10B981';
+    flatIF = 0.91; formTag = 'Pico de forma'; formIcon = 'fa-circle'; formColor = '#10B981';
     diagnosis = `Llegas en estado óptimo — ${tsb} puntos de forma positiva con una base de ${ctl} CTL. El tapering ha funcionado. Tu cuerpo está fresco y cargado. Hoy puedes exigirte al máximo: sal controlado los primeros 15 min y luego libera todo.`;
   } else if (tsb >= 8) {
-    flatIF = 0.88; formTag = '🟡 Buena forma'; formColor = '#9ED62B';
+    flatIF = 0.88; formTag = 'Buena forma'; formIcon = 'fa-circle'; formColor = '#9ED62B';
     diagnosis = `Llegas bien — forma de +${tsb} con ${ctl} CTL de base. Buen equilibrio entre frescura y fitness. Al 88% de tu FTP en los tramos planos tendrás margen para apretar al final sin vaciar el depósito antes de tiempo.`;
   } else if (tsb >= 0) {
-    flatIF = 0.85; formTag = '🟡 Forma aceptable'; formColor = '#F59E0B';
+    flatIF = 0.85; formTag = 'Forma aceptable'; formIcon = 'fa-circle'; formColor = '#F59E0B';
     diagnosis = `Llegas con ligera frescura pero sin el tapering completo (forma +${tsb}, ATL ${atl}). Tienes el nivel para competir bien. Ve al 85% en los primeros km; si las piernas responden a los 20 min, puedes ir subiendo progresivamente.`;
   } else if (tsb >= -8) {
-    flatIF = 0.82; formTag = '🟠 Cierta fatiga'; formColor = '#FB923C';
+    flatIF = 0.82; formTag = 'Cierta fatiga'; formIcon = 'fa-circle'; formColor = '#FB923C';
     diagnosis = `Llegas con ${Math.abs(tsb)} puntos de carga acumulada (ATL ${atl} vs CTL ${ctl}). El cuerpo tiene fatiga — arranca conservador, los primeros 20 min costarán. Si las piernas se abren a mitad, puedes ir apretando. No te compares con cómo saldrán otros.`;
   } else {
-    flatIF = 0.78; formTag = '🔴 Fatiga significativa'; formColor = '#EF4444';
+    flatIF = 0.78; formTag = 'Fatiga significativa'; formIcon = 'fa-circle'; formColor = '#EF4444';
     diagnosis = `Llegas con carga alta: ${Math.abs(tsb)} puntos negativos (ATL ${atl}, CTL ${ctl}). La clave es una salida muy conservadora — si aguantas los primeros 30 min por debajo del umbral, desde la mitad puedes subir el ritmo progresivamente. No te enganches al pelotón inicial.`;
   }
 
@@ -2234,7 +2237,7 @@ function _buildRaceCoachPlan(ftp, athlete, metrics, isC, event) {
     `Si vas con fatiga (TSB < 0), protege la salida: no te enganches a ataques en los primeros 15-20 km y conserva energía para el segundo tercio y la subida final.`,
   ];
 
-  return { formTag, formColor, diagnosis, rows, alerts, ctl, atl, tsb, flatIF, tramos, nutrition, coachBriefing };
+  return { formTag, formIcon, formColor, diagnosis, rows, alerts, ctl, atl, tsb, flatIF, tramos, nutrition, coachBriefing };
 }
 
 function renderPlan(plan, athlete) {
@@ -2291,14 +2294,14 @@ function renderPlan(plan, athlete) {
   // Derivar _weekCtx desde conteo de sesiones de calidad, pero si el plan
   // está en un estado de fatiga/recuperación dejar que la adaptación prevalezca
   // para que el resumen y el banner nunca cuenten historias distintas.
-  let _weekCtx = _hiSessions >= 3 ? '🔥 Semana de carga alta' :
-                 _hiSessions >= 2 ? '⚡ Semana con calidad' :
-                 _hiSessions === 1 ? '⚖️ Semana equilibrada' :
-                 '🌱 Semana de base aeróbica';
-  if      (plan.adaptation?.level === 'danger')  _weekCtx = '🛑 Recuperación forzada';
-  else if (plan.adaptation?.level === 'warning') _weekCtx = '⚠️ Semana aligerada';
-  else if (plan.adaptation?.level === 'caution') _weekCtx = '⚖️ Carga ajustada';
-  else if (plan.adaptation?.level === 'info' && (plan.adaptation?.title || '').includes('Recuperación')) _weekCtx = '🔄 Semana de recuperación';
+  let _weekCtx = _hiSessions >= 3 ? '<i class="fas fa-fire"></i> Semana de carga alta' :
+                 _hiSessions >= 2 ? '<i class="fas fa-bolt"></i> Semana con calidad' :
+                 _hiSessions === 1 ? '<i class="fas fa-scale-balanced"></i> Semana equilibrada' :
+                 '<i class="fas fa-seedling"></i> Semana de base aeróbica';
+  if      (plan.adaptation?.level === 'danger')  _weekCtx = '<i class="fas fa-circle-stop"></i> Recuperación forzada';
+  else if (plan.adaptation?.level === 'warning') _weekCtx = '<i class="fas fa-triangle-exclamation"></i> Semana aligerada';
+  else if (plan.adaptation?.level === 'caution') _weekCtx = '<i class="fas fa-scale-balanced"></i> Carga ajustada';
+  else if (plan.adaptation?.level === 'info' && (plan.adaptation?.title || '').includes('Recuperación')) _weekCtx = '<i class="fas fa-rotate"></i> Semana de recuperación';
   document.getElementById('plan-summary-inline').innerHTML =
     `${_weekCtx} · <strong style="color:var(--primary)">${plan.targetTSS} TSS</strong> · ${athlete.weekly_hours || 8}h · ${phaseLabel(plan.phase)}`;
 
@@ -2313,7 +2316,7 @@ function renderPlan(plan, athlete) {
     evListBanner.style.display = 'block';
     evListBanner.innerHTML = `
       <div style="background:rgba(158,214,43,.06);border:1px solid rgba(158,214,43,.2);border-radius:12px;padding:12px 16px">
-        <div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:10px;letter-spacing:.5px">📅 PRÓXIMOS EVENTOS</div>
+        <div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:10px;letter-spacing:.5px"><i class="fas fa-calendar-days"></i> PRÓXIMOS EVENTOS</div>
         <div style="display:flex;flex-direction:column;gap:7px">
           ${plan.upcomingEvents.map(ev => {
             const d = new Date(ev.date + 'T00:00:00');
@@ -2346,14 +2349,14 @@ function renderPlan(plan, athlete) {
       const evFmt   = evLocal.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
       const isRace  = plan.phase === 'race';
       const color   = isRace ? '#EC4899' : '#FFC800';
-      const icon    = isRace ? '🏁' : '⚡';
+      const icon    = isRace ? 'fa-flag-checkered' : 'fa-bolt';
       const label   = isRace
         ? `Semana de carrera — tu evento es el <strong>${evFmt}</strong> (en ${dUntil} día${dUntil !== 1 ? 's' : ''})`
         : `Fase taper/puesta a punto — tu evento es el <strong>${evFmt}</strong> (en ${dUntil} día${dUntil !== 1 ? 's' : ''})`;
       eventBanner.style.display = 'block';
       eventBanner.innerHTML = `
         <div style="background:${color}18;border:1px solid ${color}44;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:20px">${icon}</span>
+          <span style="font-size:16px;color:${color}"><i class="fas ${icon}"></i></span>
           <div style="flex:1;min-width:0">
             <div style="font-size:12px;color:${color};font-weight:700;margin-bottom:2px">Plan en modo ${isRace ? 'Carrera' : 'Peak/Taper'}</div>
             <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${label}. El plan se adapta automáticamente a la semana de carrera.</div>
@@ -2428,7 +2431,7 @@ function renderPlan(plan, athlete) {
   if (rampEl && plan.rampRate !== undefined) {
     const r = plan.rampRate;
     const color = r > 7 ? '#EF4444' : r > 5 ? '#F59E0B' : r < -3 ? '#9CA3AF' : '#10B981';
-    const label = r > 7 ? '⚠ Muy alto — riesgo de lesión' : r > 5 ? '↑ Alto — monitorea la fatiga' : r < -3 ? '↓ Semana de recuperación / mantenimiento' : '✅ Progresión óptima';
+    const label = r > 7 ? 'Muy alto — riesgo de lesión' : r > 5 ? 'Alto — monitorea la fatiga' : r < -3 ? 'Semana de recuperación / mantenimiento' : 'Progresión óptima';
     rampEl.innerHTML =
       `<i class="fas fa-chart-line" style="color:${color}"></i>` +
       `<span style="color:var(--text-muted)">Rampa CTL esta semana:</span>` +
@@ -2475,7 +2478,7 @@ function renderPlan(plan, athlete) {
             placeholder="${sess.isRest ? 'Describe lo que vas a entrenar...' : 'Ej: 2h Z2, puertos, series FTP...'}"
           ></textarea>
           <div class="ob-actions">
-            ${!sess._overriddenToRest && !sess.isRest ? `<button class="ob-btn ob-btn-rest" onclick="event.stopPropagation();overrideToRest(${i})">🛌 Descanso</button>` : ''}
+            ${!sess._overriddenToRest && !sess.isRest ? `<button class="ob-btn ob-btn-rest" onclick="event.stopPropagation();overrideToRest(${i})"><i class="fas fa-bed"></i> Descanso</button>` : ''}
             ${i >= todayIdx ? (() => {
               const pills = plan.sessions
                 .map((s, j) => ({ j, day: s.day }))
@@ -2523,7 +2526,7 @@ function renderPlan(plan, athlete) {
               <div class="dn">${sess.day.substring(0, 3)}</div>
               <div class="dd">${sessDate.getDate()}</div>
             </div>
-            <div style="font-size:20px;flex-shrink:0">😴</div>
+            <div style="font-size:16px;flex-shrink:0;color:var(--text-muted)"><i class="fas fa-bed"></i></div>
             <div>
               <div style="font-size:15px;font-weight:600;color:var(--text-secondary)">Descanso</div>
               <div class="session-wksummary" style="font-size:12px;color:var(--text-muted)">${isMissedPast ? (sess.name || sess.type || 'Entrenamiento') + ' · no realizada' : sess.description}</div>
@@ -2531,7 +2534,7 @@ function renderPlan(plan, athlete) {
           </div>
           ${sess._trainedOnRest ? `
           <div style="background:rgba(251,191,36,.06);border-top:1px solid rgba(251,191,36,.2);padding:10px 18px;display:flex;gap:10px;align-items:flex-start">
-            <span style="font-size:16px;flex-shrink:0">✏️</span>
+            <span style="font-size:13px;flex-shrink:0;color:#fbbf24"><i class="fas fa-pen"></i></span>
             <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${sess.advice}</div>
           </div>` : ''}
           ${restExecBadge}
@@ -2615,13 +2618,13 @@ function renderPlan(plan, athlete) {
         <div class="checkin-label">¿Cómo te encuentras hoy?</div>
         <div class="checkin-btns">
           <button class="checkin-btn ci-mal${checkinApplied === 'mal' ? ' selected' : ''}" onclick="applyCheckIn(${i}, 'mal')">
-            <span class="ci-emoji">😴</span><span>Mal</span>
+            <span class="ci-emoji"><i class="fas fa-battery-quarter"></i></span><span>Mal</span>
           </button>
           <button class="checkin-btn ci-normal${checkinApplied === 'normal' ? ' selected' : ''}" onclick="applyCheckIn(${i}, 'normal')">
-            <span class="ci-emoji">😐</span><span>Normal</span>
+            <span class="ci-emoji"><i class="fas fa-battery-half"></i></span><span>Normal</span>
           </button>
           <button class="checkin-btn ci-fuerte${checkinApplied === 'fuerte' ? ' selected' : ''}" onclick="applyCheckIn(${i}, 'fuerte')">
-            <span class="ci-emoji">🔥</span><span>Fuerte</span>
+            <span class="ci-emoji"><i class="fas fa-battery-full"></i></span><span>Fuerte</span>
           </button>
         </div>
       </div>
@@ -2637,23 +2640,23 @@ function renderPlan(plan, athlete) {
 
     const isPastOrToday = i <= todayIdx;
     const objective     = SESSION_OBJECTIVES[sess.type] || 'Entrenamiento';
-    const wkSummary     = sess.isGym     ? '🦵 Tren inferior · 💪 Tren superior · 🧘 Core'
-                        : sess.isRunning ? '🏃 Carrera fácil Z2 · Ritmo conversacional · 170-180 ppm cadencia'
-                        : sess.isWalking ? '🚶 Caminata Z1 · Recuperación activa · Ritmo tranquilo'
-                        : sess.isOther   ? `⚡ ${sess.name || 'Otro deporte'} · Actividad complementaria`
+    const wkSummary     = sess.isGym     ? 'Tren inferior · Tren superior · Core'
+                        : sess.isRunning ? 'Carrera fácil Z2 · Ritmo conversacional · 170-180 ppm cadencia'
+                        : sess.isWalking ? 'Caminata Z1 · Recuperación activa · Ritmo tranquilo'
+                        : sess.isOther   ? `${sess.name || 'Otro deporte'} · Actividad complementaria`
                         : buildWorkoutSummary(sess.description, durMin, _cardMainIv);
 
     // Banner de adaptación automática (visible cuando la sesión fue ajustada)
     const adaptBanner = sess._adapted && sess.advice ? `
       <div style="background:rgba(56,189,248,.06);border-top:1px solid rgba(56,189,248,.15);padding:8px 16px;display:flex;gap:10px;align-items:flex-start">
-        <span style="font-size:16px;flex-shrink:0;margin-top:1px">⚡</span>
+        <span style="font-size:13px;flex-shrink:0;margin-top:2px;color:#38BDF8"><i class="fas fa-bolt"></i></span>
         <div>
           <div style="font-size:10px;font-weight:700;color:#38BDF8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px">Ajustado automáticamente</div>
           <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${sess.advice}</div>
         </div>
       </div>` : (sess._sweetSpotBlocks ? `
       <div style="background:rgba(255,200,60,.06);border-top:1px solid rgba(255,200,60,.2);padding:8px 16px;display:flex;gap:10px;align-items:flex-start">
-        <span style="font-size:16px;flex-shrink:0">🔁</span>
+        <span style="font-size:13px;flex-shrink:0;color:#FFD93D"><i class="fas fa-shuffle"></i></span>
         <div>
           <div style="font-size:10px;font-weight:700;color:#FFD93D;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px">Carga redistribuida</div>
           <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">${sess.advice || 'Bloques Sweet Spot añadidos por cancelación del día anterior.'}</div>
@@ -2696,23 +2699,23 @@ function renderPlan(plan, athlete) {
               <div class="dd" style="color:${_pc}">${sessDate.getDate()}</div>
             </div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${_pc};margin-bottom:3px">🌙 Víspera de carrera</div>
+              <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${_pc};margin-bottom:3px"><i class="fas fa-moon"></i> Víspera de carrera</div>
               <div style="font-size:15px;font-weight:800;color:var(--text-primary);line-height:1.2">Mañana es el día · <span style="color:${_pc}">${_evName}</span></div>
               ${sess.completed?`<span class="done-badge" style="margin-top:5px;display:inline-flex"><i class="fas fa-check"></i> Hecha</span>`:''}
             </div>
-            <span class="eve-flag-anim" style="flex-shrink:0">🏁</span>
+            <span class="eve-flag-anim" style="flex-shrink:0"><i class="fas fa-flag-checkered"></i></span>
           </div>
           <div style="padding:12px 16px 4px">
             <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_pc};margin-bottom:10px">Lo que debes hacer hoy</div>
-            ${[['😴','Sueño','Acuéstate pronto. Objetivo: 8-9 horas. Es el mejor recuperador que existe.'],
-               ['🍝','Cena','Carbohidratos fáciles: pasta, arroz, patata. Nada nuevo ni pesado. Cena 2-3h antes de dormir.'],
-               ['🎒','Material','Prepara todo esta tarde: ropa, casco, botines, bidones, geles, número. Sin sorpresas mañana.'],
-               ['🚴','Entreno de hoy',`${sess.name || 'Activación pre-carrera'}${durMin>0?' · '+durMin+' min':''}${tssVal>0?' · '+tssVal+' TSS':''} — Sin intensidad, suave y corto.`],
-               ['💧','Hidratación','Bebe bien durante todo el día. Orina clara = bien hidratado para mañana.'],
-               ['🧠','Mental','Visualiza la carrera. Confía en el trabajo de estas semanas. Estás preparado.'],
+            ${[['fa-moon','Sueño','Acuéstate pronto. Objetivo: 8-9 horas. Es el mejor recuperador que existe.'],
+               ['fa-utensils','Cena','Carbohidratos fáciles: pasta, arroz, patata. Nada nuevo ni pesado. Cena 2-3h antes de dormir.'],
+               ['fa-list-check','Material','Prepara todo esta tarde: ropa, casco, botines, bidones, geles, número. Sin sorpresas mañana.'],
+               ['fa-bicycle','Entreno de hoy',`${sess.name || 'Activación pre-carrera'}${durMin>0?' · '+durMin+' min':''}${tssVal>0?' · '+tssVal+' TSS':''} — Sin intensidad, suave y corto.`],
+               ['fa-droplet','Hidratación','Bebe bien durante todo el día. Orina clara = bien hidratado para mañana.'],
+               ['fa-brain','Mental','Visualiza la carrera. Confía en el trabajo de estas semanas. Estás preparado.'],
             ].map(([em,lb,tx])=>`
               <div style="display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border)">
-                <span style="font-size:18px;flex-shrink:0;line-height:1.25">${em}</span>
+                <span style="font-size:14px;flex-shrink:0;line-height:1.4;color:${_pc};width:16px;text-align:center"><i class="fas ${em}"></i></span>
                 <div style="font-size:12px;line-height:1.5">
                   <span style="font-weight:700;color:var(--text-primary)">${lb} · </span><span style="color:var(--text-muted)">${tx}</span>
                 </div>
@@ -2751,18 +2754,18 @@ function renderPlan(plan, athlete) {
               <div class="dd" style="color:${_rc}">${sessDate.getDate()}</div>
             </div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${_rc};margin-bottom:3px">${_isC?'🏁 Carrera de entrenamiento':'🏁 Día de carrera'}</div>
+              <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${_rc};margin-bottom:3px"><i class="fas fa-flag-checkered"></i> ${_isC?'Carrera de entrenamiento':'Día de carrera'}</div>
               <div style="font-size:18px;font-weight:800;color:var(--text-primary);line-height:1.2">${_name}</div>
               ${sess.completed?`<span class="done-badge" style="margin-top:5px;display:inline-flex"><i class="fas fa-check"></i> Completada</span>`:''}
             </div>
-            <span class="race-flag-anim" style="flex-shrink:0">🏁</span>
+            <span class="race-flag-anim" style="flex-shrink:0"><i class="fas fa-flag-checkered"></i></span>
           </div>
 
           <!-- ESTADO DE FORMA -->
           <div style="padding:14px 16px 12px;border-bottom:1px solid var(--border)">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
               <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${_rc}">Tu estado hoy</span>
-              <span style="background:${_rc}20;color:${_rc};font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px">${_cp.formTag}</span>
+              <span style="background:${_rc}20;color:${_rc};font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px">${_cp.formIcon ? `<i class="fas ${_cp.formIcon}" style="font-size:7px;vertical-align:middle"></i> ` : ''}${_cp.formTag}</span>
             </div>
             <div style="display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap">
               <span style="font-size:12px;color:var(--text-muted)">CTL <strong style="color:var(--text-primary)">${_cp.ctl}</strong></span>
@@ -3393,7 +3396,7 @@ async function saveAdaptation(idx) {
 
   // ── Si es descanso futuro → redistribuir carga de forma determinista ──
   const todayNow = (new Date().getDay() + 6) % 7;
-  let toastMsg   = '✅ Sesión adaptada y guardada';
+  let toastMsg   = 'Sesión adaptada y guardada';
 
   if (t.recomendacion === 'descanso' && idx > todayNow) {
     const descansoSnapshot = JSON.parse(JSON.stringify(sess));
@@ -3472,7 +3475,7 @@ async function saveAdaptation(idx) {
 
     const todayDay = currentPlan.sessions[todayNow]?.day || 'hoy';
     const nextDay  = nextIdx >= 0 ? (currentPlan.sessions[nextIdx]?.day || '') : '';
-    toastMsg = `✅ ${dayName} → descanso · redistribuido en ${todayDay} (+22%) ${nextDay ? `y ${nextDay} (+intensidad)` : ''}`;
+    toastMsg = `${dayName} → descanso · redistribuido en ${todayDay} (+22%) ${nextDay ? `y ${nextDay} (+intensidad)` : ''}`;
   }
 
   // ── Render único al final + guardar ──────────────────────────
@@ -4459,10 +4462,10 @@ function showSessionDetail(idx, showAlt = false) {
   }
 
   if (sess.isRest) {
-    document.getElementById('modal-title').textContent = '😴 Día de Descanso';
+    document.getElementById('modal-title').textContent = 'Día de Descanso';
     document.getElementById('modal-content').innerHTML = `
       <div style="text-align:center;padding:20px">
-        <div style="font-size:48px;margin-bottom:16px">😴</div>
+        <div style="font-size:36px;margin-bottom:16px;color:var(--text-muted)"><i class="fas fa-bed"></i></div>
         <p style="color:var(--text-muted);font-size:15px;line-height:1.6">${sess.description}</p>
         <div class="alert alert-info" style="margin-top:20px;text-align:left">
           <i class="fas fa-info-circle"></i>
@@ -4474,7 +4477,7 @@ function showSessionDetail(idx, showAlt = false) {
     const gymImg = /inferior/i.test(sess.name || '') ? 'img/tren_inf.jpeg'
       : /superior/i.test(sess.name || '') ? 'img/tren_sup.jpeg'
       : null;
-    document.getElementById('modal-title').textContent = `🏋️ ${sess.name || 'Gimnasio'}`;
+    document.getElementById('modal-title').textContent = sess.name || 'Gimnasio';
     document.getElementById('modal-content').innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
@@ -4495,7 +4498,7 @@ function showSessionDetail(idx, showAlt = false) {
         </div>`}`;
   } else if (sess.isRunning) {
     const color = '#EF4444';
-    document.getElementById('modal-title').textContent = `🏃 ${sess.name || 'Running'}`;
+    document.getElementById('modal-title').textContent = sess.name || 'Running';
     document.getElementById('modal-content').innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
@@ -4508,7 +4511,7 @@ function showSessionDetail(idx, showAlt = false) {
       </div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🏁 Estructura de la sesión</div>
+          <div style="font-size:11px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px"><i class="fas fa-list-ol"></i> Estructura de la sesión</div>
           <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
             <div style="display:flex;justify-content:space-between"><span>Calentamiento andando</span><span style="color:var(--text-muted);font-weight:600">5 min</span></div>
             <div style="display:flex;justify-content:space-between"><span>Carrera fácil Z2 (ritmo conversacional)</span><span style="color:var(--text-muted);font-weight:600">30-35 min</span></div>
@@ -4516,7 +4519,7 @@ function showSessionDetail(idx, showAlt = false) {
           </div>
         </div>
         <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">📊 Referencias de intensidad</div>
+          <div style="font-size:11px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px"><i class="fas fa-chart-column"></i> Referencias de intensidad</div>
           <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
             <div style="display:flex;justify-content:space-between"><span>Frecuencia cardíaca</span><span style="color:var(--text-muted);font-weight:600">Z2 · 60-75% FCmáx</span></div>
             <div style="display:flex;justify-content:space-between"><span>Cadencia de zancada</span><span style="color:var(--text-muted);font-weight:600">170-180 ppm</span></div>
@@ -4524,13 +4527,13 @@ function showSessionDetail(idx, showAlt = false) {
           </div>
         </div>
         <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🧘 Estiramientos post-carrera — 5 min</div>
+          <div style="font-size:11px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px"><i class="fas fa-person"></i> Estiramientos post-carrera — 5 min</div>
           <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">Cuádriceps · Isquiotibiales · Gemelos · Psoas-ilíaco. Ayuda a reducir rigidez y acelerar la recuperación entre sesiones de bici.</div>
         </div>
       </div>`;
   } else if (sess.isWalking) {
     const color = '#10B981';
-    document.getElementById('modal-title').textContent = `🚶 ${sess.name || 'Caminata'}`;
+    document.getElementById('modal-title').textContent = sess.name || 'Caminata';
     document.getElementById('modal-content').innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
@@ -4543,11 +4546,11 @@ function showSessionDetail(idx, showAlt = false) {
       </div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🌿 Objetivo de la sesión</div>
+          <div style="font-size:11px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px"><i class="fas fa-leaf"></i> Objetivo de la sesión</div>
           <div style="font-size:13px;color:var(--text-secondary);line-height:1.6">Caminata de recuperación activa al aire libre. Ritmo tranquilo y constante, sin superar la zona 1. Ideal para activar la circulación, reducir rigidez muscular y favorecer la recuperación sin añadir estrés adicional.</div>
         </div>
         <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">📊 Referencias</div>
+          <div style="font-size:11px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px"><i class="fas fa-chart-column"></i> Referencias</div>
           <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
             <div style="display:flex;justify-content:space-between"><span>Intensidad</span><span style="color:var(--text-muted);font-weight:600">Z1 · &lt; 60% FCmáx</span></div>
             <div style="display:flex;justify-content:space-between"><span>Duración</span><span style="color:var(--text-muted);font-weight:600">${sess.durationMin || 40} min</span></div>
@@ -4555,13 +4558,13 @@ function showSessionDetail(idx, showAlt = false) {
           </div>
         </div>
         <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">💡 Consejo</div>
+          <div style="font-size:11px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px"><i class="fas fa-lightbulb"></i> Consejo</div>
           <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">Aprovecha para desconectar, escuchar un podcast o simplemente disfrutar del entorno. El descanso activo también entrena la mente.</div>
         </div>
       </div>`;
   } else if (sess.isOther) {
     const color = '#A78BFA';
-    document.getElementById('modal-title').textContent = `⚡ ${sess.name || 'Otro deporte'}`;
+    document.getElementById('modal-title').textContent = sess.name || 'Otro deporte';
     document.getElementById('modal-content').innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
@@ -4574,11 +4577,11 @@ function showSessionDetail(idx, showAlt = false) {
       </div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">⚡ Objetivo de la sesión</div>
+          <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px"><i class="fas fa-bolt"></i> Objetivo de la sesión</div>
           <div style="font-size:13px;color:var(--text-secondary);line-height:1.6">Sesión de otro deporte (escalada, karate, natación, padel…). El TSS estimado se contabiliza en tu carga semanal total. Adapta la intensidad y duración a tu nivel y al contexto de la semana de entrenamiento.</div>
         </div>
         <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">📊 Carga estimada</div>
+          <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px"><i class="fas fa-chart-column"></i> Carga estimada</div>
           <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text-secondary)">
             <div style="display:flex;justify-content:space-between"><span>TSS estimado</span><span style="color:var(--text-muted);font-weight:600">~${sess.tss || 40} pts</span></div>
             <div style="display:flex;justify-content:space-between"><span>Duración</span><span style="color:var(--text-muted);font-weight:600">${sess.durationMin || 60} min</span></div>
@@ -4720,10 +4723,10 @@ function showSessionDetail(idx, showAlt = false) {
             <div class="interval-title">${ivIdx + 1}. ${iv.label}</div>
             ${iv.desc ? `<div class="interval-desc">${iv.desc}</div>` : ''}
             <div class="interval-meta">
-              <span>⏱ ${iv.dur}</span>
-              ${iv.watts ? `<span>⚡ ${iv.watts}</span>` : ''}
-              ${_ivHR ? `<span style="color:${_ivZC};font-weight:600">❤ ${_ivHR.bpmMin}–${_ivHR.bpmMax} bpm <span style="font-size:10px">${_ivHR.zone}</span></span>` : ''}
-              ${iv.rpm ? `<span>🔄 ${iv.rpm}</span>` : ''}
+              <span><i class="fas fa-clock"></i> ${iv.dur}</span>
+              ${iv.watts ? `<span><i class="fas fa-bolt"></i> ${iv.watts}</span>` : ''}
+              ${_ivHR ? `<span style="color:${_ivZC};font-weight:600"><i class="fas fa-heart-pulse"></i> ${_ivHR.bpmMin}–${_ivHR.bpmMax} bpm <span style="font-size:10px">${_ivHR.zone}</span></span>` : ''}
+              ${iv.rpm ? `<span><i class="fas fa-rotate"></i> ${iv.rpm}</span>` : ''}
             </div>
           </div>`;
         }).join('')}
@@ -4745,7 +4748,7 @@ function showSessionDetail(idx, showAlt = false) {
           </div>
           ${_mwn.during ? `
           <div style="background:rgba(255,107,53,.05);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:12px">
-            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#FF6B35;margin-bottom:8px">🚴 Durante</div>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#FF6B35;margin-bottom:8px"><i class="fas fa-bicycle"></i> Durante</div>
             <div style="display:flex;gap:10px;margin-bottom:7px">
               <div style="text-align:center;background:rgba(255,107,53,.1);padding:7px 12px;border-radius:8px;flex:1">
                 <div style="font-size:17px;font-weight:700;color:#FF6B35">${_mwn.during.carbsPerHour}g</div>
@@ -4766,7 +4769,7 @@ function showSessionDetail(idx, showAlt = false) {
             <div style="font-size:12px;color:#00D4FF"><i class="fas fa-tint" style="margin-right:5px"></i>Solo agua — entreno &lt;1h. 500-700ml/hora.</div>
           </div>`}
           <div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:12px">
-            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#10b981;margin-bottom:8px">⚡ Post — ${_mwn.post.timing}</div>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#10b981;margin-bottom:8px"><i class="fas fa-bolt"></i> Post — ${_mwn.post.timing}</div>
             <div style="display:flex;gap:10px;margin-bottom:7px">
               <div style="text-align:center;background:rgba(16,185,129,.1);padding:7px 12px;border-radius:8px;flex:1">
                 <div style="font-size:17px;font-weight:700;color:#10b981">${_mwn.post.protein}g</div>
@@ -5060,7 +5063,7 @@ function addClimbEntry() {
     <input data-ci="${idx}" data-f="km_start" type="number" class="params-input ck" placeholder="Km inicio" style="font-size:11px" min="0" oninput="_climbField(this)">
     <input data-ci="${idx}" data-f="length_km" type="number" class="params-input cl" placeholder="Long. km" style="font-size:11px" min="0.5" step="0.5" oninput="_climbField(this)">
     <input data-ci="${idx}" data-f="elevation_m" type="number" class="params-input ce" placeholder="Desnivel m" style="font-size:11px" min="10" oninput="_climbField(this)">
-    <button type="button" class="cb" onclick="_removeClimb(${idx})" style="background:rgba(239,68,68,.15);border:none;border-radius:5px;padding:3px 6px;color:#ef4444;cursor:pointer;font-size:11px;height:26px">✕</button>`;
+    <button type="button" class="cb" onclick="_removeClimb(${idx})" style="background:rgba(239,68,68,.15);border:none;border-radius:5px;padding:3px 6px;color:#ef4444;cursor:pointer;font-size:11px;height:26px"><i class="fas fa-xmark"></i></button>`;
   list.appendChild(row);
 }
 
@@ -5091,7 +5094,7 @@ function _renderClimbs() {
       <input data-ci="${idx}" data-f="km_start" type="number" class="params-input ck" placeholder="Km inicio" style="font-size:11px" min="0" oninput="_climbField(this)" value="${c.km_start ?? ''}">
       <input data-ci="${idx}" data-f="length_km" type="number" class="params-input cl" placeholder="Long. km" style="font-size:11px" min="0.5" step="0.5" oninput="_climbField(this)" value="${c.length_km ?? ''}">
       <input data-ci="${idx}" data-f="elevation_m" type="number" class="params-input ce" placeholder="Desnivel m" style="font-size:11px" min="10" oninput="_climbField(this)" value="${c.elevation_m ?? ''}">
-      <button type="button" class="cb" onclick="_removeClimb(${idx})" style="background:rgba(239,68,68,.15);border:none;border-radius:5px;padding:3px 6px;color:#ef4444;cursor:pointer;font-size:11px;height:26px">✕</button>`;
+      <button type="button" class="cb" onclick="_removeClimb(${idx})" style="background:rgba(239,68,68,.15);border:none;border-radius:5px;padding:3px 6px;color:#ef4444;cursor:pointer;font-size:11px;height:26px"><i class="fas fa-xmark"></i></button>`;
     list.appendChild(row);
   });
 }
@@ -5122,7 +5125,7 @@ function _updateEventsSummary() {
   const days = Math.floor((new Date(aEvent.date + 'T00:00:00') - today) / 86400000);
   const dateFmt = new Date(aEvent.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
   const color = aEvent.priority === 'A' ? '#9ED62B' : '#FFC800';
-  el.innerHTML = `<span style="color:${color};font-weight:700">🏁 ${dateFmt}</span><span style="color:var(--text-muted)"> · en ${days}d</span>`;
+  el.innerHTML = `<span style="color:${color};font-weight:700"><i class="fas fa-flag-checkered"></i> ${dateFmt}</span><span style="color:var(--text-muted)"> · en ${days}d</span>`;
 }
 
 function setXtrDays(btn, fieldId, val) {
@@ -5165,15 +5168,15 @@ function renderAdjEventsList() {
           <div style="font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.name || 'Sin nombre'}</div>
           <div style="font-size:10px;color:var(--text-muted)">${dateFmt} · ${daysFmt}</div>
         </div>
-        <button onclick="editAdjEvent(${origIdx})" title="Editar" style="background:rgba(158,214,43,.10);border:1px solid rgba(158,214,43,.25);border-radius:6px;padding:2px 8px;color:var(--primary);font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">✏</button>
-        <button onclick="removeAdjEvent(${origIdx})" title="Eliminar" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:2px 8px;color:#ef4444;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">✕</button>
+        <button onclick="editAdjEvent(${origIdx})" title="Editar" style="background:rgba(158,214,43,.10);border:1px solid rgba(158,214,43,.25);border-radius:6px;padding:2px 8px;color:var(--primary);font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0"><i class="fas fa-pen"></i></button>
+        <button onclick="removeAdjEvent(${origIdx})" title="Eliminar" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:2px 8px;color:#ef4444;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0"><i class="fas fa-xmark"></i></button>
       </div>
       ${(ev.distance_km || ev.elevation_m || (ev.climbs?.length)) ? `<div style="font-size:10px;color:var(--text-muted);padding:2px 0 0 4px;display:flex;gap:10px;flex-wrap:wrap">
-        ${ev.distance_km ? `<span>📍 ${ev.distance_km} km</span>` : ''}
-        ${ev.elevation_m ? `<span>⛰️ ${ev.elevation_m} m</span>` : ''}
-        ${ev.start_time  ? `<span>🕗 ${ev.start_time}</span>` : ''}
-        ${ev.climbs?.length ? `<span>🏔️ ${ev.climbs.length} puerto${ev.climbs.length>1?'s':''}</span>` : ''}
-        ${ev.feed_zones_km?.length ? `<span>🍌 ${ev.feed_zones_km.length} avituall.</span>` : ''}
+        ${ev.distance_km ? `<span><i class="fas fa-location-dot"></i> ${ev.distance_km} km</span>` : ''}
+        ${ev.elevation_m ? `<span><i class="fas fa-mountain"></i> ${ev.elevation_m} m</span>` : ''}
+        ${ev.start_time  ? `<span><i class="fas fa-clock"></i> ${ev.start_time}</span>` : ''}
+        ${ev.climbs?.length ? `<span><i class="fas fa-mountain"></i> ${ev.climbs.length} puerto${ev.climbs.length>1?'s':''}</span>` : ''}
+        ${ev.feed_zones_km?.length ? `<span><i class="fas fa-droplet"></i> ${ev.feed_zones_km.length} avituall.</span>` : ''}
       </div>` : ''}`;
     }).join('');
 }
@@ -5602,21 +5605,21 @@ async function regeneratePlan() {
 
 function _regenerateReasonText(reason) {
   if (reason === 'exceeded_target') {
-    return '⚠️ Plan reajustado con tu TSS real: reducimos la carga restante';
+    return 'Plan reajustado con tu TSS real: reducimos la carga restante';
   }
   if (reason === 'missed_sessions') {
-    return '📊 Plan reajustado: redistribuimos las TSS pendientes';
+    return 'Plan reajustado: redistribuimos las TSS pendientes';
   }
   if (reason === 'significant_deviation') {
-    return '📈 Plan sincronizado con la desviación real de la semana';
+    return 'Plan sincronizado con la desviación real de la semana';
   }
   if (reason === 'fatigue_threshold') {
-    return '🛑 Plan suavizado por fatiga acumulada';
+    return 'Plan suavizado por fatiga acumulada';
   }
   if (reason === 'capacity_violation') {
-    return '🔧 Se han corregido sesiones que excedían sus límites de una regeneración anterior';
+    return 'Se han corregido sesiones que excedían sus límites de una regeneración anterior';
   }
-  return '✅ Plan sincronizado con tu progreso real';
+  return 'Plan sincronizado con tu progreso real';
 }
 
 function _buildBackendRecalcChanges(deltas = {}) {
@@ -5744,8 +5747,8 @@ async function applyAdjustments() {
   }
 
   const _msg = basisChanged
-    ? `✅ Plan recalculado — objetivo semanal: ${currentPlan?.targetTSS ?? '--'} TSS`
-    : '✅ Ajustes guardados — objetivo semanal se mantiene, días restantes actualizados';
+    ? `Plan recalculado — objetivo semanal: ${currentPlan?.targetTSS ?? '--'} TSS`
+    : 'Ajustes guardados — objetivo semanal se mantiene, días restantes actualizados';
   showToast(_msg, 'var(--accent-green)');
 }
 
@@ -5822,7 +5825,6 @@ function _renderNextWeekSummary() {
     + ' – ' + nextSunday.toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' });
 
   const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  const TYPE_ICON = { recovery:'😴', endurance:'🚴', long:'🏔️', tempo:'📈', threshold:'⚡', sweet_spot:'🎯', vo2max:'🔥', sprint:'💥', strength:'💪', gym:'🏋️', running:'🏃', walking:'🚶', other:'⚡' };
   const PHASE_LABEL = { base:'Base', build:'Build', peak:'Peak', recovery:'Recuperación', race:'Carrera' };
   const PHASE_COLOR = { base:'#00D4FF', build:'#FF6B35', peak:'#FFC800', recovery:'#00C882', race:'#EC4899' };
   const phaseLabel = PHASE_LABEL[nextPlan.phase] || nextPlan.phase || '';
@@ -5836,11 +5838,11 @@ function _renderNextWeekSummary() {
         <span class="nw-dtype" style="color:var(--text-muted)">—</span>
       </div>`;
     } else {
-      const icon = TYPE_ICON[s.type] || '🚴';
+      const icon = (WORKOUT_TYPES[s.type] || {}).icon || 'fa-bicycle';
       const name = (s.name || s.type || '').replace(/_/g,' ');
       daysHtml += `<div class="nw-day">
         <span class="nw-dname">${DAYS[i]}</span>
-        <span class="nw-icon">${icon}</span>
+        <span class="nw-icon"><i class="fas ${icon}"></i></span>
         <span class="nw-dtype">${name}</span>
         <span class="nw-tss">${s.tss || '--'} TSS</span>
         <span class="nw-dur">${s.durationMin || '--'} min</span>
@@ -6549,7 +6551,7 @@ function openPostEntrenoModal(sessIdx) {
     if (!planVal && !realVal) return '';
     return `
       <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid ${divider}">
-        <div style="width:22px;text-align:center;font-size:13px;flex-shrink:0;color:var(--text-muted)">${icon}</div>
+        <div style="width:22px;text-align:center;font-size:12px;flex-shrink:0;color:var(--text-muted)"><i class="fas ${icon}"></i></div>
         <div style="flex:1;font-size:12px;color:var(--text-secondary);font-weight:500">${label}</div>
         <div style="font-size:13px;color:var(--text-muted);min-width:56px;text-align:right">${planVal}${unit}</div>
         <div style="color:var(--text-muted);font-size:11px;padding:0 4px">→</div>
@@ -6595,10 +6597,10 @@ function openPostEntrenoModal(sessIdx) {
         <div style="padding:0 4px;font-size:11px;color:transparent">→</div>
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);min-width:56px">Real</div>
       </div>
-      ${tssP > 0  ? metricRow('⭐', 'TSS',       tssP,              tssA,              '',     tssColor) : ''}
-      ${durP > 0  ? metricRow('⏱', 'Duración',  durP + ' min',     durA + ' min',     '',     durColor) : ''}
-      ${ifP  > 0 && ifA > 0 ? metricRow('⚡', 'IF', ifP.toFixed(2), ifA.toFixed(2),   '',     ifColor)  : ''}
-      ${hrAvg > 0 ? metricRow('❤️', 'Pulsaciones', '—', hrAvg + ' <span style="font-size:11px;font-weight:500;opacity:0.8">media</span>' + (hrMax ? ' / ' + hrMax + ' <span style="font-size:11px;font-weight:500;opacity:0.8">pico máx</span>' : ''), ' bpm', '#64748b') : ''}
+      ${tssP > 0  ? metricRow('fa-star', 'TSS',       tssP,              tssA,              '',     tssColor) : ''}
+      ${durP > 0  ? metricRow('fa-clock', 'Duración',  durP + ' min',     durA + ' min',     '',     durColor) : ''}
+      ${ifP  > 0 && ifA > 0 ? metricRow('fa-bolt', 'IF', ifP.toFixed(2), ifA.toFixed(2),   '',     ifColor)  : ''}
+      ${hrAvg > 0 ? metricRow('fa-heart-pulse', 'Pulsaciones', '—', hrAvg + ' <span style="font-size:11px;font-weight:500;opacity:0.8">media</span>' + (hrMax ? ' / ' + hrMax + ' <span style="font-size:11px;font-weight:500;opacity:0.8">pico máx</span>' : ''), ' bpm', '#64748b') : ''}
     </div>
 
     <div class="post-modal-actions">
@@ -6737,14 +6739,14 @@ function adaptToRoller(idx) {
     : `75% del original para compensar el mayor esfuerzo térmico sin ventilación exterior`;
 
   const rollerTips = [
-    '💨 Usa ventilador para simular viento y enfriar.',
-    '🎵 Música motivadora para mantener el ritmo.',
-    '💧 Agua fría y electrolitos cada 15-20 min.',
-    '🏠 Ambiente fresco, evita calor excesivo.',
-    '📺 Película o serie para distracción.',
-    '⏰ Sesiones más intensas, menos tiempo total.',
-    '🔄 Mantén cadencia alta (90-100 rpm).',
-    '📊 Monitorea potencia, no velocidad.'
+    '<i class="fas fa-fan"></i> Usa ventilador para simular viento y enfriar.',
+    '<i class="fas fa-music"></i> Música motivadora para mantener el ritmo.',
+    '<i class="fas fa-droplet"></i> Agua fría y electrolitos cada 15-20 min.',
+    '<i class="fas fa-house"></i> Ambiente fresco, evita calor excesivo.',
+    '<i class="fas fa-tv"></i> Película o serie para distracción.',
+    '<i class="fas fa-clock"></i> Sesiones más intensas, menos tiempo total.',
+    '<i class="fas fa-rotate"></i> Mantén cadencia alta (90-100 rpm).',
+    '<i class="fas fa-chart-column"></i> Monitorea potencia, no velocidad.'
   ];
 
   // Usa los mismos intervalos de la sesión (igual que la vista normal)
@@ -6812,8 +6814,8 @@ function adaptToRoller(idx) {
           const _if = _ivIfFromWatts(iv.watts, iv.label);
           const _hr = _rollerLTHR ? Utils.hrTargetFromIF(_rollerLTHR, _if) : null;
           const _zc = _hr ? (_zoneColor[_hr.zone] || '#ef4444') : null;
-          const _hrHtml = _hr ? `<span style="color:${_zc};font-weight:700">❤ ${_hr.bpmMin}–${_hr.bpmMax} bpm <span style="font-size:10px;opacity:0.85">${_hr.zone}</span></span>` : '';
-          return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(99,102,241,.06);border-left:3px solid rgba(99,102,241,.5);border-radius:0 6px 6px 0"><span style="font-size:11px;font-weight:700;color:#818cf8;min-width:16px">${_i + 1}.</span><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${iv.label}</div><div style="display:flex;gap:10px;margin-top:2px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>⏱ ${iv.dur}</span>${iv.watts ? `<span>⚡ ${iv.watts}</span>` : ''}${iv.rpm ? `<span>🔄 ${iv.rpm}</span>` : ''}${_hrHtml}</div></div></div>`;
+          const _hrHtml = _hr ? `<span style="color:${_zc};font-weight:700"><i class="fas fa-heart-pulse"></i> ${_hr.bpmMin}–${_hr.bpmMax} bpm <span style="font-size:10px;opacity:0.85">${_hr.zone}</span></span>` : '';
+          return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(99,102,241,.06);border-left:3px solid rgba(99,102,241,.5);border-radius:0 6px 6px 0"><span style="font-size:11px;font-weight:700;color:#818cf8;min-width:16px">${_i + 1}.</span><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${iv.label}</div><div style="display:flex;gap:10px;margin-top:2px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span><i class="fas fa-clock"></i> ${iv.dur}</span>${iv.watts ? `<span><i class="fas fa-bolt"></i> ${iv.watts}</span>` : ''}${iv.rpm ? `<span><i class="fas fa-rotate"></i> ${iv.rpm}</span>` : ''}${_hrHtml}</div></div></div>`;
         }).join('')
       }</div>`
     : '';
@@ -7122,7 +7124,7 @@ function _rcAddClimb(dk) {
     <input data-dk="${dk}" data-ci="${ci}" data-f="km_start"    type="number" class="params-input" placeholder="Km inicio" style="width:72px;font-size:11px"  oninput="_rcField(this)">
     <input data-dk="${dk}" data-ci="${ci}" data-f="length_km"   type="number" class="params-input" placeholder="Long.km"   style="width:65px;font-size:11px"  oninput="_rcField(this)">
     <input data-dk="${dk}" data-ci="${ci}" data-f="elevation_m" type="number" class="params-input" placeholder="Desnivel m" style="width:78px;font-size:11px" oninput="_rcField(this)">
-    <button type="button" onclick="_rcRemoveClimb('${dk}',${ci})" style="background:rgba(239,68,68,.15);border:none;border-radius:5px;padding:3px 7px;color:#ef4444;cursor:pointer;font-size:11px">✕</button>`;
+    <button type="button" onclick="_rcRemoveClimb('${dk}',${ci})" style="background:rgba(239,68,68,.15);border:none;border-radius:5px;padding:3px 7px;color:#ef4444;cursor:pointer;font-size:11px"><i class="fas fa-xmark"></i></button>`;
   list.appendChild(row);
 }
 
@@ -7220,7 +7222,7 @@ function loadRaceProfileImage(input, sdk) {
     const wrap = document.getElementById(`rci-wrap-${sdk}`);
     if (wrap) wrap.innerHTML = `<div style="position:relative">
       <img src="${dataUrl}" style="width:100%;border-radius:10px;display:block;max-height:340px;object-fit:contain;background:rgba(0,0,0,.08);image-rendering:auto">
-      <button onclick="event.stopPropagation();clearRaceProfileImage('${sdk}')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:26px;height:26px;color:#fff;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">✕</button>
+      <button onclick="event.stopPropagation();clearRaceProfileImage('${sdk}')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:26px;height:26px;color:#fff;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center"><i class="fas fa-xmark"></i></button>
     </div>`;
 
     // Analizar con IA
@@ -7278,7 +7280,7 @@ function _raceClimbRowHtml(sdk, idx, c = {}) {
     <input type="text" placeholder="Nombre (opcional)" value="${(c.name||'').replace(/"/g,'&quot;')}" oninput="saveRaceForm('${sdk}')" style="${s}">
     <input type="number" placeholder="km" value="${c.length_km||''}" min="0.5" step="0.1" oninput="saveRaceForm('${sdk}')" style="${s};text-align:center">
     <input type="number" placeholder="%" value="${c.avg_grade||''}" min="1" max="30" step="0.1" oninput="saveRaceForm('${sdk}')" style="${s};text-align:center">
-    <button type="button" onclick="removeRaceClimb('${sdk}',this)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0;line-height:1;-webkit-tap-highlight-color:transparent">✕</button>
+    <button type="button" onclick="removeRaceClimb('${sdk}',this)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0;line-height:1;-webkit-tap-highlight-color:transparent"><i class="fas fa-xmark"></i></button>
   </div>`;
 }
 
@@ -7436,13 +7438,13 @@ function _renderRaceStrategy(text, rc, extraChips = []) {
 function _buildRaceAnalysisHtml(cp, rc) {
   const alertsHtml = `
     <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
-      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#F59E0B;margin-bottom:8px">⚠️ Señales de alerta</div>
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#F59E0B;margin-bottom:8px"><i class="fas fa-triangle-exclamation"></i> Señales de alerta</div>
       ${cp.alerts.map(a=>`<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#F59E0B;font-size:11px;flex-shrink:0;margin-top:2px">•</span><span style="font-size:12px;color:var(--text-muted);line-height:1.5">${a}</span></div>`).join('')}
     </div>`;
 
   const coachBriefingHtml = cp.coachBriefing ? `
     <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
-      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${rc};margin-bottom:8px">👨‍🏫 Briefing del entrenador</div>
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${rc};margin-bottom:8px"><i class="fas fa-chalkboard-user"></i> Briefing del entrenador</div>
       ${cp.coachBriefing.map(b=>`<div style="display:flex;gap:8px;margin-bottom:7px"><span style="color:${rc};font-size:11px;flex-shrink:0;margin-top:2px">•</span><span style="font-size:12px;color:var(--text-muted);line-height:1.45">${b}</span></div>`).join('')}
     </div>` : '';
 
@@ -7521,7 +7523,7 @@ async function viewPlanHistory() {
     const histHtml = history.map((h, idx) => `
       <div style="margin-bottom:16px;padding:12px;background:rgba(196,239,68,.05);border:1px solid rgba(196,239,68,.15);border-radius:8px">
         <div style="font-size:12px;font-weight:700;color:var(--accent-green);margin-bottom:6px">
-          ${idx === 0 ? '✓' : '⟳'} ${h.reason === 'initial_generation' ? 'Plan inicial' : 'Recalculado'} — ${formatDateShort(h.created_at)}
+          <i class="fas ${idx === 0 ? 'fa-check' : 'fa-rotate-right'}"></i> ${h.reason === 'initial_generation' ? 'Plan inicial' : 'Recalculado'} — ${formatDateShort(h.created_at)}
         </div>
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">
           TSS: ${h.tss_target_initial} → ${h.tss_target_recalc}
@@ -7533,7 +7535,7 @@ async function viewPlanHistory() {
 
     const modal = `
       <div style="padding:20px;max-height:500px;overflow-y:auto">
-        <h3 style="margin-bottom:16px;color:var(--accent-green)">📈 Histórico de cambios</h3>
+        <h3 style="margin-bottom:16px;color:var(--accent-green)"><i class="fas fa-chart-line"></i> Histórico de cambios</h3>
         ${histHtml}
       </div>
     `;
@@ -7580,7 +7582,7 @@ async function viewPlanAdaptations() {
             </div>
             ${a.approved_by_user !== null ? `
               <div style="font-size:9px;color:var(--text-muted);margin-top:4px">
-                ${a.approved_by_user ? '✓ Aprobado' : '✗ Rechazado'} por usuario
+                ${a.approved_by_user ? '<i class="fas fa-check"></i> Aprobado' : '<i class="fas fa-xmark"></i> Rechazado'} por usuario
               </div>
             ` : ''}
           </div>
@@ -7596,10 +7598,10 @@ async function viewPlanAdaptations() {
 
     const modal = `
       <div style="padding:20px;max-height:500px;overflow-y:auto">
-        <h3 style="margin-bottom:16px;color:#F59E0B">🔄 Adaptaciones realizadas</h3>
+        <h3 style="margin-bottom:16px;color:#F59E0B"><i class="fas fa-rotate"></i> Adaptaciones realizadas</h3>
         ${adaptHtml}
         <div style="margin-top:16px;padding:10px;background:rgba(158,214,43,.08);border-left:3px solid #9ED62B;border-radius:4px;font-size:10px;color:var(--text-muted)">
-          <strong style="color:#9ED62B">💡 Deshacer</strong> revierte la distribución de entrenamientos a la versión anterior. Usa esto si el cambio automático no te parece adecuado.
+          <strong style="color:#9ED62B"><i class="fas fa-lightbulb"></i> Deshacer</strong> revierte la distribución de entrenamientos a la versión anterior. Usa esto si el cambio automático no te parece adecuado.
         </div>
       </div>
     `;
@@ -7641,19 +7643,19 @@ async function revertAdaptation(adaptationId, weekStart) {
 }
 
 /**
- * Emoji para tipo de trigger
+ * Icono FA para tipo de trigger
  */
 function getTriggerEmoji(triggerType) {
-  const emojis = {
-    'activity_inserted': '➕',
-    'activity_modified': '✏️',
-    'manual_regenerate': '🔄',
-    'tss_exceeded': '⚠️',
-    'tss_missed': '📉',
-    'fatigue_threshold': '🛑',
-    'auto_recalculation': '📊',
+  const icons = {
+    'activity_inserted': 'fa-plus',
+    'activity_modified': 'fa-pen',
+    'manual_regenerate': 'fa-rotate',
+    'tss_exceeded': 'fa-triangle-exclamation',
+    'tss_missed': 'fa-arrow-trend-down',
+    'fatigue_threshold': 'fa-circle-stop',
+    'auto_recalculation': 'fa-chart-column',
   };
-  return emojis[triggerType] || '•';
+  return `<i class="fas ${icons[triggerType] || 'fa-circle'}"></i>`;
 }
 
 /**
@@ -7734,12 +7736,12 @@ async function viewWeeklyReport() {
 
     // Renderizar reporte
     const summaryColor = report.major_changes.length > 2 ? '#ef4444' : report.adaptations_count > 1 ? '#f59e0b' : '#10b981';
-    const summaryIcon = report.major_changes.length > 2 ? '⚠️' : report.adaptations_count > 1 ? '📊' : '✅';
+    const summaryIcon = report.major_changes.length > 2 ? 'fa-triangle-exclamation' : report.adaptations_count > 1 ? 'fa-chart-column' : 'fa-circle-check';
 
     const reportHtml = `
       <div style="padding:20px">
         <div style="padding:12px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;margin-bottom:16px">
-          <div style="font-size:12px;font-weight:700;color:#10b981;margin-bottom:6px">📈 Resumen de la semana</div>
+          <div style="font-size:12px;font-weight:700;color:#10b981;margin-bottom:6px"><i class="fas fa-chart-line"></i> Resumen de la semana</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:11px;color:var(--text-muted)">
             <div><strong style="color:var(--text-primary)">${report.total_activities}</strong> entrenamientos</div>
             <div><strong style="color:var(--text-primary)">${report.total_tss}</strong> TSS acumulado</div>
@@ -7749,7 +7751,7 @@ async function viewWeeklyReport() {
         </div>
 
         <div style="margin-bottom:16px">
-          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">🔄 Cambios realizados</div>
+          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px"><i class="fas fa-rotate"></i> Cambios realizados</div>
           ${report.adaptations_count === 0
             ? `<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:16px">Sin cambios automáticos esta semana</div>`
             : `
@@ -7772,7 +7774,7 @@ async function viewWeeklyReport() {
 
         ${report.major_changes.length > 0 ? `
           <div style="margin-bottom:16px">
-            <div style="font-size:12px;font-weight:700;color:#f59e0b;margin-bottom:8px">⚠️ Cambios significativos</div>
+            <div style="font-size:12px;font-weight:700;color:#f59e0b;margin-bottom:8px"><i class="fas fa-triangle-exclamation"></i> Cambios significativos</div>
             ${report.major_changes.slice(0, 3).map(c => `
               <div style="padding:8px;background:rgba(245,158,11,.08);border-radius:6px;margin-bottom:6px;font-size:10px;color:var(--text-muted)">
                 <strong style="color:#f59e0b">${c.trigger_type.replace(/_/g, ' ')}</strong> — TSS: ${c.tss_total_before} → ${c.tss_total_after}
@@ -7782,7 +7784,7 @@ async function viewWeeklyReport() {
         ` : ''}
 
         <div style="padding:10px;background:rgba(158,214,43,.08);border:1px solid rgba(158,214,43,.2);border-radius:8px">
-          <div style="font-size:11px;color:#9ED62B;font-weight:600">💡 Consejo del entrenador</div>
+          <div style="font-size:11px;color:#9ED62B;font-weight:600"><i class="fas fa-lightbulb"></i> Consejo del entrenador</div>
           <div style="font-size:10px;color:var(--text-muted);margin-top:4px">
             ${report.major_changes.length > 2
               ? 'Muchos cambios en la semana — tu carga real ha diferido significativamente del plan. Considera reducir el objetivo semanal próximas semanas.'
@@ -7794,7 +7796,7 @@ async function viewWeeklyReport() {
       </div>
     `;
 
-    showModal(reportHtml, '📊 Reporte semanal');
+    showModal(reportHtml, '<i class="fas fa-chart-column"></i> Reporte semanal');
   } catch (e) {
     console.error('Error loading weekly report:', e);
     showToast('Error cargando reporte', 'var(--error-color)');
