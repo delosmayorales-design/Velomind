@@ -6,6 +6,7 @@
   <title>CycloCoach Pro — Conectando...</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700&family=Inter:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <style>
     :root { --primary:#FF6B35; --bg:#0a0b0f; --bg-card:#13151c; --border:rgba(255,255,255,0.08); --text:#f0f2f5; --text-muted:#6b7280; }
     * { box-sizing:border-box; margin:0; padding:0; }
@@ -37,7 +38,7 @@
     document.getElementById('spinner').style.display = icon ? 'none' : 'block';
     const ic = document.getElementById('icon');
     ic.style.display = icon ? 'block' : 'none';
-    ic.textContent = icon || '';
+    ic.innerHTML = icon || '';
     document.getElementById('title').textContent = title;
     document.getElementById('desc').textContent = desc;
     document.getElementById('step').textContent = step || '';
@@ -56,11 +57,11 @@
     const scope = params.get('scope');
 
     if (error) {
-      setStatus('❌', 'Autorización cancelada', 'El acceso a Strava fue denegado.', '', 'Volver al login', 'login.html');
+      setStatus('<i class="fas fa-circle-xmark" style="color:#ef4444"></i>', 'Autorización cancelada', 'El acceso a Strava fue denegado.', '', 'Volver al login', 'login.html');
       return;
     }
     if (!code) {
-      setStatus('⚠️', 'Sin código de autorización', 'No se recibió el código. Intenta de nuevo.', '', 'Volver al login', 'login.html');
+      setStatus('<i class="fas fa-triangle-exclamation" style="color:#f59e0b"></i>', 'Sin código de autorización', 'No se recibió el código. Intenta de nuevo.', '', 'Volver al login', 'login.html');
       return;
     }
 
@@ -68,7 +69,7 @@
     if (!token) {
       // No hay sesión: guardar code y redirigir al login
       localStorage.setItem('pending_strava_code', code);
-      setStatus('⚠️', 'Sesión no encontrada', 'Inicia sesión primero y luego conecta Strava desde Integraciones.', '', 'Ir al login', 'login.html');
+      setStatus('<i class="fas fa-triangle-exclamation" style="color:#f59e0b"></i>', 'Sesión no encontrada', 'Inicia sesión primero y luego conecta Strava desde Integraciones.', '', 'Ir al login', 'login.html');
       return;
     }
 
@@ -96,13 +97,13 @@
       localStorage.setItem('velomind_strava_last_sync', Date.now().toString());
       localStorage.removeItem('pending_strava_code');
 
-      setStatus('✅', '¡Strava conectado!',
+      setStatus('<i class="fas fa-circle-check" style="color:#10b981"></i>', '¡Strava conectado!',
         `Se importaron ${count} actividad${count !== 1 ? 'es' : ''} correctamente.`,
         data.athlete?.name ? `Atleta: ${data.athlete.name}` : '',
         'Ver mi análisis →', 'analytics.html');
 
     } catch (e) {
-      setStatus('❌', 'Error al conectar', e.message || 'Algo salió mal. Intenta de nuevo.', '', 'Reintentar', 'integrations.html');
+      setStatus('<i class="fas fa-circle-xmark" style="color:#ef4444"></i>', 'Error al conectar', e.message || 'Algo salió mal. Intenta de nuevo.', '', 'Reintentar', 'integrations.html');
     }
   }
 

@@ -118,17 +118,17 @@
 <body>
 
 <div class="card">
-  <div class="logo">🚴 VeloMind</div>
+  <div class="logo"><i class="fas fa-bicycle"></i> VeloMind</div>
 
   <div id="state-ok" style="display:none">
-    <div class="icon">✅</div>
+    <div class="icon" style="color:#10b981"><i class="fas fa-circle-check"></i></div>
     <h1>¡Email confirmado!</h1>
     <p>Tu cuenta ya está verificada. Ya podés iniciar sesión normalmente.</p>
     <a href="login.html" class="btn"><i class="fas fa-arrow-right"></i> Ir al login</a>
   </div>
 
   <div id="state-error" style="display:none">
-    <div class="icon">⚠️</div>
+    <div class="icon" style="color:#f59e0b"><i class="fas fa-triangle-exclamation"></i></div>
     <h1 id="error-title">Enlace inválido</h1>
     <p id="error-desc">Este enlace no existe, ya fue utilizado o expiró.</p>
     <input type="email" class="form-input" id="resend-email" placeholder="Tu email">
