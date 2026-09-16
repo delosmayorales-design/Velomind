@@ -1490,17 +1490,17 @@
         <div id="trk-sensor-row">
           <div class="trk-s-stat" id="trk-s-hr-wrap" style="display:none">
             <div class="trk-s-val" id="trk-s-hr">--</div>
-            <div class="trk-s-lbl">❤️ bpm</div>
+            <div class="trk-s-lbl"><i class="fas fa-heart-pulse"></i> bpm</div>
           </div>
           <div class="trk-s-sep" id="trk-s-sep1" style="display:none"></div>
           <div class="trk-s-stat" id="trk-s-cad-wrap" style="display:none">
             <div class="trk-s-val" id="trk-s-cad">--</div>
-            <div class="trk-s-lbl">⚡ rpm</div>
+            <div class="trk-s-lbl"><i class="fas fa-rotate"></i> rpm</div>
           </div>
           <div class="trk-s-sep" id="trk-s-sep2" style="display:none"></div>
           <div class="trk-s-stat" id="trk-s-pow-wrap" style="display:none">
             <div class="trk-s-val" id="trk-s-pow">--</div>
-            <div class="trk-s-lbl">💪 W</div>
+            <div class="trk-s-lbl"><i class="fas fa-bolt"></i> W</div>
           </div>
         </div>
       </div>
@@ -1513,17 +1513,17 @@
         </div>
         <div class="ms-times">
           <div class="ms-t-opt">
-            <span class="ms-t-icon">🐢</span>
+            <span class="ms-t-icon"><i class="fas fa-gauge-simple"></i></span>
             <span class="ms-t-val" id="stat-t-slow">—</span>
             <span class="ms-t-lbl">tranquilo</span>
           </div>
           <div class="ms-t-opt ms-t-hi">
-            <span class="ms-t-icon">🚴</span>
+            <span class="ms-t-icon"><i class="fas fa-gauge"></i></span>
             <span class="ms-t-val" id="stat-t-mid">—</span>
             <span class="ms-t-lbl">medio</span>
           </div>
           <div class="ms-t-opt">
-            <span class="ms-t-icon">⚡</span>
+            <span class="ms-t-icon"><i class="fas fa-gauge-high"></i></span>
             <span class="ms-t-val" id="stat-t-fast">—</span>
             <span class="ms-t-lbl">rápido</span>
           </div>
@@ -1536,9 +1536,9 @@
       <!-- Toolbar dibujo (abajo del mapa) -->
       <div class="draw-toolbar" id="draw-toolbar">
         <div class="dt-types">
-          <button class="dt-btn dt-type active" id="dt-type-road"   onclick="setDrawType('road')"   title="Road — asfalto">🚴 Road</button>
+          <button class="dt-btn dt-type active" id="dt-type-road"   onclick="setDrawType('road')"   title="Road — asfalto"><i class="fas fa-bicycle"></i> Road</button>
           <button class="dt-btn dt-type"         id="dt-type-gravel" onclick="setDrawType('gravel')" title="Gravel — caminos"><i class="fas fa-mountain"></i> Gravel</button>
-          <button class="dt-btn dt-type"         id="dt-type-mtb"    onclick="setDrawType('mtb')"    title="MTB — montaña">🚵 MTB</button>
+          <button class="dt-btn dt-type"         id="dt-type-mtb"    onclick="setDrawType('mtb')"    title="MTB — montaña"><i class="fas fa-mountain"></i> MTB</button>
         </div>
         <div class="dt-sep-v"></div>
         <div class="dt-actions">
@@ -1657,7 +1657,7 @@
       <div style="font-size:14px;font-weight:700;color:var(--text-primary)" id="ranking-seg-name">Ranking</div>
       <div style="font-size:11px;color:var(--text-muted)" id="ranking-seg-meta"></div>
     </div>
-    <button onclick="closeRankingPanel()" style="background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text-muted);cursor:pointer;font-size:13px">✕</button>
+    <button onclick="closeRankingPanel()" style="background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text-muted);cursor:pointer;font-size:13px"><i class="fas fa-xmark"></i></button>
   </div>
   <div id="ranking-body" style="padding:12px 16px"></div>
 </div>
@@ -1670,9 +1670,9 @@
       <div class="modal-title"><i class="fas fa-save" style="color:var(--primary)"></i> Guardar ruta</div>
       <input  id="modal-name" class="modal-input" type="text" placeholder="Nombre de la ruta">
       <select id="modal-type" class="modal-select">
-        <option value="road">🚴 Road</option>
-        <option value="gravel">🪨 Gravel</option>
-        <option value="mtb">🏔️ MTB</option>
+        <option value="road">Road</option>
+        <option value="gravel">Gravel</option>
+        <option value="mtb">MTB</option>
       </select>
       <div class="modal-row">
         <button class="modal-btn modal-btn-cancel" onclick="closeSaveModal()">Cancelar</button>
@@ -1713,28 +1713,28 @@
 
     <!-- FC -->
     <div class="g-cell g-hr">
-      <div class="g-cell-lbl">❤️ Frec. cardíaca</div>
+      <div class="g-cell-lbl"><i class="fas fa-heart-pulse"></i> Frec. cardíaca</div>
       <div class="g-cell-val g-no-data" id="g-hr">--</div>
       <div class="g-cell-unit">bpm</div>
     </div>
 
     <!-- Potencia actual -->
     <div class="g-cell g-power">
-      <div class="g-cell-lbl">💪 Potencia</div>
+      <div class="g-cell-lbl"><i class="fas fa-bolt"></i> Potencia</div>
       <div class="g-cell-val g-no-data" id="g-power">--</div>
       <div class="g-cell-unit">W</div>
     </div>
 
     <!-- Cadencia -->
     <div class="g-cell g-cad">
-      <div class="g-cell-lbl">⚡ Cadencia</div>
+      <div class="g-cell-lbl"><i class="fas fa-rotate"></i> Cadencia</div>
       <div class="g-cell-val g-no-data" id="g-cad">--</div>
       <div class="g-cell-unit">rpm</div>
     </div>
 
     <!-- NP -->
     <div class="g-cell g-np">
-      <div class="g-cell-lbl">💪 NP (30s)</div>
+      <div class="g-cell-lbl"><i class="fas fa-bolt"></i> NP (30s)</div>
       <div class="g-cell-val g-no-data" id="g-np">--</div>
       <div class="g-cell-unit">W</div>
     </div>
@@ -1748,7 +1748,7 @@
 
     <!-- Altitud -->
     <div class="g-cell g-alt">
-      <div class="g-cell-lbl">⛰️ Altitud</div>
+      <div class="g-cell-lbl"><i class="fas fa-mountain"></i> Altitud</div>
       <div class="g-cell-val g-no-data" id="g-alt">--</div>
       <div class="g-cell-unit">m</div>
     </div>
@@ -1803,7 +1803,7 @@
 <div id="nav-warn-modal" style="display:none">
   <div class="modal-overlay">
     <div class="modal-box" style="width:300px;text-align:center">
-      <div style="font-size:36px;margin-bottom:10px">⚠️</div>
+      <div style="font-size:28px;margin-bottom:10px;color:#f59e0b"><i class="fas fa-triangle-exclamation"></i></div>
       <div class="modal-title" style="justify-content:center">Grabación activa</div>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px;line-height:1.6">
         Si salís de esta pantalla<br>se detendrá la grabación<br>y los sensores se desconectarán.
@@ -1826,7 +1826,7 @@
       <!-- Pulsómetro -->
       <div class="sensor-row">
         <div class="sensor-info">
-          <div class="sensor-icon">❤️</div>
+          <div class="sensor-icon"><i class="fas fa-heart-pulse"></i></div>
           <div>
             <div class="sensor-name">Pulsómetro</div>
             <div class="sensor-status" id="hr-status">Sin conectar</div>
@@ -1838,7 +1838,7 @@
       <!-- Sensor de cadencia -->
       <div class="sensor-row">
         <div class="sensor-info">
-          <div class="sensor-icon">⚡</div>
+          <div class="sensor-icon"><i class="fas fa-rotate"></i></div>
           <div>
             <div class="sensor-name">Cadencia</div>
             <div class="sensor-status" id="cad-status">Sin conectar</div>
@@ -1850,7 +1850,7 @@
       <!-- Potenciómetro -->
       <div class="sensor-row">
         <div class="sensor-info">
-          <div class="sensor-icon">💪</div>
+          <div class="sensor-icon"><i class="fas fa-bolt"></i></div>
           <div>
             <div class="sensor-name">Potenciómetro</div>
             <div class="sensor-status" id="pow-status">Sin conectar</div>
@@ -1862,7 +1862,7 @@
       <!-- Potencia virtual (sin medidor) -->
       <div class="sensor-row" id="vp-sensor-row">
         <div class="sensor-info">
-          <div class="sensor-icon">🧮</div>
+          <div class="sensor-icon"><i class="fas fa-calculator"></i></div>
           <div>
             <div class="sensor-name">Potencia virtual</div>
             <div class="sensor-status" id="vp-status">Estimada por velocidad GPS y peso</div>
@@ -1887,11 +1887,11 @@
       <div class="trk-summary" id="trk-modal-summary"></div>
       <input id="trk-modal-name" class="modal-input" type="text" placeholder="Nombre de la actividad">
       <select id="trk-modal-type" class="modal-select">
-        <option value="road">🚴 Road</option>
-        <option value="gravel">🪨 Gravel</option>
-        <option value="mtb">🏔️ MTB</option>
-        <option value="walking">🥾 Caminata</option>
-        <option value="running">🏃 Running</option>
+        <option value="road">Road</option>
+        <option value="gravel">Gravel</option>
+        <option value="mtb">MTB</option>
+        <option value="walking">Caminata</option>
+        <option value="running">Running</option>
       </select>
       <div class="modal-row">
         <button class="modal-btn modal-btn-cancel" onclick="discardTracking()">Descartar</button>
@@ -1910,19 +1910,19 @@
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;text-align:center;line-height:1.5">Elige el tipo de actividad y pulsa <strong>Iniciar</strong> cuando estés listo</p>
       <div class="trk-type-grid">
         <button class="trk-type-btn active" data-type="road" onclick="selectTrkType(this)">
-          <span class="trk-type-icon">🚴</span>Road
+          <span class="trk-type-icon"><i class="fas fa-bicycle"></i></span>Road
         </button>
         <button class="trk-type-btn" data-type="mtb" onclick="selectTrkType(this)">
-          <span class="trk-type-icon">🚵</span>MTB
+          <span class="trk-type-icon"><i class="fas fa-mountain"></i></span>MTB
         </button>
         <button class="trk-type-btn" data-type="gravel" onclick="selectTrkType(this)">
-          <span class="trk-type-icon">🪨</span>Gravel
+          <span class="trk-type-icon"><i class="fas fa-road"></i></span>Gravel
         </button>
         <button class="trk-type-btn" data-type="walking" onclick="selectTrkType(this)">
-          <span class="trk-type-icon">🥾</span>Caminata
+          <span class="trk-type-icon"><i class="fas fa-person-walking"></i></span>Caminata
         </button>
         <button class="trk-type-btn" data-type="running" onclick="selectTrkType(this)">
-          <span class="trk-type-icon">🏃</span>Running
+          <span class="trk-type-icon"><i class="fas fa-person-running"></i></span>Running
         </button>
       </div>
       <div class="modal-row" style="margin-top:20px">
@@ -1947,8 +1947,8 @@
 
       <!-- Selector de día -->
       <div style="display:flex;gap:6px;margin-bottom:12px">
-        <button class="wr-day-btn active" data-day="today" onclick="selectWindDay(this)">📅 Hoy</button>
-        <button class="wr-day-btn" data-day="tomorrow" onclick="selectWindDay(this)">📅 Mañana</button>
+        <button class="wr-day-btn active" data-day="today" onclick="selectWindDay(this)"><i class="fas fa-calendar-day"></i> Hoy</button>
+        <button class="wr-day-btn" data-day="tomorrow" onclick="selectWindDay(this)"><i class="fas fa-calendar-day"></i> Mañana</button>
       </div>
 
       <!-- Estado del viento -->
@@ -1964,9 +1964,9 @@
         <div style="flex:1">
           <label style="font-size:11px;color:var(--text-muted);font-weight:600;display:block;margin-bottom:5px">TIPO DE RUTA</label>
           <select id="wr-type" class="modal-select" style="margin-bottom:0">
-            <option value="road">🚴 Road</option>
-            <option value="gravel">🪨 Gravel</option>
-            <option value="mtb">🏔️ MTB</option>
+            <option value="road">Road</option>
+            <option value="gravel">Gravel</option>
+            <option value="mtb">MTB</option>
           </select>
         </div>
       </div>
@@ -1975,10 +1975,10 @@
         <label style="font-size:11px;color:var(--text-muted);font-weight:600;display:block;margin-bottom:5px">FORMA DE LA RUTA</label>
         <div style="display:flex;gap:6px">
           <button class="wr-shape-btn active" data-shape="out-back" onclick="selectShape(this)">
-            ↗↙ Ida y vuelta
+            <i class="fas fa-arrow-right-arrow-left"></i> Ida y vuelta
           </button>
           <button class="wr-shape-btn" data-shape="loop" onclick="selectShape(this)">
-            🔄 Circular
+            <i class="fas fa-rotate"></i> Circular
           </button>
         </div>
       </div>
@@ -2233,7 +2233,7 @@ async function loadStravaSegments() {
       }
 
       if (e.start_latlng?.length === 2) {
-        const prBadge = e.pr_rank === 1 ? '🥇 ' : e.pr_rank === 2 ? '🥈 ' : e.pr_rank === 3 ? '🥉 ' : '';
+        const prBadge = e.pr_rank && e.pr_rank <= 3 ? '<i class="fas fa-medal"></i> ' : '';
         const icon = L.divIcon({
           className: '',
           html: `<div style="background:${color};color:#fff;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.3);max-width:130px;overflow:hidden;text-overflow:ellipsis">${prBadge}${escHtml(e.name)}</div>`,
@@ -2268,19 +2268,19 @@ function formatSegTime(secs) {
 
 function segmentPopup(e, catLabel, distKm, grade, color) {
   const stravaUrl = `https://www.strava.com/segments/${e.segment_id}`;
-  const prLabel = e.pr_rank === 1 ? '<span style="background:#F59E0B;color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;margin-left:4px">PR 🥇</span>'
+  const prLabel = e.pr_rank === 1 ? '<span style="background:#F59E0B;color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;margin-left:4px">PR</span>'
                 : e.pr_rank === 2 ? '<span style="background:#94a3b8;color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;margin-left:4px">2º PR</span>'
                 : e.pr_rank === 3 ? '<span style="background:#b45309;color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;margin-left:4px">3º PR</span>' : '';
-  const komLabel = e.kom_rank === 1 ? '<span style="background:#FC4C02;color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;margin-left:4px">KOM 👑</span>' : '';
+  const komLabel = e.kom_rank === 1 ? '<span style="background:#FC4C02;color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;margin-left:4px"><i class="fas fa-crown"></i> KOM</span>' : '';
   return `<div style="min-width:170px;font-family:inherit">
     <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#111">${escHtml(e.name)}${prLabel}${komLabel}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-bottom:8px;font-size:11px;color:#444">
       <span><span style="background:${color};color:#fff;padding:1px 5px;border-radius:8px;font-size:9px;font-weight:700">${catLabel}</span></span>
-      <span>⏱ ${formatSegTime(e.elapsed_time)}</span>
-      <span>📏 ${distKm} km</span>
-      <span>📐 ${grade}</span>
-      ${e.avg_watts ? `<span>⚡ ${Math.round(e.avg_watts)} W</span>` : ''}
-      ${e.avg_hr    ? `<span>❤ ${Math.round(e.avg_hr)} bpm</span>` : ''}
+      <span><i class="fas fa-clock"></i> ${formatSegTime(e.elapsed_time)}</span>
+      <span><i class="fas fa-ruler"></i> ${distKm} km</span>
+      <span><i class="fas fa-angle-up"></i> ${grade}</span>
+      ${e.avg_watts ? `<span><i class="fas fa-bolt"></i> ${Math.round(e.avg_watts)} W</span>` : ''}
+      ${e.avg_hr    ? `<span><i class="fas fa-heart-pulse"></i> ${Math.round(e.avg_hr)} bpm</span>` : ''}
     </div>
     <div>
       <button onclick="openRankingPanel(${e.segment_id})"
@@ -2362,15 +2362,15 @@ async function openRankingPanel(segmentId) {
       ? `<div style="font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:10px">${data.entry_count.toLocaleString('es-ES')} atletas en total</div>`
       : '';
 
-    const medals = ['🥇','🥈','🥉'];
+    const medalColors = ['#F59E0B', '#94a3b8', '#b45309'];
     const rows = data.entries.map(e => {
-      const medal   = medals[e.rank - 1] || '';
+      const medal   = e.rank <= 3 ? `<i class="fas fa-medal" style="color:${medalColors[e.rank - 1]}"></i>` : '';
       const time    = formatSegTime(e.elapsed_time);
       const date    = e.start_date ? new Date(e.start_date).toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' }) : '';
       const photo   = e.athlete_photo && !e.athlete_photo.includes('avatar/athlete/large')
         ? `<img src="${e.athlete_photo}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">`
         : `<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#ff9a56);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">${(e.athlete_name||'?')[0].toUpperCase()}</div>`;
-      const watts   = e.avg_watts ? `<span style="font-size:10px;color:var(--text-muted);margin-left:6px">⚡${Math.round(e.avg_watts)}W</span>` : '';
+      const watts   = e.avg_watts ? `<span style="font-size:10px;color:var(--text-muted);margin-left:6px"><i class="fas fa-bolt"></i> ${Math.round(e.avg_watts)}W</span>` : '';
       const rankStyle = e.rank <= 3
         ? 'background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px;'
         : 'border-bottom:1px solid var(--border);';
@@ -3782,10 +3782,10 @@ async function showWindSuggestion() {
           Vuelve desde el <strong>${degToCompass((deg+180)%360)}</strong> con el viento a favor.
         </div>
         <div class="wind-note">${
-          spd < 15 ? '✅ Cualquier ruta es buena hoy.'
-        : spd < 30 ? '⚠️ Planifica el regreso para no llegar agotado.'
-        : spd < 50 ? '🔴 Ruta corta. Evita exposición lateral al viento.'
-        :             '⛔ Viento extremo — considera el rodillo hoy.'
+          spd < 15 ? '<i class="fas fa-circle-check"></i> Cualquier ruta es buena hoy.'
+        : spd < 30 ? '<i class="fas fa-triangle-exclamation"></i> Planifica el regreso para no llegar agotado.'
+        : spd < 50 ? '<i class="fas fa-triangle-exclamation"></i> Ruta corta. Evita exposición lateral al viento.'
+        :             '<i class="fas fa-ban"></i> Viento extremo — considera el rodillo hoy.'
         }</div>`;
 
       // ── Sección horaria ──────────────────────────────────────────
@@ -4480,7 +4480,7 @@ async function openWindRouteModal() {
 
   if (!navigator.geolocation && !window.getGeoPosition) {
     document.getElementById('wr-wind-status').innerHTML =
-      '<span style="color:#ff4757">⚠️ Geolocalización no disponible.</span>';
+      '<span style="color:#ff4757"><i class="fas fa-triangle-exclamation"></i> Geolocalización no disponible.</span>';
     return;
   }
   (window.getGeoPosition ? window.getGeoPosition() : new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej))).then(async pos => {
@@ -4518,7 +4518,7 @@ async function openWindRouteModal() {
     }
   }).catch(() => {
     document.getElementById('wr-wind-status').innerHTML =
-      '<span style="color:#ff4757">⚠️ Activa la ubicación para continuar.</span>';
+      '<span style="color:#ff4757"><i class="fas fa-triangle-exclamation"></i> Activa la ubicación para continuar.</span>';
   });
 }
 
@@ -4744,7 +4744,7 @@ async function _loadWd(lat, lng, name) {
     if (!windArrowsActive) toggleWindArrows();
   } catch {
     document.getElementById('wd-body').innerHTML =
-      `<div class="wd-placeholder"><div style="font-size:36px">⚠️</div><p style="font-size:12px">Error al cargar. Comprueba tu conexión.</p></div>`;
+      `<div class="wd-placeholder"><div style="font-size:28px;color:#f59e0b"><i class="fas fa-triangle-exclamation"></i></div><p style="font-size:12px">Error al cargar. Comprueba tu conexión.</p></div>`;
   }
 }
 
@@ -5705,8 +5705,8 @@ function _stopTracking() {
     <div class="trk-card"><div class="trk-card-val">${avgSpeed.toFixed(1)}</div><div class="trk-card-lbl">km/h media</div></div>
     <div class="trk-card"><div class="trk-card-val">${Math.round(_trkElevGain)}</div><div class="trk-card-lbl">D+ m</div></div>
   `;
-  if (_avgHrPrev)  summaryHTML += `<div class="trk-card"><div class="trk-card-val">${_avgHrPrev}</div><div class="trk-card-lbl">❤️ bpm media</div></div>`;
-  if (_avgPowPrev) summaryHTML += `<div class="trk-card"><div class="trk-card-val">${_avgPowPrev}W</div><div class="trk-card-lbl">💪 potencia media</div></div>`;
+  if (_avgHrPrev)  summaryHTML += `<div class="trk-card"><div class="trk-card-val">${_avgHrPrev}</div><div class="trk-card-lbl"><i class="fas fa-heart-pulse"></i> bpm media</div></div>`;
+  if (_avgPowPrev) summaryHTML += `<div class="trk-card"><div class="trk-card-val">${_avgPowPrev}W</div><div class="trk-card-lbl"><i class="fas fa-bolt"></i> potencia media</div></div>`;
   if (_npPrev)     summaryHTML += `<div class="trk-card"><div class="trk-card-val">${_npPrev}W</div><div class="trk-card-lbl">NP</div></div>`;
   document.getElementById('trk-modal-summary').innerHTML = summaryHTML;
 
