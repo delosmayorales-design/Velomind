@@ -302,7 +302,7 @@ const BiomechanicsUtils = (() => {
     if (high(hip_angle) && high(elbow_angle)) {
       explained.add('hip_angle'); explained.add('elbow_angle');
       adjustments.push({
-        priority: 1, icon: '↔️',
+        priority: 1, icon: 'fa-arrows-left-right',
         action: 'Adelanta el sillín 5–10 mm',
         reason: disc === 'mtb'
           ? 'Cadera abierta + codos bloqueados → sillín retrasado (KOPS negativo). Al mover el sillín, ambos ángulos se corrigen a la vez sin tocar el alcance.'
@@ -314,7 +314,7 @@ const BiomechanicsUtils = (() => {
     if (low(hip_angle) && low(elbow_angle)) {
       explained.add('hip_angle'); explained.add('elbow_angle');
       adjustments.push({
-        priority: 1, icon: '↔️',
+        priority: 1, icon: 'fa-arrows-left-right',
         action: disc === 'triatlon'
           ? 'Retrasa el sillín 5–10 mm e inclina la nariz hacia abajo'
           : 'Retrasa el sillín 5–10 mm',
@@ -326,7 +326,7 @@ const BiomechanicsUtils = (() => {
     if (high(knee_extension) && high(ankle_angle)) {
       explained.add('knee_extension'); explained.add('ankle_angle');
       adjustments.push({
-        priority: 1, icon: '⬇️',
+        priority: 1, icon: 'fa-arrow-down',
         action: 'Baja el sillín 5–8 mm',
         reason: disc === 'mtb'
           ? 'Rodilla sobreextendida + pedaleo de punta → sillín demasiado alto. También comprometes el control en bajadas técnicas.'
@@ -338,7 +338,7 @@ const BiomechanicsUtils = (() => {
     if (low(knee_extension) && low(ankle_angle)) {
       explained.add('knee_extension'); explained.add('ankle_angle');
       adjustments.push({
-        priority: 1, icon: '⬆️',
+        priority: 1, icon: 'fa-arrow-up',
         action: 'Sube el sillín 5–8 mm',
         reason: 'Rodilla muy flexionada + talón caído → sillín demasiado bajo. Riesgo de síndrome patelofemoral si no se corrige.',
       });
@@ -348,7 +348,7 @@ const BiomechanicsUtils = (() => {
     if (!explained.has('elbow_angle') && high(elbow_angle)) {
       explained.add('elbow_angle');
       adjustments.push({
-        priority: 2, icon: '📏',
+        priority: 2, icon: 'fa-ruler',
         action: disc === 'mtb'
           ? 'Acorta la potencia 1 talla o monta manillar con más rise'
           : 'Acorta la potencia 10 mm (o monta la potencia con ángulo positivo)',
@@ -365,7 +365,7 @@ const BiomechanicsUtils = (() => {
       explained.add('hip_angle');
       explained.add('shoulder_angle');
       adjustments.push({
-        priority: 2, icon: '↔️',
+        priority: 2, icon: 'fa-arrows-left-right',
         action: 'Adelanta el sillín 5–10 mm y reevalúa antes de cambiar la potencia',
         reason: 'Cadera abierta + hombros hundidos al mismo tiempo apuntan al sillín retrasado: el cuerpo se sienta erguido (cadera) pero los hombros compensan alcanzando el manillar. Ajusta el sillín primero — si persiste, entonces valora la potencia.',
       });
@@ -375,7 +375,7 @@ const BiomechanicsUtils = (() => {
     if (!explained.has('hip_angle') && high(hip_angle)) {
       explained.add('hip_angle');
       adjustments.push({
-        priority: 2, icon: '📏',
+        priority: 2, icon: 'fa-ruler',
         action: mode === 'aero'
           ? 'Baja el manillar o alarga la potencia 10 mm'
           : disc === 'mtb'
@@ -391,7 +391,7 @@ const BiomechanicsUtils = (() => {
     if (!explained.has('hip_angle') && low(hip_angle)) {
       explained.add('hip_angle');
       adjustments.push({
-        priority: 2, icon: '📏',
+        priority: 2, icon: 'fa-ruler',
         action: disc === 'triatlon'
           ? 'Inclina la nariz del sillín o retrocede los aero bars'
           : 'Sube el manillar (añade 1 espaciador) o acorta la potencia 10 mm',
@@ -406,7 +406,7 @@ const BiomechanicsUtils = (() => {
     if (!explained.has('knee_extension') && bad(knee_extension)) {
       adjustments.push({
         priority: 2,
-        icon: knee_extension.delta < 0 ? '⬆️' : '⬇️',
+        icon: knee_extension.delta < 0 ? 'fa-arrow-up' : 'fa-arrow-down',
         action: knee_extension.delta < 0
           ? 'Sube el sillín 2–5 mm'
           : disc === 'mtb' ? 'Baja el sillín 3–5 mm' : 'Baja el sillín 2–4 mm',
@@ -420,7 +420,7 @@ const BiomechanicsUtils = (() => {
 
     if (!explained.has('ankle_angle') && bad(ankle_angle)) {
       adjustments.push({
-        priority: 3, icon: '👟',
+        priority: 3, icon: 'fa-shoe-prints',
         action: ankle_angle.delta > 0
           ? 'Adelanta las calas 2–3 mm'
           : 'Revisa la posición de las calas (posiblemente demasiado adelantadas)',
@@ -434,7 +434,7 @@ const BiomechanicsUtils = (() => {
 
     if (!explained.has('elbow_angle') && bad(elbow_angle) && low(elbow_angle)) {
       adjustments.push({
-        priority: 3, icon: '📏',
+        priority: 3, icon: 'fa-ruler',
         action: 'Alarga la potencia 10 mm o retrasa el sillín',
         reason: 'Codos excesivamente flexionados → postura encogida que limita la respiración y la eficiencia.',
       });
@@ -443,7 +443,7 @@ const BiomechanicsUtils = (() => {
     if (bad(trunk_angle)) {
       adjustments.push({
         priority: trunk_angle.status === 'bad' ? 2 : 3,
-        icon: '🎯',
+        icon: 'fa-bullseye',
         action: trunk_angle.delta > 0
           ? mode === 'aero'
             ? 'Reduce 1–2 espaciadores o monta potencia de ángulo negativo'
@@ -471,7 +471,7 @@ const BiomechanicsUtils = (() => {
 
     if (shoulder_angle && bad(shoulder_angle) && !explained.has('shoulder_angle')) {
       adjustments.push({
-        priority: 3, icon: '🙆',
+        priority: 3, icon: 'fa-person',
         action: shoulder_angle.delta > 0
           ? disc === 'mtb'
             ? 'Relaja el agarre — deja que los codos absorban los impactos'

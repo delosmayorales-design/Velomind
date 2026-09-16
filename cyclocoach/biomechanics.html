@@ -791,9 +791,9 @@
                 <div class="video-spinner"></div>
                 <div id="videoStatusMsg" style="font-size:13px;color:#94a3b8;text-align:center">Subiendo video...</div>
                 <div class="video-steps" id="videoSteps">
-                  <div class="vstep" id="vstep1">📤 Subiendo video</div>
-                  <div class="vstep" id="vstep2">⚙️ Procesando fotogramas</div>
-                  <div class="vstep" id="vstep3">🧠 Analizando movimiento</div>
+                  <div class="vstep" id="vstep1"><i class="fas fa-upload"></i> Subiendo video</div>
+                  <div class="vstep" id="vstep2"><i class="fas fa-gear"></i> Procesando fotogramas</div>
+                  <div class="vstep" id="vstep3"><i class="fas fa-brain"></i> Analizando movimiento</div>
                 </div>
               </div>
 
@@ -821,7 +821,7 @@
       <!-- Ángulos articulares -->
       <div class="angles-section" id="anglesSection" style="display:none">
         <h3 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          📐 Ángulos Articulares
+          <i class="fas fa-ruler-combined"></i> Ángulos Articulares
           <span id="fitScoreBadge"></span>
           <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(se actualizan al mover los puntos)</span>
         </h3>
@@ -838,7 +838,7 @@
         <div class="card">
           <div class="card-header">
             <div class="card-title">
-              🎯 Veredicto del Bike Fitter
+              <i class="fas fa-bullseye"></i> Veredicto del Bike Fitter
               <span id="diagBadge" style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:8px"></span>
             </div>
           </div>
@@ -1052,7 +1052,7 @@
             <div style="margin-top:16px">
               <div class="measure-guide-box" style="padding:12px 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md)">
                 <div onclick="toggleGuide('guide-content-cleats','guide-icon-cleats')" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;">
-                  <span style="display:flex;align-items:center;gap:8px"><span>🦶</span> Posición de Calas <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(opcional)</span></span>
+                  <span style="display:flex;align-items:center;gap:8px"><span><i class="fas fa-shoe-prints"></i></span> Posición de Calas <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(opcional)</span></span>
                   <i id="guide-icon-cleats" class="fas fa-chevron-down" style="color:var(--text-muted);transition:transform .2s"></i>
                 </div>
                 <div id="guide-content-cleats" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
@@ -1519,10 +1519,10 @@ function showVideoResults(data) {
   const diag = data.expert_diagnosis   || {};
 
   const dynLabels = {
-    hip_stability:       '🍑 Estabilidad de Cadera',
-    knee_tracking:       '🦵 Seguimiento de Rodilla',
-    ankle_technique:     '🦶 Técnica de Tobillo',
-    pedaling_smoothness: '🔄 Suavidad del Pedaleo'
+    hip_stability:       '<i class="fas fa-arrows-left-right"></i> Estabilidad de Cadera',
+    knee_tracking:       '<i class="fas fa-shoe-prints"></i> Seguimiento de Rodilla',
+    ankle_technique:     '<i class="fas fa-shoe-prints"></i> Técnica de Tobillo',
+    pedaling_smoothness: '<i class="fas fa-rotate"></i> Suavidad del Pedaleo'
   };
 
   let html = '';
@@ -1553,12 +1553,12 @@ function showVideoResults(data) {
   }
 
   if (diag.red_flags?.length) {
-    html += `<div class="video-section-label" style="color:#f87171">⚠️ Alertas</div>`;
-    diag.red_flags.forEach(f => { html += `<div class="video-red-flag">⚡ ${f}</div>`; });
+    html += `<div class="video-section-label" style="color:#f87171"><i class="fas fa-triangle-exclamation"></i> Alertas</div>`;
+    diag.red_flags.forEach(f => { html += `<div class="video-red-flag"><i class="fas fa-bolt"></i> ${f}</div>`; });
   }
 
   if (diag.recommended_adjustments?.length) {
-    html += `<div class="video-section-label" style="color:#34d399">✅ Ajustes Recomendados</div>`;
+    html += `<div class="video-section-label" style="color:#34d399"><i class="fas fa-circle-check"></i> Ajustes Recomendados</div>`;
     diag.recommended_adjustments.forEach(adj => {
       const comp = (adj.component || '').replace(/_/g, ' ');
       html += `<div class="video-adj-item"><strong>${comp}</strong>: ${adj.action} — ${adj.reason}</div>`;
@@ -1678,7 +1678,7 @@ function updateAnglesGrid() {
     
     const st = status === 'ok' ? 'optimal' : (status === 'warning' ? 'warning' : 'bad');
     const barColor = { optimal:'var(--success)', warning:'var(--warning)', bad:'var(--danger)' }[st];
-    const stLabel = { optimal:'✓ Óptimo', warning:'⚠ Ajustar', bad:'✗ Corregir' }[st];
+    const stLabel = { optimal:'<i class="fas fa-check"></i> Óptimo', warning:'<i class="fas fa-triangle-exclamation"></i> Ajustar', bad:'<i class="fas fa-xmark"></i> Corregir' }[st];
     const pct = Math.min(100, Math.max(0, ((valDeg - ranges.min + 15) / (ranges.max - ranges.min + 30)) * 100));
 
     return `
@@ -1713,12 +1713,12 @@ function updateAnglesGrid() {
 
   const diagAdj = document.getElementById('diagAdj');
   if (verdict.verdict === 'optimal') {
-    diagAdj.innerHTML = `<div class="verdict-optimal"><span style="font-size:22px">✅</span> Posición perfecta — ningún ajuste necesario para ${disc === 'carretera' ? 'carretera' : disc === 'gravel' ? 'gravel' : disc === 'mtb' ? 'MTB' : 'triatlón/TT'} en modo ${obj}.</div>`;
+    diagAdj.innerHTML = `<div class="verdict-optimal"><span style="font-size:18px;color:#10b981"><i class="fas fa-circle-check"></i></span> Posición perfecta — ningún ajuste necesario para ${disc === 'carretera' ? 'carretera' : disc === 'gravel' ? 'gravel' : disc === 'mtb' ? 'MTB' : 'triatlón/TT'} en modo ${obj}.</div>`;
   } else {
     const items = verdict.adjustments.map(a => `
       <li class="verdict-item" data-prio="${a.priority}">
         <div class="verdict-body">
-          <div class="verdict-action"><span class="v-icon">${a.icon}</span> ${a.action}</div>
+          <div class="verdict-action"><span class="v-icon"><i class="fas ${a.icon}"></i></span> ${a.action}</div>
           <div class="verdict-reason">${a.reason}</div>
         </div>
       </li>`).join('');
@@ -2427,13 +2427,13 @@ function calcManual() {
   
   if (saddleH) {
     const diffH = saddleH - sh_lemond;
-    if (diffH < -5) consejos.push(`🚲 <strong>Sube el sillín:</strong> Lo llevas unos ${Math.abs(diffH)} mm bajo. Subirlo te dará más potencia y protegerá la parte frontal de tu rodilla.`);
-    else if (diffH > 5) consejos.push(`🚲 <strong>Baja el sillín:</strong> Lo llevas unos ${diffH} mm alto. Bájalo para evitar que la cadera balancee al pedalear y proteger la zona posterior de la rodilla.`);
+    if (diffH < -5) consejos.push(`<i class="fas fa-bicycle"></i> <strong>Sube el sillín:</strong> Lo llevas unos ${Math.abs(diffH)} mm bajo. Subirlo te dará más potencia y protegerá la parte frontal de tu rodilla.`);
+    else if (diffH > 5) consejos.push(`<i class="fas fa-bicycle"></i> <strong>Baja el sillín:</strong> Lo llevas unos ${diffH} mm alto. Bájalo para evitar que la cadera balancee al pedalear y proteger la zona posterior de la rodilla.`);
   } else faltanDatos = true;
   
   if (saddleSB && inseam) {
-    if (saddleSB < sbMin) consejos.push(`📏 <strong>Atrasa el sillín:</strong> Vas muy adelantado. Échalo para atrás unos ${sbMin - saddleSB} mm para equilibrar el peso y no sobrecargar tanto las manos.`);
-    else if (saddleSB > sbMax) consejos.push(`📏 <strong>Adelanta el sillín:</strong> Vas muy retrasado. Acércalo unos ${saddleSB - sbMax} mm para mejorar tu eficiencia de pedaleo.`);
+    if (saddleSB < sbMin) consejos.push(`<i class="fas fa-ruler"></i> <strong>Atrasa el sillín:</strong> Vas muy adelantado. Échalo para atrás unos ${sbMin - saddleSB} mm para equilibrar el peso y no sobrecargar tanto las manos.`);
+    else if (saddleSB > sbMax) consejos.push(`<i class="fas fa-ruler"></i> <strong>Adelanta el sillín:</strong> Vas muy retrasado. Acércalo unos ${saddleSB - sbMax} mm para mejorar tu eficiencia de pedaleo.`);
   } else faltanDatos = true;
   
   let actualReachMin = 0, actualReachMax = 0;
@@ -2441,8 +2441,8 @@ function calcManual() {
   else if (height)  { actualReachMin = Math.round(height * 0.43 * 10); actualReachMax = Math.round(height * 0.48 * 10); }
   
   if (reach && actualReachMin && actualReachMax) {
-    if (reach < actualReachMin - 10) consejos.push(`👐 <strong>Alarga el alcance:</strong> Vas un poco encogido. Necesitas estirarte unos ${actualReachMin - reach} mm (prueba con una potencia más larga).`);
-    else if (reach > actualReachMax + 10) consejos.push(`👐 <strong>Acorta el alcance:</strong> Vas demasiado estirado. Acércate unos ${reach - actualReachMax} mm para relajar los hombros, el cuello y las lumbares.`);
+    if (reach < actualReachMin - 10) consejos.push(`<i class="fas fa-arrows-left-right"></i> <strong>Alarga el alcance:</strong> Vas un poco encogido. Necesitas estirarte unos ${actualReachMin - reach} mm (prueba con una potencia más larga).`);
+    else if (reach > actualReachMax + 10) consejos.push(`<i class="fas fa-arrows-left-right"></i> <strong>Acorta el alcance:</strong> Vas demasiado estirado. Acércate unos ${reach - actualReachMax} mm para relajar los hombros, el cuello y las lumbares.`);
   } else faltanDatos = true;
 
   // ── Calas ────────────────────────────────────────────────
@@ -2464,10 +2464,10 @@ function calcManual() {
       const [_rMin, _rMax] = (CLEAT_R[_disc] || CLEAT_R.carretera)[_obj] || [-5, 5];
       if (_offset < _rMin) {
         const move = _rMin - _offset;
-        consejos.push(`👟 <strong>Adelanta la cala ${move} mm:</strong> La bola del pie está ${Math.abs(_offset)} mm por detrás del eje del pedal. Desliza la cala hacia la punta de la zapatilla.`);
+        consejos.push(`<i class="fas fa-shoe-prints"></i> <strong>Adelanta la cala ${move} mm:</strong> La bola del pie está ${Math.abs(_offset)} mm por detrás del eje del pedal. Desliza la cala hacia la punta de la zapatilla.`);
       } else if (_offset > _rMax) {
         const move = _offset - _rMax;
-        consejos.push(`👟 <strong>Retrasa la cala ${move} mm:</strong> La bola del pie está ${_offset} mm por delante del eje del pedal. Desliza la cala hacia el talón.`);
+        consejos.push(`<i class="fas fa-shoe-prints"></i> <strong>Retrasa la cala ${move} mm:</strong> La bola del pie está ${_offset} mm por delante del eje del pedal. Desliza la cala hacia el talón.`);
       }
     }
   }
@@ -2525,7 +2525,7 @@ function setTab(tab) {
 function updateAIDisciplineWarning() {
   const badge = document.getElementById('diagBadge');
   if (document.getElementById('diagSection').style.display !== 'none' && badge) {
-    badge.innerHTML = '<span style="color:var(--warning);font-weight:700">⚠ Disciplina cambiada. Los ajustes podrían variar.</span>';
+    badge.innerHTML = '<span style="color:var(--warning);font-weight:700"><i class="fas fa-triangle-exclamation"></i> Disciplina cambiada. Los ajustes podrían variar.</span>';
   }
 }
 
@@ -2806,7 +2806,7 @@ function renderSnapshots() {
     // Thumbnail
     const thumbHtml = s.canvas_thumbnail
       ? `<img src="${s.canvas_thumbnail}" alt="">`
-      : `<div class="snap-thumb-empty">📐</div>`;
+      : `<div class="snap-thumb-empty"><i class="fas fa-ruler-combined"></i></div>`;
 
     // Fit score calculado de los estados de los ángulos
     const angleVals = Object.values(s.angles || {}).filter(Boolean);
@@ -2951,7 +2951,7 @@ function _renderDetailModal(snap) {
   box.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
       <h3 style="margin:0;font-size:15px"><i class="fas fa-chart-line" style="color:var(--primary)"></i> ${dateStr}</h3>
-      <button onclick="closeDetailSnapshotModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1;padding:0">✕</button>
+      <button onclick="closeDetailSnapshotModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1;padding:0"><i class="fas fa-xmark"></i></button>
     </div>
     ${thumbHtml}
     ${metaLine ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">${metaLine}</div>` : ''}
@@ -3068,7 +3068,7 @@ function _buildSparklineChart(snapshots, currentId) {
   return `
     <div style="margin-top:18px;padding:12px 14px;background:var(--bg-input);border-radius:10px;border:1px solid var(--border)">
       <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">
-        📈 Evolución de ángulos
+        <i class="fas fa-chart-line"></i> Evolución de ángulos
       </div>
       <svg width="${W}" height="${H}" style="width:100%;max-width:${W}px;overflow:visible">
         ${paths}${dots}${xLabels}
