@@ -227,8 +227,8 @@
       </div>
       <!-- Tabs -->
       <div class="tab-row" style="max-width:420px; margin-bottom: 24px;">
-        <button class="tab-btn active" onclick="switchTab('general',this)">📊 Métricas</button>
-        <button class="tab-btn" onclick="switchTab('tips',this)">💡 Guía práctica</button>
+        <button class="tab-btn active" onclick="switchTab('general',this)"><i class="fas fa-chart-column"></i> Métricas</button>
+        <button class="tab-btn" onclick="switchTab('tips',this)"><i class="fas fa-lightbulb"></i> Guía práctica</button>
       </div>
 
       <!-- TAB: GENERAL -->
@@ -354,49 +354,49 @@
 
         <div class="grid-2 mb-6">
           <div class="card">
-            <div class="card-header"><div class="card-title">🏋️ Antes del entrenamiento</div></div>
+            <div class="card-header"><div class="card-title"><i class="fas fa-dumbbell"></i> Antes del entrenamiento</div></div>
             <div>
               <div class="meal-card">
                 <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:8px">3-4 horas antes</div>
                 <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px">Comida completa con carbohidratos complejos, proteína moderada, poca grasa.</p>
-                <div style="font-size:13px;color:var(--text-secondary)">✅ Arroz con pollo y verduras<br>✅ Pasta con atún<br>✅ Pan integral con huevos</div>
+                <div style="font-size:13px;color:var(--text-secondary)"><i class="fas fa-check" style="color:#10b981"></i> Arroz con pollo y verduras<br><i class="fas fa-check" style="color:#10b981"></i> Pasta con atún<br><i class="fas fa-check" style="color:#10b981"></i> Pan integral con huevos</div>
               </div>
               <div class="meal-card">
                 <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:8px">60-90 minutos antes</div>
                 <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px">Snack ligero de CH de fácil digestión.</p>
-                <div style="font-size:13px;color:var(--text-secondary)">✅ Plátano maduro<br>✅ Pan blanco con mermelada<br>✅ Barrita de cereales</div>
+                <div style="font-size:13px;color:var(--text-secondary)"><i class="fas fa-check" style="color:#10b981"></i> Plátano maduro<br><i class="fas fa-check" style="color:#10b981"></i> Pan blanco con mermelada<br><i class="fas fa-check" style="color:#10b981"></i> Barrita de cereales</div>
               </div>
             </div>
           </div>
           <div class="card">
-            <div class="card-header"><div class="card-title">🔋 Después del entrenamiento</div></div>
+            <div class="card-header"><div class="card-title"><i class="fas fa-battery-full"></i> Después del entrenamiento</div></div>
             <div>
               <div class="meal-card">
                 <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:8px">0-30 min (ventana anabólica)</div>
                 <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px">Proteína rápida + CH alto IG para recuperar glucógeno.</p>
-                <div style="font-size:13px;color:var(--text-secondary)">✅ Batido proteico con plátano<br>✅ Yogur griego con miel<br>✅ Leche con chocolate</div>
+                <div style="font-size:13px;color:var(--text-secondary)"><i class="fas fa-check" style="color:#10b981"></i> Batido proteico con plátano<br><i class="fas fa-check" style="color:#10b981"></i> Yogur griego con miel<br><i class="fas fa-check" style="color:#10b981"></i> Leche con chocolate</div>
               </div>
               <div class="meal-card">
                 <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Antes de dormir</div>
                 <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px">Proteína lenta para síntesis nocturna.</p>
-                <div style="font-size:13px;color:var(--text-secondary)">✅ Caseína (requesón)<br>✅ Yogur griego<br>✅ Nueces con leche</div>
+                <div style="font-size:13px;color:var(--text-secondary)"><i class="fas fa-check" style="color:#10b981"></i> Caseína (requesón)<br><i class="fas fa-check" style="color:#10b981"></i> Yogur griego<br><i class="fas fa-check" style="color:#10b981"></i> Nueces con leche</div>
               </div>
             </div>
           </div>
         </div>
         <div class="card mb-6">
-          <div class="card-header"><div class="card-title">🧠 Periodización Nutricional</div></div>
+          <div class="card-header"><div class="card-title"><i class="fas fa-brain"></i> Periodización Nutricional</div></div>
           <div id="nutr-period-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
             <div style="background:var(--bg-input);padding:16px;border-radius:var(--radius-md);border-left:3px solid var(--accent)">
-              <div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:8px">🏗️ Fase Base</div>
+              <div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:8px"><i class="fas fa-layer-group"></i> Fase Base</div>
               <div style="font-size:13px;color:var(--text-muted);line-height:1.6">CH moderados en días Z2. Fasted training para oxidación de grasas.<br><br><span style="color:var(--text-secondary)">CH: 4-5g/kg · Prot: 1.6g/kg</span></div>
             </div>
             <div style="background:var(--bg-input);padding:16px;border-radius:var(--radius-md);border-left:3px solid var(--primary)">
-              <div style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:8px">🔨 Fase Build</div>
+              <div style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:8px"><i class="fas fa-hammer"></i> Fase Build</div>
               <div style="font-size:13px;color:var(--text-muted);line-height:1.6">CH altos en días de intervalos. Glucógeno = combustible Z4-Z5.<br><br><span style="color:var(--text-secondary)">CH: 6-7g/kg · Prot: 1.8g/kg</span></div>
             </div>
             <div style="background:var(--bg-input);padding:16px;border-radius:var(--radius-md);border-left:3px solid var(--accent-green)">
-              <div style="font-size:14px;font-weight:700;color:var(--accent-green);margin-bottom:8px">🏆 Precompetición</div>
+              <div style="font-size:14px;font-weight:700;color:var(--accent-green);margin-bottom:8px"><i class="fas fa-trophy"></i> Precompetición</div>
               <div style="font-size:13px;color:var(--text-muted);line-height:1.6">Carga de CH 2-3 días antes. Máximo glucógeno.<br><br><span style="color:var(--text-secondary)">CH: 8-10g/kg · reduce grasas</span></div>
             </div>
           </div>
@@ -404,7 +404,7 @@
         
         <div class="card mb-6">
           <div class="card-header" style="flex-wrap:wrap;gap:10px">
-            <div class="card-title">💊 Suplementación Deportiva</div>
+            <div class="card-title"><i class="fas fa-pills"></i> Suplementación Deportiva</div>
             <button class="btn btn-secondary btn-sm" onclick="window.open('https://www.google.com/search?tbm=shop&q=caja+geles+barritas+ciclismo+oferta', '_blank')">
               <i class="fas fa-tags" style="color:var(--primary)"></i> Buscar ofertas en Geles
             </button>
@@ -413,7 +413,7 @@
         </div>
 
         <div class="card">
-          <div class="card-header"><div class="card-title">⚠️ Recomendaciones y Errores</div></div>
+          <div class="card-header"><div class="card-title"><i class="fas fa-triangle-exclamation"></i> Recomendaciones y Errores</div></div>
           <div id="nutrition-tips" class="mb-4" style="display:flex; flex-direction:column; gap:10px"></div>
           <div id="common-errors-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
         </div>
@@ -431,7 +431,7 @@
     <!-- Cabecera -->
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
       <div>
-        <h2 id="mm-title" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:19px;font-weight:700;margin-bottom:6px">🍽️ Menús del Día</h2>
+        <h2 id="mm-title" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:19px;font-weight:700;margin-bottom:6px">Menús del Día</h2>
         <div id="mm-macros" style="display:flex;gap:14px;flex-wrap:wrap"></div>
       </div>
       <button onclick="closeMenusModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;padding:4px;line-height:1"><i class="fas fa-times"></i></button>
@@ -633,7 +633,7 @@ function renderWeeklyGrid() {
             <div class="dd" style="color:${isToday ? '#C4EF44' : color}">${dayNum}</div>
           </div>
           <div style="width:1px;height:50px;background:${color}44"></div>
-          <div style="font-size:20px">${isRest ? '😴' : (sess.emoji || '🚴')}</div>
+          <div style="font-size:16px;color:${color}"><i class="fas ${isRest ? 'fa-bed' : ((typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]?.icon) || 'fa-bicycle')}"></i></div>
           <div class="session-content">
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:${color};margin-bottom:2px">
               ${isRest ? 'Descanso' : (sess.name || sess.type || 'Entrenamiento')}
@@ -734,10 +734,10 @@ function renderNutritionUI(n, athlete, isTraining) {
     const mins = capped > 1 ? startMin + Math.round(((endMin - startMin) / (capped - 1)) * i) : startMin;
     const hh = String(Math.floor(mins / 60)).padStart(2, '0');
     const mm = String(mins % 60).padStart(2, '0');
-    hydHTML += `<div class="water-unit filled" title="Vaso ${i+1} · 250ml · ${hh}:${mm}"><span class="w-icon">💧</span><span class="w-time">${hh}:${mm}</span></div>`;
+    hydHTML += `<div class="water-unit filled" title="Vaso ${i+1} · 250ml · ${hh}:${mm}"><span class="w-icon"><i class="fas fa-droplet"></i></span><span class="w-time">${hh}:${mm}</span></div>`;
   }
   document.getElementById('hydration-units').innerHTML = hydHTML;
-  document.getElementById('hydration-equiv').innerHTML = `🥤 ${glasses} vasos de 250ml<br>💧 ${Math.round(hydration_ml/500)} botellas de 500ml<br>🫙 ${(hydration_ml/1000).toFixed(1)} litros`;
+  document.getElementById('hydration-equiv').innerHTML = `<i class="fas fa-glass-water"></i> ${glasses} vasos de 250ml<br><i class="fas fa-droplet"></i> ${Math.round(hydration_ml/500)} botellas de 500ml<br><i class="fas fa-flask"></i> ${(hydration_ml/1000).toFixed(1)} litros`;
 
   renderTips(tips);
   renderSupplements(n.supplements);
@@ -826,7 +826,7 @@ async function savePlan() {
 
   localStorage.setItem('velomind_nutrition_plan', JSON.stringify({ ...planData, savedAt: Date.now() }));
 
-  let toastText  = '✅ Plan de nutrición guardado';
+  let toastText  = 'Plan de nutrición guardado';
   let toastColor = 'var(--accent-green)';
 
   try {
@@ -838,7 +838,7 @@ async function savePlan() {
     if (!r.ok) throw new Error((await r.json()).error || 'Error servidor');
   } catch(e) {
     console.error('[savePlan nutrición]', e.message);
-    toastText  = '⚠️ Guardado localmente (sin conexión)';
+    toastText  = 'Guardado localmente (sin conexión)';
     toastColor = '#FFC800';
   }
 
@@ -867,8 +867,8 @@ function renderCommonErrors() {
   if (!grid) return;
   grid.innerHTML = errors.map(e => `
     <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);border-left:3px solid var(--accent-red)">
-      <div style="color:var(--accent-red);font-size:12px;font-weight:700;margin-bottom:4px">❌ ${e.err}</div>
-      <div style="color:var(--accent-green);font-size:12px">✅ ${e.fix}</div>
+      <div style="color:var(--accent-red);font-size:12px;font-weight:700;margin-bottom:4px"><i class="fas fa-xmark"></i> ${e.err}</div>
+      <div style="color:var(--accent-green);font-size:12px"><i class="fas fa-check" style="color:#10b981"></i> ${e.fix}</div>
     </div>`).join('');
 }
 
@@ -948,7 +948,7 @@ function generateMenus() {
     result.style.display = 'block';
     savePrefsDraft();
   } catch(e) {
-    errorBox.textContent   = '⚠️ ' + e.message;
+    errorBox.textContent   = e.message;
     errorBox.style.display = 'block';
   } finally {
     spinner.style.display = 'none';
@@ -1001,7 +1001,7 @@ function renderTimingForDay(idx) {
     var tc = isLight ? '#374151' : 'var(--text-secondary)';
     var hc = isLight ? (_lightColors[color] || color) : color;
     return '<div style="background:' + color + '10;border-left:3px solid ' + color + ';border-radius:0 8px 8px 0;padding:11px 14px;margin-bottom:8px">' +
-      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + hc + ';margin-bottom:5px">' + icon + ' ' + title + '</div>' +
+      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + hc + ';margin-bottom:5px"><i class="fas ' + icon + '"></i> ' + title + '</div>' +
       lines.map(function(l){ return '<div class="tbl" style="font-size:13px;color:' + tc + ';line-height:1.6">' + l + '</div>'; }).join('') +
       '</div>';
   }
@@ -1011,23 +1011,23 @@ function renderTimingForDay(idx) {
   if (pre) {
     var pl = [pre.foods];
     if (pre.note) pl.push('<em style="color:var(--text-muted);font-size:12px">' + pre.note + '</em>');
-    html += tBlock('Pre-entrenamiento · ' + pre.timing, '#3B82F6', '🕐', pl);
+    html += tBlock('Pre-entrenamiento · ' + pre.timing, '#3B82F6', 'fa-clock', pl);
   }
   var dur = timing.duringWorkout;
   if (dur && dur.strategy !== 'Solo agua') {
     var dl = ['<strong>' + dur.strategy + '</strong>', dur.foods];
     if (dur.note) dl.push('<em style="color:var(--text-muted);font-size:12px">' + dur.note + '</em>');
-    html += tBlock('Durante la sesión', '#F59E0B', '🚴', dl);
+    html += tBlock('Durante la sesión', '#F59E0B', 'fa-bicycle', dl);
   } else if (dur) {
-    html += tBlock('Durante la sesión', '#6B7280', '💧', [dur.foods]);
+    html += tBlock('Durante la sesión', '#6B7280', 'fa-droplet', [dur.foods]);
   }
   var post = timing.postWorkout;
   if (post) {
     var pl2 = [post.foods_inmediatos];
     if (post.note) pl2.push('<em style="color:var(--text-muted);font-size:12px">' + post.note + '</em>');
-    html += tBlock('Post · ' + post.timing_inmediato, '#10B981', '🔋', pl2);
+    html += tBlock('Post · ' + post.timing_inmediato, '#10B981', 'fa-battery-full', pl2);
     if (post.timing_comida && post.foods_comida) {
-      html += tBlock('Comida de recuperación · ' + post.timing_comida, '#8B5CF6', '🍽️', [post.foods_comida]);
+      html += tBlock('Comida de recuperación · ' + post.timing_comida, '#8B5CF6', 'fa-utensils', [post.foods_comida]);
     }
   }
 
@@ -1051,34 +1051,34 @@ function renderTiming(timing) {
     var tc = isLight ? '#374151' : 'var(--text-secondary)';
     var hc = isLight ? (_lightColors[color] || color) : color;
     return '<div style="background:' + color + '12;border-left:3px solid ' + color + ';border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">' +
-      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + hc + ';margin-bottom:4px">' + icon + ' ' + title + '</div>' +
+      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:' + hc + ';margin-bottom:4px"><i class="fas ' + icon + '"></i> ' + title + '</div>' +
       lines.map(function(l) { return '<div class="tbl" style="font-size:12px;color:' + tc + ';line-height:1.5">' + l + '</div>'; }).join('') +
       '</div>';
   }
 
-  var html = '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px">⏰ Timing nutricional para hoy</div>';
+  var html = '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px"><i class="fas fa-clock"></i> Timing nutricional para hoy</div>';
 
   var pre = timing.preWorkout;
   if (pre) {
     var preLines = [pre.foods];
     if (pre.note) preLines.push('<em style="color:var(--text-muted)">' + pre.note + '</em>');
-    html += timingBlock('Pre-entrenamiento · ' + pre.timing, '#3B82F6', '🕐', preLines);
+    html += timingBlock('Pre-entrenamiento · ' + pre.timing, '#3B82F6', 'fa-clock', preLines);
   }
 
   var dur = timing.duringWorkout;
   if (dur && dur.strategy && dur.strategy !== 'Solo agua') {
     var durLines = ['<strong>' + dur.strategy + '</strong>', dur.foods];
     if (dur.note) durLines.push('<em style="color:var(--text-muted)">' + dur.note + '</em>');
-    html += timingBlock('Durante la sesión', '#F59E0B', '🚴', durLines);
+    html += timingBlock('Durante la sesión', '#F59E0B', 'fa-bicycle', durLines);
   }
 
   var post = timing.postWorkout;
   if (post) {
     var postLines = [post.foods_inmediatos];
     if (post.note) postLines.push('<em style="color:var(--text-muted)">' + post.note + '</em>');
-    html += timingBlock('Post · ' + post.timing_inmediato, '#10B981', '🔋', postLines);
+    html += timingBlock('Post · ' + post.timing_inmediato, '#10B981', 'fa-battery-full', postLines);
     if (post.timing_comida && post.foods_comida) {
-      html += timingBlock('Comida de recuperación · ' + post.timing_comida, '#8B5CF6', '🍽️', [post.foods_comida]);
+      html += timingBlock('Comida de recuperación · ' + post.timing_comida, '#8B5CF6', 'fa-utensils', [post.foods_comida]);
     }
   }
 
@@ -1101,10 +1101,10 @@ function renderMenus(menus) {
 
   cardsEl.innerHTML = menus.map((m, i) => `
     <div class="menu-card${i===0?' active':''}" id="mcard-${i}">
-      ${renderMealSection('☀️ Desayuno', m.meals.desayuno)}
-      ${renderMealSection('🥗 Comida',   m.meals.comida)}
-      ${renderMealSection('🌙 Cena',     m.meals.cena)}
-      ${m.meals.snacks?.length ? renderMealSection('🍎 Snacks', m.meals.snacks) : ''}
+      ${renderMealSection('<i class="fas fa-sun"></i> Desayuno', m.meals.desayuno)}
+      ${renderMealSection('<i class="fas fa-utensils"></i> Comida',   m.meals.comida)}
+      ${renderMealSection('<i class="fas fa-moon"></i> Cena',     m.meals.cena)}
+      ${m.meals.snacks?.length ? renderMealSection('<i class="fas fa-apple-whole"></i> Snacks', m.meals.snacks) : ''}
       <div class="menu-totals">
         ${menuPill(m.totals.calories, 'kcal',   '#FF6B35')}
         ${menuPill(m.totals.carbs,    'CH (g)',  '#00D4FF')}
@@ -1148,7 +1148,7 @@ function openMenusModal(idx) {
   sessDate.setDate(monday.getDate() + idx);
 
   document.getElementById('mm-title').textContent =
-    `🍽️ Menús del Día — ${days[idx]} ${sessDate.getDate()}`;
+    `Menús del Día — ${days[idx]} ${sessDate.getDate()}`;
 
   const adj = getAdjustedNutrition(idx);
   const mmMacros = document.getElementById('mm-macros');
@@ -1281,7 +1281,7 @@ async function toggleReminders() {
     _reminderTimers.forEach(clearTimeout);
     _reminderTimers.length = 0;
     updateReminderBtn(false);
-    showToast('🔕 Recordatorios desactivados', '#64748b');
+    showToast('Recordatorios desactivados', '#64748b');
     unsubscribeFromPush();
     return;
   }
@@ -1301,7 +1301,7 @@ async function toggleReminders() {
   updateReminderBtn(true);
   scheduleRemindersForToday();
   subscribeToPush();
-  showToast('🔔 Recordatorios activados — recibirás avisos de agua y comidas', '#00D4FF');
+  showToast('Recordatorios activados — recibirás avisos de agua y comidas', '#00D4FF');
 }
 
 async function showReminderNotification(title, body, tag) {
