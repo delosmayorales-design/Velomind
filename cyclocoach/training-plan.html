@@ -2968,7 +2968,7 @@ async function adaptSession(idx, dayOffset) {
   } catch(e) {
     console.error('[adaptSession]', e);
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-sparkles"></i> Adaptar';
+    btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Adaptar';
     result.innerHTML = `<div style="padding:4px 0;font-size:12px;color:#f87171"><i class="fas fa-exclamation-circle"></i> ${e.message}</div>`;
     result.style.display = '';
     showToast('' + e.message, '#f87171');
@@ -3024,7 +3024,7 @@ function resetAdapt(idx) {
   input.style.display  = '';
   btn.style.display    = '';
   btn.disabled         = false;
-  btn.innerHTML        = '<i class="fas fa-sparkles"></i> Adaptar';
+  btn.innerHTML        = '<i class="fas fa-wand-magic-sparkles"></i> Adaptar';
   result.style.display = 'none';
   input.focus();
 }

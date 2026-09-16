@@ -347,7 +347,7 @@
       <!-- Panel: ramp test guiado -->
       <div id="ftp-panel-ramp" style="display:none">
         <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
-          <div style="font-weight:700;font-size:14px;margin-bottom:12px">🚀 Test de Rampa — Protocolo (30 min totales)</div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="fas fa-rocket"></i> Test de Rampa — Protocolo (30 min totales)</div>
           <div style="font-size:13px;line-height:2;color:var(--text-secondary)">
             <div>① <b>10 min</b> calentamiento suave (Z1, cadencia alta ~90 rpm)</div>
             <div>② Empieza en <b>100 W</b> y sube <b>20 W cada minuto</b></div>
@@ -355,7 +355,7 @@
             <div>④ <b>5 min</b> vuelta a calma muy suave</div>
           </div>
           <div style="margin-top:12px;padding:10px;background:rgba(158,214,43,.08);border-radius:8px;font-size:12px;color:var(--text-muted)">
-            📐 <b>Cálculo:</b> FTP = potencia del último minuto × 0.75
+            <i class="fas fa-calculator"></i> <b>Cálculo:</b> FTP = potencia del último minuto × 0.75
           </div>
         </div>
         <div class="form-group">
@@ -410,47 +410,47 @@
       <label class="form-label" style="margin-bottom:9px">Objetivo principal</label>
       <div class="goal-grid">
         <div class="goal-opt selected" data-val="resistencia" onclick="selectGoal(this)">
-          <div class="goal-icon">🔵</div>
+          <div class="goal-icon"><i class="fas fa-bicycle"></i></div>
           <div class="goal-name">Resistencia</div>
           <div class="goal-desc">Fondos largos, Z2</div>
         </div>
         <div class="goal-opt" data-val="ftp" onclick="selectGoal(this)">
-          <div class="goal-icon">🟡</div>
+          <div class="goal-icon"><i class="fas fa-bullseye"></i></div>
           <div class="goal-name">Subir FTP</div>
           <div class="goal-desc">Umbral y sweetspot</div>
         </div>
         <div class="goal-opt" data-val="vo2max" onclick="selectGoal(this)">
-          <div class="goal-icon">🔴</div>
+          <div class="goal-icon"><i class="fas fa-fire"></i></div>
           <div class="goal-name">VO₂ Max</div>
           <div class="goal-desc">Alta intensidad</div>
         </div>
         <div class="goal-opt" data-val="sprint" onclick="selectGoal(this)">
-          <div class="goal-icon">🟣</div>
+          <div class="goal-icon"><i class="fas fa-bolt"></i></div>
           <div class="goal-name">Sprints</div>
           <div class="goal-desc">Potencia anaeróbica</div>
         </div>
         <div class="goal-opt" data-val="gran_fondo" onclick="selectGoal(this)">
-          <div class="goal-icon">💙</div>
+          <div class="goal-icon"><i class="fas fa-route"></i></div>
           <div class="goal-name">Gran Fondo</div>
           <div class="goal-desc">150+ km, Marmotte…</div>
         </div>
         <div class="goal-opt" data-val="carrera_corta" onclick="selectGoal(this)">
-          <div class="goal-icon">🏁</div>
+          <div class="goal-icon"><i class="fas fa-flag-checkered"></i></div>
           <div class="goal-name">Carrera &lt;2h</div>
           <div class="goal-desc">Criterium, XCO…</div>
         </div>
         <div class="goal-opt" data-val="carrera_larga" onclick="selectGoal(this)">
-          <div class="goal-icon">🚩</div>
+          <div class="goal-icon"><i class="fas fa-flag"></i></div>
           <div class="goal-name">Carrera &gt;2h</div>
           <div class="goal-desc">Ruta, maratón MTB…</div>
         </div>
         <div class="goal-opt" data-val="ultra" onclick="selectGoal(this)">
-          <div class="goal-icon">🏔️</div>
+          <div class="goal-icon"><i class="fas fa-mountain"></i></div>
           <div class="goal-name">Ultra</div>
           <div class="goal-desc">200km+, multi-etapa</div>
         </div>
         <div class="goal-opt" data-val="perdida_peso" onclick="selectGoal(this)">
-          <div class="goal-icon">⚖️</div>
+          <div class="goal-icon"><i class="fas fa-scale-balanced"></i></div>
           <div class="goal-name">Perder peso</div>
           <div class="goal-desc">Mejorar W/kg</div>
         </div>
@@ -498,12 +498,12 @@
     <div class="step-content" id="step-4">
       <div class="step-header">
         <div class="step-num">Paso 4 de 4</div>
-        <div class="step-title">¡Perfil listo! 🎉</div>
+        <div class="step-title">¡Perfil listo!</div>
         <div class="step-subtitle">Aquí tienes tu resumen. Puedes volver para editar cualquier dato.</div>
       </div>
       
       <div id="ai-insight-box" style="background:linear-gradient(135deg,rgba(158,214,43,0.08),rgba(56,189,248,0.04)); border:1px solid rgba(158,214,43,0.25); border-radius:12px; padding:16px; margin-bottom:20px; display:flex; gap:14px; align-items:flex-start;">
-        <div id="ai-insight-icon" style="font-size:24px; animation: pulse 1.5s infinite;">🧠</div>
+        <div id="ai-insight-icon" style="font-size:20px; animation: pulse 1.5s infinite;"><i class="fas fa-brain"></i></div>
         <div>
           <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">VeloMind AI</div>
           <div id="ai-insight-text" style="font-size:13px; color:var(--text-secondary); line-height:1.5;">Procesando tus datos...</div>
@@ -719,12 +719,12 @@ function renderSummary() {
   
   if (aiText && aiIcon) {
     aiIcon.style.animation = 'pulse 1.5s infinite';
-    aiIcon.innerHTML = '🧠';
+    aiIcon.innerHTML = '<i class="fas fa-brain"></i>';
     aiText.innerHTML = 'Analizando tu perfil y calculando proyecciones...';
-    
+
     setTimeout(() => {
       aiIcon.style.animation = 'none';
-      aiIcon.innerHTML = '✨';
+      aiIcon.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
       
       const hrs = data.weekly_hours || 8;
       const gName = goalNames[data.goal] || data.goal;
