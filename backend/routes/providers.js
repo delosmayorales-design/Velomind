@@ -4,6 +4,21 @@ const { requireAuth } = require('../middleware/auth');
 const { recalculatePMC } = require('../services/pmc');
 const { extractBestEfforts } = require('../services/powerCurve');
 const { recalculateCP } = require('../services/criticalPower');
+const { calcHRTSS } = require('../utils/training');
+
+// FC de reposo más reciente registrada (Garmin/Fitbit wellness), o null si no hay ninguna.
+// Se usa para el TSS basado en FC (Reserva Cardíaca) de actividades sin potenciómetro.
+async function getLatestRestingHR(uid) {
+  const { data } = await supabase
+    .from('wellness_log')
+    .select('resting_hr')
+    .eq('user_id', uid)
+    .not('resting_hr', 'is', null)
+    .order('date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.resting_hr || null;
+}
 
 const router  = express.Router();
 
@@ -301,6 +316,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
     }
 
     const ftp = Math.max(1, user.ftp || 200);
+    const restingHR = await getLatestRestingHR(uid);
 
     // OBTENER DETALLE para actividades con potenciómetro pero sin NP en el resumen.
     // Strava a veces omite `weighted_average_watts` en la lista.
@@ -412,9 +428,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
         tss = Math.round((duration * np * ifValue) / (ftp * 3600) * 100);
       } else if (a.average_heartrate > 0 && duration > 0) {
         const lthr = user.lthr || (user.max_hr ? Math.round(user.max_hr * 0.88) : 160);
-        const hrIF = a.average_heartrate / lthr;
-        ifValue = Math.round(hrIF * 100) / 100;
-        tss = Math.round((duration * a.average_heartrate * hrIF) / (lthr * 3600) * 100);
+        ({ tss, ifValue } = calcHRTSS(duration, a.average_heartrate, lthr, restingHR));
         finalNp = Math.round(ifValue * ftp);
       } else if (duration > 0) {
         // Sin FC ni potencia: IF estimado según tipo de actividad
@@ -794,7 +808,7 @@ function stravaToAppType(sportType) {
   return 'other';
 }
 
-function mapGarminActivity(a, uid, ftp, user) {
+function mapGarminActivity(a, uid, ftp, user, restingHR = null) {
   const id = a.summaryId || a.activityId || a.startTimeInSeconds || a.startTimeOffsetInSeconds;
   const startSec = Number(a.startTimeInSeconds || a.startTimeOffsetInSeconds || 0);
   // activeTimeInSeconds = tiempo en movimiento (excluye pausas); durationInSeconds
@@ -814,9 +828,7 @@ function mapGarminActivity(a, uid, ftp, user) {
     tss = Math.round((duration * np * ifValue) / (ftp * 3600) * 100);
   } else if (avgHr > 0 && duration > 0) {
     const lthr = user?.lthr || (user?.max_hr ? Math.round(user.max_hr * 0.88) : 160);
-    const hrIF = avgHr / lthr;
-    ifValue = Math.round(hrIF * 100) / 100;
-    tss = Math.round((duration * avgHr * hrIF) / (lthr * 3600) * 100);
+    ({ tss, ifValue } = calcHRTSS(duration, avgHr, lthr, restingHR));
   } else if (duration > 0) {
     ifValue = actType === 'strength' ? 0.55 : 0.65;
     tss = Math.round((duration * ifValue * ifValue) / 3600 * 100);
@@ -872,8 +884,9 @@ router.post('/garmin/sync', requireAuth, async (req, res) => {
     if (!r.ok) throw new Error(`Garmin activities HTTP ${r.status}: ${raw.substring(0, 200)}`);
     const acts = raw ? JSON.parse(raw) : [];
     const ftp = Math.max(1, user.ftp || 200);
+    const restingHR = await getLatestRestingHR(uid);
     const rows = (Array.isArray(acts) ? acts : [])
-      .map(a => mapGarminActivity(a, uid, ftp, user))
+      .map(a => mapGarminActivity(a, uid, ftp, user, restingHR))
       .filter(a => a.garmin_id && ['cycling', 'strength'].includes(a.type));
     let failed = 0;
     for (let i = 0; i < rows.length; i += 100) {

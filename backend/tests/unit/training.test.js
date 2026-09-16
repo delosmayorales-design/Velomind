@@ -1,4 +1,4 @@
-const { ZONES, calcIF, calcTSS, calcVI, getZone, getTSBStatus } = require('../../utils/training');
+const { ZONES, calcIF, calcTSS, calcVI, getZone, getTSBStatus, calcHRTSS } = require('../../utils/training');
 
 describe('calcIF', () => {
   test('calcula el IF redondeado a 2 decimales', () => {
@@ -58,6 +58,35 @@ describe('getZone', () => {
   });
   test('potencias muy por encima de Z6 caen en la última zona definida', () => {
     expect(getZone(1000, 100).id).toBe(ZONES[ZONES.length - 1].id);
+  });
+});
+
+describe('calcHRTSS', () => {
+  test('sin FC de reposo, usa %LTHR simple (comportamiento previo, sin regresión)', () => {
+    // avgHR=109, lthr=161 -> IF=0.677 -> mismo resultado que el cálculo antiguo avgHR/lthr
+    const { ifValue, tss } = calcHRTSS(4560, 109, 161);
+    expect(ifValue).toBeCloseTo(0.68, 1);
+    expect(tss).toBeGreaterThan(50);
+  });
+  test('con FC de reposo, usa Reserva Cardíaca (Karvonen) y da un IF/TSS menor para esfuerzos suaves', () => {
+    // Caso real reportado: MTB suave, avgHR=109, lthr=161, reposo=50
+    // %HRR = (109-50)/(161-50) = 0.53 -> bastante menor que %LTHR simple (0.68)
+    const conReposo = calcHRTSS(4560, 109, 161, 50);
+    const sinReposo = calcHRTSS(4560, 109, 161, null);
+    expect(conReposo.ifValue).toBeLessThan(sinReposo.ifValue);
+    expect(conReposo.tss).toBeLessThan(sinReposo.tss);
+  });
+  test('devuelve 0 si falta cualquier parámetro', () => {
+    expect(calcHRTSS(0, 109, 161).tss).toBe(0);
+    expect(calcHRTSS(3600, 0, 161).tss).toBe(0);
+    expect(calcHRTSS(3600, 109, 0).tss).toBe(0);
+  });
+  test('ignora una FC de reposo inválida (>=lthr o >=avgHR) y cae al %LTHR simple', () => {
+    const invalidoAlto = calcHRTSS(3600, 109, 161, 161);
+    const invalidoMayorQueAvg = calcHRTSS(3600, 109, 161, 120);
+    const sinReposo = calcHRTSS(3600, 109, 161, null);
+    expect(invalidoAlto).toEqual(sinReposo);
+    expect(invalidoMayorQueAvg).toEqual(sinReposo);
   });
 });
 

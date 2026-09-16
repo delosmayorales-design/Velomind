@@ -33,6 +33,22 @@ function getZone(power, ftp) {
   return ZONES.find(z => pct >= z.min && pct < z.max) || ZONES[ZONES.length - 1];
 }
 
+// TSS/IF a partir de FC cuando no hay potenciómetro.
+// Con FC de reposo real se usa Reserva Cardíaca (Karvonen): (avgHR-reposo)/(lthr-reposo).
+// Sin ella, %LTHR simple (avgHR/lthr) — pero ese método sobreestima la carga en
+// esfuerzos suaves porque no descuenta la FC basal: un pulso de 109lpm "pesa" mucho
+// menos si el reposo es 50 que si se asume reposo 0, y el error se eleva al cuadrado
+// en la fórmula de TSS.
+function calcHRTSS(durationSec, avgHR, lthr, restingHR = null) {
+  if (!avgHR || !lthr || !durationSec) return { tss: 0, ifValue: 0 };
+  const hrIF = (restingHR != null && restingHR > 0 && restingHR < lthr && avgHR > restingHR)
+    ? (avgHR - restingHR) / (lthr - restingHR)
+    : avgHR / lthr;
+  const ifValue = Math.round(hrIF * 100) / 100;
+  const tss = Math.round((durationSec * ifValue * ifValue) / 3600 * 100);
+  return { tss, ifValue };
+}
+
 function getTSBStatus(tsb) {
   if (tsb > 25)  return { label: 'Muy fresco',     color: '#3B82F6', risk: 'bajo',     advice: 'Puedes atacar una sesión exigente hoy.' };
   if (tsb > 5)   return { label: 'Fresco',          color: '#10B981', risk: 'bajo',     advice: 'Buen momento para entrenar con calidad.' };
@@ -42,4 +58,4 @@ function getTSBStatus(tsb) {
   return           { label: 'Sobreentrenado',        color: '#8B5CF6', risk: 'muy alto', advice: 'Para. Necesitas descanso activo varios días.' };
 }
 
-module.exports = { ZONES, calcIF, calcTSS, calcVI, getZone, getTSBStatus };
+module.exports = { ZONES, calcIF, calcTSS, calcVI, getZone, getTSBStatus, calcHRTSS };
