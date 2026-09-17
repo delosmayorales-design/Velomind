@@ -887,8 +887,7 @@ async function analyzeBiomechanicsWithAI(photos, rider, userPoints = {}) {
   // ── 4. Groq Vision ──
   if (hasGroq) {
     const groqVisionModels = [
-      'meta-llama/llama-4-scout-17b-16e-instruct',
-      'meta-llama/llama-4-maverick-17b-128e-instruct',
+      'qwen/qwen3.8-27b',
     ];
     for (const groqModel of groqVisionModels) {
       console.log(`[Bio] Intentando Groq Vision (${groqModel})...`);
@@ -1583,7 +1582,7 @@ Genera el análisis completo en formato JSON estrictamente válido.`;
 
     if (isGroq) {
       console.log('[AI] Usando payload reducido para Groq...');
-      finalModel = 'llama-3.1-70b-versatile';
+      finalModel = 'openai/gpt-oss-20b';
       const groqActs = activities.slice(0, 10).map(a => ({
         date: a.date, duration: Math.round((a.duration||0)/60) + 'min',
         distance: a.distance ? Math.round(a.distance/1000) + 'km' : null,
@@ -3227,9 +3226,9 @@ Usa ## para secciones, ### para nombres de puertos, - para listas, tablas markdo
       }
     }
 
-    // ── 4. Groq — igual que callAI: llama-3.1-8b-instant primero (menor rate limit) ──
+    // ── 4. Groq — igual que callAI: modelos vigentes en la cuenta ──
     if (!strategyText && hasGroq) {
-      const groqModels = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'];
+      const groqModels = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
       for (const model of groqModels) {
         try {
           const groqMaxOut = Math.min(MAX_OUT, 2500); // free tier: max 6000 TPM (prompt + salida)
@@ -3415,9 +3414,8 @@ Usa ## para secciones, ### para nombres de puertos, - para listas. No generes ta
     // ── 2. Groq ──
     if (!strategyText && hasGroq) {
       const groqModels = [
-        'llama-3.3-70b-versatile',
-        'llama-3.1-70b-versatile',
-        'mixtral-8x7b-32768',
+        'openai/gpt-oss-20b',
+        'openai/gpt-oss-120b',
       ];
       for (const model of groqModels) {
         try {
