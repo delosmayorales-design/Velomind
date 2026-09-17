@@ -79,16 +79,23 @@ async function callAI(systemPrompt, userMsg, options = {}) {
 
   // 4. Groq
   if (!result && groqKey.startsWith('gsk_')) {
-    try {
-      const model = options.groqModel || 'llama-3.1-8b-instant';
-      // Groq free tier tiene un límite estricto de 6000 Tokens Por Minuto (TPM) sumando prompt + max_tokens.
-      // Limitamos dinámicamente max_tokens a 2500 para evitar que el servidor devuelva error de Rate Limit.
-      const groqMaxTokens = Math.min(max_tokens, 2500);
-      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` }, body: JSON.stringify({ model, max_tokens: groqMaxTokens, temperature, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }], response_format }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error?.message || `Groq error ${r.status}`);
-      result = parseJSON(d.choices?.[0]?.message?.content);
-    } catch (e) { lastError = e.message; }
+    // Lista de modelos candidatos: si Groq deprecó/renombró alguno, probamos el siguiente
+    // en vez de fallar toda la petición (ver historial de decomisiones de modelos de Groq).
+    const groqModels = options.groqModel
+      ? [options.groqModel]
+      : ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'meta-llama/llama-4-scout-17b-16e-instruct'];
+    // Groq free tier tiene un límite estricto de 6000 Tokens Por Minuto (TPM) sumando prompt + max_tokens.
+    // Limitamos dinámicamente max_tokens a 2500 para evitar que el servidor devuelva error de Rate Limit.
+    const groqMaxTokens = Math.min(max_tokens, 2500);
+    for (const model of groqModels) {
+      try {
+        const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` }, body: JSON.stringify({ model, max_tokens: groqMaxTokens, temperature, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }], response_format }) });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error?.message || `Groq error ${r.status}`);
+        result = parseJSON(d.choices?.[0]?.message?.content);
+        break;
+      } catch (e) { lastError = e.message; }
+    }
   }
 
   if (!result) {
