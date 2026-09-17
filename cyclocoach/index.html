@@ -49,6 +49,8 @@
 
     /* LEFT PANEL */
     .left-panel{width:42%;background:linear-gradient(160deg,#070A0E,#05070a);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:48px;position:relative;overflow:hidden;flex-shrink:0;}
+    html[data-theme="light"] .left-panel{background:var(--bg-card);}
+    html[data-theme="light"] .logo{filter:brightness(0.88) saturate(1.12) drop-shadow(0 4px 14px rgba(0,0,0,0.12));}
     .left-panel::before{content:'';position:absolute;top:-120px;left:-120px;width:500px;height:500px;border-radius:50%;background:radial-gradient(ellipse,rgba(158,214,43,0.08),transparent 70%);pointer-events:none;}
     .left-panel::after{content:'';position:absolute;bottom:-80px;right:-80px;width:360px;height:360px;border-radius:50%;background:radial-gradient(ellipse,rgba(56,189,248,0.06),transparent 70%);pointer-events:none;}
     .logo{display:flex;align-items:center;gap:10px;margin-bottom:52px;position:relative;z-index:1;}
