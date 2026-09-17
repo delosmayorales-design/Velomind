@@ -83,7 +83,7 @@ async function callAI(systemPrompt, userMsg, options = {}) {
     // en vez de fallar toda la petición (ver historial de decomisiones de modelos de Groq).
     const groqModels = options.groqModel
       ? [options.groqModel]
-      : ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'meta-llama/llama-4-scout-17b-16e-instruct'];
+      : ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
     // Groq free tier tiene un límite estricto de 6000 Tokens Por Minuto (TPM) sumando prompt + max_tokens.
     // Limitamos dinámicamente max_tokens a 2500 para evitar que el servidor devuelva error de Rate Limit.
     const groqMaxTokens = Math.min(max_tokens, 2500);
