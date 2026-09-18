@@ -366,6 +366,7 @@
 var allActivities = [];
 let chartInsts = {};
 let trainingPlan   = null;
+const _planCache = {}; // week_start -> plan | null, evita refetch al reabrir la misma actividad
 let _stravaMapInst = null;
 window._polylineCache = {};
 let _currentStreamLatLng  = null;
@@ -585,6 +586,35 @@ async function initActivities() {
       if (local?.sessions) trainingPlan = local;
     } catch(_) {}
   }
+  if (trainingPlan?.week_start) _planCache[trainingPlan.week_start] = trainingPlan;
+}
+
+// Lunes (YYYY-MM-DD) de la semana a la que pertenece una fecha cualquiera.
+function mondayOf(dateStr) {
+  const d = new Date(String(dateStr).substring(0, 10) + 'T12:00:00');
+  if (isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() - (d.getDay() || 7) + 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// Plan de la semana exacta de una actividad — puede diferir del plan actual (trainingPlan)
+// si la actividad es de una semana pasada. Sin esto, generateCoachComment comparaba
+// actividades antiguas contra la sesion del dia-de-semana del plan ACTUAL, no la que
+// realmente tocaba esa fecha.
+async function getPlanForWeek(weekStart) {
+  if (!weekStart) return trainingPlan;
+  if (weekStart === trainingPlan?.week_start) return trainingPlan;
+  if (weekStart in _planCache) return _planCache[weekStart];
+  let plan = null;
+  try {
+    const r = await fetch(`${window.API_URL}/plans/training?week_start=${weekStart}`, { headers: Auth.getHeaders() });
+    if (r.ok) { const d = await r.json(); if (d?.sessions) plan = d; }
+  } catch(_) {}
+  _planCache[weekStart] = plan;
+  return plan;
 }
 
 function renderAthleteSidebar() {
@@ -899,7 +929,7 @@ async function saveManualActivity() {
   }
 }
 
-function generateCoachComment(act, pmcSnap, allActs) {
+function generateCoachComment(act, pmcSnap, allActs, plan) {
   const ftp    = AppState.athlete?.ftp || 200;
   const tss    = act.tss || 0;
   const ifVal  = act.if_value || (act.np && ftp ? +(act.np / ftp).toFixed(2) : null);
@@ -916,8 +946,8 @@ function generateCoachComment(act, pmcSnap, allActs) {
   // ── Buscar sesión planificada para el día de la actividad ─────
   const _actDate   = String(act.date || '').substring(0, 10);
   const actDOW     = _actDate ? (new Date(_actDate + 'T12:00:00').getDay() + 6) % 7 : 0; // 0=Lun … 6=Dom
-  const planSess   = trainingPlan?.sessions?.[actDOW] || null;
-  const weekTSS    = trainingPlan?.tss_target || trainingPlan?.targetTSS || 400;
+  const planSess   = plan?.sessions?.[actDOW] || null;
+  const weekTSS    = plan?.tss_target || plan?.targetTSS || 400;
   const plannedTSS = planSess && !planSess.isRest
     ? (Number.isFinite(planSess.tss) ? planSess.tss : Math.round((planSess.tssShare || 0) * weekTSS))
     : null;
@@ -986,7 +1016,7 @@ function generateCoachComment(act, pmcSnap, allActs) {
         if (tssDiff > 20 && tsb !== null) {
           parts.push(`Con esta carga extra, si mañana hay sesión dura considera bajar la intensidad un escalón o añadir recuperación activa para no llegar saturado.`);
         } else if (tssDiff < -20) {
-          const nextDays = (trainingPlan?.sessions || [])
+          const nextDays = (plan?.sessions || [])
             .slice(actDOW + 1)
             .filter(s => !s.isRest)
             .map(s => s.name || s.type);
@@ -1069,7 +1099,7 @@ function generateCoachComment(act, pmcSnap, allActs) {
   return parts.slice(0, 3).join(' ') || null;
 }
 
-function showActivityDetail(actId) {
+async function showActivityDetail(actId) {
   const act = allActivities.find(a => String(a.id) === String(actId));
   if (!act) return;
   _currentActivity = act;
@@ -1115,7 +1145,10 @@ function showActivityDetail(actId) {
   const idStr = String(act.id || '');
   const sid = act.strava_id || (idStr.startsWith('strava_') ? idStr.replace('strava_', '') : null);
   let coachComment = null;
-  try { coachComment = generateCoachComment(act, pmcSnap, allActivities); } catch(_) {}
+  try {
+    const actPlan = await getPlanForWeek(mondayOf(act.date));
+    coachComment = generateCoachComment(act, pmcSnap, allActivities, actPlan);
+  } catch(_) {}
 
   try { document.getElementById('panel-content').innerHTML = `
     <!-- CABECERA -->

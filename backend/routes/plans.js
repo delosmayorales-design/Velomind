@@ -11,13 +11,20 @@ const SERVER_ERROR = 'Error del servidor. Inténtalo de nuevo.';
 // ── Training Plan ───────────────────────────────────────────────
 
 router.get('/training', async (req, res) => {
-  const { data, error } = await supabase
+  const { week_start } = req.query;
+  let query = supabase
     .from('training_plans')
     .select('*')
-    .eq('user_id', req.user.id)
-    .order('week_start', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq('user_id', req.user.id);
+
+  // Sin week_start: comportamiento historico, devuelve el plan de la semana mas reciente.
+  // Con week_start: devuelve el plan exacto de esa semana (para comparar actividades pasadas
+  // contra la sesion que realmente tenian programada ese dia, no la de la semana actual).
+  query = week_start
+    ? query.eq('week_start', week_start)
+    : query.order('week_start', { ascending: false });
+
+  const { data, error } = await query.limit(1).maybeSingle();
   if (error) { console.error('[plans/training GET]', error.message); return res.status(500).json({ error: SERVER_ERROR }); }
   res.json(data || null);
 });
