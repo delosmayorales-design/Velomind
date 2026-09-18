@@ -919,7 +919,8 @@ function generateCoachComment(act, pmcSnap, allActs) {
   const planSess   = trainingPlan?.sessions?.[actDOW] || null;
   const weekTSS    = trainingPlan?.tss_target || trainingPlan?.targetTSS || 400;
   const plannedTSS = planSess && !planSess.isRest
-    ? Math.round((planSess.tssShare || 0) * weekTSS) : null;
+    ? (Number.isFinite(planSess.tss) ? planSess.tss : Math.round((planSess.tssShare || 0) * weekTSS))
+    : null;
   const plannedIF  = planSess?.ifTarget || null;
   const plannedW   = planSess?.targetWatts || (plannedIF ? Math.round(ftp * plannedIF) : null);
   const plannedDur = planSess?.durationMin || (plannedTSS && plannedIF
