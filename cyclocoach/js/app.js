@@ -2517,6 +2517,29 @@ const TrainingPlanGenerator = {
     return { tss: hours * ifReal * ifReal * 100, ifReal, durSec: trace.length };
   },
 
+  // Respaldo por nombre de sesión para cuando un plan ya guardado (generado antes de
+  // que existiera `_cadenceSpec`, o reconstruido por un endpoint que no lo propaga)
+  // necesita recuperar qué estructura de cadencia prometía su `name` original. Debe
+  // mantenerse en sync con los `_cadenceSpec` declarados junto a cada plantilla en
+  // `_getTemplate`/`_getRaceWeekTemplate` — ver [[project-plan-engine-audit]].
+  CADENCE_SPEC_BY_NAME: {
+    'Z2 con fuerza a baja cadencia':      { mode: 'forceBlocks', blockMin: 8,  lowRpm: '60-65' },
+    'Z2 largo con fuerza baja cadencia':  { mode: 'forceBlocks', blockMin: 10, lowRpm: '55-65', reps: 3 },
+    'Z2 largo con fuerza integrada':      { mode: 'forceBlocks', blockMin: 8,  lowRpm: '60',    reps: 5 },
+    'Z2 + bloques de resistencia muscular': { mode: 'forceBlocks', blockMin: 8, lowRpm: '60-65', reps: 4 },
+    'Z2 con variaciones de cadencia':      { mode: 'altCadence', blockMin: 5, lowRpm: '70', highRpm: '95' },
+    'Z2 largo con variaciones de cadencia':{ mode: 'altCadence', blockMin: 5, lowRpm: '70', highRpm: '95' },
+    'Z2 en subidas — fuerza aeróbica':     { mode: 'altCadence', blockMin: 5, lowRpm: '70', highRpm: '90', terrain: 'climb' },
+    'Z2 con cadencia alta':                { mode: 'rpmOverride', rpm: '90-95' },
+    'Z2 largo con cadencia alta':          { mode: 'rpmOverride', rpm: '90-95' },
+  },
+
+  /** cadenceSpec efectivo de una sesión ya guardada: el suyo propio si lo tiene, si no
+   *  el de respaldo por nombre (plan generado antes de que existiera el campo). */
+  _resolveCadenceSpec(sess) {
+    return (sess && sess._cadenceSpec) || (sess && this.CADENCE_SPEC_BY_NAME[sess.name]) || null;
+  },
+
   /** Genera estructura de intervalos detallada */
   _buildIntervals(type, ftp, durMin, tss, ifTarget, variant = 'main', cadenceSpec = null) {
     const pct = (ratio) => Math.round(ftp * ratio);
