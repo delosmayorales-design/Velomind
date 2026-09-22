@@ -4191,7 +4191,8 @@ async function recalculateWeek(idx, isFuture = false) {
     await savePlan();
     renderPlan(currentPlan, AppState.athlete);
   } catch(e) {
-    btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Recalcular resto de la semana';
+    btn.disabled = false;
+    btn.innerHTML = isFuture ? '<i class="fas fa-wand-magic-sparkles" style="font-size:10px"></i> Adaptar' : '<i class="fas fa-sync-alt"></i> Recalcular resto de la semana';
     result.innerHTML = `<span style="color:#ff4757"><i class="fas fa-exclamation-triangle"></i> ${e.message}</span>`; result.style.display = '';
   }
 }

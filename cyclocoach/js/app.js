@@ -816,7 +816,10 @@ const TrainingPlanGenerator = {
         ? ` ⛰️ Terreno ideal: subida o tramo de ${mins} min — sweetspot sostenido, respiración elevada pero rítmica.`
         : ` ⛰️ Terreno ideal: ${seg.name} (${seg.km} km / ${seg.grad}%) — sweetspot sostenido, respiración elevada pero rítmica.`;
     } else if (['endurance', 'recovery', 'long'].includes(type)) {
-      t = ` 🛣️ Terreno ideal: Terreno lo más llano y continuo posible para mantener los vatios estables.`;
+      const hasClimbBlocks = (intervals || []).some(iv => /subida/i.test(iv.label));
+      t = hasClimbBlocks
+        ? ` ⛰️ Terreno ideal: recorrido con subidas largas y suaves donde puedas alternar cadencia sin cortar el pedaleo.`
+        : ` 🛣️ Terreno ideal: Terreno lo más llano y continuo posible para mantener los vatios estables.`;
     }
     return t.trim();
   },
@@ -1216,7 +1219,7 @@ const TrainingPlanGenerator = {
       {
         let _bestDur = durMin, _bestDiff = Infinity;
         for (let _cal = 0; _cal < 8; _cal++) {
-          const _testIvs = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, intervalVariant);
+          const _testIvs = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, intervalVariant, t._cadenceSpec);
           const _real = this._realTSS(_testIvs, ftp);
           if (!_real || _real.tss <= 0) break;
           const _diff = Math.abs(_real.tss - sessTSS);
@@ -1232,9 +1235,9 @@ const TrainingPlanGenerator = {
       }
 
       // Generar intervalos: variante activa según semana del ciclo, alternando cada semana
-      const intervals     = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, intervalVariant);
+      const intervals     = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, intervalVariant, t._cadenceSpec);
       const altVariant    = intervalVariant === 'main' ? 'alt' : 'main';
-      const alt_intervals = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, altVariant);
+      const alt_intervals = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, altVariant, t._cadenceSpec);
 
       // Construir descripción dinámica que coincida exactamente con los intervalos
       let dynamicDesc = this._buildDesc(intervals);
@@ -1571,7 +1574,7 @@ const TrainingPlanGenerator = {
           // Semana 1: volumen aeróbico puro
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso activo — movilidad de cadera, foam roller' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 con cadencia alta', description: 'Construye eficiencia aeróbica manteniendo 90-95 rpm sin forzar vatios.', tssShare: 0.15, ifTarget: 0.65, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 con cadencia alta', description: 'Construye eficiencia aeróbica manteniendo 90-95 rpm sin forzar vatios.', tssShare: 0.15, ifTarget: 0.65, emoji: '🔵', _cadenceSpec: { mode: 'rpmOverride', rpm: '90-95' } },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa Z1', description: 'Activa la circulación sin acumular fatiga. Muy suave.', tssShare: 0.07, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'tempo',    name: 'Tempo progresivo Z3', description: 'Eleva tu ritmo base gradualmente. Respiración elevada pero rítmica.', tssShare: 0.17, ifTarget: 0.75, emoji: '🟢' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso — prepara el fin de semana de volumen' },
@@ -1601,7 +1604,7 @@ const TrainingPlanGenerator = {
           // Semana 4: fuerza de base + sweetspot introductorio
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso activo — movilidad de cadera y core' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 con fuerza a baja cadencia', description: 'Bloques de 8 min a 60-65 rpm en llano para desarrollar torque aeróbico sin estrés cardiovascular alto.', tssShare: 0.22, ifTarget: 0.68, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 con fuerza a baja cadencia', description: 'Bloques de 8 min a 60-65 rpm en llano para desarrollar torque aeróbico sin estrés cardiovascular alto.', tssShare: 0.22, ifTarget: 0.68, emoji: '🔵', _cadenceSpec: { mode: 'forceBlocks', blockMin: 8, lowRpm: '60-65' } },
             { day: 'Miércoles',isRest: true,  description: 'Descanso completo — descarga de mitad de semana' },
             { day: 'Jueves',   type: 'tempo',    name: 'Sweetspot a baja cadencia', description: 'Bloques de 10 min al 88-93% FTP con cadencia 65-70 rpm. Construye fuerza muscular específica en zona aeróbica superior, sin cruzar el umbral anaeróbico.', tssShare: 0.22, ifTarget: 0.79, emoji: '🟢' },
             { day: 'Viernes',  type: 'recovery',  name: 'Recuperación activa Z1', description: 'Pedaleo muy suave. Prepara el cuerpo para la jornada larga del sábado.', tssShare: 0.08, ifTarget: 0.50, emoji: '😴' },
@@ -1927,7 +1930,7 @@ const TrainingPlanGenerator = {
             { day: 'Lunes',    isRest: true,  description: 'Descanso total. Sprints introductores el martes.' },
             { day: 'Martes',   type: 'sprint',   name: 'Sprints cortos — activación neuromuscular', description: 'Seis sprints de 6-8 s desde velocidad baja. Activa las fibras rápidas con recuperación completa de 8 min.', tssShare: 0.17, ifTarget: 0.80, emoji: '🟣' },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa Z1', description: 'Pedaleo muy suave. El sistema nervioso necesita recuperación completa.', tssShare: 0.07, ifTarget: 0.50, emoji: '😴' },
-            { day: 'Jueves',   type: 'endurance', name: 'Z2 largo con cadencia alta', description: 'Base aeróbica larga en Z2. Cadencia 90-95 rpm para mantener la eficiencia sin carga neuromuscular.', tssShare: 0.22, ifTarget: 0.65, emoji: '🔵' },
+            { day: 'Jueves',   type: 'endurance', name: 'Z2 largo con cadencia alta', description: 'Base aeróbica larga en Z2. Cadencia 90-95 rpm para mantener la eficiencia sin carga neuromuscular.', tssShare: 0.22, ifTarget: 0.65, emoji: '🔵', _cadenceSpec: { mode: 'rpmOverride', rpm: '90-95' } },
             { day: 'Viernes',  isRest: true,  description: 'Descanso activo — movilidad y estiramientos de piernas' },
             { day: 'Sábado',   type: 'vo2max',   name: 'VO₂ Max — motor aeróbico de los sprints', description: 'Series de 3 min al 110% FTP. El VO₂ mejora la recuperación entre sprints en competición.', tssShare: 0.22, ifTarget: 0.87, emoji: '🔴' },
             { day: 'Domingo',  type: 'long',    name: 'Fondón Z2 largo de base', description: 'Fondón aeróbico puro. Los sprinters también necesitan motor de fondo para aguantar una carrera.', tssShare: 0.32, ifTarget: 0.63, emoji: '💙' },
@@ -2003,7 +2006,7 @@ const TrainingPlanGenerator = {
           // Semana 1: volumen aeróbico + tempo
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso activo — movilidad de caderas y core' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 con cadencia alta', description: 'Eficiencia metabólica estricta. 90-95 rpm en Z2 puro.', tssShare: 0.14, ifTarget: 0.65, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 con cadencia alta', description: 'Eficiencia metabólica estricta. 90-95 rpm en Z2 puro.', tssShare: 0.14, ifTarget: 0.65, emoji: '🔵', _cadenceSpec: { mode: 'rpmOverride', rpm: '90-95' } },
             { day: 'Miércoles',type: 'tempo',     name: 'Tempo con subidón final', description: 'Rodada Z3 que construye fatiga útil de cara al fin de semana.', tssShare: 0.17, ifTarget: 0.75, emoji: '🟢' },
             { day: 'Jueves',   type: 'recovery',  name: 'Recuperación activa', description: 'Suéltate sin estresar el sistema cardiopulmonar.', tssShare: 0.07, ifTarget: 0.52, emoji: '😴' },
             { day: 'Viernes',  type: 'endurance', name: 'Z2 largo — práctica nutricional', description: 'Practica metódicamente la ingesta de carbohidratos en bici. Cada 20-30 min.', tssShare: 0.17, ifTarget: 0.65, emoji: '🔵' },
@@ -2013,7 +2016,7 @@ const TrainingPlanGenerator = {
           // Semana 2: subidas + resistencia muscular
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso — el fondón de ayer necesita recuperación' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 con variaciones de cadencia', description: 'Alterna bloques de 5 min a 70 rpm y 5 min a 95 rpm. Trabaja la eficiencia en diferentes cadencias.', tssShare: 0.14, ifTarget: 0.65, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 con variaciones de cadencia', description: 'Alterna bloques de 5 min a 70 rpm y 5 min a 95 rpm. Trabaja la eficiencia en diferentes cadencias.', tssShare: 0.14, ifTarget: 0.65, emoji: '🔵', _cadenceSpec: { mode: 'altCadence', blockMin: 5, lowRpm: '70', highRpm: '95' } },
             { day: 'Miércoles',type: 'tempo',     name: 'Tempo en subidas largas', description: 'Trabaja las subidas al ritmo tempo. Prepara los puertos del gran fondo.', tssShare: 0.18, ifTarget: 0.76, emoji: '🟢' },
             { day: 'Jueves',   type: 'recovery',  name: 'Recuperación activa', description: 'Rodaje muy suave. Prepara el viernes activo.', tssShare: 0.07, ifTarget: 0.50, emoji: '😴' },
             { day: 'Viernes',  type: 'threshold', name: 'Umbral suave — resistencia de puerto', description: 'Series suaves de umbral que preparan para sostener potencia en los puertos largos.', tssShare: 0.16, ifTarget: 0.82, emoji: '🟡' },
@@ -2033,7 +2036,7 @@ const TrainingPlanGenerator = {
           // Semana 4: foco en subidas — simulación de puertos del gran fondo
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso activo — movilidad de caderas y glúteos' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 en subidas — fuerza aeróbica', description: 'Rodada con variaciones de cadencia en las subidas. Alterna 70 rpm (fuerza) y 90 rpm (cadencia). Base de montaña.', tssShare: 0.16, ifTarget: 0.67, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 en subidas — fuerza aeróbica', description: 'Rodada con variaciones de cadencia en las subidas. Alterna 70 rpm (fuerza) y 90 rpm (cadencia). Base de montaña.', tssShare: 0.16, ifTarget: 0.67, emoji: '🔵', _cadenceSpec: { mode: 'altCadence', blockMin: 5, lowRpm: '70', highRpm: '90', terrain: 'climb' } },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Pedaleo suave para bajar la fatiga acumulada. Estiramientos de isquiotibiales y cuádriceps.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'threshold', name: 'Simulación de puerto — umbral sostenido', description: 'Serie larga de 15-20 min al FTP en subida. Replica el esfuerzo de sostener potencia en los puertos del evento.', tssShare: 0.20, ifTarget: 0.83, emoji: '🟡' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso total — prepara el gran fondón del sábado' },
@@ -2249,7 +2252,7 @@ const TrainingPlanGenerator = {
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación Z1 activa', description: 'Pedaleo muy suave. El sweetspot del martes necesita asimilarse.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'threshold', name: 'Umbral base — series medias', description: 'Dos series de 10 min al FTP. El umbral es el factor decisivo en las carreras de 2-4 horas.', tssShare: 0.20, ifTarget: 0.83, emoji: '🟡' },
             { day: 'Viernes',  isRest: true,  description: 'Descanso total — prepara el fin de semana de volumen' },
-            { day: 'Sábado',   type: 'endurance', name: 'Z2 largo con variaciones de cadencia', description: 'Z2 largo alternando bloques de 5 min a 70 rpm y 5 min a 95 rpm. Resistencia muscular.', tssShare: 0.24, ifTarget: 0.67, emoji: '🔵' },
+            { day: 'Sábado',   type: 'endurance', name: 'Z2 largo con variaciones de cadencia', description: 'Z2 largo alternando bloques de 5 min a 70 rpm y 5 min a 95 rpm. Resistencia muscular.', tssShare: 0.24, ifTarget: 0.67, emoji: '🔵', _cadenceSpec: { mode: 'altCadence', blockMin: 5, lowRpm: '70', highRpm: '95' } },
             { day: 'Domingo',  type: 'long',    name: 'Fondón dominical con ritmo progresivo', description: 'Con el último tercio a ritmo de carrera. Simula el esfuerzo de llegar al final con energía.', tssShare: 0.28, ifTarget: 0.67, emoji: '💙' },
           ],
           // Semana 5: back-to-back con fondón doble — volumen y resistencia de carrera larga
@@ -2370,7 +2373,7 @@ const TrainingPlanGenerator = {
         build: [
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso. El bloque build del ultra sigue siendo volumen, pero más específico.' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 largo con fuerza baja cadencia', description: 'Incluye 3 bloques de 10 min pedaleando a 55-65 rpm en llano. Simula la fatiga muscular acumulada en el ultra.', tssShare: 0.18, ifTarget: 0.67, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 largo con fuerza baja cadencia', description: 'Incluye 3 bloques de 10 min pedaleando a 55-65 rpm en llano. Simula la fatiga muscular acumulada en el ultra.', tssShare: 0.18, ifTarget: 0.67, emoji: '🔵', _cadenceSpec: { mode: 'forceBlocks', blockMin: 10, lowRpm: '55-65', reps: 3 } },
             { day: 'Miércoles',type: 'recovery',  name: 'Recuperación activa Z1', description: 'Mover las piernas suavemente. Esencial para aguantar el volumen del fin de semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'tempo',    name: 'Sweetspot sostenido largo', description: 'El único bloque de calidad de la semana. Mantiene el umbral activo sin sacrificar la recuperación.', tssShare: 0.20, ifTarget: 0.80, emoji: '🟢' },
             { day: 'Viernes',  type: 'recovery',  name: 'Z1 de preparación', description: 'Muy suave. Prepara el cuerpo para el mega fin de semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
@@ -2388,7 +2391,7 @@ const TrainingPlanGenerator = {
           ],
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso absoluto — semana pico del ciclo build.' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 + bloques de resistencia muscular', description: 'Z2 con 4 bloques de baja cadencia. La resistencia muscular es crítica en los ultras.', tssShare: 0.18, ifTarget: 0.68, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 + bloques de resistencia muscular', description: 'Z2 con 4 bloques de baja cadencia. La resistencia muscular es crítica en los ultras.', tssShare: 0.18, ifTarget: 0.68, emoji: '🔵', _cadenceSpec: { mode: 'forceBlocks', blockMin: 8, lowRpm: '60-65', reps: 4 } },
             { day: 'Miércoles',type: 'recovery',  name: 'Z1 activo', description: 'Muy suave. La semana pico requiere gestión perfecta de la recuperación.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'tempo',    name: 'Sweetspot máximo del bloque', description: 'El bloque de sweetspot más largo del ciclo. Máxima adaptación aeróbica antes de la recuperación.', tssShare: 0.22, ifTarget: 0.80, emoji: '🟢' },
             { day: 'Viernes',  type: 'recovery',  name: 'Z1 de preparación', description: 'Muy suave. El fin de semana es el mayor esfuerzo del bloque.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
@@ -2398,7 +2401,7 @@ const TrainingPlanGenerator = {
           // Semana 4: volumen específico ultra — sweetspot + back-to-back enorme
           [
             { day: 'Lunes',    isRest: true,  description: 'Descanso. El ultra se entrena con paciencia y volumen estratégico.' },
-            { day: 'Martes',   type: 'endurance', name: 'Z2 largo con fuerza integrada', description: 'Z2 extenso con cinco bloques de 8 min a 60 rpm intercalados. Resistencia muscular de ultra.', tssShare: 0.14, ifTarget: 0.67, emoji: '🔵' },
+            { day: 'Martes',   type: 'endurance', name: 'Z2 largo con fuerza integrada', description: 'Z2 extenso con cinco bloques de 8 min a 60 rpm intercalados. Resistencia muscular de ultra.', tssShare: 0.14, ifTarget: 0.67, emoji: '🔵', _cadenceSpec: { mode: 'forceBlocks', blockMin: 8, lowRpm: '60', reps: 5 } },
             { day: 'Miércoles',type: 'recovery',  name: 'Z1 de recuperación activa', description: 'Pedaleo suave para asimilar el volumen y la fuerza del martes. Estiramientos de isquiotibiales.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
             { day: 'Jueves',   type: 'tempo',    name: 'Sweetspot de calidad semanal', description: 'Tres bloques de 15 min al 90% FTP. La sesión de mayor intensidad de la semana para mantener el umbral activo.', tssShare: 0.16, ifTarget: 0.80, emoji: '🟢' },
             { day: 'Viernes',  type: 'recovery',  name: 'Z1 de preparación del fin de semana', description: 'Muy suave. El back-to-back del fin de semana es el mayor estímulo de la semana.', tssShare: 0.06, ifTarget: 0.50, emoji: '😴' },
@@ -2515,7 +2518,7 @@ const TrainingPlanGenerator = {
   },
 
   /** Genera estructura de intervalos detallada */
-  _buildIntervals(type, ftp, durMin, tss, ifTarget, variant = 'main') {
+  _buildIntervals(type, ftp, durMin, tss, ifTarget, variant = 'main', cadenceSpec = null) {
     const pct = (ratio) => Math.round(ftp * ratio);
 
     // Días de series (umbral/VO2/sprint/fuerza/tempo): calentamiento mínimo de 15 min,
@@ -2555,7 +2558,25 @@ const TrainingPlanGenerator = {
         main = durMin - warm - cool;
         intervals.push({ label: 'Calentamiento', dur: `${warm} min`, watts: `${pct(0.50)}–${pct(0.60)} W`, rpm: '85-90 rpm', desc: 'Activación suave.' });
 
-        if (ifTarget >= 0.70 && type === 'endurance' && main >= 30) {
+        if (cadenceSpec && cadenceSpec.mode === 'forceBlocks' && main >= cadenceSpec.blockMin * 2) {
+          // Bloques de fuerza a baja cadencia intercalados con Z2 normal — refleja
+          // literalmente lo que promete la descripción del día (ej. "8 min a 60-65 rpm").
+          const blockMin = cadenceSpec.blockMin;
+          const maxReps = Math.floor(main / (blockMin * 2));
+          const reps = Math.max(2, Math.min(cadenceSpec.reps || maxReps, maxReps));
+          const restMin = Math.max(3, Math.round((main - reps * blockMin) / reps));
+          intervals.push({ label: `Bloque de fuerza a baja cadencia (×${reps} repeticiones)`, dur: `${blockMin} min c/u`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: `${cadenceSpec.lowRpm} rpm`, desc: 'Torque aeróbico: fuerza a baja cadencia sin elevar la frecuencia cardiaca.' });
+          intervals.push({ label: `Recuperación Z2 (×${reps} repeticiones)`, dur: `${restMin} min c/u`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: '85-90 rpm', desc: 'Recuperar cadencia normal entre bloques de fuerza.' });
+        } else if (cadenceSpec && cadenceSpec.mode === 'altCadence' && main >= cadenceSpec.blockMin * 2) {
+          // Alterna bloques a cadencia baja/alta a lo largo de toda la parte principal —
+          // igual que forceBlocks, pero para plantillas que prometen alternancia, no fuerza.
+          const blockMin = cadenceSpec.blockMin;
+          const reps = Math.max(2, Math.floor(main / (blockMin * 2)));
+          const leftoverPerRep = Math.round((main - reps * blockMin * 2) / reps);
+          const climb = cadenceSpec.terrain === 'climb';
+          intervals.push({ label: `${climb ? 'Tramo en subida a' : 'Bloque a'} cadencia baja (×${reps} repeticiones)`, dur: `${blockMin} min c/u`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: `${cadenceSpec.lowRpm} rpm`, desc: 'Fuerza: torque a baja cadencia.' });
+          intervals.push({ label: `${climb ? 'Tramo en subida a' : 'Bloque a'} cadencia alta (×${reps} repeticiones)`, dur: `${blockMin + Math.max(0, leftoverPerRep)} min c/u`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: `${cadenceSpec.highRpm} rpm`, desc: 'Cadencia habitual entre bloques.' });
+        } else if (ifTarget >= 0.70 && type === 'endurance' && main >= 30) {
           // Z2 + 2 bloques sweetspot: estructura para sesiones de endurance con componente de calidad
           const ssBlock = 10;
           const ssRec   = Math.max(3, Math.round(main * 0.10));
@@ -2564,7 +2585,8 @@ const TrainingPlanGenerator = {
           intervals.push({ label: 'Sweetspot (×2 repeticiones)', dur: `${ssBlock} min c/u`, watts: `${pct(0.88)}–${pct(0.93)} W`, rpm: '88-92 rpm', desc: 'Esfuerzo "comfortably hard". Respiración elevada pero rítmica.' });
           intervals.push({ label: 'Recuperación Z2 (×1 repeticiones)', dur: `${ssRec} min c/u`, watts: `${pct(0.60)}–${pct(0.68)} W`, rpm: '90 rpm', desc: 'Recuperación parcial entre bloques sweetspot.' });
         } else if (variant === 'main') {
-          intervals.push({ label: 'Bloque Z2 principal', dur: `${main} min`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: '85-92 rpm', desc: 'Esfuerzo aeróbico continuo.' });
+          const mainRpm = (cadenceSpec && cadenceSpec.mode === 'rpmOverride') ? cadenceSpec.rpm : '85-92';
+          intervals.push({ label: 'Bloque Z2 principal', dur: `${main} min`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: `${mainRpm} rpm`, desc: 'Esfuerzo aeróbico continuo.' });
         } else {
           let blocks = Math.floor(main / 20);
           if (blocks >= 2) {

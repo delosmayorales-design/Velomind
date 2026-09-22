@@ -91,7 +91,17 @@ async function callAI(systemPrompt, userMsg, options = {}) {
       try {
         const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` }, body: JSON.stringify({ model, max_tokens: groqMaxTokens, temperature, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }], response_format }) });
         const d = await r.json();
-        if (!r.ok) throw new Error(d.error?.message || `Groq error ${r.status}`);
+        if (!r.ok) {
+          // El modo response_format:'json_object' de Groq a veces rechaza una respuesta que
+          // en realidad contiene JSON válido (o casi válido): su validador es más estricto que
+          // el nuestro. El texto generado por el modelo viaja igualmente en `failed_generation`,
+          // así que lo recuperamos e intentamos parsearlo nosotros antes de rendirnos.
+          if (d.error?.code === 'json_validate_failed' && d.error?.failed_generation) {
+            result = parseJSON(d.error.failed_generation);
+            break;
+          }
+          throw new Error(d.error?.message || `Groq error ${r.status}`);
+        }
         result = parseJSON(d.choices?.[0]?.message?.content);
         break;
       } catch (e) { lastError = e.message; }
@@ -99,7 +109,13 @@ async function callAI(systemPrompt, userMsg, options = {}) {
   }
 
   if (!result) {
-    throw new Error(lastError || 'No se pudo completar la petición con ningún proveedor de IA.');
+    // Los mensajes de error crudos de los proveedores (ej. "Failed to validate JSON..." de
+    // Groq) son texto interno en inglés pensado para desarrolladores, no para el atleta que
+    // ve el toast de error en la app. Si no reconocemos el mensaje como algo accionable por
+    // el usuario, mostramos un mensaje genérico en español y dejamos el original en el log.
+    if (lastError) console.error('[callAI] Todos los proveedores de IA fallaron:', lastError);
+    const friendly = 'El asistente de IA no pudo generar una respuesta válida esta vez. Vuelve a intentarlo en unos segundos.';
+    throw new Error(lastError && !/failed to (validate|generate) json/i.test(lastError) ? lastError : friendly);
   }
   return result;
 }
