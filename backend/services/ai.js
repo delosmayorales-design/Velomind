@@ -19,7 +19,7 @@ async function callAI(systemPrompt, userMsg, options = {}) {
   const openaiKey    = process.env.OPENAI_API_KEY    || '';
   const googleKey    = process.env.GOOGLE_API_KEY    || '';
   const groqKey      = process.env.GROQ_API_KEY      || '';
-  const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
   if (!anthropicKey && !openaiKey && !googleKey && !groqKey) {
     throw new Error('No se han configurado API Keys de IA válidas en el servidor.');

@@ -1390,7 +1390,7 @@ router.post('/ai-analysis', requirePremium, async (req, res) => {
     const hasOpenAI    = openaiKey && openaiKey !== 'YOUR_OPENAI_API_KEY' && openaiKey.length > 20;
     const hasGoogle    = googleKey && googleKey.startsWith('AIzaSy') && googleKey.length >= 30;
     const hasGroq      = groqKey && groqKey.startsWith('gsk_');
-    const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
     if (!hasAnthropic && !hasOpenAI && !hasGoogle && !hasGroq) {
       return res.status(503).json({ error: 'No se han configurado API Keys válidas en el archivo .env del servidor.' });
@@ -1647,7 +1647,7 @@ router.post('/today-adaptation', requirePremium, async (req, res) => {
     const hasOpenAI    = openaiKey.length > 20 && openaiKey !== 'YOUR_OPENAI_API_KEY';
     const hasGoogle    = googleKey.startsWith('AIzaSy') && googleKey.length >= 30;
     const hasGroq      = groqKey.startsWith('gsk_');
-    const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
     if (!hasAnthropic && !hasOpenAI && !hasGoogle && !hasGroq)
       return res.status(503).json({ error: 'No hay API Keys configuradas.' });
@@ -1877,7 +1877,7 @@ router.post('/daily-menus', requirePremium, async (req, res) => {
   const hasOpenAI    = openaiKey.length > 20 && openaiKey !== 'YOUR_OPENAI_API_KEY';
   const hasGoogle    = googleKey.startsWith('AIzaSy') && googleKey.length >= 30;
   const hasGroq      = groqKey.startsWith('gsk_');
-  const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
   if (!hasAnthropic && !hasOpenAI && !hasGoogle && !hasGroq)
     return res.status(503).json({ error: 'No hay API Keys de IA configuradas en el servidor.' });
@@ -2502,7 +2502,7 @@ router.post('/design-kit-ai', requirePremium, async (req, res) => {
     const openaiKey    = process.env.OPENAI_API_KEY    || '';
     const googleKey    = process.env.GOOGLE_API_KEY    || '';
     const groqKey      = process.env.GROQ_API_KEY      || '';
-    const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
     if (!anthropicKey && !openaiKey && !googleKey && !groqKey) {
       return res.status(503).json({ error: 'No hay API Keys de IA configuradas en el servidor.' });
@@ -3209,8 +3209,8 @@ Usa ## para secciones, ### para nombres de puertos, - para listas, tablas markdo
 
     // ── 3. Google Gemini ──
     if (!strategyText && hasGoogle) {
-      const geminiModel = (process.env.GEMINI_MODEL || '').trim() || 'gemini-1.5-flash';
-      const geminiModels = [...new Set([geminiModel, 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'])].filter(Boolean);
+      const geminiModel = (process.env.GEMINI_MODEL || '').trim() || 'gemini-2.5-flash';
+      const geminiModels = [...new Set([geminiModel, 'gemini-2.5-flash', 'gemini-flash-latest'])].filter(Boolean);
       for (const model of geminiModels) {
         try {
           const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`, {
