@@ -99,6 +99,7 @@ app.use('/api/coach', require('./routes/events').trackApiCalls('ai_call', 'coach
 app.use('/api/auth',       require('./routes/auth'));
 app.use('/api/activities', require('./routes/activities'));
 app.use('/api/analytics',  require('./routes/analytics'));
+app.use('/api/providers/intervals', require('./routes/intervals'));
 app.use('/api/providers',  require('./routes/providers'));
 app.use('/api/body',       require('./routes/body'));
 app.use('/api/coach',      require('./routes/coach'));

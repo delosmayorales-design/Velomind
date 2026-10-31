@@ -378,6 +378,30 @@
 
     </div>
 
+    <!-- intervals.icu: alternativa sin límite de plazas -->
+    <div class="integration-card" id="card-intervals">
+      <div class="int-header">
+        <div class="int-logo" style="background:rgba(56,189,248,0.12)">
+          <i class="fas fa-wave-square" style="color:#38BDF8;font-size:22px"></i>
+        </div>
+        <div>
+          <div class="int-name" style="color:#38BDF8">intervals.icu</div>
+          <div class="int-tagline">Tus entrenos de Garmin, Wahoo, Zwift, Coros… sin pasar por Strava</div>
+          <div class="int-status disconnected" id="intervals-status">
+            <i class="fas fa-circle" style="font-size:8px"></i> No conectado
+          </div>
+        </div>
+      </div>
+      <div class="int-features">
+        <div class="int-feature"><i class="fas fa-check"></i> Sincronización automática de actividades</div>
+        <div class="int-feature"><i class="fas fa-check"></i> Potencia, FC y cadencia</div>
+        <div class="int-feature"><i class="fas fa-check"></i> Último año de historial</div>
+        <div class="int-feature"><i class="fas fa-check"></i> Sin límite de plazas</div>
+      </div>
+      <div class="int-actions" id="intervals-actions" style="margin-top:14px"></div>
+      <div class="sync-log" id="intervals-log"></div>
+    </div>
+
     </div>
 
     <!-- ── SALUD Y BIENESTAR ───────────────────────────────── -->
@@ -599,8 +623,107 @@
     renderFitbitDisconnected(false);
   }
 
+  // ── intervals.icu ─────────────────────────────────────────────
+  function icuLog(html) {
+    const log = document.getElementById('intervals-log');
+    if (!log) return;
+    log.innerHTML = html;
+    log.classList.add('show');
+  }
+
+  function renderIcuDisconnected(configured = true) {
+    const card = document.getElementById('card-intervals');
+    const status = document.getElementById('intervals-status');
+    if (card) card.classList.remove('connected');
+    if (status) { status.className = 'int-status disconnected'; status.innerHTML = '<i class="fas fa-circle" style="font-size:8px"></i> No conectado'; }
+    const el = document.getElementById('intervals-actions');
+    if (!el) return;
+    if (!configured) {
+      el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)"><i class="fas fa-clock"></i> Disponible muy pronto.</div>';
+      return;
+    }
+    el.innerHTML = `
+      <ol style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin:0 0 12px 18px;padding:0">
+        <li>Crea una cuenta gratis en <a href="https://intervals.icu" target="_blank" rel="noopener" style="color:#38BDF8">intervals.icu</a> y conecta allí tu Garmin, Wahoo, Zwift…</li>
+        <li>Ve a <strong>Settings → Developer Settings</strong> y copia tu <strong>API Key</strong>.</li>
+        <li>Pégala aquí:</li>
+      </ol>
+      <div class="token-row">
+        <input type="password" id="intervals-key-input" placeholder="API Key de intervals.icu" autocomplete="off">
+        <button class="btn-save-token" id="btn-intervals-connect" onclick="connectIntervals()" style="background:#38BDF8">Conectar</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">
+        <i class="fas fa-info-circle"></i> Las actividades que lleguen a intervals.icu <strong>desde Strava</strong> no se pueden importar (es una restricción de Strava): conecta tu dispositivo directamente.
+      </div>`;
+  }
+
+  function renderIcuConnected() {
+    const card = document.getElementById('card-intervals');
+    const status = document.getElementById('intervals-status');
+    if (card) card.classList.add('connected');
+    if (status) { status.className = 'int-status connected'; status.innerHTML = '<i class="fas fa-check-circle" style="font-size:10px"></i> Conectado'; }
+    const el = document.getElementById('intervals-actions');
+    if (!el) return;
+    el.innerHTML = `
+      <button id="btn-intervals-sync" onclick="doIcuSync()" style="background:#38BDF8;color:#0b1220;border:none;padding:10px 18px;border-radius:var(--radius-md);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px"><i class="fas fa-sync-alt"></i> Sincronizar ahora</button>
+      <button onclick="doIcuDisconnect()" class="btn-disconnect"><i class="fas fa-unlink"></i> Desconectar</button>`;
+  }
+
+  async function connectIntervals() {
+    const input = document.getElementById('intervals-key-input');
+    const btn = document.getElementById('btn-intervals-connect');
+    const apiKey = (input?.value || '').trim();
+    if (!apiKey) { input?.focus(); return; }
+    btn.disabled = true; btn.textContent = 'Conectando...';
+    try {
+      const r = await fetch(`${window.API_URL}/providers/intervals/connect`, {
+        method: 'POST', headers: Auth.getHeaders(), body: JSON.stringify({ api_key: apiKey }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'No se pudo conectar');
+      localStorage.setItem('velomind_intervals_connected', '1');
+      renderIcuConnected();
+      icuLog(`<div class="log-line ok"><i class="fas fa-check-circle"></i> Conectado${d.athlete ? ' como ' + String(d.athlete).replace(/[<>&]/g, '') : ''}. Importando tu último año…</div>`);
+      await doIcuSync();
+    } catch (e) {
+      icuLog(`<div class="log-line err"><i class="fas fa-exclamation-circle"></i> ${e.message}</div>`);
+      btn.disabled = false; btn.textContent = 'Conectar';
+    }
+  }
+
+  async function doIcuSync() {
+    const btn = document.getElementById('btn-intervals-sync');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...'; }
+    try {
+      const r = await fetch(`${window.API_URL}/providers/intervals/sync`, { method: 'POST', headers: Auth.getHeaders() });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Error al sincronizar');
+      localStorage.setItem('velomind_intervals_last_sync', Date.now().toString());
+      const extra = [
+        d.duplicates ? `${d.duplicates} ya estaban en VeloMind` : '',
+        d.skipped_strava ? `${d.skipped_strava} venían de Strava y no se pueden importar` : '',
+      ].filter(Boolean).join(' · ');
+      icuLog(`<div class="log-line ok"><i class="fas fa-check-circle"></i> ${d.synced} actividades importadas${extra ? ' · ' + extra : ''}</div>`);
+      if (typeof BackendSync !== 'undefined' && BackendSync.loadActivities) BackendSync.loadActivities().catch(() => {});
+    } catch (e) {
+      icuLog(`<div class="log-line err"><i class="fas fa-exclamation-circle"></i> ${e.message}</div>`);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar ahora'; }
+    }
+  }
+
+  async function doIcuDisconnect() {
+    if (!confirm('¿Desconectar intervals.icu? Se mantendrán las actividades ya importadas.')) return;
+    await fetch(`${window.API_URL}/providers/intervals/disconnect`, { method: 'DELETE', headers: Auth.getHeaders() }).catch(() => {});
+    localStorage.removeItem('velomind_intervals_connected');
+    localStorage.removeItem('velomind_intervals_last_sync');
+    renderIcuDisconnected();
+  }
+
   // ── Init estado ──────────────────────────────────────────────
   function initStatus() {
+    if (localStorage.getItem('velomind_intervals_connected') === '1') renderIcuConnected();
+    else renderIcuDisconnected();
     if (localStorage.getItem('velomind_strava_connected') === '1') {
       renderConnected();
     } else {
@@ -620,6 +743,8 @@
       }
       if (s?.fitbit?.connected) { localStorage.setItem('velomind_fitbit_connected', '1'); renderFitbitConnected(); }
       else renderFitbitDisconnected(!!s?.fitbit?.configured);
+      if (s?.intervals?.connected) { localStorage.setItem('velomind_intervals_connected', '1'); renderIcuConnected(); }
+      else if (s?.intervals) { localStorage.removeItem('velomind_intervals_connected'); renderIcuDisconnected(s.intervals.configured); }
     }).catch(() => {});
   }
 

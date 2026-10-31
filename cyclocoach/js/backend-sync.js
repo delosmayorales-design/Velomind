@@ -343,6 +343,7 @@ function isLegacyDemoActivity(a) {
    * Usa sync incremental (solo actividades recientes) para ser rápido.
    */
   async function autoSyncIfNeeded() {
+    await autoSyncIntervalsIfNeeded();
     if (localStorage.getItem('velomind_strava_connected') !== '1') return;
 
     const lastSync = parseInt(localStorage.getItem('velomind_strava_last_sync') || '0', 10);
@@ -373,6 +374,26 @@ function isLegacyDemoActivity(a) {
       }
     } catch(e) {
       console.warn('[AutoSync Strava]', e.message);
+    }
+  }
+
+  /** Igual que el auto-sync de Strava, para intervals.icu (máx. 1 vez/hora, incremental) */
+  async function autoSyncIntervalsIfNeeded() {
+    if (localStorage.getItem('velomind_intervals_connected') !== '1') return;
+    const lastSync = parseInt(localStorage.getItem('velomind_intervals_last_sync') || '0', 10);
+    if ((Date.now() - lastSync) / 60000 < 60) return;
+    try {
+      const since = lastSync ? Math.floor(lastSync / 1000) - 3 * 86400 : null; // 3 días de margen: intervals.icu puede tardar en recibir la actividad
+      const data = await apiFetch('/providers/intervals/sync', { method: 'POST', body: since ? JSON.stringify({ since }) : undefined });
+      localStorage.setItem('velomind_intervals_last_sync', Date.now().toString());
+      if (data?.synced > 0) {
+        await loadActivities();
+        if (typeof window.showToast === 'function') {
+          window.showToast(`🚴 ${data.synced} actividad${data.synced !== 1 ? 'es' : ''} importada${data.synced !== 1 ? 's' : ''} desde intervals.icu`, '#38BDF8');
+        }
+      }
+    } catch (e) {
+      console.warn('[AutoSync intervals.icu]', e.message);
     }
   }
 

@@ -411,7 +411,8 @@ router.delete('/account', requireAuth, async (req, res) => {
 function safeUser(u) {
   if (!u) return null;
   const { password, strava_token, strava_refresh, garmin_token, garmin_refresh,
-          fitbit_token, fitbit_refresh, ...safe } = u;
+          fitbit_token, fitbit_refresh, intervals_api_key, ...safe } = u;
+  safe.intervals_connected = !!intervals_api_key;
   safe.isAdmin = isAdminEmail(u.email);
   return safe;
 }

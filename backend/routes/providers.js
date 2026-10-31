@@ -1334,11 +1334,19 @@ router.get('/status', requireAuth, async (req, res) => {
       .select('strava_token, garmin_token, fitbit_token')
       .eq('id', req.user.id)
       .single();
+    // Consulta aparte: si la migración add_intervals_icu.sql no se ha ejecutado,
+    // la columna no existe y no debe romper el estado del resto de integraciones
+    const { data: icu, error: icuErr } = await supabase
+      .from('users')
+      .select('intervals_api_key')
+      .eq('id', req.user.id)
+      .single();
 
     res.json({
       strava: { connected: !!user?.strava_token, configured: !!STRAVA_ID },
       garmin: { connected: !!user?.garmin_token, configured: !!GARMIN_ID },
-      fitbit: { connected: !!user?.fitbit_token, configured: !!GFIT_ID }
+      fitbit: { connected: !!user?.fitbit_token, configured: !!GFIT_ID },
+      intervals: { connected: !icuErr && !!icu?.intervals_api_key, configured: !icuErr }
     });
   } catch (e) {
     console.error('[providers]', e.message);
@@ -1571,3 +1579,5 @@ module.exports = router;
 module.exports.refreshStravaToken = refreshStravaToken;
 module.exports.fetchStravaStreams = fetchStravaStreams;
 module.exports.releaseStrava = releaseStrava;
+module.exports.getLatestRestingHR = getLatestRestingHR;
+module.exports.stravaToAppType = stravaToAppType;
