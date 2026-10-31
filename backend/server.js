@@ -92,6 +92,9 @@ app.post('/api/auth/resend-verification', rateLimit(5, 60 * 60 * 1000));
 // Las rutas de IA de coach.js son las más costosas (llamadas a Anthropic/OpenAI/Gemini/Groq)
 // y antes no tenían ningún límite — un límite generoso alcanza para uso normal.
 app.use('/api/coach', rateLimit(40, 60 * 60 * 1000));
+app.use('/api/events', rateLimit(300, 60 * 60 * 1000));
+// Cuenta las llamadas a IA por función para el panel de admin
+app.use('/api/coach', require('./routes/events').trackApiCalls('ai_call', 'coach'));
 
 app.use('/api/auth',       require('./routes/auth'));
 app.use('/api/activities', require('./routes/activities'));
@@ -107,6 +110,8 @@ app.use('/api/group-rides', require('./routes/groupRides'));
 app.use('/api/push',        require('./routes/push'));
 app.use('/api/wellness',   require('./routes/wellness'));
 app.use('/api/feedback',   require('./routes/feedback'));
+app.use('/api/events',     require('./routes/events'));
+app.use('/api/admin',      require('./routes/admin'));
 
 // ─────────────────────────────────────────
 // HEALTH (monitoreo externo)

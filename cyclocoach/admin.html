@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('velomind_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'light') document.documentElement.classList.add('light-theme');
+      document.documentElement.style.opacity = '0';
+    })();
+  </script>
+  <style>
+    html { color-scheme: dark; background-color: #0a0b0f; transition: opacity .18s ease; }
+    html[data-theme="light"] { color-scheme: light; background-color: #f3f4f6; }
+  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Panel admin — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
+  <script src="js/auth.js?v=2"></script>
+  <script src="js/update-banner.js"></script>
+  <script src="js/app.js?v=108"></script>
+  <style>
+    .adm-grid { display: grid; gap: 12px; }
+    .adm-kpis { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin-bottom: 20px; }
+    .adm-2col { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); margin-bottom: 20px; }
+    .adm-section { margin-bottom: 20px; }
+    .adm-h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-secondary); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+    .adm-h2 small { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-muted); }
+
+    .adm-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 14px; min-width: 0; }
+
+    /* KPI tiles con semáforo */
+    .kpi { border-top: 3px solid var(--border); }
+    .kpi.h-green { border-top-color: var(--success); }
+    .kpi.h-amber { border-top-color: var(--warning); }
+    .kpi.h-red   { border-top-color: var(--danger); }
+    .kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+    .kpi-value { font-size: 28px; font-weight: 800; color: var(--text-primary); margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+    .kpi-value .unit { font-size: 15px; font-weight: 600; color: var(--text-secondary); margin-left: 2px; }
+    .kpi-hint { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+    .hbadge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-top: 8px; }
+    .hbadge.h-green { color: var(--success); background: rgba(52,211,153,.12); }
+    .hbadge.h-amber { color: var(--warning); background: rgba(251,191,36,.12); }
+    .hbadge.h-red   { color: var(--danger);  background: rgba(248,113,113,.12); }
+    .hbadge.h-blue  { color: var(--accent-blue); background: rgba(56,189,248,.12); }
+
+    /* Recomendaciones */
+    .insight { display: flex; gap: 12px; padding: 12px 14px; border-radius: var(--radius-lg); border: 1px solid var(--border); background: var(--bg-card); border-left: 4px solid var(--border); }
+    .insight.l-red   { border-left-color: var(--danger); }
+    .insight.l-amber { border-left-color: var(--warning); }
+    .insight.l-blue  { border-left-color: var(--accent-blue); }
+    .insight.l-green { border-left-color: var(--success); }
+    .insight i { margin-top: 2px; }
+    .insight.l-red i { color: var(--danger); } .insight.l-amber i { color: var(--warning); }
+    .insight.l-blue i { color: var(--accent-blue); } .insight.l-green i { color: var(--success); }
+    .insight-title { font-weight: 700; font-size: 14px; color: var(--text-primary); }
+    .insight-text { font-size: 13px; color: var(--text-secondary); margin-top: 3px; line-height: 1.5; }
+
+    /* Segmentos */
+    .seg-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; margin: 4px 0 14px; background: var(--bg-input); }
+    .seg-bar div { height: 100%; }
+    .seg-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+    .seg-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: var(--radius-md); background: var(--bg-input); cursor: pointer; border: 1px solid transparent; }
+    .seg-item:hover { border-color: var(--border-light); }
+    .seg-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+    .seg-name { font-weight: 700; font-size: 13px; color: var(--text-primary); }
+    .seg-num { font-weight: 800; font-size: 18px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+    .seg-desc { font-size: 11px; color: var(--text-muted); }
+
+    /* Barras horizontales (embudo / funciones) */
+    .hrow { display: grid; grid-template-columns: minmax(120px, 210px) 1fr 82px; gap: 10px; align-items: center; padding: 5px 0; font-size: 13px; }
+    .hrow-label { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hrow-track { height: 10px; background: var(--bg-input); border-radius: 5px; overflow: hidden; }
+    .hrow-fill { height: 100%; border-radius: 4px; background: var(--primary); min-width: 2px; }
+    .hrow-fill.h-green { background: var(--success); } .hrow-fill.h-amber { background: var(--warning); } .hrow-fill.h-red { background: var(--danger); }
+    .hrow-val { text-align: right; color: var(--text-primary); font-variant-numeric: tabular-nums; font-weight: 600; }
+    .hrow-val small { color: var(--text-muted); font-weight: 400; }
+    .funnel-drop { font-size: 11px; color: var(--text-muted); padding-left: 2px; }
+    .funnel-drop.bad { color: var(--danger); }
+
+    /* Tablas */
+    .adm-table-wrap { overflow-x: auto; }
+    .adm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .adm-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); font-weight: 600; padding: 8px; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: default; }
+    .adm-table th[data-sort] { cursor: pointer; }
+    .adm-table td { padding: 8px; border-bottom: 1px solid var(--border); color: var(--text-secondary); white-space: nowrap; }
+    .adm-table td.num, .adm-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .adm-table tr:hover td { background: var(--bg-card-hover); }
+    .u-name { color: var(--text-primary); font-weight: 600; }
+    .u-email { color: var(--text-muted); font-size: 11px; }
+    .cohort td.cell { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; border: 2px solid var(--bg-card); border-radius: 4px; }
+    .cohort td.cell.h-green { background: rgba(52,211,153,.22); color: var(--text-primary); }
+    .cohort td.cell.h-amber { background: rgba(251,191,36,.20); color: var(--text-primary); }
+    .cohort td.cell.h-red   { background: rgba(248,113,113,.20); color: var(--text-primary); }
+
+    .adm-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .adm-input { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); border-radius: var(--radius-md); padding: 8px 10px; font: inherit; font-size: 13px; }
+    .adm-input:focus { outline: none; border-color: var(--border-focus); }
+    .adm-btn { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); border-radius: var(--radius-md); padding: 8px 12px; font: inherit; font-size: 13px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+    .adm-btn:hover { border-color: var(--border-light); }
+    .chart-box { position: relative; height: 240px; }
+    .muted { color: var(--text-muted); font-size: 12px; }
+    .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--bg-input); color: var(--text-secondary); margin-right: 3px; }
+    .tag.prem { color: var(--accent); }
+    .fb-item { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-secondary); }
+    .fb-item:last-child { border-bottom: 0; }
+    .adm-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .adm-state i { font-size: 32px; margin-bottom: 12px; display: block; }
+
+    @media (max-width: 600px) {
+      .hrow { grid-template-columns: 1fr 70px; }
+      .hrow-track { grid-column: 1 / -1; grid-row: 2; }
+      .adm-2col { grid-template-columns: 1fr; }
+      .kpi-value { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo.png" alt="VeloMind" style="width:100%; max-width:165px; height:auto; display:block; margin:0 auto">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="dashboard.html" class="nav-item"><i class="fas fa-home"></i> Inicio</a>
+    <a href="activities.html" class="nav-item"><i class="fas fa-history"></i> Actividades</a>
+    <a href="analytics.html" class="nav-item"><i class="fas fa-chart-bar"></i> Métricas</a>
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item"><i class="fas fa-calendar-check"></i> Entrenamiento</a>
+    <a href="nutrition.html" class="nav-item"><i class="fas fa-apple-alt"></i> Nutrición</a>
+    <a href="body-weight.html" class="nav-item"><i class="fas fa-weight"></i> Peso</a>
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="rutas.html" class="nav-item"><i class="fas fa-map-marked-alt"></i> Rutas</a>
+    <a href="salidas-grupales.html" class="nav-item"><i class="fas fa-users"></i> Salidas Grupales</a>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Garaje</a>
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+    <a href="notificaciones.html" class="nav-item"><i class="fas fa-bell"></i> Notificaciones</a>
+    <a href="feedback.html" class="nav-item"><i class="fas fa-comment-dots"></i> Feedback</a>
+    <a href="soporte.html" class="nav-item"><i class="fas fa-life-ring"></i> Soporte</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-name">Cargando...</div>
+        <div class="ftp" id="athlete-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1>Panel de administración</h1>
+      <p class="subtitle" id="adm-subtitle">Salud y uso de VeloMind</p>
+    </div>
+    <button class="adm-btn" id="adm-refresh"><i class="fas fa-sync-alt"></i> Actualizar</button>
+  </header>
+
+  <div class="page-body" id="adm-root">
+    <div class="adm-state"><i class="fas fa-circle-notch fa-spin"></i>Calculando métricas…</div>
+  </div>
+</main>
+
+<script>
+(() => {
+  const API = window.API_URL;
+  const root = document.getElementById('adm-root');
+  const charts = [];
+
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const fmtNum = (v) => (v == null ? '—' : Number(v).toLocaleString('es-ES'));
+  const fmtDate = (d) => (d ? new Date(d.length === 10 ? d + 'T12:00:00' : d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : '—');
+  const daysAgo = (d) => {
+    if (!d) return '—';
+    const n = Math.floor((Date.now() - new Date(d.length === 10 ? d + 'T12:00:00' : d).getTime()) / 86400000);
+    return n <= 0 ? 'hoy' : n === 1 ? 'ayer' : `hace ${n} d`;
+  };
+
+  const HEALTH = {
+    green: { icon: 'fa-check-circle', text: 'Bien' },
+    amber: { icon: 'fa-exclamation-circle', text: 'Vigilar' },
+    red:   { icon: 'fa-times-circle', text: 'Mejorar' },
+  };
+  const hBadge = (h) => (HEALTH[h] ? `<span class="hbadge h-${h}"><i class="fas ${HEALTH[h].icon}"></i>${HEALTH[h].text}</span>` : '');
+  const SEG_COLOR = { green: '--success', amber: '--warning', red: '--danger', blue: '--accent-blue' };
+  const INSIGHT_ICON = { red: 'fa-fire', amber: 'fa-exclamation-triangle', blue: 'fa-lightbulb', green: 'fa-check-circle' };
+
+  let state = { data: null, filter: 'all', search: '', sort: 'recent' };
+
+  async function load() {
+    root.innerHTML = '<div class="adm-state"><i class="fas fa-circle-notch fa-spin"></i>Calculando métricas…</div>';
+    try {
+      const r = await fetch(`${API}/admin/overview`, { headers: Auth.getHeaders() });
+      if (r.status === 403) {
+        root.innerHTML = '<div class="adm-state"><i class="fas fa-lock"></i>Esta sección es solo para el administrador.</div>';
+        return;
+      }
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Error');
+      state.data = data;
+      render();
+    } catch (e) {
+      root.innerHTML = `<div class="adm-state"><i class="fas fa-exclamation-triangle"></i>No se pudieron cargar las métricas.<br>${esc(e.message)}</div>`;
+    }
+  }
+
+  function render() {
+    const d = state.data;
+    charts.splice(0).forEach((c) => c.destroy());
+    document.getElementById('adm-subtitle').textContent =
+      `Actualizado ${new Date(d.generatedAt).toLocaleString('es-ES')} · excluidos: ${d.excluded.admin} cuenta(s) admin y ${d.excluded.demo} demos`;
+
+    root.innerHTML = `
+      ${d.trackingEnabled ? '' : `<div class="insight l-red adm-section"><i class="fas fa-database"></i><div>
+        <div class="insight-title">Falta activar el tracking de uso</div>
+        <div class="insight-text">Ejecuta <code>backend/migrations/add_usage_tracking.sql</code> en el SQL Editor de Supabase. Hasta entonces "activo" solo significa "registró un entreno" y no hay datos de uso por página.</div></div></div>`}
+
+      <div class="adm-grid adm-kpis">${d.kpis.map(renderKpi).join('')}</div>
+
+      <div class="adm-section">
+        <h2 class="adm-h2"><i class="fas fa-lightbulb"></i> Qué hacer ahora</h2>
+        <div class="adm-grid">${d.insights.map((i) => `
+          <div class="insight l-${i.level}"><i class="fas ${INSIGHT_ICON[i.level] || 'fa-info-circle'}"></i>
+            <div><div class="insight-title">${esc(i.title)}</div><div class="insight-text">${esc(i.text)}</div></div></div>`).join('')}
+        </div>
+      </div>
+
+      <div class="adm-card adm-section" id="strava-slots">
+        <div class="muted"><i class="fas fa-circle-notch fa-spin"></i> Cargando plazas de Strava…</div>
+      </div>
+
+      <div class="adm-card adm-section">
+        <h2 class="adm-h2"><i class="fas fa-users"></i> Tipos de usuario <small>según días de entreno y uso en los últimos 28 días · pulsa para filtrar la tabla</small></h2>
+        ${renderSegments(d.segments)}
+      </div>
+
+      <div class="adm-grid adm-2col">
+        <div class="adm-card">
+          <h2 class="adm-h2"><i class="fas fa-chart-line"></i> Usuarios activos por día <small>30 días</small></h2>
+          <div class="chart-box"><canvas id="ch-daily" aria-label="Usuarios activos por día"></canvas></div>
+        </div>
+        <div class="adm-card">
+          <h2 class="adm-h2"><i class="fas fa-user-plus"></i> Altas por semana <small>12 semanas</small></h2>
+          <div class="chart-box"><canvas id="ch-signups" aria-label="Altas por semana"></canvas></div>
+        </div>
+      </div>
+
+      <div class="adm-grid adm-2col">
+        <div class="adm-card">
+          <h2 class="adm-h2"><i class="fas fa-filter"></i> Embudo de activación</h2>
+          ${renderFunnel(d.funnel)}
+        </div>
+        <div class="adm-card">
+          <h2 class="adm-h2"><i class="fas fa-calendar-week"></i> Usuarios activos por semana <small>12 semanas</small></h2>
+          <div class="chart-box"><canvas id="ch-weekly" aria-label="Usuarios activos por semana"></canvas></div>
+        </div>
+      </div>
+
+      <div class="adm-card adm-section">
+        <h2 class="adm-h2"><i class="fas fa-redo"></i> Retención por cohortes <small>% de cada semana de alta que vuelve en la semana N</small></h2>
+        ${renderCohorts(d.cohorts)}
+      </div>
+
+      <div class="adm-grid adm-2col">
+        <div class="adm-card">
+          <h2 class="adm-h2"><i class="fas fa-puzzle-piece"></i> Adopción de funciones <small>% de usuarios con datos guardados</small></h2>
+          ${d.features.map((f) => hrow(f.name, f.pct, `${f.users} <small>${f.pct ?? 0}%</small>`, f.health)).join('')}
+        </div>
+        <div class="adm-card">
+          <h2 class="adm-h2"><i class="fas fa-mouse-pointer"></i> Páginas más visitadas <small>30 días · usuarios únicos</small></h2>
+          ${d.pageUsage.length ? renderUsage(d.pageUsage) : `<div class="muted">${d.trackingEnabled ? 'Aún no hay visitas registradas.' : 'Disponible al activar el tracking.'}</div>`}
+          ${d.aiUsage.length ? `<h2 class="adm-h2" style="margin-top:18px"><i class="fas fa-robot"></i> Uso de la IA <small>30 días</small></h2>${renderUsage(d.aiUsage)}` : ''}
+          ${renderSplit('Plataforma (visitas)', d.platforms)}
+          ${renderSplit('Origen de entrenos (30 días)', d.sources)}
+        </div>
+      </div>
+
+      <div class="adm-card adm-section">
+        <h2 class="adm-h2"><i class="fas fa-user-clock"></i> En riesgo de abandono <small>activos hace 1-2 meses, sin volver en 14 días</small></h2>
+        ${d.atRisk.length ? `<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Usuario</th><th>Último entreno</th><th>Última visita</th></tr></thead><tbody>
+          ${d.atRisk.map((u) => `<tr><td><div class="u-name">${esc(u.name)}</div><div class="u-email">${esc(u.email)}</div></td><td>${daysAgo(u.last_activity)}</td><td>${daysAgo(u.last_app)}</td></tr>`).join('')}
+          </tbody></table></div>` : '<div class="muted"><i class="fas fa-check-circle" style="color:var(--success)"></i> Nadie en riesgo ahora mismo.</div>'}
+      </div>
+
+      <div class="adm-card adm-section">
+        <h2 class="adm-h2"><i class="fas fa-address-book"></i> Usuarios <small id="u-count"></small></h2>
+        <div class="adm-toolbar">
+          <input class="adm-input" id="u-search" placeholder="Buscar nombre o email…" value="${esc(state.search)}" style="flex:1;min-width:180px">
+          <select class="adm-input" id="u-filter">
+            <option value="all">Todos los tipos</option>
+            ${d.segments.map((s) => `<option value="${s.key}" ${state.filter === s.key ? 'selected' : ''}>${esc(s.label)} (${s.users})</option>`).join('')}
+          </select>
+          <button class="adm-btn" id="u-csv"><i class="fas fa-file-csv"></i> CSV</button>
+        </div>
+        <div class="adm-table-wrap"><table class="adm-table" id="u-table"></table></div>
+      </div>
+
+      <div class="adm-card adm-section">
+        <h2 class="adm-h2"><i class="fas fa-comment-dots"></i> Último feedback <small><a href="feedback.html" style="color:var(--primary)">ver todo</a></small></h2>
+        ${d.feedback.recent.length ? d.feedback.recent.map((f) => `
+          <div class="fb-item"><strong style="color:var(--text-primary)">${esc(f.user_name)}</strong>
+            ${f.rating ? `<span style="color:var(--accent)"> ${'★'.repeat(f.rating)}</span>` : ''}
+            <span class="muted"> · ${fmtDate(f.created_at)}${f.reply ? '' : ' · <span style="color:var(--warning)">sin responder</span>'}</span>
+            <div style="margin-top:4px">${esc(f.message)}</div></div>`).join('') : '<div class="muted">Sin comentarios.</div>'}
+      </div>
+    `;
+
+    drawCharts(d);
+    renderUsers();
+    loadStravaSlots();
+    root.querySelectorAll('.seg-item').forEach((el) => el.addEventListener('click', () => {
+      state.filter = el.dataset.seg;
+      document.getElementById('u-filter').value = state.filter;
+      renderUsers();
+      document.getElementById('u-table').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+    document.getElementById('u-search').addEventListener('input', (e) => { state.search = e.target.value; renderUsers(); });
+    document.getElementById('u-filter').addEventListener('change', (e) => { state.filter = e.target.value; renderUsers(); });
+    document.getElementById('u-csv').addEventListener('click', exportCsv);
+  }
+
+  // ── Plazas de Strava ─────────────────────────────────────────
+  const SLOT_STATUS = {
+    reserved: { text: 'Reservada', icon: 'fa-lock', cls: 'h-blue' },
+    active:   { text: 'Activo', icon: 'fa-check-circle', cls: 'h-green' },
+    low:      { text: 'Poco activo', icon: 'fa-exclamation-circle', cls: 'h-amber' },
+    inactive: { text: 'Inactivo · liberable', icon: 'fa-times-circle', cls: 'h-red' },
+  };
+
+  async function loadStravaSlots() {
+    const box = document.getElementById('strava-slots');
+    try {
+      const r = await fetch(`${API}/admin/strava-slots`, { headers: Auth.getHeaders() });
+      const s = await r.json();
+      if (!r.ok) throw new Error(s.error || 'Error');
+      const usedPct = Math.min(100, (s.used / s.capacity) * 100);
+      box.innerHTML = `
+        <h2 class="adm-h2"><i class="fab fa-strava"></i> Plazas de Strava <small>límite de atletas de la app en Strava</small></h2>
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+          <div class="kpi-value" style="margin:0">${s.used}<span class="unit">/ ${s.capacity}</span></div>
+          <div class="kpi-hint">${s.free ? `${s.free} plaza(s) libre(s)` : 'Sin plazas libres: nadie más puede conectar Strava'}${s.releasable ? ` · ${s.releasable} liberable(s)` : ''}</div>
+          ${hBadge(s.health)}
+        </div>
+        <div class="hrow-track" style="margin:10px 0 14px"><div class="hrow-fill h-${s.health}" style="width:${usedPct}%"></div></div>
+        ${s.slots.length ? `<div class="adm-table-wrap"><table class="adm-table"><thead><tr>
+            <th>Usuario</th><th>Estado</th><th>Última visita</th><th>Último entreno</th><th></th></tr></thead><tbody>
+          ${s.slots.map((u) => {
+            const st = SLOT_STATUS[u.status];
+            return `<tr>
+              <td><div class="u-name">${esc(u.name)}</div><div class="u-email">${esc(u.email)}</div></td>
+              <td><span class="hbadge ${st.cls}" style="margin:0"><i class="fas ${st.icon}"></i>${st.text}</span></td>
+              <td>${daysAgo(u.last_seen_at)}</td>
+              <td>${daysAgo(u.last_activity)}</td>
+              <td style="text-align:right">${u.reserved ? '' : `
+                <a class="adm-btn" href="mailto:${encodeURIComponent(u.email)}?subject=${encodeURIComponent('Tu conexión con Strava en VeloMind')}" title="Avisar por email"><i class="fas fa-envelope"></i></a>
+                <button class="adm-btn" data-release="${u.id}" data-name="${esc(u.name)}"><i class="fas fa-unlink"></i> Liberar</button>`}</td>
+            </tr>`;
+          }).join('')}</tbody></table></div>` : '<div class="muted">Nadie tiene Strava conectado.</div>'}
+        <div class="muted" style="margin-top:8px">Según los tokens guardados en VeloMind. Al liberar se revoca el acceso en Strava; el usuario conserva sus actividades y puede volver a conectar si hay plaza.</div>`;
+      box.querySelectorAll('[data-release]').forEach((b) => b.addEventListener('click', () => releaseSlot(b.dataset.release, b.dataset.name, b)));
+    } catch (e) {
+      box.innerHTML = `<h2 class="adm-h2"><i class="fab fa-strava"></i> Plazas de Strava</h2><div class="muted">No se pudieron cargar: ${esc(e.message)}</div>`;
+    }
+  }
+
+  async function releaseSlot(id, name, btn) {
+    if (!confirm(`¿Liberar la plaza de Strava de ${name}?\n\nSe revoca su conexión con Strava (sus actividades se mantienen). Conviene avisarle antes.`)) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+    try {
+      const r = await fetch(`${API}/admin/strava-slots/${encodeURIComponent(id)}/release`, { method: 'POST', headers: Auth.getHeaders() });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Error');
+      loadStravaSlots();
+    } catch (e) {
+      alert(e.message);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-unlink"></i> Liberar';
+    }
+  }
+
+  function renderKpi(k) {
+    const isNum = k.value != null;
+    const delta = k.delta != null && k.delta !== 0 ? ` <span style="font-size:13px;color:${k.delta > 0 ? 'var(--success)' : 'var(--danger)'}">${k.delta > 0 ? '▲' : '▼'} ${Math.abs(k.delta)}</span>` : '';
+    return `<div class="adm-card kpi h-${k.health}">
+      <div class="kpi-label">${esc(k.label)}</div>
+      <div class="kpi-value">${isNum ? fmtNum(k.value) : '—'}${isNum && k.unit ? `<span class="unit">${k.unit}</span>` : ''}${delta}</div>
+      <div class="kpi-hint">${esc(k.hint)}</div>
+      ${hBadge(k.health)}
+    </div>`;
+  }
+
+  function renderSegments(segs) {
+    const total = segs.reduce((s, x) => s + x.users, 0) || 1;
+    return `<div class="seg-bar" role="img" aria-label="Distribución de usuarios por tipo">
+        ${segs.filter((s) => s.users).map((s) => `<div title="${esc(s.label)}: ${s.users}" style="width:${(s.users / total) * 100}%;background:var(${SEG_COLOR[s.color]})"></div>`).join('')}
+      </div>
+      <div class="seg-list">${segs.map((s) => `
+        <div class="seg-item" data-seg="${s.key}">
+          <span class="seg-dot" style="background:var(${SEG_COLOR[s.color]})"></span>
+          <div><div class="seg-name">${esc(s.label)}</div>
+            <div class="seg-num">${s.users} <span class="muted">${s.pct ?? 0}%</span></div>
+            <div class="seg-desc">${esc(s.desc)}</div></div>
+        </div>`).join('')}</div>`;
+  }
+
+  function hrow(label, pctVal, valHtml, h) {
+    return `<div class="hrow"><div class="hrow-label" title="${esc(label)}">${esc(label)}</div>
+      <div class="hrow-track"><div class="hrow-fill ${h && h !== 'none' ? 'h-' + h : ''}" style="width:${Math.min(100, pctVal || 0)}%"></div></div>
+      <div class="hrow-val">${valHtml}</div></div>`;
+  }
+
+  function renderFunnel(steps) {
+    return steps.map((s, i) => `
+      ${i ? `<div class="funnel-drop ${s.stepPct != null && s.stepPct < 60 ? 'bad' : ''}">↓ ${s.stepPct ?? 0}% pasa al siguiente paso</div>` : ''}
+      ${hrow(s.step, s.pct, `${s.users} <small>${s.pct ?? 0}%</small>`)}`).join('');
+  }
+
+  function renderUsage(rows) {
+    const max = Math.max(...rows.map((r) => r.users), 1);
+    return rows.slice(0, 12).map((r) => hrow(r.label, (r.users / max) * 100, `${r.users} <small>${r.views} vis.</small>`)).join('');
+  }
+
+  function renderSplit(title, obj) {
+    const entries = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]);
+    if (!entries.length) return '';
+    const total = entries.reduce((s, [, v]) => s + v, 0);
+    return `<div style="margin-top:16px"><div class="kpi-label" style="margin-bottom:6px">${esc(title)}</div>
+      ${entries.map(([k, v]) => `<span class="tag" style="font-size:12px;padding:3px 8px;margin-bottom:4px">${esc(k)} · ${Math.round((v / total) * 100)}%</span>`).join('')}</div>`;
+  }
+
+  function renderCohorts(cohorts) {
+    const rows = cohorts.filter((c) => c.size);
+    if (!rows.length) return '<div class="muted">Aún no hay altas en las últimas 8 semanas.</div>';
+    return `<div class="adm-table-wrap"><table class="adm-table cohort"><thead><tr><th>Semana de alta</th><th class="num">Altas</th>
+      ${[0, 1, 2, 3, 4, 5, 6].map((k) => `<th class="num">Sem ${k}</th>`).join('')}</tr></thead><tbody>
+      ${rows.map((c) => `<tr><td>${fmtDate(c.week)}</td><td class="num">${c.size}</td>
+        ${c.weeks.map((w) => (w ? `<td class="cell h-${w.health}" title="${w.pct}% activos">${Math.round(w.pct)}%</td>` : '<td class="cell muted">·</td>')).join('')}</tr>`).join('')}
+      </tbody></table></div>
+      <div class="muted" style="margin-top:8px">Semana 0 = la semana del alta. Verde ≥40%, ámbar ≥20%, rojo &lt;20%.</div>`;
+  }
+
+  const SEG_BY_KEY = () => Object.fromEntries(state.data.segments.map((s) => [s.key, s]));
+  function filteredUsers() {
+    const q = state.search.trim().toLowerCase();
+    return state.data.users.filter((u) =>
+      (state.filter === 'all' || u.segment === state.filter) &&
+      (!q || (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)));
+  }
+
+  function renderUsers() {
+    const segs = SEG_BY_KEY();
+    const rows = filteredUsers();
+    document.getElementById('u-count').textContent = `${rows.length} de ${state.data.users.length}`;
+    document.getElementById('u-table').innerHTML = `
+      <thead><tr><th>Usuario</th><th>Tipo</th><th>Alta</th><th>Última visita</th><th>Último entreno</th>
+        <th class="num" title="Días con entreno en 28 días">Entreno 28d</th><th class="num" title="Días que abrió la app en 28 días">App 28d</th>
+        <th class="num" title="Funciones con datos guardados">Funciones</th><th>Conexiones</th></tr></thead>
+      <tbody>${rows.slice(0, 300).map((u) => {
+        const s = segs[u.segment];
+        return `<tr>
+          <td><div class="u-name">${esc(u.name)}</div><div class="u-email">${esc(u.email)}${u.email_verified ? '' : ' · <span style="color:var(--warning)">sin verificar</span>'}</div></td>
+          <td><span class="seg-dot" style="display:inline-block;margin:0 6px 0 0;background:var(${SEG_COLOR[s.color]})"></span>${esc(s.label)}</td>
+          <td>${fmtDate(u.created_at)}</td>
+          <td>${daysAgo(u.last_app)}</td>
+          <td>${daysAgo(u.last_activity)}</td>
+          <td class="num">${u.train_days_28}</td>
+          <td class="num">${u.app_days_28}</td>
+          <td class="num">${u.features}</td>
+          <td>${u.providers.map((p) => `<span class="tag">${esc(p)}</span>`).join('')}${u.premium ? '<span class="tag prem">PREMIUM</span>' : ''}${u.profile_complete ? '' : '<span class="tag" title="Sin FTP o peso">perfil incompleto</span>'}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="9" class="muted">Sin resultados.</td></tr>'}</tbody>`;
+  }
+
+  function exportCsv() {
+    const segs = SEG_BY_KEY();
+    const head = ['id', 'nombre', 'email', 'tipo', 'alta', 'ultima_visita', 'ultimo_entreno', 'dias_entreno_28', 'dias_app_28', 'funciones', 'conexiones', 'premium', 'email_verificado'];
+    const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = filteredUsers().map((u) => [u.id, u.name, u.email, segs[u.segment].label, u.created_at?.slice(0, 10), u.last_app, u.last_activity,
+      u.train_days_28, u.app_days_28, u.features, u.providers.join(' '), u.premium ? 'si' : 'no', u.email_verified ? 'si' : 'no'].map(q).join(','));
+    const blob = new Blob(['﻿' + [head.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `velomind-usuarios-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function drawCharts(d) {
+    if (typeof Chart === 'undefined') return;
+    const ink = css('--text-muted') || '#64748B';
+    const grid = css('--border') || 'rgba(255,255,255,.08)';
+    const c1 = css('--primary') || '#9ED62B';
+    const c2 = css('--accent-blue') || '#38BDF8';
+    const base = {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { labels: { color: ink, boxWidth: 10, boxHeight: 10, usePointStyle: true } }, tooltip: { padding: 10 } },
+      scales: {
+        x: { ticks: { color: ink, maxRotation: 0, autoSkipPadding: 12 }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: ink, precision: 0 }, grid: { color: grid } },
+      },
+    };
+    const label = (k) => fmtDate(k);
+
+    charts.push(new Chart(document.getElementById('ch-daily'), {
+      type: 'line',
+      data: {
+        labels: d.dailyActive.map((x) => label(x.date)),
+        datasets: [
+          { label: d.trackingEnabled ? 'Abrieron la app o entrenaron' : 'Entrenaron', data: d.dailyActive.map((x) => (d.trackingEnabled ? x.any : x.train)), borderColor: c1, backgroundColor: c1, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: .3 },
+          ...(d.trackingEnabled ? [{ label: 'Entrenaron', data: d.dailyActive.map((x) => x.train), borderColor: c2, backgroundColor: c2, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: .3 }] : []),
+        ],
+      },
+      options: { ...base, plugins: { ...base.plugins, legend: { ...base.plugins.legend, display: d.trackingEnabled } } },
+    }));
+
+    charts.push(new Chart(document.getElementById('ch-signups'), {
+      type: 'bar',
+      data: { labels: d.weekly.map((w) => label(w.week)), datasets: [{ label: 'Altas', data: d.weekly.map((w) => w.signups), backgroundColor: c1, borderRadius: 4, maxBarThickness: 28 }] },
+      options: { ...base, plugins: { ...base.plugins, legend: { display: false } } },
+    }));
+
+    charts.push(new Chart(document.getElementById('ch-weekly'), {
+      type: 'bar',
+      data: {
+        labels: d.weekly.map((w) => label(w.week)),
+        datasets: [
+          { label: d.trackingEnabled ? 'Activos (app o entreno)' : 'Activos', data: d.weekly.map((w) => w.active), backgroundColor: c1, borderRadius: 4, maxBarThickness: 18 },
+          { label: 'Entrenaron', data: d.weekly.map((w) => w.training), backgroundColor: c2, borderRadius: 4, maxBarThickness: 18 },
+        ],
+      },
+      options: base,
+    }));
+  }
+
+  document.getElementById('adm-refresh').addEventListener('click', load);
+  load();
+})();
+requestAnimationFrame(function() { document.documentElement.style.removeProperty('opacity'); });
+</script>
+</body>
+</html>

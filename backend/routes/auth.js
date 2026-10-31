@@ -4,10 +4,9 @@ const crypto  = require('crypto');
 const multer  = require('multer');
 const sgMail = require('@sendgrid/mail');
 const supabase = require('../db'); // Ahora db es el cliente de Supabase
-const { requireAuth, signToken } = require('../middleware/auth');
+const { requireAuth, signToken, isAdminEmail, ADMIN_EMAILS } = require('../middleware/auth');
 const { recalculatePMC } = require('../services/pmc');
 const router  = express.Router();
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -199,7 +198,7 @@ router.get('/whoami', requireAuth, (req, res) => {
   res.json({
     email:        req.user.email,
     isAdmin:      req.user.isAdmin,
-    adminEmail:   ADMIN_EMAIL ? `${ADMIN_EMAIL.slice(0,3)}***` : '(no configurado)',
+    adminEmail:   ADMIN_EMAILS.length ? ADMIN_EMAILS.map(e => `${e.slice(0,3)}***`).join(', ') : '(no configurado)',
     match:        req.user.isAdmin ? '✅ Eres admin' : '❌ No eres admin',
   });
 });
@@ -413,7 +412,7 @@ function safeUser(u) {
   if (!u) return null;
   const { password, strava_token, strava_refresh, garmin_token, garmin_refresh,
           fitbit_token, fitbit_refresh, ...safe } = u;
-  safe.isAdmin = !!(ADMIN_EMAIL && u.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+  safe.isAdmin = isAdminEmail(u.email);
   return safe;
 }
 

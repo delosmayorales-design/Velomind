@@ -368,6 +368,15 @@ const Auth = (() => {
             el.insertAdjacentElement('afterend', badge);
           }
         });
+
+        // Enlace al panel de analítica (solo admin; el backend también lo restringe)
+        document.querySelectorAll('.sidebar-nav').forEach(nav => {
+          if (nav.querySelector('.nav-admin-link')) return;
+          const isHere = location.pathname.endsWith('admin.html');
+          nav.insertAdjacentHTML('beforeend',
+            `<div class="nav-section-title">Admin</div>
+             <a href="admin.html" class="nav-item nav-admin-link${isHere ? ' active' : ''}"><i class="fas fa-chart-pie"></i> Panel admin</a>`);
+        });
       }
     }
 
@@ -420,6 +429,8 @@ const Auth = (() => {
       renderUI();
     }
 
+    trackPageView();
+
     // Verificar token con backend en segundo plano
     verifyToken().then(valid => {
       if (valid) {
@@ -434,6 +445,22 @@ const Auth = (() => {
     });
 
     return user;
+  }
+
+  // ─── Analítica de uso (página vista) para el panel de admin ──
+  // Fire-and-forget: nunca bloquea ni muestra errores al usuario.
+  function trackPageView() {
+    if (!getToken()) return;
+    const page = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/, '') || 'index';
+    const platform = window.Capacitor?.isNativePlatform?.() ? 'android' : 'web';
+    try {
+      fetch(`${API_URL}/events`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ event: 'page_view', page, platform }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch (_) {}
   }
 
   // ─── Helper para fetch autenticado con manejo de premium ────

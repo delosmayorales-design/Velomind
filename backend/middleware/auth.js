@@ -1,7 +1,9 @@
 const jwt = require('jsonwebtoken');
 const supabase = require('../db'); // ← ahora apunta a Supabase
 
-const ADMIN_EMAIL  = process.env.ADMIN_EMAIL || '';
+// ADMIN_EMAIL admite varios emails separados por comas
+const ADMIN_EMAILS = (process.env.ADMIN_EMAIL || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+const isAdminEmail = (email) => !!email && ADMIN_EMAILS.includes(email.toLowerCase());
 if (!process.env.JWT_SECRET) {
   console.error('🚨 SEGURIDAD: JWT_SECRET no está configurado. Añádelo como variable de entorno antes de arrancar.');
   process.exit(1); // Nunca arrancar sin secret, en ningún entorno — firmar/verificar tokens con un valor por defecto es forjable por cualquiera que lea el código fuente.
@@ -65,7 +67,7 @@ async function requireAuth(req, res, next) {
       });
     }
 
-    req.user = { ...user, isAdmin: !!(ADMIN_EMAIL && user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) };
+    req.user = { ...user, isAdmin: isAdminEmail(user.email) };
     next();
   } catch (e) {
     console.error('[Auth] Error validando JWT:', e.message);
@@ -89,4 +91,4 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireAdmin, signToken };
+module.exports = { requireAuth, requireAdmin, signToken, isAdminEmail, ADMIN_EMAILS };

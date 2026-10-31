@@ -55,6 +55,7 @@ class QueryBuilder {
   ilike(...a)   { return this._record('ilike', a); }
   order(...a)   { return this._record('order', a); }
   limit(...a)   { return this._record('limit', a); }
+  range(...a)   { return this._record('range', a); }
   single()      { return Promise.resolve(nextResponse(this.table)); }
   maybeSingle() { return Promise.resolve(nextResponse(this.table)); }
   then(resolve, reject) { return Promise.resolve(nextResponse(this.table)).then(resolve, reject); }
