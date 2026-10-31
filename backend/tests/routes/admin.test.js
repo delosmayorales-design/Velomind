@@ -54,9 +54,12 @@ describe('GET /api/admin/overview', () => {
     for (let i = 0; i < 20; i++) acts.push({ user_id: 10, date: dateAgo(i), source: 'Strava' });
     acts.push({ user_id: 11, date: dateAgo(60), source: 'Manual' });
     acts.push({ user_id: 14, date: dateAgo(0), source: 'Manual' }); // demo: no debe contar
+    mockDb.__queueResponse('users', { data: [{ id: 12 }], error: null }); // quién tiene intervals.icu
     mockDb.__queueResponse('activities', { data: acts, error: null });
     mockDb.__queueResponse('app_events', { data: [{ user_id: 10, event: 'page_view', page: 'dashboard', platform: 'web', created_at: daysAgo(1) }], error: null });
     mockDb.__queueResponse('training_plans', { data: [{ user_id: 10 }], error: null });
+    mockDb.__queueResponse('biomechanics_snapshots', { data: [{ user_id: 11 }], error: null });
+    mockDb.__queueResponse('bikes', { data: [{ user_id: 10 }, { user_id: 11 }], error: null });
 
     const res = await request(buildApp()).get('/api/admin/overview');
     expect(res.status).toBe(200);
@@ -73,6 +76,10 @@ describe('GET /api/admin/overview', () => {
 
     expect(res.body.pageUsage[0]).toMatchObject({ key: 'dashboard', label: 'Inicio', users: 1, views: 1 });
     expect(res.body.features.find((f) => f.name === 'Plan de entrenamiento').users).toBe(1);
+    const feats = Object.fromEntries(res.body.users.map((u) => [u.name, u.feature_names]));
+    expect(feats.Diario).toEqual(expect.arrayContaining(['Plan de entrenamiento', 'Garaje (bicis)', 'Strava']));
+    expect(feats.Dormido).toEqual(['Garaje (bicis)', 'Biomecánica']);
+    expect(feats.Nunca).toEqual(['intervals.icu']);
     expect(res.body.sources).toEqual({ Strava: 20 });
   });
 

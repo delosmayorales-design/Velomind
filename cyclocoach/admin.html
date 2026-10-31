@@ -108,6 +108,10 @@
     .muted { color: var(--text-muted); font-size: 12px; }
     .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--bg-input); color: var(--text-secondary); margin-right: 3px; }
     .tag.prem { color: var(--accent); }
+    .tag.tag-hl { color: #111; background: var(--primary); }
+    .feat-row { cursor: pointer; border-radius: var(--radius-md); margin: 0 -6px; padding: 0 6px; }
+    .feat-row:hover { background: var(--bg-card-hover); }
+    .feat-row:hover .hrow-label { color: var(--text-primary); }
     .fb-item { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-secondary); }
     .fb-item:last-child { border-bottom: 0; }
     .adm-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
@@ -174,7 +178,7 @@
       <h1>Panel de administración</h1>
       <p class="subtitle" id="adm-subtitle">Salud y uso de VeloMind</p>
     </div>
-    <button class="adm-btn" id="adm-refresh"><i class="fas fa-sync-alt"></i> Actualizar</button>
+    <button class="adm-btn" id="adm-refresh" style="margin-right:48px"><i class="fas fa-sync-alt"></i> Actualizar</button>
   </header>
 
   <div class="page-body" id="adm-root">
@@ -207,7 +211,7 @@
   const SEG_COLOR = { green: '--success', amber: '--warning', red: '--danger', blue: '--accent-blue' };
   const INSIGHT_ICON = { red: 'fa-fire', amber: 'fa-exclamation-triangle', blue: 'fa-lightbulb', green: 'fa-check-circle' };
 
-  let state = { data: null, filter: 'all', search: '', sort: 'recent' };
+  let state = { data: null, filter: 'all', feature: 'all', search: '', sort: 'recent' };
 
   async function load() {
     root.innerHTML = '<div class="adm-state"><i class="fas fa-circle-notch fa-spin"></i>Calculando métricas…</div>';
@@ -289,8 +293,8 @@
 
       <div class="adm-grid adm-2col">
         <div class="adm-card">
-          <h2 class="adm-h2"><i class="fas fa-puzzle-piece"></i> Adopción de funciones <small>% de usuarios con datos guardados</small></h2>
-          ${d.features.map((f) => hrow(f.name, f.pct, `${f.users} <small>${f.pct ?? 0}%</small>`, f.health)).join('')}
+          <h2 class="adm-h2"><i class="fas fa-puzzle-piece"></i> Adopción de funciones <small>% de usuarios con datos guardados · pulsa para ver quién la usa</small></h2>
+          ${d.features.map((f) => `<div class="feat-row" data-feature="${esc(f.name)}" title="Ver quién usa ${esc(f.name)}">${hrow(f.name, f.pct, `${f.users} <small>${f.pct ?? 0}%</small>`, f.health)}</div>`).join('')}
         </div>
         <div class="adm-card">
           <h2 class="adm-h2"><i class="fas fa-mouse-pointer"></i> Páginas más visitadas <small>30 días · usuarios únicos</small></h2>
@@ -315,6 +319,10 @@
           <select class="adm-input" id="u-filter">
             <option value="all">Todos los tipos</option>
             ${d.segments.map((s) => `<option value="${s.key}" ${state.filter === s.key ? 'selected' : ''}>${esc(s.label)} (${s.users})</option>`).join('')}
+          </select>
+          <select class="adm-input" id="u-feature">
+            <option value="all">Todas las funciones</option>
+            ${d.features.map((f) => `<option value="${esc(f.name)}" ${state.feature === f.name ? 'selected' : ''}>Usa: ${esc(f.name)} (${f.users})</option>`).join('')}
           </select>
           <button class="adm-btn" id="u-csv"><i class="fas fa-file-csv"></i> CSV</button>
         </div>
@@ -343,6 +351,15 @@
     }));
     document.getElementById('u-search').addEventListener('input', (e) => { state.search = e.target.value; renderUsers(); });
     document.getElementById('u-filter').addEventListener('change', (e) => { state.filter = e.target.value; renderUsers(); });
+    document.getElementById('u-feature').addEventListener('change', (e) => { state.feature = e.target.value; renderUsers(); });
+    root.querySelectorAll('.feat-row').forEach((el) => el.addEventListener('click', () => {
+      state.feature = el.dataset.feature;
+      state.filter = 'all';
+      document.getElementById('u-feature').value = state.feature;
+      document.getElementById('u-filter').value = 'all';
+      renderUsers();
+      document.getElementById('u-table').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
     document.getElementById('u-csv').addEventListener('click', exportCsv);
   }
 
@@ -663,8 +680,11 @@ El equipo de VeloMind`,
   const SEG_BY_KEY = () => Object.fromEntries(state.data.segments.map((s) => [s.key, s]));
   function filteredUsers() {
     const q = state.search.trim().toLowerCase();
+    // "Integración (cualquiera)" es un resumen: equivale a tener algún proveedor conectado
+    const usesFeature = (u) => state.feature === 'all' ||
+      (state.feature === 'Integración (cualquiera)' ? u.providers.length > 0 : (u.feature_names || []).includes(state.feature));
     return state.data.users.filter((u) =>
-      (state.filter === 'all' || u.segment === state.filter) &&
+      (state.filter === 'all' || u.segment === state.filter) && usesFeature(u) &&
       (!q || (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)));
   }
 
@@ -675,7 +695,7 @@ El equipo de VeloMind`,
     document.getElementById('u-table').innerHTML = `
       <thead><tr><th>Usuario</th><th>Tipo</th><th>Alta</th><th>Última visita</th><th>Último entreno</th>
         <th class="num" title="Días con entreno en 28 días">Entreno 28d</th><th class="num" title="Días que abrió la app en 28 días">App 28d</th>
-        <th class="num" title="Funciones con datos guardados">Funciones</th><th>Conexiones</th></tr></thead>
+        <th title="Funciones con datos guardados">Funciones que usa</th><th>Conexiones</th></tr></thead>
       <tbody>${rows.slice(0, 300).map((u) => {
         const s = segs[u.segment];
         return `<tr>
@@ -686,7 +706,7 @@ El equipo de VeloMind`,
           <td>${daysAgo(u.last_activity)}</td>
           <td class="num">${u.train_days_28}</td>
           <td class="num">${u.app_days_28}</td>
-          <td class="num">${u.features}</td>
+          <td style="white-space:normal;min-width:170px">${(u.feature_names || []).map((f) => `<span class="tag${f === state.feature ? ' tag-hl' : ''}">${esc(f)}</span>`).join('') || '<span class="muted">—</span>'}</td>
           <td>${u.providers.map((p) => `<span class="tag">${esc(p)}</span>`).join('')}${u.premium ? '<span class="tag prem">PREMIUM</span>' : ''}${u.profile_complete ? '' : '<span class="tag" title="Sin FTP o peso">perfil incompleto</span>'}</td>
         </tr>`;
       }).join('') || '<tr><td colspan="9" class="muted">Sin resultados.</td></tr>'}</tbody>`;
@@ -697,7 +717,7 @@ El equipo de VeloMind`,
     const head = ['id', 'nombre', 'email', 'tipo', 'alta', 'ultima_visita', 'ultimo_entreno', 'dias_entreno_28', 'dias_app_28', 'funciones', 'conexiones', 'premium', 'email_verificado'];
     const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const lines = filteredUsers().map((u) => [u.id, u.name, u.email, segs[u.segment].label, u.created_at?.slice(0, 10), u.last_app, u.last_activity,
-      u.train_days_28, u.app_days_28, u.features, u.providers.join(' '), u.premium ? 'si' : 'no', u.email_verified ? 'si' : 'no'].map(q).join(','));
+      u.train_days_28, u.app_days_28, (u.feature_names || []).join('; '), u.providers.join(' '), u.premium ? 'si' : 'no', u.email_verified ? 'si' : 'no'].map(q).join(','));
     const blob = new Blob(['﻿' + [head.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

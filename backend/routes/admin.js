@@ -139,14 +139,16 @@ async function buildOverview(viewer) {
       countDays(trainDays.get(uid), fromKey, toKey) + countDays(appDays.get(uid), fromKey, toKey) > 0;
 
     // ── Funciones utilizadas (por datos guardados) ──────────────
-    const [plans, adaptations, bikes, routes, ridesCreated, ridesJoined, wellness, weight, biomech, nutrition, push, feedbackUsers] =
+    const [plans, adaptations, bikes, routes, ridesCreated, ridesJoined, wellness, weight, biomech, nutrition, push, feedbackUsers, biomechSnaps] =
       await Promise.all([
         distinctUsers('training_plans'), distinctUsers('plan_adaptations'), distinctUsers('bikes'),
         distinctUsers('routes'), distinctUsers('group_rides', 'creator_id'), distinctUsers('group_ride_participants'),
         distinctUsers('wellness_log'), distinctUsers('weight_log'), distinctUsers('biomechanics'),
-        distinctUsers('nutrition_plans'), distinctUsers('push_subscriptions'), distinctUsers('feedback'),
+        distinctUsers('nutrition_plans'), distinctUsers('push_subscriptions'), distinctUsers('feedback'), distinctUsers('biomechanics_snapshots'),
       ]);
     const groupRides = ridesCreated || ridesJoined ? new Set([...(ridesCreated || []), ...(ridesJoined || [])]) : null;
+    // Biomecánica guarda en dos tablas: el ajuste del día y los análisis (snapshots)
+    const biomechAny = biomech || biomechSnaps ? new Set([...(biomech || []), ...(biomechSnaps || [])]) : null;
     const providerOf = (u) => [u.strava_token && 'Strava', icuIds.has(String(u.id)) && 'Intervals.icu', u.garmin_token && 'Garmin', u.fitbit_token && 'Fitbit'].filter(Boolean);
 
     const featureDefs = [
@@ -155,7 +157,7 @@ async function buildOverview(viewer) {
       ['intervals.icu', icuIds],
       ['Plan de entrenamiento', plans], ['Adaptaciones del plan', adaptations], ['Garaje (bicis)', bikes],
       ['Rutas', routes], ['Salidas grupales', groupRides], ['Bienestar / sueño', wellness], ['Peso', weight],
-      ['Biomecánica', biomech], ['Nutrición', nutrition], ['Notificaciones push', push], ['Feedback', feedbackUsers],
+      ['Biomecánica', biomechAny], ['Nutrición', nutrition], ['Notificaciones push', push], ['Feedback', feedbackUsers],
     ];
     const total = users.length;
     const features = featureDefs
@@ -166,7 +168,7 @@ async function buildOverview(viewer) {
         return { name, users: n, pct: p, health: health(p, 40, 15) };
       })
       .sort((a, b) => b.users - a.users);
-    const featureCount = (uid) => featureDefs.filter(([, set]) => set?.has(uid)).length;
+    const featureNamesOf = (uid) => featureDefs.filter(([name, set]) => name !== 'Integración (cualquiera)' && set?.has(uid)).map(([name]) => name);
 
     // ── Segmentación ────────────────────────────────────────────
     const since28 = since(28);
@@ -194,7 +196,8 @@ async function buildOverview(viewer) {
         train_days_28: train28, app_days_28: app28, segment,
         providers: providerOf(u), premium: u.subscription_tier === 'premium',
         email_verified: u.email_verified !== false, profile_complete: !!(u.ftp && u.weight),
-        features: featureCount(uid),
+        features: featureNamesOf(uid).length,
+        feature_names: featureNamesOf(uid),
       };
     });
 
