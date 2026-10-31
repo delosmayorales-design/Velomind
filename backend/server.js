@@ -112,7 +112,9 @@ app.use('/api/push',        require('./routes/push'));
 app.use('/api/wellness',   require('./routes/wellness'));
 app.use('/api/feedback',   require('./routes/feedback'));
 app.use('/api/events',     require('./routes/events'));
+app.use('/api/admin/broadcast', require('./routes/broadcast').adminRouter);
 app.use('/api/admin',      require('./routes/admin'));
+app.use('/api/broadcast',  require('./routes/broadcast').publicRouter);
 
 // ─────────────────────────────────────────
 // HEALTH (monitoreo externo)

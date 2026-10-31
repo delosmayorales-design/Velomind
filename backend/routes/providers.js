@@ -1342,8 +1342,13 @@ router.get('/status', requireAuth, async (req, res) => {
       .eq('id', req.user.id)
       .single();
 
+    // ¿Quedan plazas en el límite de atletas de Strava?
+    const { count: stravaUsed } = await supabase.from('users')
+      .select('id', { count: 'exact', head: true }).not('strava_token', 'is', null);
+    const stravaCapacity = parseInt(process.env.STRAVA_ATHLETE_CAPACITY, 10) || 10;
+
     res.json({
-      strava: { connected: !!user?.strava_token, configured: !!STRAVA_ID },
+      strava: { connected: !!user?.strava_token, configured: !!STRAVA_ID, full: (stravaUsed || 0) >= stravaCapacity },
       garmin: { connected: !!user?.garmin_token, configured: !!GARMIN_ID },
       fitbit: { connected: !!user?.fitbit_token, configured: !!GFIT_ID },
       intervals: { connected: !icuErr && !!icu?.intervals_api_key, configured: !icuErr }

@@ -69,6 +69,16 @@ const PAGE_LABELS = {
 
 router.get('/overview', async (req, res) => {
   try {
+    res.json(await buildOverview(req.user));
+  } catch (e) {
+    console.error('[admin/overview]', e.message);
+    res.status(500).json({ error: 'Error calculando métricas: ' + e.message });
+  }
+});
+
+// Calcula todas las métricas del panel. También lo usan los avisos para resolver segmentos.
+async function buildOverview(viewer) {
+  {
     const now = Date.now();
     const today = dayKey(now);
     const since = (days) => dayKey(now - days * DAY);
@@ -84,11 +94,17 @@ router.get('/overview', async (req, res) => {
       allUsers = await fetchAll('users', baseCols);
     }
     // Fuera de las estadísticas: demos y cuentas de admin (incluida la que está mirando)
-    const isAdminUser = (u) => isAdminEmail(u.email) || String(u.id) === String(req.user.id);
+    const isAdminUser = (u) => isAdminEmail(u.email) || String(u.id) === String(viewer.id);
     const users = allUsers.filter((u) => !isDemo(u.email) && !isAdminUser(u));
     const adminCount = allUsers.filter(isAdminUser).length;
     const demoCount = allUsers.filter((u) => isDemo(u.email)).length;
     const realIds = new Set(users.map((u) => String(u.id)));
+
+    // intervals.icu aparte: si su migración no se ha ejecutado, la columna no existe
+    let icuIds = new Set();
+    try {
+      icuIds = new Set((await fetchAll('users', 'id', (q) => q.not('intervals_api_key', 'is', null))).map((u) => String(u.id)));
+    } catch (_) {}
 
     // ── Actividades (180 días) y eventos de uso (90 días) ───────
     const acts = (await fetchAll('activities', 'user_id, date, source', (q) => q.gte('date', since(180))))
@@ -131,10 +147,12 @@ router.get('/overview', async (req, res) => {
         distinctUsers('nutrition_plans'), distinctUsers('push_subscriptions'), distinctUsers('feedback'),
       ]);
     const groupRides = ridesCreated || ridesJoined ? new Set([...(ridesCreated || []), ...(ridesJoined || [])]) : null;
-    const providerOf = (u) => [u.strava_token && 'Strava', u.garmin_token && 'Garmin', u.fitbit_token && 'Fitbit'].filter(Boolean);
+    const providerOf = (u) => [u.strava_token && 'Strava', icuIds.has(String(u.id)) && 'Intervals.icu', u.garmin_token && 'Garmin', u.fitbit_token && 'Fitbit'].filter(Boolean);
 
     const featureDefs = [
-      ['Integración (Strava/Garmin/Fitbit)', new Set(users.filter((u) => providerOf(u).length).map((u) => String(u.id)))],
+      ['Integración (cualquiera)', new Set(users.filter((u) => providerOf(u).length).map((u) => String(u.id)))],
+      ['Strava', new Set(users.filter((u) => u.strava_token).map((u) => String(u.id)))],
+      ['intervals.icu', icuIds],
       ['Plan de entrenamiento', plans], ['Adaptaciones del plan', adaptations], ['Garaje (bicis)', bikes],
       ['Rutas', routes], ['Salidas grupales', groupRides], ['Bienestar / sueño', wellness], ['Peso', weight],
       ['Biomecánica', biomech], ['Nutrición', nutrition], ['Notificaciones push', push], ['Feedback', feedbackUsers],
@@ -248,7 +266,7 @@ router.get('/overview', async (req, res) => {
       ['Registrados', userRows],
       ['Email verificado', userRows.filter((r) => r.email_verified)],
       ['Perfil completo (FTP + peso)', userRows.filter((r) => r.profile_complete)],
-      ['Conectó Strava/Garmin/Fitbit', hasProvider],
+      ['Conectó Strava, intervals.icu u otro', hasProvider],
       ['Tiene entrenos registrados', userRows.filter((r) => r.last_activity)],
       ['Creó plan de entrenamiento', plans ? userRows.filter((r) => plans.has(String(r.id))) : null],
       ['Activo esta semana', userRows.filter((r) => activeIn(String(r.id), since(7)))],
@@ -351,10 +369,10 @@ router.get('/overview', async (req, res) => {
     if (!trackingEnabled) {
       insights.push({ level: 'red', title: 'Tracking de uso desactivado', text: 'Ejecuta backend/migrations/add_usage_tracking.sql en Supabase para medir aperturas de la app y uso por página. Ahora mismo "activo" solo significa "registró un entreno".' });
     }
-    if (seg.sin_uso) insights.push({ level: 'red', title: `${seg.sin_uso} usuarios registrados que nunca usaron la app`, text: 'Envíales un email de reactivación con un único paso claro: "Conecta Strava en 1 clic y tu plan se genera solo". Es el grupo más fácil de recuperar en volumen.' });
+    if (seg.sin_uso) insights.push({ level: 'red', title: `${seg.sin_uso} usuarios registrados que nunca usaron la app`, text: 'Envíales un email de reactivación con un único paso claro: conectar intervals.icu o subir sus archivos .fit (Strava está limitado a 10 plazas). Es el grupo más fácil de recuperar en volumen.' });
     if (seg.dormido) insights.push({ level: 'red', title: `${seg.dormido} usuarios dormidos`, text: 'Entrenaban y llevan 28+ días sin actividad. Una notificación push o email con su forma (CTL) actual y "vuelve con un plan de 2 semanas" suele funcionar.' });
     if (atRisk.length) insights.push({ level: 'amber', title: `${atRisk.length} usuarios en riesgo de abandono`, text: 'Eran activos hace 1-2 meses y no han vuelto en 14 días. Tienes la lista abajo: contáctalos personalmente o pregúntales qué les falta.' });
-    if (seg.solo_app) insights.push({ level: 'amber', title: `${seg.solo_app} usuarios abren la app sin registrar entrenos`, text: 'Probablemente no han conectado Strava/Garmin. Muestra un banner persistente en el Inicio para conectarlo; sin datos la app pierde casi todo su valor.' });
+    if (seg.solo_app) insights.push({ level: 'amber', title: `${seg.solo_app} usuarios abren la app sin registrar entrenos`, text: 'Probablemente no han conectado ninguna fuente de entrenos. Envíales un aviso para conectar intervals.icu (sin límite de plazas, a diferencia de Strava); sin datos la app pierde casi todo su valor.' });
     if (seg.nuevo) insights.push({ level: 'blue', title: `${seg.nuevo} nuevos esta semana sin entrenos aún`, text: 'Los primeros 3 días son críticos: un email de bienvenida al día 1 y un recordatorio al día 3 si siguen sin conectar proveedor.' });
     const worstStep = funnel.slice(1).reduce((w, s) => (w == null || (s.stepPct ?? 100) < (w.stepPct ?? 100) ? s : w), null);
     if (worstStep && worstStep.stepPct != null && worstStep.stepPct < 70) {
@@ -369,19 +387,16 @@ router.get('/overview', async (req, res) => {
     if (new7 < newPrev7) insights.push({ level: 'amber', title: 'Las altas bajan respecto a la semana anterior', text: `${new7} vs ${newPrev7}. Revisa si cambió alguna fuente de tráfico (redes, Strava clubs, boca a boca).` });
     if (!insights.length) insights.push({ level: 'green', title: 'Todo en verde', text: 'No hay alertas. Buen momento para invertir en adquisición.' });
 
-    res.json({
+    return {
       generatedAt: new Date(now).toISOString(),
       trackingEnabled,
       excluded: { demo: demoCount, admin: adminCount },
       kpis, segments, funnel, features, pageUsage, aiUsage, platforms, sources,
       dailyActive, weekly, cohorts, atRisk, insights, feedback,
       users: userRows.sort((a, b) => String(b.last_app || b.last_activity || '').localeCompare(String(a.last_app || a.last_activity || ''))),
-    });
-  } catch (e) {
-    console.error('[admin/overview]', e.message);
-    res.status(500).json({ error: 'Error calculando métricas: ' + e.message });
+    };
   }
-});
+}
 
 // ── Plazas de Strava ────────────────────────────────────────
 // Strava limita cuántos atletas puede autorizar la app. Desde aquí se ve quién ocupa
@@ -456,3 +471,4 @@ router.post('/strava-slots/:userId/release', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.buildOverview = buildOverview;

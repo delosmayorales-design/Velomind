@@ -244,6 +244,10 @@
         <div class="muted"><i class="fas fa-circle-notch fa-spin"></i> Cargando plazas de Strava…</div>
       </div>
 
+      <div class="adm-card adm-section" id="broadcast">
+        <div class="muted"><i class="fas fa-circle-notch fa-spin"></i> Cargando avisos…</div>
+      </div>
+
       <div class="adm-card adm-section">
         <h2 class="adm-h2"><i class="fas fa-users"></i> Tipos de usuario <small>según días de entreno y uso en los últimos 28 días · pulsa para filtrar la tabla</small></h2>
         ${renderSegments(d.segments)}
@@ -323,6 +327,7 @@
     drawCharts(d);
     renderUsers();
     loadStravaSlots();
+    loadBroadcast();
     root.querySelectorAll('.seg-item').forEach((el) => el.addEventListener('click', () => {
       state.filter = el.dataset.seg;
       document.getElementById('u-filter').value = state.filter;
@@ -391,6 +396,194 @@
       alert(e.message);
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-unlink"></i> Liberar';
+    }
+  }
+
+  // ── Avisos a usuarios ────────────────────────────────────────
+  const DRAFT = {
+    segment: 'no_provider',
+    subject: '{nombre}, ya puedes conectar tu Garmin, Wahoo o Zwift a VeloMind',
+    body: `Hola {nombre},
+
+Strava solo nos deja conectar a un número limitado de ciclistas, y sabemos que muchos os habéis quedado sin poder sincronizar vuestros entrenos.
+
+Ya hay solución: VeloMind se conecta ahora con intervals.icu, una plataforma gratuita que recibe tus actividades de Garmin, Wahoo, Zwift, Coros, Suunto y más. Sin listas de espera.
+
+Son 2 minutos:
+1. Crea tu cuenta gratis en intervals.icu y conecta allí tu dispositivo.
+2. Copia tu API Key (Settings → Developer Settings).
+3. Pégala en VeloMind → Integraciones.
+
+Desde ese momento tus entrenos llegarán solos y tendrás tu forma, tu carga y tu plan siempre al día.
+
+¡Nos vemos en la carretera!
+El equipo de VeloMind`,
+    cta_label: 'Conectar intervals.icu',
+    cta_path: 'integrations.html',
+  };
+  const CTA_PAGES = [['', 'Sin botón'], ['integrations.html', 'Integraciones'], ['dashboard.html', 'Inicio'], ['training-plan.html', 'Entrenamiento'], ['activities.html', 'Actividades'], ['feedback.html', 'Feedback']];
+  let bcSegments = [];
+  let bcPoll = null;
+
+  async function loadBroadcast() {
+    const box = document.getElementById('broadcast');
+    try {
+      const r = await fetch(`${API}/admin/broadcast/segments`, { headers: Auth.getHeaders() });
+      const s = await r.json();
+      if (!r.ok) throw new Error(s.error || 'Error');
+      bcSegments = s.segments;
+      box.innerHTML = `
+        <h2 class="adm-h2"><i class="fas fa-bullhorn"></i> Enviar aviso <small>email y/o notificación push a un grupo de usuarios · usa {nombre} para personalizar</small></h2>
+        <div class="adm-grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
+          <div class="adm-grid" style="gap:10px;align-content:start">
+            <label class="kpi-label">Destinatarios
+              <select class="adm-input" id="bc-segment" style="width:100%;margin-top:4px">
+                ${s.segments.map((g) => `<option value="${g.key}" ${g.key === DRAFT.segment ? 'selected' : ''}>${esc(g.label)} (${g.users})</option>`).join('')}
+              </select></label>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--text-secondary)">
+              <label><input type="checkbox" id="bc-email" ${s.emailReady ? 'checked' : 'disabled'}> Email ${s.emailReady ? '' : '(no configurado)'}</label>
+              <label><input type="checkbox" id="bc-push" ${s.pushReady ? 'checked' : 'disabled'}> Push ${s.pushReady ? '' : '(no configurado)'}</label>
+            </div>
+            <label class="kpi-label">Asunto / título
+              <input class="adm-input" id="bc-subject" maxlength="120" style="width:100%;margin-top:4px" value="${esc(DRAFT.subject)}"></label>
+            <label class="kpi-label">Mensaje
+              <textarea class="adm-input" id="bc-body" maxlength="4000" rows="12" style="width:100%;margin-top:4px;resize:vertical;line-height:1.5">${esc(DRAFT.body)}</textarea></label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <label class="kpi-label" style="flex:1;min-width:140px">Texto del botón
+                <input class="adm-input" id="bc-cta-label" maxlength="40" style="width:100%;margin-top:4px" value="${esc(DRAFT.cta_label)}"></label>
+              <label class="kpi-label" style="flex:1;min-width:140px">Lleva a
+                <select class="adm-input" id="bc-cta-path" style="width:100%;margin-top:4px">
+                  ${CTA_PAGES.map(([v, l]) => `<option value="${v}" ${v === DRAFT.cta_path ? 'selected' : ''}>${l}</option>`).join('')}
+                </select></label>
+            </div>
+          </div>
+          <div class="adm-grid" style="gap:10px;align-content:start">
+            <div class="kpi-label">Vista previa</div>
+            <div id="bc-preview" style="background:#0a0b0f;color:#f0f2f5;border-radius:12px;padding:20px;border:1px solid var(--border);font-size:13px"></div>
+            <div id="bc-count" class="kpi-hint"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="adm-btn" id="bc-test"><i class="fas fa-vial"></i> Enviarme una prueba</button>
+              <button class="adm-btn" id="bc-send" style="background:var(--primary);color:#111;border-color:var(--primary);font-weight:700"><i class="fas fa-paper-plane"></i> Enviar</button>
+            </div>
+            <div id="bc-result" class="kpi-hint"></div>
+          </div>
+        </div>
+        <h2 class="adm-h2" style="margin-top:20px"><i class="fas fa-history"></i> Avisos enviados</h2>
+        <div id="bc-history" class="muted">Cargando…</div>`;
+
+      ['bc-subject', 'bc-body', 'bc-cta-label', 'bc-cta-path'].forEach((id) => document.getElementById(id).addEventListener('input', renderBcPreview));
+      ['bc-segment', 'bc-email', 'bc-push'].forEach((id) => document.getElementById(id).addEventListener('change', updateBcCount));
+      document.getElementById('bc-test').addEventListener('click', sendBcTest);
+      document.getElementById('bc-send').addEventListener('click', sendBc);
+      renderBcPreview();
+      updateBcCount();
+      loadBcHistory();
+    } catch (e) {
+      box.innerHTML = `<h2 class="adm-h2"><i class="fas fa-bullhorn"></i> Enviar aviso</h2><div class="muted">No disponible: ${esc(e.message)}</div>`;
+    }
+  }
+
+  function bcMessage() {
+    return {
+      segment: document.getElementById('bc-segment').value,
+      channels: [document.getElementById('bc-email').checked && 'email', document.getElementById('bc-push').checked && 'push'].filter(Boolean),
+      subject: document.getElementById('bc-subject').value,
+      body: document.getElementById('bc-body').value,
+      cta_label: document.getElementById('bc-cta-label').value,
+      cta_path: document.getElementById('bc-cta-path').value,
+    };
+  }
+
+  function renderBcPreview() {
+    const m = bcMessage();
+    const fill = (t) => esc(t).replace(/\{nombre\}/gi, '<span style="color:#9ED62B">Laura</span>');
+    document.getElementById('bc-preview').innerHTML = `
+      <div style="font-weight:800;font-size:16px;margin-bottom:12px">🚴 VeloMind</div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:10px">${fill(m.subject)}</div>
+      <div style="color:#cbd5e1;line-height:1.6;white-space:pre-wrap">${fill(m.body)}</div>
+      ${m.cta_label && m.cta_path ? `<div style="display:inline-block;background:#9ED62B;color:#111;padding:10px 22px;border-radius:8px;font-weight:700;margin-top:12px">${esc(m.cta_label)}</div>` : ''}
+      <div style="color:#6b7280;font-size:11px;margin-top:14px;border-top:1px solid rgba(255,255,255,.06);padding-top:10px">Recibes este aviso porque tienes cuenta en VeloMind. <u>No quiero recibir más avisos</u>.</div>`;
+  }
+
+  function updateBcCount() {
+    const m = bcMessage();
+    const g = bcSegments.find((x) => x.key === m.segment) || { users: 0, push: 0 };
+    const parts = [];
+    if (m.channels.includes('email')) parts.push(`${g.users} email(s)`);
+    if (m.channels.includes('push')) parts.push(`${g.push} push (solo quien tiene notificaciones activas)`);
+    document.getElementById('bc-count').innerHTML = parts.length ? `Se enviarán aprox. <strong>${parts.join(' + ')}</strong>. Quien se dio de baja queda excluido.` : 'Elige al menos un canal.';
+    document.getElementById('bc-send').innerHTML = `<i class="fas fa-paper-plane"></i> Enviar a ${g.users} usuario(s)`;
+  }
+
+  async function sendBcTest() {
+    const btn = document.getElementById('bc-test');
+    const out = document.getElementById('bc-result');
+    btn.disabled = true;
+    try {
+      const r = await fetch(`${API}/admin/broadcast/test`, { method: 'POST', headers: Auth.getHeaders(), body: JSON.stringify(bcMessage()) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Error');
+      out.innerHTML = `Prueba → ${Object.entries(d).map(([k, v]) => `${k}: <strong>${esc(v)}</strong>`).join(' · ')}`;
+    } catch (e) {
+      out.innerHTML = `<span style="color:var(--danger)">${esc(e.message)}</span>`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function sendBc() {
+    const m = bcMessage();
+    const out = document.getElementById('bc-result');
+    try {
+      const pr = await fetch(`${API}/admin/broadcast/preview`, { method: 'POST', headers: Auth.getHeaders(), body: JSON.stringify({ segment: m.segment }) });
+      const p = await pr.json();
+      if (!pr.ok) throw new Error(p.error || 'Error');
+      const sample = p.sample.map((u) => `· ${u.name} <${u.email}>`).join('\n');
+      if (!confirm(`¿Enviar "${m.subject}" a ${p.recipients} usuario(s)?\n\nCanales: ${m.channels.join(' + ')}${m.channels.includes('push') ? ` (${p.push} con push)` : ''}\n\nAlgunos destinatarios:\n${sample}${p.recipients > p.sample.length ? '\n…' : ''}\n\nNo se puede deshacer.`)) return;
+
+      document.getElementById('bc-send').disabled = true;
+      const r = await fetch(`${API}/admin/broadcast/send`, { method: 'POST', headers: Auth.getHeaders(), body: JSON.stringify(m) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Error');
+      out.innerHTML = `<span style="color:var(--success)"><i class="fas fa-check-circle"></i> Enviando a ${d.recipients} usuario(s)… el progreso aparece abajo.</span>`;
+      loadBcHistory();
+    } catch (e) {
+      out.innerHTML = `<span style="color:var(--danger)">${esc(e.message)}</span>`;
+    } finally {
+      document.getElementById('bc-send').disabled = false;
+    }
+  }
+
+  const BC_STATUS = {
+    sending: ['h-blue', 'fa-circle-notch fa-spin', 'Enviando'],
+    done:    ['h-green', 'fa-check-circle', 'Enviado'],
+    partial: ['h-amber', 'fa-exclamation-circle', 'Parcial'],
+    error:   ['h-red', 'fa-times-circle', 'Error'],
+  };
+
+  async function loadBcHistory() {
+    const box = document.getElementById('bc-history');
+    if (!box) return;
+    clearTimeout(bcPoll);
+    try {
+      const r = await fetch(`${API}/admin/broadcast/history`, { headers: Auth.getHeaders() });
+      const d = await r.json();
+      if (d.migrationMissing) { box.innerHTML = 'Ejecuta <code>backend/migrations/add_broadcasts.sql</code> en Supabase para poder enviar avisos.'; return; }
+      if (!d.history.length) { box.innerHTML = 'Aún no has enviado ningún aviso.'; return; }
+      const segLabel = (k) => (bcSegments.find((s) => s.key === k)?.label || k).split(' — ')[0];
+      box.innerHTML = `<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Fecha</th><th>Asunto</th><th>Grupo</th><th>Estado</th><th class="num">Emails</th><th class="num">Push</th></tr></thead><tbody>
+        ${d.history.map((b) => {
+          const [cls, icon, txt] = BC_STATUS[b.status] || BC_STATUS.error;
+          return `<tr><td>${new Date(b.created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+            <td style="white-space:normal;min-width:180px">${esc(b.subject)}${b.error ? `<div class="u-email" style="color:var(--warning)">${esc(b.error)}</div>` : ''}</td>
+            <td>${esc(segLabel(b.segment))} · ${b.recipients}</td>
+            <td><span class="hbadge ${cls}" style="margin:0"><i class="fas ${icon}"></i>${txt}</span></td>
+            <td class="num">${b.channels.includes('email') ? `${b.email_sent}${b.email_failed ? ` <small style="color:var(--danger)">/${b.email_failed} ✗</small>` : ''}` : '—'}</td>
+            <td class="num">${b.channels.includes('push') ? `${b.push_sent}${b.push_failed ? ` <small style="color:var(--danger)">/${b.push_failed} ✗</small>` : ''}` : '—'}</td></tr>`;
+        }).join('')}</tbody></table></div>`;
+      if (d.history.some((b) => b.status === 'sending')) bcPoll = setTimeout(loadBcHistory, 4000);
+    } catch (e) {
+      box.innerHTML = `No se pudo cargar el historial: ${esc(e.message)}`;
     }
   }
 

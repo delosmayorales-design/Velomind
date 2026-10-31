@@ -546,6 +546,19 @@
       </div>`;
   }
 
+  // Strava limita cuántos atletas puede conectar la app: si está lleno, mandamos a intervals.icu
+  function renderStravaFull() {
+    const el = document.getElementById('strava-actions');
+    if (!el || el.querySelector('.strava-full-note')) return;
+    el.insertAdjacentHTML('afterbegin', `
+      <div class="strava-full-note" style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.3);border-radius:var(--radius-md);padding:12px 14px;font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:12px">
+        <i class="fas fa-info-circle" style="color:#38BDF8"></i>
+        <strong style="color:var(--text-primary)">Strava está completo ahora mismo.</strong>
+        Strava solo nos permite un número limitado de ciclistas conectados. Mientras tanto, conecta
+        <a href="#card-intervals" style="color:#38BDF8;font-weight:600">intervals.icu</a>: es gratis, recibe tus entrenos de Garmin, Wahoo o Zwift y no tiene límite.
+      </div>`);
+  }
+
   function renderConnected() {
     const card = document.getElementById('card-strava');
     const status = document.getElementById('strava-status');
@@ -740,6 +753,8 @@
       if (s?.strava?.connected) {
         localStorage.setItem('velomind_strava_connected', '1');
         renderConnected();
+      } else if (s?.strava?.full) {
+        renderStravaFull();
       }
       if (s?.fitbit?.connected) { localStorage.setItem('velomind_fitbit_connected', '1'); renderFitbitConnected(); }
       else renderFitbitDisconnected(!!s?.fitbit?.configured);
