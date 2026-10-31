@@ -373,9 +373,12 @@ const Auth = (() => {
         document.querySelectorAll('.sidebar-nav').forEach(nav => {
           if (nav.querySelector('.nav-admin-link')) return;
           const isHere = location.pathname.endsWith('admin.html');
-          nav.insertAdjacentHTML('beforeend',
-            `<div class="nav-section-title">Admin</div>
-             <a href="admin.html" class="nav-item nav-admin-link${isHere ? ' active' : ''}"><i class="fas fa-chart-pie"></i> Panel admin</a>`);
+          const html = `<div class="nav-section-title">Admin</div>
+             <a href="admin.html" class="nav-item nav-admin-link${isHere ? ' active' : ''}"><i class="fas fa-chart-pie"></i> Panel admin</a>`;
+          // Antes del desplegable "Más" para que siempre quede a la vista
+          const more = nav.querySelector('.nav-more-toggle');
+          if (more) more.insertAdjacentHTML('beforebegin', html);
+          else nav.insertAdjacentHTML('beforeend', html);
         });
       }
     }
@@ -576,6 +579,75 @@ const Auth = (() => {
 // Exponer globalmente
 window.Auth = Auth;
 window.API_URL = API_URL; // Exponer para compatibilidad con otros scripts si es necesario
+
+// ─── Menú lateral: lo esencial a la vista, el resto bajo "Más" ──
+// El sidebar está copiado en cada página; aquí se reordena en un solo sitio.
+// Cualquier enlace que no esté en estos grupos acaba dentro de "Más".
+const SIDEBAR_GROUPS = [
+  ['Principal',     ['dashboard.html', 'activities.html', 'analytics.html']],
+  ['Entrenamiento', ['training-plan.html', 'nutrition.html']],
+  ['Cuenta',        ['integrations.html', 'index.html']],
+];
+const NAV_MORE_KEY = 'velomind_nav_more_open';
+
+function organizeSidebar() {
+  document.querySelectorAll('.sidebar-nav').forEach(nav => {
+    if (nav.dataset.organized) return;
+    nav.dataset.organized = '1';
+
+    const links = [...nav.querySelectorAll('a.nav-item:not(.nav-admin-link)')];
+    const pageOf = (a) => (a.getAttribute('href') || '').split('/').pop();
+    const take = (page) => {
+      const i = links.findIndex(a => pageOf(a) === page);
+      return i < 0 ? null : links.splice(i, 1)[0];
+    };
+    const groups = SIDEBAR_GROUPS.map(([title, pages]) => [title, pages.map(take).filter(Boolean)]);
+    const rest = links;
+
+    nav.innerHTML = '';
+    groups.forEach(([title, items]) => {
+      if (!items.length) return;
+      nav.insertAdjacentHTML('beforeend', `<div class="nav-section-title">${title}</div>`);
+      items.forEach(a => nav.appendChild(a));
+    });
+    if (!rest.length) return;
+
+    let open = rest.some(a => a.classList.contains('active'));
+    try { open = open || localStorage.getItem(NAV_MORE_KEY) === '1'; } catch (_) {}
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'nav-item nav-more-toggle';
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.innerHTML = '<i class="fas fa-ellipsis-h"></i> Más <i class="fas fa-chevron-down nav-more-chevron"></i>';
+    const group = document.createElement('div');
+    group.className = 'nav-more-group' + (open ? ' open' : '');
+    rest.forEach(a => group.appendChild(a));
+
+    toggle.addEventListener('click', () => {
+      const isOpen = group.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', String(isOpen));
+      try { localStorage.setItem(NAV_MORE_KEY, isOpen ? '1' : '0'); } catch (_) {}
+    });
+    nav.appendChild(toggle);
+    nav.appendChild(group);
+  });
+
+  if (!document.getElementById('nav-more-style')) {
+    const style = document.createElement('style');
+    style.id = 'nav-more-style';
+    style.textContent = `
+      .nav-more-toggle { width: 100%; background: none; border: none; font: inherit; text-align: left; cursor: pointer; margin-top: 8px; }
+      .nav-more-chevron { margin-left: auto; font-size: 11px; transition: transform .2s; }
+      .nav-more-toggle[aria-expanded="true"] .nav-more-chevron { transform: rotate(180deg); }
+      .nav-more-group { display: none; padding-left: 8px; }
+      .nav-more-group.open { display: block; }`;
+    document.head.appendChild(style);
+  }
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', organizeSidebar);
+else organizeSidebar();
 
 // Auto-init en páginas protegidas
 if (!window.CYCLOCOACH_PUBLIC) {

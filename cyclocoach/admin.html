@@ -113,7 +113,14 @@
     .adm-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
     .adm-state i { font-size: 32px; margin-bottom: 12px; display: block; }
 
+    .show-sm { display: none; }
     @media (max-width: 600px) {
+      .hide-sm { display: none; }
+      .show-sm { display: block; }
+      /* iOS hace zoom al enfocar campos con letra < 16px */
+      .adm-input { font-size: 16px; }
+      .adm-h2 { flex-wrap: wrap; }
+      .adm-h2 small { flex-basis: 100%; }
       .hrow { grid-template-columns: 1fr 70px; }
       .hrow-track { grid-column: 1 / -1; grid-row: 2; }
       .adm-2col { grid-template-columns: 1fr; }
@@ -344,7 +351,7 @@
     reserved: { text: 'Reservada', icon: 'fa-lock', cls: 'h-blue' },
     active:   { text: 'Activo', icon: 'fa-check-circle', cls: 'h-green' },
     low:      { text: 'Poco activo', icon: 'fa-exclamation-circle', cls: 'h-amber' },
-    inactive: { text: 'Inactivo · liberable', icon: 'fa-times-circle', cls: 'h-red' },
+    inactive: { text: 'Inactivo', icon: 'fa-times-circle', cls: 'h-red' },
   };
 
   async function loadStravaSlots() {
@@ -363,17 +370,22 @@
         </div>
         <div class="hrow-track" style="margin:10px 0 14px"><div class="hrow-fill h-${s.health}" style="width:${usedPct}%"></div></div>
         ${s.slots.length ? `<div class="adm-table-wrap"><table class="adm-table"><thead><tr>
-            <th>Usuario</th><th>Estado</th><th>Última visita</th><th>Último entreno</th><th></th></tr></thead><tbody>
+            <th>Usuario</th><th>Estado</th><th class="hide-sm">Última visita</th><th class="hide-sm">Último entreno</th><th class="hide-sm"></th></tr></thead><tbody>
           ${s.slots.map((u) => {
             const st = SLOT_STATUS[u.status];
-            return `<tr>
-              <td><div class="u-name">${esc(u.name)}</div><div class="u-email">${esc(u.email)}</div></td>
-              <td><span class="hbadge ${st.cls}" style="margin:0"><i class="fas ${st.icon}"></i>${st.text}</span></td>
-              <td>${daysAgo(u.last_seen_at)}</td>
-              <td>${daysAgo(u.last_activity)}</td>
-              <td style="text-align:right">${u.reserved ? '' : `
+            const actions = u.reserved ? '' : `
                 <a class="adm-btn" href="mailto:${encodeURIComponent(u.email)}?subject=${encodeURIComponent('Tu conexión con Strava en VeloMind')}" title="Avisar por email"><i class="fas fa-envelope"></i></a>
-                <button class="adm-btn" data-release="${u.id}" data-name="${esc(u.name)}"><i class="fas fa-unlink"></i> Liberar</button>`}</td>
+                <button class="adm-btn" data-release="${u.id}" data-name="${esc(u.name)}"><i class="fas fa-unlink"></i> Liberar</button>`;
+            return `<tr>
+              <td><div class="u-name">${esc(u.name)}</div><div class="u-email">${esc(u.email)}</div>
+                <div class="show-sm">
+                  <div class="u-email">Visita: ${daysAgo(u.last_seen_at)} · Entreno: ${daysAgo(u.last_activity)}</div>
+                  ${actions ? `<div style="display:flex;gap:6px;margin-top:6px">${actions}</div>` : ''}
+                </div></td>
+              <td><span class="hbadge ${st.cls}" style="margin:0"><i class="fas ${st.icon}"></i>${st.text}</span></td>
+              <td class="hide-sm">${daysAgo(u.last_seen_at)}</td>
+              <td class="hide-sm">${daysAgo(u.last_activity)}</td>
+              <td class="hide-sm" style="text-align:right">${actions}</td>
             </tr>`;
           }).join('')}</tbody></table></div>` : '<div class="muted">Nadie tiene Strava conectado.</div>'}
         <div class="muted" style="margin-top:8px">Según los tokens guardados en VeloMind. Al liberar se revoca el acceso en Strava; el usuario conserva sus actividades y puede volver a conectar si hay plaza.</div>`;
