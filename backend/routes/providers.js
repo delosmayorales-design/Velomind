@@ -1048,6 +1048,44 @@ router.post('/garmin/push-structured-workout', requireAuth, async (req, res) => 
   }
 });
 
+// Desconecta Strava de verdad: revoca la autorización en Strava (lo que libera la plaza
+// del límite de atletas de la app) y borra los tokens. Las actividades importadas se quedan.
+// Solo borramos los tokens si Strava confirma la revocación (o el token ya no vale): si los
+// borrásemos con la autorización aún viva, la plaza seguiría ocupada y ya no podríamos liberarla.
+async function releaseStrava(uid) {
+  const { data: user } = await supabase.from('users')
+    .select('strava_token, strava_refresh, strava_expires_at').eq('id', uid).single();
+  if (!user?.strava_token && !user?.strava_refresh) return { ok: true, alreadyDisconnected: true };
+
+  const token = await refreshStravaToken(user, uid);
+  if (token) {
+    const r = await fetch('https://www.strava.com/oauth/deauthorize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ access_token: token }),
+    });
+    if (!r.ok && r.status !== 401) {
+      const detail = await r.text().catch(() => '');
+      return { ok: false, error: `Strava respondió ${r.status}`, detail };
+    }
+  }
+  await supabase.from('users').update({
+    strava_token: null, strava_refresh: null, strava_expires_at: null,
+  }).eq('id', uid);
+  return { ok: true };
+}
+
+router.delete('/strava/disconnect', requireAuth, async (req, res) => {
+  try {
+    const result = await releaseStrava(req.user.id);
+    if (!result.ok) return res.status(502).json({ error: 'No se pudo desconectar de Strava. Inténtalo de nuevo.' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[providers/strava/disconnect]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
+  }
+});
+
 router.delete('/garmin/disconnect', requireAuth, async (req, res) => {
   try {
     const { data: user } = await supabase.from('users').select('garmin_token').eq('id', req.user.id).single();
@@ -1532,3 +1570,4 @@ module.exports = router;
 // duplicar la lógica de auth/refresh de Strava.
 module.exports.refreshStravaToken = refreshStravaToken;
 module.exports.fetchStravaStreams = fetchStravaStreams;
+module.exports.releaseStrava = releaseStrava;

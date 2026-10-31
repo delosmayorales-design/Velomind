@@ -740,8 +740,20 @@
   }
 
   // ── Desconectar ──────────────────────────────────────────────
-  function doDisconnect() {
+  async function doDisconnect() {
     if (!confirm('¿Desconectar Strava? Se mantendrán las actividades ya importadas.')) return;
+    // Revocar en el servidor: si solo limpiamos el navegador, Strava sigue contando la plaza
+    try {
+      const r = await fetch(`${window.API_URL}/providers/strava/disconnect`, { method: 'DELETE', headers: Auth.getHeaders() });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        alert(d.error || 'No se pudo desconectar Strava. Inténtalo de nuevo.');
+        return;
+      }
+    } catch (e) {
+      alert('No se pudo contactar con el servidor. Inténtalo de nuevo.');
+      return;
+    }
     localStorage.removeItem('velomind_strava_connected');
     localStorage.removeItem('velomind_strava_token');
     localStorage.removeItem('velomind_strava_last_sync');
