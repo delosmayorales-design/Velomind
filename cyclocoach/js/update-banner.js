@@ -7,7 +7,7 @@
     overlay.id = 'vm-update-modal';
     overlay.innerHTML =
       '<div class="vm-modal-box">' +
-        '<div class="vm-modal-icons">🚧 🦺 🔧 🪛 🏗️ 🦺 🚧</div>' +
+        '<div class="vm-modal-icons">🚧 🦺 🔧 🔩 🏗️ 🦺 🚧</div>' +
         '<div class="vm-modal-cones">🔶 🔷 🔶 🔷 🔶</div>' +
         '<h2 class="vm-modal-title">¡App actualizada!</h2>' +
         '<p class="vm-modal-body">Hemos publicado cambios hoy en VeloMind.<br>Es posible que notes mejoras o diferencias en el funcionamiento.</p>' +

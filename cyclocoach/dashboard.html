@@ -1504,7 +1504,7 @@ function getClothing(temp, wind, precip, code, sess) {
     else              items.push('🩳 Pantalón corto o mallas ligeras');
     items.push('👟 Zapatillas de running o trekking');
     if (wc < 8)       items.push('🧤 Guantes ligeros');
-    if (wc < 6)       items.push('🎿 Gorro o buff');
+    if (wc < 6)       items.push('🧣 Gorro o buff');
     if (isRain)       items.push('🌧️ Chubasquero o impermeable ligero');
     return items;
   }
@@ -1521,7 +1521,7 @@ function getClothing(temp, wind, precip, code, sess) {
     else              items.push('🩳 Short de running');
     items.push('👟 Zapatillas de running');
     if (wc < 8)       items.push('🧤 Guantes finos de running');
-    if (wc < 6)       items.push('🎿 Gorro o buff');
+    if (wc < 6)       items.push('🧣 Gorro o buff');
     if (isRain)       items.push('🌧️ Cortavientos impermeable ligero');
     return items;
   }
@@ -1537,7 +1537,7 @@ function getClothing(temp, wind, precip, code, sess) {
   else              items.push('🩲 Culote corto');
   if      (wc < 5)  items.push('🧤 Guantes gruesos');
   else if (wc < 14) items.push('🧤 Guantes finos');
-  if (wc < 8)       items.push('🪖 Gorro bajo el casco');
+  if (wc < 8)       items.push('🧢 Gorro bajo el casco');
   if (isRain)       { items.push('🌧️ Cortavientos impermeable'); items.push('👟 Fundas para zapatillas'); }
   else if (wind>30) items.push('💨 Cortavientos ligero');
   if (wc < 8)       items.push('🧦 Calcetines térmicos o fundas');
@@ -1607,7 +1607,7 @@ function getRouteRec(code, wind, precip, temp, sess) {
   if (highWind)
     return { icon:'🏔️', type:'MTB / Gravel', color:'#10b981', msg:`Viento fuerte (${wind.toFixed(0)} km/h). Evita carretera — MTB o gravel por senderos protegidos es más seguro y disfrutable.` };
   if (modWind)
-    return { icon:'🪨', type:'Gravel', color:'#f59e0b', msg:`Viento de ${wind.toFixed(0)} km/h. Considera gravel o rutas resguardadas. Carretera posible pero incómoda.` };
+    return { icon:'⛰️', type:'Gravel', color:'#f59e0b', msg:`Viento de ${wind.toFixed(0)} km/h. Considera gravel o rutas resguardadas. Carretera posible pero incómoda.` };
   if (isFog)
     return { icon:'🏔️', type:'MTB / Gravel', color:'#94a3b8', msg:'Niebla — visibilidad reducida en carretera. MTB o gravel por caminos tranquilos es más seguro.' };
   return { icon:'🚴', type:'Carretera', color:'#9ED62B', msg:'Condiciones perfectas para carretera. ¡Aprovéchalo!' };
