@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS app_events (
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   event      TEXT NOT NULL,          -- 'page_view' | 'ai_call'
   page       TEXT,                   -- 'dashboard', 'training-plan', 'coach/ai-analysis'...
-  platform   TEXT,                   -- 'web' | 'android'
+  platform   TEXT,                   -- 'web' | 'pwa' | 'android'
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

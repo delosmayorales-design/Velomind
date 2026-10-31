@@ -1691,3 +1691,11 @@ html.light-theme .glass {
 }
 .vm-modal-btn:hover  { background: #b5f030; }
 .vm-modal-btn:active { transform: scale(0.97); }
+
+/* PWA instalada en iPhone: la barra de estado es translúcida (black-translucent) y el
+   contenido empieza debajo de la hora/notch. Se reserva esa franja; en Android y escritorio
+   env(safe-area-inset-top) vale 0, así que no cambia nada. */
+@media (display-mode: standalone) {
+  .page-header { padding-top: calc(6px + var(--safe-top)); }
+  .sidebar { padding-top: var(--safe-top); }
+}

@@ -41,7 +41,7 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Evento no válido' });
   }
   res.status(204).end();
-  logEvent(req.user, 'page_view', page, platform === 'android' ? 'android' : 'web')
+  logEvent(req.user, 'page_view', page, ['android', 'pwa'].includes(platform) ? platform : 'web')
     .catch(e => console.warn('[events]', e.message));
 });
 

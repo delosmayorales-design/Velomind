@@ -455,7 +455,8 @@ const Auth = (() => {
   function trackPageView() {
     if (!getToken()) return;
     const page = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/, '') || 'index';
-    const platform = window.Capacitor?.isNativePlatform?.() ? 'android' : 'web';
+    const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const platform = window.Capacitor?.isNativePlatform?.() ? 'android' : standalone ? 'pwa' : 'web';
     try {
       fetch(`${API_URL}/events`, {
         method: 'POST',
