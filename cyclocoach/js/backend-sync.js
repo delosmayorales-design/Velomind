@@ -397,6 +397,16 @@ function isLegacyDemoActivity(a) {
     }
   }
 
+  /** Sincroniza actividades de intervals.icu vía backend */
+  async function syncIntervals(onProgress) {
+    if (onProgress) onProgress('Conectando con intervals.icu...', 20);
+    const data = await apiFetch('/providers/intervals/sync', { method: 'POST' });
+    localStorage.setItem('velomind_intervals_last_sync', Date.now().toString());
+    if (onProgress) onProgress(`${data.synced || 0} actividades sincronizadas`, 100);
+    await loadActivities();
+    return data;
+  }
+
   /** Sincroniza actividades de Garmin vía backend */
   async function syncGarmin(onProgress) {
     if (onProgress) onProgress('Conectando con Garmin Connect...', 20);
@@ -588,6 +598,7 @@ function isLegacyDemoActivity(a) {
     loadDecoupling,
     syncStrava,
     syncGarmin,
+    syncIntervals,
     autoSyncIfNeeded,
     getProviderStatus,
     loadWeightLog,

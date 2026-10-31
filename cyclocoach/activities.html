@@ -2324,11 +2324,11 @@ initActivities().then(() => {
   const wrap = document.getElementById('act-sync-btn');
   if (!wrap) return;
   const strava = localStorage.getItem('velomind_strava_connected') === '1';
-  const garmin = localStorage.getItem('velomind_garmin_connected') === '1';
+  const icu = localStorage.getItem('velomind_intervals_connected') === '1';
   if (strava) {
     wrap.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="syncFromProvider(\'strava\')" style="display:flex;align-items:center;gap:6px"><i class="fas fa-sync-alt" style="color:#FC4C02"></i> Importar desde Strava</button>';
-  } else if (garmin) {
-    wrap.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="syncFromProvider(\'garmin\')" style="display:flex;align-items:center;gap:6px"><i class="fas fa-sync-alt" style="color:#007AC7"></i> Importar desde Garmin</button>';
+  } else if (icu) {
+    wrap.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="syncFromProvider(\'intervals\')" style="display:flex;align-items:center;gap:6px"><i class="fas fa-sync-alt" style="color:#38BDF8"></i> Importar desde intervals.icu</button>';
   }
 })();
 
@@ -2336,7 +2336,7 @@ async function syncFromProvider(provider) {
   const btn = document.querySelector('#act-sync-btn button');
   if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...'; btn.disabled = true; }
   try {
-    const syncFn = provider === 'garmin' ? BackendSync.syncGarmin : BackendSync.syncStrava;
+    const syncFn = provider === 'intervals' ? BackendSync.syncIntervals : BackendSync.syncStrava;
     const result = await syncFn((msg) => { if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + msg; });
     allActivities = [...AppState.activities].sort((a,b) => String(b.date || '').localeCompare(String(a.date || '')));
     renderActivities(allActivities);
@@ -2346,8 +2346,8 @@ async function syncFromProvider(provider) {
   setTimeout(() => {
     if (!btn) return;
     btn.disabled = false;
-    btn.innerHTML = provider === 'garmin'
-      ? '<i class="fas fa-sync-alt" style="color:#007AC7"></i> Importar desde Garmin'
+    btn.innerHTML = provider === 'intervals'
+      ? '<i class="fas fa-sync-alt" style="color:#38BDF8"></i> Importar desde intervals.icu'
       : '<i class="fas fa-sync-alt" style="color:#FC4C02"></i> Importar desde Strava';
   }, 3000);
 }

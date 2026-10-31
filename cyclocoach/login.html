@@ -317,11 +317,10 @@
     }
     .social-btn.strava { border-color: rgba(252,76,2,0.3); }
     .social-btn.strava:hover { border-color: #FC4C02; background: rgba(252,76,2,0.08); }
-    .social-btn.garmin { border-color: rgba(0,122,199,0.3); }
-    .social-btn.garmin:hover { border-color: #007AC7; background: rgba(0,122,199,0.08); }
+    .social-btn.intervals { border-color: rgba(56,189,248,0.3); }
+    .social-btn.intervals:hover { border-color: #38BDF8; background: rgba(56,189,248,0.08); }
 
     .strava-logo { color: #FC4C02; font-weight: 900; font-size: 16px; }
-    .garmin-logo { color: #007AC7; font-weight: 900; font-size: 14px; }
 
     .alert {
       padding: 12px 16px;
@@ -372,6 +371,21 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* Pantallas poco altas: el contenido centrado se salía por abajo y se recortaba */
+    .auth-left { height: 100vh; overflow-y: auto; justify-content: safe center; }
+    @media (max-height: 900px) {
+      .auth-left { padding: 32px 60px; }
+      .logo-wrap { margin-bottom: 20px; }
+      .logo-wrap img { max-width: 240px !important; }
+      .auth-headline { font-size: 42px; margin-bottom: 14px; }
+      .auth-tagline { font-size: 15px; margin-bottom: 28px; }
+      .features-list { gap: 12px; }
+    }
+    @media (max-height: 720px) {
+      .logo-wrap img { max-width: 170px !important; }
+      .auth-headline { font-size: 34px; }
+      .auth-tagline { margin-bottom: 20px; }
+    }
     @media (max-width: 768px) {
       .auth-left { display: none; }
       .auth-right { width: 100%; border-left: none; }
@@ -394,7 +408,7 @@
     </div>
     <div class="feature-item">
       <div class="feature-dot"><i class="fas fa-sync"></i></div>
-      <span>Sincronización automática con Strava y Garmin</span>
+      <span>Sincronización con Strava e intervals.icu (Garmin, Wahoo, Zwift…)</span>
     </div>
     <div class="feature-item">
       <div class="feature-dot"><i class="fas fa-calendar-alt"></i></div>
@@ -451,13 +465,13 @@
 
       <div class="divider"><span>o continúa con</span></div>
 
-      <button class="social-btn strava" onclick="connectStrava('login')">
+      <button class="social-btn strava" onclick="connectAfterAuth('strava', 'login')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
         Conectar Strava (tras entrar)
       </button>
-      <button class="social-btn garmin" onclick="connectGarmin('login')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="#007AC7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-        Continuar con Garmin
+      <button class="social-btn intervals" onclick="connectAfterAuth('intervals', 'login')">
+        <i class="fas fa-wave-square" style="color:#38BDF8;font-size:17px"></i>
+        Conectar intervals.icu (tras entrar)
       </button>
     </div>
 
@@ -530,13 +544,13 @@
 
       <div class="divider"><span>o regístrate con</span></div>
 
-      <button class="social-btn strava" onclick="connectStrava('register')">
+      <button class="social-btn strava" onclick="connectAfterAuth('strava', 'register')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
         Conectar Strava (tras registro)
       </button>
-      <button class="social-btn garmin" onclick="connectGarmin('register')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="#007AC7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-        Registrarse con Garmin
+      <button class="social-btn intervals" onclick="connectAfterAuth('intervals', 'register')">
+        <i class="fas fa-wave-square" style="color:#38BDF8;font-size:17px"></i>
+        Conectar intervals.icu (tras registro)
       </button>
     </div>
 
@@ -618,6 +632,8 @@
         setTimeout(() => window.location.href = `oauth-callback.html?code=${encodeURIComponent(pendingCode)}`, 300);
         return;
       }
+      const connectUrl = takePendingConnect();
+      if (connectUrl) { setTimeout(() => window.location.href = connectUrl, 500); return; }
       const hasProfile = result.user?.ftp && result.user?.weight;
       setTimeout(() => window.location.href = hasProfile ? 'dashboard.html' : 'index.html', 700);
     } catch(e) {
@@ -654,41 +670,35 @@
         setTimeout(() => window.location.href = `oauth-callback.html?code=${encodeURIComponent(pendingCode)}`, 300);
         return;
       }
-      setTimeout(() => window.location.href = 'index.html', 800);
+      const connectUrl = takePendingConnect();
+      setTimeout(() => window.location.href = connectUrl || 'index.html', 800);
     } catch(e) {
       setLoading('spinner-reg', 'reg-label', 'btn-register', false);
       showAlert(e.message || 'Error al crear la cuenta.');
     }
   }
 
-  // ── Strava OAuth ───────────────────────────────────────────
-  function connectStrava(mode) {
+  // ── Conectar Strava / intervals.icu tras entrar ─────────────
+  // Sin sesión, recordamos a dónde ir y redirigimos al terminar el login/registro.
+  // (Clave sin prefijo velomind_: Auth.login borra todas esas al iniciar sesión.)
+  const CONNECT_TARGETS = {
+    strava:    { url: 'integrations.html', name: 'Strava' },
+    intervals: { url: 'integrations.html#card-intervals', name: 'intervals.icu' },
+  };
+  function connectAfterAuth(provider, mode) {
+    const target = CONNECT_TARGETS[provider];
     const token = Auth.getToken ? Auth.getToken() : localStorage.getItem('velomind_token');
-    if (!token) {
-      showAlert(
-        mode === 'register'
-          ? 'Primero crea tu cuenta. Luego conecta Strava desde Integraciones.'
-          : 'Primero inicia sesión. Luego conecta Strava desde Integraciones.'
-      );
-      return;
-    }
-    window.location.href = 'integrations.html';
+    if (token) { window.location.href = target.url; return; }
+    localStorage.setItem('pending_connect', provider);
+    showAlert(`${mode === 'register' ? 'Crea tu cuenta' : 'Inicia sesión'} y te llevamos directamente a conectar ${target.name}.`, 'success');
+    document.getElementById(mode === 'register' ? 'reg-name' : 'login-email')?.focus();
+  }
+  function takePendingConnect() {
+    const provider = localStorage.getItem('pending_connect');
+    localStorage.removeItem('pending_connect');
+    return CONNECT_TARGETS[provider]?.url || null;
   }
 
-  // ── Garmin OAuth ───────────────────────────────────────────
-  function connectGarmin(mode) {
-    // Garmin uses OAuth 1.0a — requires backend proxy
-    // In production: redirect to your backend /auth/garmin/start
-    const BACKEND_URL = window.API_URL + '/auth/garmin/start';
-
-    localStorage.setItem('oauth_mode', mode);
-    localStorage.setItem('oauth_provider', 'garmin');
-
-    // Demo mode
-    showGarminModal();
-  }
-
-  // ── Setup Modals ───────────────────────────────────────────
   function showStravaModal() {
     showConfigModal(
       '<svg width="24" height="24" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg> Conectar Strava',
@@ -700,21 +710,6 @@
         <li>Configura el redirect a: <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;font-size:12px">${window.location.origin}/oauth-callback.html</code></li>
         <li>Edita <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;font-size:12px">login.html</code> y reemplaza <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;font-size:12px">YOUR_STRAVA_CLIENT_ID</code></li>
       </ol>`
-    );
-  }
-
-  function showGarminModal() {
-    showConfigModal(
-      '<svg width="20" height="20" viewBox="0 0 24 24" fill="#007AC7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg> Conectar Garmin',
-      `<p style="color:var(--text-secondary);line-height:1.6;margin-bottom:16px">Garmin Connect usa OAuth 1.0a y requiere un backend server. Pasos:</p>
-      <ol style="color:var(--text-secondary);line-height:2;padding-left:20px;font-size:14px">
-        <li>Regístrate en <a href="https://developer.garmin.com/gc-developer-program/overview/" target="_blank" style="color:#007AC7">Garmin Developer Program</a></li>
-        <li>Crea una aplicación y obtén tus credenciales OAuth 1.0a</li>
-        <li>Configura un servidor backend (Node.js/Python) con las rutas OAuth</li>
-        <li>Usa <strong style="color:var(--text)">garmin-connect</strong> npm package o la API REST oficial</li>
-        <li>El backend debe manejar el flujo: request token → authorize → access token</li>
-      </ol>
-      <p style="color:var(--text-muted);font-size:12px;margin-top:12px">Alternativamente, usa el endpoint <strong>Health API</strong> de Garmin para acceso simplificado.</p>`
     );
   }
 
