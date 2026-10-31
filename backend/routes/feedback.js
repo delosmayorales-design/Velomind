@@ -1,12 +1,11 @@
 const express  = require('express');
 const webpush  = require('web-push');
-const sgMail   = require('@sendgrid/mail');
+const mailer   = require('../services/mailer');
 const supabase = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 router.use(requireAuth);
 
-if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
@@ -125,9 +124,9 @@ async function _notifyReply(feedback) {
   }
 
   // Email
-  if (process.env.SENDGRID_API_KEY && userRow?.email) {
-    await sgMail.send({
-      from: { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || 'info@velomind.org' },
+  if (mailer.isConfigured() && userRow?.email) {
+    await mailer.send({
+      from: mailer.DEFAULT_FROM,
       to: userRow.email,
       subject: '💬 El Equipo VeloMind respondió tu comentario',
       html: `

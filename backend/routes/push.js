@@ -122,7 +122,7 @@ router.post('/cron', async (req, res) => {
     const diag = {
       ts: new Date().toISOString(),
       vapid: !!process.env.VAPID_PUBLIC_KEY,
-      sendgrid: !!process.env.SENDGRID_API_KEY,
+      email: require('../services/mailer').provider() || 'no configurado',
       subs: 0, bikes: 0, alertComponents: [], emailsSent: 0, pushSent: 0,
     };
 

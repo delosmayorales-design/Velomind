@@ -87,7 +87,7 @@ describe('POST /send', () => {
     expect(mockSend).toHaveBeenCalledTimes(2);
     const update = mockDb.__getCalls('broadcasts', 'update').pop().args[0];
     expect(update).toMatchObject({ email_sent: 1, email_failed: 2, status: 'partial' });
-    expect(update.error).toMatch(/SendGrid/);
+    expect(update.error).toMatch(/Maximum credits exceeded/);
   });
 
   test('no permite dos envíos a la vez', async () => {

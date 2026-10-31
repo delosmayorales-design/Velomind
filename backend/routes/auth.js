@@ -2,14 +2,13 @@ const express = require('express');
 const bcrypt  = require('bcryptjs');
 const crypto  = require('crypto');
 const multer  = require('multer');
-const sgMail = require('@sendgrid/mail');
+const mailer = require('../services/mailer');
 const supabase = require('../db'); // Ahora db es el cliente de Supabase
 const { requireAuth, signToken, isAdminEmail, ADMIN_EMAILS } = require('../middleware/auth');
 const { recalculatePMC } = require('../services/pmc');
 const router  = express.Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const avatarUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
@@ -29,8 +28,8 @@ async function sendVerificationEmail(user) {
   const backendUrl = process.env.BACKEND_URL || 'https://velomind-backend.onrender.com';
   const verifyUrl = `${backendUrl}/api/auth/verify-email?token=${token}`;
 
-  await sgMail.send({
-    from: { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || 'info@velomind.org' },
+  await mailer.send({
+    from: mailer.DEFAULT_FROM,
     to: user.email,
     subject: 'Confirma tu email — VeloMind',
     html: `
@@ -105,7 +104,9 @@ router.post('/login', async (req, res) => {
     const { data: user } = await supabase.from('users').select('*').eq('email', email.trim().toLowerCase()).maybeSingle();
     if (!user || !(await bcrypt.compare(password, user.password || '')))
       return res.status(401).json({ error: 'Email o contraseña incorrectos' });
-    if (user.email_verified === false) {
+    // Exigir email verificado es configurable: si el proveedor de email falla, bloquearlo
+    // dejaría fuera a todos los registros nuevos (pasó con SendGrid sin créditos).
+    if (user.email_verified === false && process.env.REQUIRE_EMAIL_VERIFICATION === 'true') {
       return res.status(403).json({
         error: 'Confirma tu email antes de iniciar sesión. Revisa tu bandeja de entrada.',
         code: 'EMAIL_NOT_VERIFIED',
@@ -310,8 +311,8 @@ router.post('/forgot-password', async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8085';
     const resetUrl = `${frontendUrl}/reset-password.html?token=${token}`;
 
-    await sgMail.send({
-      from: { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || 'info@velomind.org' },
+    await mailer.send({
+      from: mailer.DEFAULT_FROM,
       to: emailNorm,
       subject: 'Recupera tu contraseña — VeloMind',
       html: `

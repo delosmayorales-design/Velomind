@@ -60,7 +60,24 @@ describe('POST /api/auth/register', () => {
 });
 
 describe('POST /api/auth/login', () => {
-  test('bloquea con 403 EMAIL_NOT_VERIFIED si la cuenta no confirmó el email', async () => {
+  test('con REQUIRE_EMAIL_VERIFICATION=true bloquea con 403 si la cuenta no confirmó el email', async () => {
+    process.env.REQUIRE_EMAIL_VERIFICATION = 'true';
+    const hash = await bcrypt.hash('password123', 10);
+    mockDb.__queueResponse('users', {
+      data: { id: 'u1', email: 'sinverificar@test.com', password: hash, email_verified: false },
+      error: null,
+    });
+
+    const res = await request(buildApp())
+      .post('/api/auth/login')
+      .send({ email: 'sinverificar@test.com', password: 'password123' });
+    delete process.env.REQUIRE_EMAIL_VERIFICATION;
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('EMAIL_NOT_VERIFIED');
+  });
+
+  test('sin REQUIRE_EMAIL_VERIFICATION deja entrar aunque no haya verificado', async () => {
     const hash = await bcrypt.hash('password123', 10);
     mockDb.__queueResponse('users', {
       data: { id: 'u1', email: 'sinverificar@test.com', password: hash, email_verified: false },
@@ -71,8 +88,8 @@ describe('POST /api/auth/login', () => {
       .post('/api/auth/login')
       .send({ email: 'sinverificar@test.com', password: 'password123' });
 
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe('EMAIL_NOT_VERIFIED');
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeTruthy();
   });
 
   test('permite iniciar sesión con una cuenta ya verificada y contraseña correcta', async () => {

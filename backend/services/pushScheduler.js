@@ -1,10 +1,9 @@
 const cron     = require('node-cron');
 const webpush  = require('web-push');
-const sgMail   = require('@sendgrid/mail');
+const mailer   = require('./mailer');
 const supabase = require('../db');
 const { getTSBStatus } = require('../utils/training');
 
-if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // ── Constantes de mantenimiento ──────────────────────────────────
 const MAINT_KM_LIFE = { chain:3000, cassette:9000, chainring:15000, jockey_wheels:15000, brakes_pad:3000, brake_rotor:10000, tire_front:5000, tire_rear:4000 };
@@ -252,7 +251,7 @@ async function sendReminders({ force = false } = {}) {
         }
 
         // Enviar email resumen si hay alertas y SendGrid está configurado
-        if (emailAlerts.length && userEmail && process.env.SENDGRID_API_KEY) {
+        if (emailAlerts.length && userEmail && mailer.isConfigured()) {
           const hasAnyUrgent = emailAlerts.some(a => a.hasUrgent);
           const rows = emailAlerts.map(a => {
             const items = a.items.map(i =>
@@ -263,8 +262,8 @@ async function sendReminders({ force = false } = {}) {
               <table width="100%" style="border-collapse:collapse;background:#1a1a1a;border-radius:8px;overflow:hidden">${items}</table>`;
           }).join('');
 
-          await sgMail.send({
-            from: { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || 'info@velomind.org' },
+          await mailer.send({
+            from: mailer.DEFAULT_FROM,
             to: userEmail,
             subject: hasAnyUrgent
               ? '🔴 Mantenimiento urgente en tu garaje — VeloMind'

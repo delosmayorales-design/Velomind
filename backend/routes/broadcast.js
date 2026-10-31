@@ -2,17 +2,16 @@
 // El envío corre en segundo plano y deja el resultado en la tabla `broadcasts`.
 const express = require('express');
 const crypto = require('crypto');
-const sgMail = require('@sendgrid/mail');
+const mailer = require('../services/mailer');
 const webpush = require('web-push');
 const supabase = require('../db');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { buildOverview } = require('./admin');
 
-if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://velomind-liard.vercel.app';
 const BACKEND_URL = process.env.BACKEND_URL || 'https://velomind-backend.onrender.com';
-const FROM = { name: 'VeloMind', email: process.env.SENDGRID_FROM_EMAIL || 'info@velomind.org' };
+const FROM = mailer.DEFAULT_FROM;
 const CHANNELS = ['email', 'push'];
 const EXTRA_SEGMENTS = {
   all:         'Todos los usuarios',
@@ -59,7 +58,7 @@ function emailHtml({ subject, body, ctaLabel, ctaPath }, user) {
 }
 
 async function sendEmail(msg, user) {
-  await sgMail.send({
+  await mailer.send({
     from: FROM,
     to: user.email,
     subject: personalize(msg.subject, user),
@@ -137,7 +136,7 @@ function parseMessage(body) {
   };
   if (!msg.subject || !msg.body) return { error: 'Faltan el asunto o el mensaje' };
   if (!msg.channels.length) return { error: 'Elige al menos un canal (email o push)' };
-  if (msg.channels.includes('email') && !process.env.SENDGRID_API_KEY) return { error: 'El email no está configurado en el servidor (falta SENDGRID_API_KEY)' };
+  if (msg.channels.includes('email') && !mailer.isConfigured()) return { error: 'El email no está configurado en el servidor (falta BREVO_API_KEY)' };
   if (msg.channels.includes('push') && !pushReady()) return { error: 'Las push no están configuradas en el servidor (faltan las claves VAPID)' };
   if (!validCtaPath(msg.ctaPath)) return { error: 'El enlace del botón debe ser una página de la app, p. ej. integrations.html' };
   return { msg };
@@ -156,7 +155,7 @@ adminRouter.get('/segments', async (req, res) => {
       return { users: list.length, push: list.filter((u) => subs.has(String(u.id))).length };
     };
     res.json({
-      emailReady: !!process.env.SENDGRID_API_KEY,
+      emailReady: mailer.isConfigured(),
       pushReady: pushReady(),
       segments: [
         { key: 'all', label: EXTRA_SEGMENTS.all, ...count(() => true) },
@@ -195,7 +194,7 @@ adminRouter.post('/test', async (req, res) => {
   if (msg.channels.includes('email')) {
     try { await sendEmail(msg, me); result.email = 'enviado'; } catch (e) {
       const detail = e.response?.body?.errors?.[0]?.message || e.message;
-      result.email = /credits/i.test(detail) ? 'SendGrid se ha quedado sin créditos: ningún email de la app (tampoco verificación ni contraseña) se está enviando' : 'error: ' + detail;
+      result.email = /credits|quota|limit/i.test(detail) ? 'el proveedor de email no tiene envíos disponibles: ningún email de la app (tampoco verificación ni contraseña) se está enviando' : 'error: ' + detail;
     }
   }
   if (msg.channels.includes('push')) {
@@ -250,8 +249,8 @@ async function runBroadcast(id, msg, recipients) {
         stats.email_failed++;
         const detail = e.response?.body?.errors?.[0]?.message || e.message;
         // Cupo diario de SendGrid agotado: no tiene sentido seguir intentándolo
-        if (e.code === 429 || /credits|limit/i.test(detail)) {
-          stopError = `SendGrid: ${detail}. Se enviaron ${stats.email_sent}; el resto no.`;
+        if (e.code === 429 || /credits|limit|quota/i.test(detail)) {
+          stopError = `Email: ${detail}. Se enviaron ${stats.email_sent}; el resto no.`;
           stats.email_failed += recipients.length - stats.email_sent - stats.email_failed;
           break;
         }
