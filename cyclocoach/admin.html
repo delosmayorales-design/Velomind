@@ -27,6 +27,8 @@
   <script src="js/app.js?v=108"></script>
   <style>
     .adm-grid { display: grid; gap: 12px; }
+    /* Sin esto, un <select> con opciones largas ensancha la columna y la página se sale por la derecha */
+    .adm-grid > * { min-width: 0; }
     .adm-kpis { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin-bottom: 20px; }
     .adm-2col { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); margin-bottom: 20px; }
     .adm-section { margin-bottom: 20px; }
@@ -100,7 +102,7 @@
     .cohort td.cell.h-red   { background: rgba(248,113,113,.20); color: var(--text-primary); }
 
     .adm-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-    .adm-input { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); border-radius: var(--radius-md); padding: 8px 10px; font: inherit; font-size: 13px; }
+    .adm-input { max-width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); border-radius: var(--radius-md); padding: 8px 10px; font: inherit; font-size: 13px; }
     .adm-input:focus { outline: none; border-color: var(--border-focus); }
     .adm-btn { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); border-radius: var(--radius-md); padding: 8px 12px; font: inherit; font-size: 13px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
     .adm-btn:hover { border-color: var(--border-light); }
@@ -488,7 +490,7 @@ El equipo de VeloMind`,
           </div>
           <div class="adm-grid" style="gap:10px;align-content:start">
             <div class="kpi-label">Vista previa</div>
-            <div id="bc-preview" style="background:#0a0b0f;color:#f0f2f5;border-radius:12px;padding:20px;border:1px solid var(--border);font-size:13px"></div>
+            <div id="bc-preview" style="overflow-wrap:anywhere;background:#0a0b0f;color:#f0f2f5;border-radius:12px;padding:20px;border:1px solid var(--border);font-size:13px"></div>
             <div id="bc-count" class="kpi-hint"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button class="adm-btn" id="bc-test"><i class="fas fa-vial"></i> Enviarme una prueba</button>

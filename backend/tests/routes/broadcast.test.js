@@ -122,3 +122,19 @@ describe('GET /unsubscribe', () => {
     expect(mockDb.__getCalls('users', 'update')).toHaveLength(0);
   });
 });
+
+describe('POST /test con push', () => {
+  test('traduce los errores del servicio de push y desactiva suscripciones caducadas', async () => {
+    const sub = { user_id: '1', subscription: { endpoint: 'https://push.test/x', keys: {} } };
+    mockDb.__queueResponse('push_subscriptions', { data: [sub], error: null });
+    mockPush.mockRejectedValueOnce(Object.assign(new Error('Received unexpected response code'), { statusCode: 403 }));
+    let res = await request(buildApp()).post('/api/admin/broadcast/test').send({ ...MSG, channels: ['push'] });
+    expect(res.body.push).toMatch(/claves VAPID/);
+    expect(mockDb.__getCalls('push_subscriptions', 'update')).toHaveLength(0);
+
+    mockPush.mockRejectedValueOnce(Object.assign(new Error('Received unexpected response code'), { statusCode: 410 }));
+    res = await request(buildApp()).post('/api/admin/broadcast/test').send({ ...MSG, channels: ['push'] });
+    expect(res.body.push).toMatch(/caducado/);
+    expect(mockDb.__getCalls('push_subscriptions', 'update')[0].args[0]).toEqual({ active: false });
+  });
+});

@@ -88,6 +88,19 @@ async function sendPush(msg, user, sub) {
   );
 }
 
+// web-push solo dice "Received unexpected response code": traducimos el código HTTP del
+// servicio de push del navegador a algo accionable.
+// 404/410: la suscripción ya no existe (notificaciones desactivadas, app desinstalada...).
+// 401/403: las claves VAPID del servidor no son las que se usaron al activar las notificaciones.
+const isDeadSubscription = (e) => e.statusCode === 404 || e.statusCode === 410;
+function pushErrorText(e) {
+  if (isDeadSubscription(e)) return 'tu suscripción a notificaciones ha caducado: vuelve a activarlas en Notificaciones';
+  if (e.statusCode === 401 || e.statusCode === 403) {
+    return 'las claves VAPID del servidor no coinciden con las de tu suscripción: desactiva y vuelve a activar las notificaciones';
+  }
+  return `error ${e.statusCode || ''} ${String(e.body || e.message).slice(0, 120)}`.trim();
+}
+
 async function pushSubsFor(userIds) {
   if (!userIds.length) return new Map();
   const { data } = await supabase.from('push_subscriptions').select('user_id, subscription')
@@ -180,14 +193,20 @@ adminRouter.post('/test', async (req, res) => {
   const me = { id: req.user.id, name: req.user.name, email: req.user.email };
   const result = {};
   if (msg.channels.includes('email')) {
-    try { await sendEmail(msg, me); result.email = 'enviado'; } catch (e) { result.email = 'error: ' + (e.response?.body?.errors?.[0]?.message || e.message); }
+    try { await sendEmail(msg, me); result.email = 'enviado'; } catch (e) {
+      const detail = e.response?.body?.errors?.[0]?.message || e.message;
+      result.email = /credits/i.test(detail) ? 'SendGrid se ha quedado sin créditos: ningún email de la app (tampoco verificación ni contraseña) se está enviando' : 'error: ' + detail;
+    }
   }
   if (msg.channels.includes('push')) {
     const sub = (await pushSubsFor([me.id])).get(String(me.id));
     if (!ensureVapid()) result.push = 'push no configurado en el servidor';
     else if (!sub) result.push = 'no tienes notificaciones activadas en este dispositivo';
     else {
-      try { await sendPush(msg, me, sub); result.push = 'enviada'; } catch (e) { result.push = 'error: ' + e.message; }
+      try { await sendPush(msg, me, sub); result.push = 'enviada'; } catch (e) {
+        result.push = pushErrorText(e);
+        if (isDeadSubscription(e)) await supabase.from('push_subscriptions').update({ active: false }).eq('user_id', String(me.id));
+      }
     }
   }
   res.json(result);
@@ -250,7 +269,7 @@ async function runBroadcast(id, msg, recipients) {
         stats.push_sent++;
       } catch (e) {
         stats.push_failed++;
-        if (e.statusCode === 410) await supabase.from('push_subscriptions').update({ active: false }).eq('user_id', String(u.id));
+        if (isDeadSubscription(e)) await supabase.from('push_subscriptions').update({ active: false }).eq('user_id', String(u.id));
       }
     }
   }
