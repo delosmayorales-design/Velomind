@@ -145,10 +145,13 @@ function isLegacyDemoActivity(a) {
     }
 
     // Preservar actividades subidas localmente que aún no están confirmadas en el backend
-    // (evita race condition al subir archivo mientras el backend está cargando)
+    // (evita race condition al subir archivo mientras el backend está cargando).
+    // Las de Strava/intervals.icu/Garmin solo las crea el servidor: si ya no están ahí es que
+    // se borraron (p. ej. duplicadas), y conservarlas las haría reaparecer para siempre.
     const backendIds = new Set(activities.map(a => String(a.id)));
     const localOnly = (AppState.activities || []).filter(a =>
-      !backendIds.has(String(a.id)) && !isLegacyDemoActivity(a)
+      !backendIds.has(String(a.id)) && !isLegacyDemoActivity(a) &&
+      !/^(strava|icu|garmin)_/.test(String(a.id))
     );
     if (localOnly.length > 0) {
       activities = [...activities, ...localOnly];
