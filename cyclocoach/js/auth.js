@@ -491,8 +491,13 @@ const Auth = (() => {
       headers: mergedHeaders,
     });
 
-    // Si el servidor dice que la sesión no es válida, limpiamos y salimos
+    // Si el servidor dice que la sesión no es válida, limpiamos y salimos.
+    // Un 401 por el token de Strava caducado (backends antiguos) no es la sesión de VeloMind:
+    // dejamos que el error llegue a quien llamó para que muestre "vuelve a conectar Strava".
     if (res.status === 401 && !url.includes('/auth/login')) {
+      const body = await res.clone().json().catch(() => ({}));
+      if (/strava/i.test(body.error || '')) return res;
+
       console.warn('[Auth] Sesión invalidada por el servidor (401). Redirigiendo...');
       logout();
       return res;

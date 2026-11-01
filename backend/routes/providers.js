@@ -253,7 +253,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
   }
 
   const token = await refreshStravaToken(user, uid);
-  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
+  if (!token) return res.status(409).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.', code: 'STRAVA_REAUTH' });
 
   try {
     let page = 1;
@@ -278,7 +278,7 @@ router.post('/strava/sync', requireAuth, async (req, res) => {
       );
 
       if (r.status === 401) {
-        return res.status(401).json({ error: 'Token de Strava expirado o inválido. Ve a Integraciones y vuelve a conectarlo.' });
+        return res.status(409).json({ error: 'Token de Strava expirado o inválido. Ve a Integraciones y vuelve a conectarlo.', code: 'STRAVA_REAUTH' });
       }
       if (r.status === 429) {
         console.warn('[Strava Sync] ⚠️ Rate limit de Strava alcanzado (HTTP 429).');
@@ -617,7 +617,7 @@ router.get('/strava/streams/:activityId', requireAuth, async (req, res) => {
   }
 
   const token = await refreshStravaToken(user, uid);
-  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
+  if (!token) return res.status(409).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.', code: 'STRAVA_REAUTH' });
 
   try {
     const streams = await fetchStravaStreams(token, activityId);
@@ -650,7 +650,7 @@ router.get('/strava/polylines', requireAuth, async (req, res) => {
   if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
 
   const token = await refreshStravaToken(user, uid);
-  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
+  if (!token) return res.status(409).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.', code: 'STRAVA_REAUTH' });
 
   try {
     const oneYearAgo = Math.floor(Date.now() / 1000) - 365 * 24 * 3600;
@@ -1456,7 +1456,7 @@ router.get('/strava/activity-segments/:stravaId', requireAuth, async (req, res) 
   if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
 
   const token = await refreshStravaToken(user, uid);
-  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
+  if (!token) return res.status(409).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.', code: 'STRAVA_REAUTH' });
 
   try {
     const r = await fetch(
@@ -1504,7 +1504,7 @@ router.get('/strava/segment-leaderboard/:segmentId', requireAuth, async (req, re
   if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
 
   const token = await refreshStravaToken(user, uid);
-  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
+  if (!token) return res.status(409).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.', code: 'STRAVA_REAUTH' });
 
   try {
     // Intentar leaderboard público; si Strava devuelve 403 (requiere aprobación especial),
@@ -1559,7 +1559,7 @@ router.get('/strava/segments', requireAuth, async (req, res) => {
   if (!user?.strava_token) return res.status(400).json({ error: 'Strava no conectado' });
 
   const token = await refreshStravaToken(user, uid);
-  if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
+  if (!token) return res.status(409).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.', code: 'STRAVA_REAUTH' });
 
   try {
     const r = await fetch(

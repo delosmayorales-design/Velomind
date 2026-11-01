@@ -338,7 +338,7 @@ router.get('/wbal/:activityId', async (req, res) => {
     // Requeridos en caliente para evitar cualquier dependencia circular con providers.js
     const { refreshStravaToken, fetchStravaStreams } = require('./providers');
     const token = await refreshStravaToken(user, req.user.id);
-    if (!token) return res.status(401).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.' });
+    if (!token) return res.status(409).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.', code: 'STRAVA_REAUTH' });
 
     const streams = await fetchStravaStreams(token, activityId);
     if (!streams.time || !streams.watts) {
