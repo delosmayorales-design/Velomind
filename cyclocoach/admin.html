@@ -440,19 +440,22 @@ Strava solo nos deja conectar a un número limitado de ciclistas, y sabemos que 
 
 Ya hay solución: VeloMind se conecta ahora con intervals.icu, una plataforma gratuita que recibe tus actividades de Garmin, Wahoo, Zwift, Coros, Suunto y más. Sin listas de espera.
 
-Son 2 minutos:
-1. Crea tu cuenta gratis en intervals.icu y conecta allí tu dispositivo.
-2. Copia tu API Key (Settings → Developer Settings).
-3. Pégala en VeloMind → Integraciones.
+Son unos minutos:
+1. Crea tu cuenta gratis en intervals.icu.
+2. En intervals.icu → Ajustes → Conexiones, conecta tu Garmin (o tu dispositivo) y marca "Descargar actividades". Importante: conéctalo directamente; lo que llega a intervals.icu a través de Strava no se puede pasar a VeloMind.
+3. Copia tu API Key (Ajustes → Developer Settings).
+4. Pégala en VeloMind → Integraciones.
+
+En el botón de abajo tienes la guía paso a paso, con qué hacer si algo no va.
 
 Desde ese momento tus entrenos llegarán solos y tendrás tu forma, tu carga y tu plan siempre al día.
 
 ¡Nos vemos en la carretera!
 El equipo de VeloMind`,
-    cta_label: 'Conectar intervals.icu',
-    cta_path: 'integrations.html',
+    cta_label: 'Ver la guía paso a paso',
+    cta_path: 'intervals-ayuda.html',
   };
-  const CTA_PAGES = [['', 'Sin botón'], ['integrations.html', 'Integraciones'], ['dashboard.html', 'Inicio'], ['training-plan.html', 'Entrenamiento'], ['activities.html', 'Actividades'], ['feedback.html', 'Feedback']];
+  const CTA_PAGES = [['', 'Sin botón'], ['intervals-ayuda.html', 'Guía intervals.icu'], ['integrations.html', 'Integraciones'], ['dashboard.html', 'Inicio'], ['training-plan.html', 'Entrenamiento'], ['activities.html', 'Actividades'], ['feedback.html', 'Feedback']];
   let bcSegments = [];
   let bcPoll = null;
 
