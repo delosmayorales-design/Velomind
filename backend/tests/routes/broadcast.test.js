@@ -138,3 +138,24 @@ describe('POST /test con push', () => {
     expect(mockDb.__getCalls('push_subscriptions', 'update')[0].args[0]).toEqual({ active: false });
   });
 });
+
+describe('personas concretas (segment "users")', () => {
+  test('envía solo a las marcadas', async () => {
+    mockDb.__queueResponse('broadcasts', { data: [], error: null });
+    mockDb.__queueResponse('users', { data: [], error: null });
+    mockDb.__queueResponse('broadcasts', { data: { id: 8 }, error: null });
+    mockDb.__queueResponse('broadcasts', { data: null, error: null });
+
+    const res = await request(buildApp()).post('/api/admin/broadcast/send').send({ ...MSG, segment: 'users', user_ids: [11, '12'] });
+    expect(res.status).toBe(202);
+    expect(res.body.recipients).toBe(2);
+    await flush();
+    expect(mockSend.mock.calls.map((c) => c[0].to).sort()).toEqual(['luis@x.com', 'marta@x.com']);
+  });
+
+  test('sin nadie marcado da error en vez de enviar a todos', async () => {
+    const res = await request(buildApp()).post('/api/admin/broadcast/preview').send({ segment: 'users', user_ids: [] });
+    expect(res.status).toBe(400);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+});

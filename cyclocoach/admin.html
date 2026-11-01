@@ -386,6 +386,7 @@
           <div class="kpi-value" style="margin:0">${s.used}<span class="unit">/ ${s.capacity}</span></div>
           <div class="kpi-hint">${s.free ? `${s.free} plaza(s) libre(s)` : 'Sin plazas libres: nadie más puede conectar Strava'}${s.releasable ? ` · ${s.releasable} liberable(s)` : ''}</div>
           ${hBadge(s.health)}
+          ${s.free ? '<button class="adm-btn" id="slot-notify" style="margin-left:auto;background:var(--primary);color:#111;border-color:var(--primary);font-weight:700"><i class="fas fa-envelope"></i> Avisar de plaza libre</button>' : ''}
         </div>
         <div class="hrow-track" style="margin:10px 0 14px"><div class="hrow-fill h-${s.health}" style="width:${usedPct}%"></div></div>
         ${s.slots.length ? `<div class="adm-table-wrap"><table class="adm-table"><thead><tr>
@@ -409,6 +410,11 @@
           }).join('')}</tbody></table></div>` : '<div class="muted">Nadie tiene Strava conectado.</div>'}
         <div class="muted" style="margin-top:8px">Según los tokens guardados en VeloMind. Al liberar se revoca el acceso en Strava; el usuario conserva sus actividades y puede volver a conectar si hay plaza.</div>`;
       box.querySelectorAll('[data-release]').forEach((b) => b.addEventListener('click', () => releaseSlot(b.dataset.release, b.dataset.name, b)));
+      document.getElementById('slot-notify')?.addEventListener('click', () => {
+        if (!document.getElementById('bc-segment')) { alert('El formulario de avisos aún no ha cargado o no está disponible.'); return; }
+        applyBcTemplate('strava');
+        document.getElementById('broadcast').scrollIntoView({ behavior: 'smooth' });
+      });
     } catch (e) {
       box.innerHTML = `<h2 class="adm-h2"><i class="fab fa-strava"></i> Plazas de Strava</h2><div class="muted">No se pudieron cargar: ${esc(e.message)}</div>`;
     }
@@ -455,6 +461,25 @@ El equipo de VeloMind`,
     cta_label: 'Ver la guía paso a paso',
     cta_path: 'intervals-ayuda.html',
   };
+  // Para avisar a personas concretas cuando se libera una plaza de Strava
+  const STRAVA_DRAFT = {
+    segment: 'users',
+    subject: '{nombre}, hay una plaza libre para conectar Strava a VeloMind',
+    body: `Hola {nombre},
+
+Se ha liberado una plaza para conectar Strava con VeloMind y hemos pensado en ti.
+
+Strava solo nos deja conectar a unos pocos ciclistas, así que conéctalo cuanto antes: la plaza es para el primero que la ocupe.
+
+Es un momento: entra en VeloMind → Integraciones y pulsa "Conectar con Strava". Tus salidas se importarán solas y tendrás tu forma, tu carga y tu plan siempre al día.
+
+¡Nos vemos en la carretera!
+El equipo de VeloMind`,
+    cta_label: 'Conectar Strava',
+    cta_path: 'integrations.html',
+  };
+  const BC_TEMPLATES = [['intervals', 'Conectar intervals.icu', DRAFT], ['strava', 'Plaza de Strava libre', STRAVA_DRAFT]];
+  const bcPicked = new Set();
   const CTA_PAGES = [['', 'Sin botón'], ['intervals-ayuda.html', 'Guía intervals.icu'], ['integrations.html', 'Integraciones'], ['dashboard.html', 'Inicio'], ['training-plan.html', 'Entrenamiento'], ['activities.html', 'Actividades'], ['feedback.html', 'Feedback']];
   let bcSegments = [];
   let bcPoll = null;
@@ -465,15 +490,28 @@ El equipo de VeloMind`,
       const r = await fetch(`${API}/admin/broadcast/segments`, { headers: Auth.getHeaders() });
       const s = await r.json();
       if (!r.ok) throw new Error(s.error || 'Error');
-      bcSegments = s.segments;
+      bcSegments = [...s.segments, { key: 'users', label: 'Personas concretas' }];
       box.innerHTML = `
-        <h2 class="adm-h2"><i class="fas fa-bullhorn"></i> Enviar aviso <small>email y/o notificación push a un grupo de usuarios · usa {nombre} para personalizar</small></h2>
+        <h2 class="adm-h2"><i class="fas fa-bullhorn"></i> Enviar aviso <small>email y/o notificación push a un grupo de usuarios o a personas concretas · usa {nombre} para personalizar</small></h2>
         <div class="adm-grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
           <div class="adm-grid" style="gap:10px;align-content:start">
+            <div class="kpi-label">Plantilla
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+                ${BC_TEMPLATES.map(([k, l]) => `<button type="button" class="adm-btn" data-bc-template="${k}">${esc(l)}</button>`).join('')}
+              </div></div>
             <label class="kpi-label">Destinatarios
               <select class="adm-input" id="bc-segment" style="width:100%;margin-top:4px">
                 ${s.segments.map((g) => `<option value="${g.key}" ${g.key === DRAFT.segment ? 'selected' : ''}>${esc(g.label)} (${g.users})</option>`).join('')}
+                <option value="users">Personas concretas…</option>
               </select></label>
+            <div id="bc-picker" style="display:none;border:1px solid var(--border);border-radius:10px;padding:10px">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <input class="adm-input" id="bc-pick-q" placeholder="Buscar por nombre o email" style="flex:1;min-width:160px">
+                <label style="font-size:12px;color:var(--text-secondary);white-space:nowrap"><input type="checkbox" id="bc-pick-nostrava" checked> Solo sin Strava</label>
+              </div>
+              <div id="bc-pick-chosen" class="kpi-hint" style="margin:8px 0"></div>
+              <div id="bc-pick-list" style="max-height:240px;overflow-y:auto;display:grid;gap:2px"></div>
+            </div>
             <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--text-secondary)">
               <label><input type="checkbox" id="bc-email" ${s.emailReady ? 'checked' : 'disabled'}> Email ${s.emailReady ? '' : '(no configurado)'}</label>
               <label><input type="checkbox" id="bc-push" ${s.pushReady ? 'checked' : 'disabled'}> Push ${s.pushReady ? '' : '(no configurado)'}</label>
@@ -507,6 +545,16 @@ El equipo de VeloMind`,
 
       ['bc-subject', 'bc-body', 'bc-cta-label', 'bc-cta-path'].forEach((id) => document.getElementById(id).addEventListener('input', renderBcPreview));
       ['bc-segment', 'bc-email', 'bc-push'].forEach((id) => document.getElementById(id).addEventListener('change', updateBcCount));
+      document.getElementById('bc-segment').addEventListener('change', renderBcPicker);
+      ['bc-pick-q', 'bc-pick-nostrava'].forEach((id) => document.getElementById(id).addEventListener('input', renderBcPicker));
+      document.getElementById('bc-pick-list').addEventListener('change', (e) => {
+        const id = e.target.dataset.pick;
+        if (!id) return;
+        if (e.target.checked) bcPicked.add(id); else bcPicked.delete(id);
+        renderBcPickChosen();
+        updateBcCount();
+      });
+      box.querySelectorAll('[data-bc-template]').forEach((b) => b.addEventListener('click', () => applyBcTemplate(b.dataset.bcTemplate)));
       document.getElementById('bc-test').addEventListener('click', sendBcTest);
       document.getElementById('bc-send').addEventListener('click', sendBc);
       renderBcPreview();
@@ -517,9 +565,52 @@ El equipo de VeloMind`,
     }
   }
 
+  function applyBcTemplate(key) {
+    const t = (BC_TEMPLATES.find(([k]) => k === key) || [])[2];
+    if (!t) return;
+    document.getElementById('bc-segment').value = t.segment;
+    document.getElementById('bc-subject').value = t.subject;
+    document.getElementById('bc-body').value = t.body;
+    document.getElementById('bc-cta-label').value = t.cta_label;
+    document.getElementById('bc-cta-path').value = t.cta_path;
+    renderBcPreview();
+    renderBcPicker();
+    updateBcCount();
+  }
+
+  // Lista para marcar personas a mano (segment 'users'), con los usuarios que ya cargó el panel
+  function renderBcPicker() {
+    const picker = document.getElementById('bc-picker');
+    const on = document.getElementById('bc-segment').value === 'users';
+    picker.style.display = on ? '' : 'none';
+    if (!on) return;
+    const q = document.getElementById('bc-pick-q').value.trim().toLowerCase();
+    const noStrava = document.getElementById('bc-pick-nostrava').checked;
+    const rows = (state.data?.users || []).filter((u) =>
+      (!noStrava || !u.providers.includes('Strava')) &&
+      (!q || `${u.name} ${u.email}`.toLowerCase().includes(q)));
+    document.getElementById('bc-pick-list').innerHTML = rows.slice(0, 150).map((u) => `
+      <label style="display:flex;gap:8px;align-items:center;padding:4px 2px;cursor:pointer">
+        <input type="checkbox" data-pick="${esc(u.id)}" ${bcPicked.has(String(u.id)) ? 'checked' : ''}>
+        <span style="min-width:0"><span class="u-name">${esc(u.name)}</span> <span class="u-email">${esc(u.email)} · entreno ${daysAgo(u.last_activity)}</span>
+          ${u.providers.map((p) => `<span class="tag">${esc(p)}</span>`).join('')}</span>
+      </label>`).join('') || '<div class="muted">Nadie coincide.</div>';
+    renderBcPickChosen();
+  }
+
+  function renderBcPickChosen() {
+    const byId = new Map((state.data?.users || []).map((u) => [String(u.id), u]));
+    const names = [...bcPicked].map((id) => byId.get(id)?.name).filter(Boolean);
+    document.getElementById('bc-pick-chosen').innerHTML = names.length
+      ? `Marcadas (${names.length}): <strong>${names.map(esc).join(', ')}</strong>`
+      : 'Marca a quién quieres avisar.';
+  }
+
   function bcMessage() {
+    const segment = document.getElementById('bc-segment').value;
     return {
-      segment: document.getElementById('bc-segment').value,
+      segment,
+      ...(segment === 'users' ? { user_ids: [...bcPicked] } : {}),
       channels: [document.getElementById('bc-email').checked && 'email', document.getElementById('bc-push').checked && 'push'].filter(Boolean),
       subject: document.getElementById('bc-subject').value,
       body: document.getElementById('bc-body').value,
@@ -541,10 +632,12 @@ El equipo de VeloMind`,
 
   function updateBcCount() {
     const m = bcMessage();
-    const g = bcSegments.find((x) => x.key === m.segment) || { users: 0, push: 0 };
+    const g = m.segment === 'users'
+      ? { users: bcPicked.size, push: null }
+      : bcSegments.find((x) => x.key === m.segment) || { users: 0, push: 0 };
     const parts = [];
     if (m.channels.includes('email')) parts.push(`${g.users} email(s)`);
-    if (m.channels.includes('push')) parts.push(`${g.push} push (solo quien tiene notificaciones activas)`);
+    if (m.channels.includes('push')) parts.push(`${g.push ?? 'las'} push (solo quien tiene notificaciones activas)`);
     document.getElementById('bc-count').innerHTML = parts.length ? `Se enviarán aprox. <strong>${parts.join(' + ')}</strong>. Quien se dio de baja queda excluido.` : 'Elige al menos un canal.';
     document.getElementById('bc-send').innerHTML = `<i class="fas fa-paper-plane"></i> Enviar a ${g.users} usuario(s)`;
   }
@@ -569,7 +662,7 @@ El equipo de VeloMind`,
     const m = bcMessage();
     const out = document.getElementById('bc-result');
     try {
-      const pr = await fetch(`${API}/admin/broadcast/preview`, { method: 'POST', headers: Auth.getHeaders(), body: JSON.stringify({ segment: m.segment }) });
+      const pr = await fetch(`${API}/admin/broadcast/preview`, { method: 'POST', headers: Auth.getHeaders(), body: JSON.stringify({ segment: m.segment, user_ids: m.user_ids }) });
       const p = await pr.json();
       if (!pr.ok) throw new Error(p.error || 'Error');
       const sample = p.sample.map((u) => `· ${u.name} <${u.email}>`).join('\n');

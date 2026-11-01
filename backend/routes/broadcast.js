@@ -17,7 +17,9 @@ const EXTRA_SEGMENTS = {
   all:         'Todos los usuarios',
   no_provider: 'Sin ninguna fuente de entrenos conectada',
   no_strava:   'Sin Strava conectado',
+  users:       'Personas concretas',
 };
+const MAX_PICKED = 200;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const firstName = (name) => String(name || '').trim().split(/\s+/)[0] || 'ciclista';
@@ -107,8 +109,11 @@ async function pushSubsFor(userIds) {
   return new Map((data || []).map((s) => [String(s.user_id), s]));
 }
 
-// Destinatarios de un segmento (sin demos, admins ni quien se dio de baja)
-async function resolveRecipients(viewer, segment) {
+// Destinatarios de un segmento (sin demos, admins ni quien se dio de baja).
+// segment 'users' = las personas que el admin marca a mano (p. ej. avisar de una plaza de Strava libre).
+async function resolveRecipients(viewer, segment, userIds) {
+  const picked = new Set((Array.isArray(userIds) ? userIds : []).slice(0, MAX_PICKED).map(String));
+  if (segment === 'users' && !picked.size) throw Object.assign(new Error('Marca al menos una persona'), { status: 400 });
   const overview = await buildOverview(viewer);
   const isSegment = overview.segments.some((s) => s.key === segment);
   if (!isSegment && !EXTRA_SEGMENTS[segment]) throw Object.assign(new Error('Segmento no válido'), { status: 400 });
@@ -122,6 +127,7 @@ async function resolveRecipients(viewer, segment) {
     if (segment === 'all') return true;
     if (segment === 'no_provider') return !u.providers.length;
     if (segment === 'no_strava') return !u.providers.includes('Strava');
+    if (segment === 'users') return picked.has(String(u.id));
     return u.segment === segment;
   });
 }
@@ -172,7 +178,7 @@ adminRouter.get('/segments', async (req, res) => {
 
 adminRouter.post('/preview', async (req, res) => {
   try {
-    const recipients = await resolveRecipients(req.user, req.body?.segment);
+    const recipients = await resolveRecipients(req.user, req.body?.segment, req.body?.user_ids);
     const subs = await pushSubsFor(recipients.map((u) => u.id));
     res.json({
       recipients: recipients.length,
@@ -219,7 +225,7 @@ adminRouter.post('/send', async (req, res) => {
     const { data: running } = await supabase.from('broadcasts').select('id').eq('status', 'sending').limit(1);
     if (running?.length) return res.status(409).json({ error: 'Ya hay un aviso enviándose. Espera a que termine.' });
 
-    const recipients = await resolveRecipients(req.user, segment);
+    const recipients = await resolveRecipients(req.user, segment, req.body?.user_ids);
     if (!recipients.length) return res.status(400).json({ error: 'Ese grupo no tiene destinatarios' });
 
     const { data: row, error: insErr } = await supabase.from('broadcasts').insert({
