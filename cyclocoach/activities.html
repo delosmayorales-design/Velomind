@@ -1144,6 +1144,8 @@ async function showActivityDetail(actId) {
 
   const idStr = String(act.id || '');
   const sid = act.strava_id || (idStr.startsWith('strava_') ? idStr.replace('strava_', '') : null);
+  // Telemetría: id de Strava, o el de VeloMind (icu_...) para las importadas de intervals.icu
+  const streamId = sid || (idStr.startsWith('icu_') ? idStr : null);
   let coachComment = null;
   try {
     const actPlan = await getPlanForWeek(mondayOf(act.date));
@@ -1167,7 +1169,7 @@ async function showActivityDetail(actId) {
       <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin:0">${coachComment}</p>
     </div>` : ''}
 
-    ${sid ? `
+    ${streamId ? `
     <!-- ── MINI-MAPA GPS ── -->
     <div id="strava-mini-map-wrap" style="display:none;margin-bottom:16px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#FC4C02;margin-bottom:8px;display:flex;align-items:center;gap:5px">
@@ -1271,8 +1273,8 @@ async function showActivityDetail(actId) {
       </div>
     </div>
 
-    ${sid ? `
-    <!-- ── TELEMETRÍA STRAVA ── -->
+    ${streamId ? `
+    <!-- ── TELEMETRÍA ── -->
     <div id="streams-section" style="margin-bottom:16px">
       <div class="section-eyebrow">
         <i class="fas fa-chart-line" style="color:#FC4C02"></i> Telemetría
@@ -1400,7 +1402,7 @@ async function showActivityDetail(actId) {
 
   // Render charts after DOM is ready
   requestAnimationFrame(() => renderDetailCharts(act, ftp));
-  if (sid) fetchAndRenderStreams(sid, ftp, act);
+  if (streamId) fetchAndRenderStreams(streamId, ftp, act);
 }
 
 /* ── STREAMS ────────────────────────────────────────────────── */
@@ -1467,7 +1469,8 @@ async function fetchAndRenderStreams(sid, ftp, act) {
   if (!skeleton) return;
 
   try {
-    const r = await fetch(`${window.API_URL}/providers/strava/streams/${sid}`, {
+    const streamsPath = String(sid).startsWith('icu_') ? `/providers/intervals/streams/${sid}` : `/providers/strava/streams/${sid}`;
+    const r = await fetch(`${window.API_URL}${streamsPath}`, {
       headers: Auth.getHeaders()
     });
     if (!r.ok) {

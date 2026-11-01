@@ -176,6 +176,44 @@ router.post('/sync', requireAuth, async (req, res) => {
   }
 });
 
+// Telemetría de una actividad con la misma forma que fetchStravaStreams ({ time: [...], watts: [...] })
+// para que el panel de detalle y el W'bal no distingan la fuente. intervals.icu devuelve
+// [{ type, data, data2 }] y el GPS viene partido: latitudes en data, longitudes en data2.
+const STREAM_TYPES = 'time,watts,heartrate,velocity_smooth,altitude,cadence,grade_smooth,latlng';
+async function fetchIcuStreams(apiKey, activityId) {
+  const r = await icuFetch(apiKey, `/activity/${encodeURIComponent(activityId)}/streams?types=${STREAM_TYPES}`);
+  if (!r.ok) {
+    const err = new Error(`intervals.icu streams HTTP ${r.status}`);
+    err.status = r.status;
+    throw err;
+  }
+  const raw = await r.json();
+  const streams = {};
+  for (const s of Array.isArray(raw) ? raw : []) {
+    if (!s?.type || !Array.isArray(s.data)) continue;
+    streams[s.type] = s.type === 'latlng' && Array.isArray(s.data2)
+      ? s.data.map((lat, i) => [lat, s.data2[i]])
+      : s.data;
+  }
+  return streams;
+}
+
+// :activityId es el id de VeloMind (icu_i123) o el de intervals.icu (i123)
+router.get('/streams/:activityId', requireAuth, async (req, res) => {
+  const activityId = String(req.params.activityId).replace(/^icu_/, '');
+  if (!/^[A-Za-z0-9]{1,40}$/.test(activityId)) return res.status(400).json({ error: 'activityId inválido' });
+  try {
+    const { data: user } = await supabase.from('users').select('intervals_api_key').eq('id', req.user.id).single();
+    if (!user?.intervals_api_key) return res.status(400).json({ error: 'intervals.icu no conectado' });
+    res.json(await fetchIcuStreams(user.intervals_api_key, activityId));
+  } catch (e) {
+    if (e.status === 404) return res.status(404).json({ error: 'Actividad no encontrada en intervals.icu' });
+    if (e.status === 401 || e.status === 403) return res.status(424).json({ error: 'intervals.icu ha rechazado la API key. Ve a Integraciones y vuelve a conectarlo.', code: 'ICU_KEY_REJECTED' });
+    console.error('[intervals/streams]', e.message);
+    res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
+  }
+});
+
 router.delete('/disconnect', requireAuth, async (req, res) => {
   try {
     await supabase.from('users').update({ intervals_api_key: null, intervals_athlete_id: null }).eq('id', req.user.id);
@@ -189,3 +227,4 @@ router.delete('/disconnect', requireAuth, async (req, res) => {
 module.exports = router;
 module.exports.mapIcuActivity = mapIcuActivity;
 module.exports.isDuplicate = isDuplicate;
+module.exports.fetchIcuStreams = fetchIcuStreams;

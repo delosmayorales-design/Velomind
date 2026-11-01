@@ -217,7 +217,8 @@ async function handleStravaExchange(req, res) {
       const frontendUrl = process.env.FRONTEND_URL 
         || 'https://velomind-liard.vercel.app';
 
-      res.redirect(`${frontendUrl}/integrations.html?strava=connected`);
+      // Página pública: decide si hay sesión (va a Integraciones) o si la vuelta se abrió fuera de la app
+      res.redirect(`${frontendUrl}/oauth-callback.html?strava=connected`);
     }
 
   } catch (e) {

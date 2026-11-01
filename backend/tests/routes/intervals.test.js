@@ -99,3 +99,26 @@ describe('POST /sync', () => {
     expect(res.body.code).toBe('ICU_KEY_REJECTED');
   });
 });
+
+describe('GET /streams/:activityId', () => {
+  test('devuelve la telemetría con la misma forma que la de Strava (GPS en pares lat/lng)', async () => {
+    mockDb.__queueResponse('users', { data: { intervals_api_key: 'k' }, error: null });
+    global.fetch.mockResolvedValueOnce(jsonRes(200, [
+      { type: 'time', data: [0, 1, 2] },
+      { type: 'watts', data: [150, 200, 250] },
+      { type: 'latlng', data: [40.1, 40.2, 40.3], data2: [-3.1, -3.2, -3.3] },
+    ]));
+    const res = await request(buildApp()).get('/api/providers/intervals/streams/icu_i123');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ time: [0, 1, 2], watts: [150, 200, 250], latlng: [[40.1, -3.1], [40.2, -3.2], [40.3, -3.3]] });
+    expect(global.fetch.mock.calls[0][0]).toContain('/activity/i123/streams');
+  });
+
+  test('si intervals.icu rechaza la key responde 424 (no 401, que cerraría la sesión)', async () => {
+    mockDb.__queueResponse('users', { data: { intervals_api_key: 'k' }, error: null });
+    global.fetch.mockResolvedValueOnce(jsonRes(403, {}));
+    const res = await request(buildApp()).get('/api/providers/intervals/streams/i123');
+    expect(res.status).toBe(424);
+    expect(res.body.code).toBe('ICU_KEY_REJECTED');
+  });
+});

@@ -56,6 +56,18 @@
     const error = params.get('error');
     const scope = params.get('scope');
 
+    // El backend ya guardó los tokens (callback GET con state firmado) y redirige aquí, que es
+    // pública: en móvil la vuelta desde Strava suele abrirse en el navegador, fuera de la app,
+    // donde no hay sesión, e ir directo a integrations.html acababa en el login.
+    if (params.get('strava') === 'connected') {
+      if (localStorage.getItem('velomind_token')) {
+        location.replace('integrations.html?strava=connected');
+      } else {
+        setStatus('<i class="fas fa-circle-check" style="color:#10b981"></i>', '¡Strava conectado!', 'Ya puedes cerrar esta ventana y volver a la app de VeloMind. Tus salidas se sincronizarán al abrir Integraciones.', '', 'Abrir VeloMind', 'login.html');
+      }
+      return;
+    }
+
     if (error) {
       setStatus('<i class="fas fa-circle-xmark" style="color:#ef4444"></i>', 'Autorización cancelada', 'El acceso a Strava fue denegado.', '', 'Volver al login', 'login.html');
       return;
@@ -74,11 +86,13 @@
     }
 
     setStatus(null, 'Conectando con Strava...', 'Intercambiando código por tokens de acceso.', 'Paso 1/2: autenticando...');
+    // Esta página no carga auth.js (es pública): cabeceras a mano
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 
     try {
       const res = await fetch(`${API}/providers/strava/callback`, {
         method: 'POST',
-        headers: Auth.getHeaders(),
+        headers,
         body: JSON.stringify({ code, scope }),
       });
       const data = await res.json();
@@ -89,7 +103,7 @@
       // Sincronizar actividades automáticamente
       const syncRes = await fetch(`${API}/providers/strava/sync`, {
         method: 'POST',
-        headers: Auth.getHeaders(),
+        headers,
       });
       const syncData = await syncRes.json();
       const count = syncData.synced || 0;

@@ -317,30 +317,36 @@ router.get('/power-curve', async (req, res) => {
 // guarda en bloque — ver backend/services/wbal.js). Requiere que el usuario
 // ya tenga critical_power/w_prime calculados (se recalculan solos tras cada
 // sync de Strava/Garmin si hay suficiente historial de best_efforts reales).
+// :activityId numérico = actividad de Strava; icu_<id> = actividad de intervals.icu
 router.get('/wbal/:activityId', async (req, res) => {
   const { activityId } = req.params;
-  if (!activityId || !/^\d+$/.test(activityId)) {
+  const icuId = /^icu_[A-Za-z0-9]{1,40}$/.test(activityId || '') ? activityId.slice(4) : null;
+  if (!activityId || (!icuId && !/^\d+$/.test(activityId))) {
     return res.status(400).json({ error: 'activityId inválido' });
   }
 
   const { data: user } = await supabase.from('users')
-    .select('critical_power, w_prime, strava_token, strava_refresh, strava_expires_at')
+    .select('critical_power, w_prime, strava_token, strava_refresh, strava_expires_at, intervals_api_key')
     .eq('id', req.user.id).single();
 
   if (!user?.critical_power || !user?.w_prime) {
     return res.status(400).json({ error: 'Aún no hay suficiente historial para calcular tu Potencia Crítica. Sigue sincronizando salidas con potenciómetro.' });
   }
-  if (!user?.strava_token) {
-    return res.status(400).json({ error: 'Strava no conectado' });
+  if (icuId ? !user?.intervals_api_key : !user?.strava_token) {
+    return res.status(400).json({ error: icuId ? 'intervals.icu no conectado' : 'Strava no conectado' });
   }
 
   try {
-    // Requeridos en caliente para evitar cualquier dependencia circular con providers.js
-    const { refreshStravaToken, fetchStravaStreams } = require('./providers');
-    const token = await refreshStravaToken(user, req.user.id);
-    if (!token) return res.status(409).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.', code: 'STRAVA_REAUTH' });
-
-    const streams = await fetchStravaStreams(token, activityId);
+    let streams;
+    if (icuId) {
+      streams = await require('./intervals').fetchIcuStreams(user.intervals_api_key, icuId);
+    } else {
+      // Requeridos en caliente para evitar cualquier dependencia circular con providers.js
+      const { refreshStravaToken, fetchStravaStreams } = require('./providers');
+      const token = await refreshStravaToken(user, req.user.id);
+      if (!token) return res.status(409).json({ error: 'La sesión de Strava caducó. Ve a Integraciones y vuelve a conectarlo.', code: 'STRAVA_REAUTH' });
+      streams = await fetchStravaStreams(token, activityId);
+    }
     if (!streams.time || !streams.watts) {
       return res.status(422).json({ error: 'Esta actividad no tiene datos de potencia' });
     }
@@ -348,7 +354,7 @@ router.get('/wbal/:activityId', async (req, res) => {
     const result = computeWBal(streams.time, streams.watts, user.critical_power, user.w_prime);
     res.json({ ...result, cp: user.critical_power, wPrime: user.w_prime });
   } catch (e) {
-    if (e.status === 404) return res.status(404).json({ error: 'Actividad no encontrada en Strava' });
+    if (e.status === 404) return res.status(404).json({ error: icuId ? 'Actividad no encontrada en intervals.icu' : 'Actividad no encontrada en Strava' });
     if (e.status === 429) return res.status(429).json({ error: 'Límite de Strava alcanzado. Inténtalo en unos minutos.' });
     console.error('[coach/wbal] Error:', e.message);
     res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
