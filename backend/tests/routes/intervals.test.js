@@ -12,7 +12,7 @@ jest.mock('../../routes/providers', () => ({
 const express = require('express');
 const request = require('supertest');
 const mockDb = require('../helpers/mockSupabase');
-const { mapIcuActivity, isDuplicate } = require('../../routes/intervals');
+const { mapIcuActivity, isDuplicate, removeIcuDuplicatesOfStrava } = require('../../routes/intervals');
 
 function buildApp() {
   const app = express();
@@ -120,5 +120,26 @@ describe('GET /streams/:activityId', () => {
     const res = await request(buildApp()).get('/api/providers/intervals/streams/i123');
     expect(res.status).toBe(424);
     expect(res.body.code).toBe('ICU_KEY_REJECTED');
+  });
+});
+
+describe('removeIcuDuplicatesOfStrava', () => {
+  test('borra solo las de intervals.icu que ya están por Strava', async () => {
+    mockDb.__queueResponse('activities', { data: [
+      { id: 'icu_a', date: '2026-10-30', duration: 6180 },
+      { id: 'icu_b', date: '2026-10-29', duration: 3600 },
+    ], error: null });
+    mockDb.__queueResponse('activities', { data: [{ date: '2026-10-30', duration: 6200 }], error: null });
+    mockDb.__queueResponse('activities', { data: null, error: null });
+
+    expect(await removeIcuDuplicatesOfStrava(7)).toBe(1);
+    const inCalls = mockDb.__getCalls('activities', 'in');
+    expect(inCalls[inCalls.length - 1].args).toEqual(['id', ['icu_a']]);
+  });
+
+  test('sin actividades de intervals.icu no consulta nada más', async () => {
+    mockDb.__queueResponse('activities', { data: [], error: null });
+    expect(await removeIcuDuplicatesOfStrava(7)).toBe(0);
+    expect(mockDb.__getCalls('activities', 'delete')).toHaveLength(0);
   });
 });

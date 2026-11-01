@@ -499,6 +499,15 @@ rowsToInsert.push({
       }
     }
 
+    // La misma salida pudo entrar antes por intervals.icu: se queda solo la de Strava
+    try {
+      // Requerido en caliente: intervals.js ya requiere este módulo
+      const removed = await require('./intervals').removeIcuDuplicatesOfStrava(uid);
+      if (removed) console.log(`[Strava Sync] 🧹 ${removed} duplicada(s) de intervals.icu eliminada(s)`);
+    } catch (err) {
+      console.warn('[Strava Sync] Error al quitar duplicadas de intervals.icu:', err.message);
+    }
+
     // Eliminar del DB actividades de Strava más antiguas que la ventana de 1 año
     const oneYearAgoDate = new Date(oneYearAgo * 1000).toISOString().substring(0, 10);
     const { error: delErr } = await supabase

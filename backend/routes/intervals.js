@@ -176,6 +176,27 @@ router.post('/sync', requireAuth, async (req, res) => {
   }
 });
 
+// Si una salida llegó primero por intervals.icu y después Strava importa la misma, se queda
+// la de Strava (trae bici, mapa, best efforts y potencia estimada) y se borra la copia icu_,
+// que si no contaría dos veces en el PMC. Mira todas las guardadas, no solo las del último
+// sync, para limpiar también duplicados de antes.
+async function removeIcuDuplicatesOfStrava(uid) {
+  const { data: icu } = await supabase.from('activities')
+    .select('id, date, duration').eq('user_id', uid).eq('source', SOURCE);
+  if (!icu?.length) return 0;
+  const dates = [...new Set(icu.map((a) => String(a.date).slice(0, 10)))];
+  const { data: strava } = await supabase.from('activities')
+    .select('date, duration').eq('user_id', uid).eq('source', 'Strava').in('date', dates);
+  const ids = icu
+    .filter((a) => isDuplicate({ date: String(a.date).slice(0, 10), duration: Number(a.duration) || 0 }, strava || []))
+    .map((a) => a.id);
+  if (ids.length) {
+    const { error } = await supabase.from('activities').delete().eq('user_id', uid).in('id', ids);
+    if (error) throw error;
+  }
+  return ids.length;
+}
+
 // Telemetría de una actividad con la misma forma que fetchStravaStreams ({ time: [...], watts: [...] })
 // para que el panel de detalle y el W'bal no distingan la fuente. intervals.icu devuelve
 // [{ type, data, data2 }] y el GPS viene partido: latitudes en data, longitudes en data2.
@@ -228,3 +249,4 @@ module.exports = router;
 module.exports.mapIcuActivity = mapIcuActivity;
 module.exports.isDuplicate = isDuplicate;
 module.exports.fetchIcuStreams = fetchIcuStreams;
+module.exports.removeIcuDuplicatesOfStrava = removeIcuDuplicatesOfStrava;
