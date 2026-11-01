@@ -667,7 +667,8 @@
       </div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">
         <i class="fas fa-info-circle"></i> Las actividades que lleguen a intervals.icu <strong>desde Strava</strong> no se pueden importar (es una restricción de Strava): conecta tu dispositivo directamente.
-      </div>`;
+      </div>
+      ${icuHelpLink()}`;
   }
 
   function renderIcuConnected() {
@@ -679,7 +680,12 @@
     if (!el) return;
     el.innerHTML = `
       <button id="btn-intervals-sync" onclick="doIcuSync()" style="background:#38BDF8;color:#0b1220;border:none;padding:10px 18px;border-radius:var(--radius-md);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px"><i class="fas fa-sync-alt"></i> Sincronizar ahora</button>
-      <button onclick="doIcuDisconnect()" class="btn-disconnect"><i class="fas fa-unlink"></i> Desconectar</button>`;
+      <button onclick="doIcuDisconnect()" class="btn-disconnect"><i class="fas fa-unlink"></i> Desconectar</button>
+      ${icuHelpLink()}`;
+  }
+
+  function icuHelpLink() {
+    return '<a href="intervals-ayuda.html" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:13px;font-weight:600;color:#38BDF8;text-decoration:none"><i class="fas fa-question-circle"></i> Ver los pasos con detalle</a>';
   }
 
   async function connectIntervals() {
@@ -714,7 +720,7 @@
       localStorage.setItem('velomind_intervals_last_sync', Date.now().toString());
       const extra = [
         d.duplicates ? `${d.duplicates} ya estaban en VeloMind` : '',
-        d.skipped_strava ? `${d.skipped_strava} venían de Strava y no se pueden importar` : '',
+        d.skipped_strava ? `${d.skipped_strava} venían de Strava y no se pueden importar (<a href="intervals-ayuda.html" style="color:#38BDF8">cómo arreglarlo</a>)` : '',
       ].filter(Boolean).join(' · ');
       icuLog(`<div class="log-line ok"><i class="fas fa-check-circle"></i> ${d.synced} actividades importadas${extra ? ' · ' + extra : ''}</div>`);
       if (typeof BackendSync !== 'undefined' && BackendSync.loadActivities) BackendSync.loadActivities().catch(() => {});

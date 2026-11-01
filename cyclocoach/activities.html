@@ -192,7 +192,7 @@
   <header class="page-header">
     <div class="page-title">
       <h1><i class="fas fa-upload" style="color:var(--primary)"></i> Actividades</h1>
-      <p>Solo aparecen aqui las actividades reales que hayas importado (GPX/TCX/CSV) o sincronizado desde Strava. Las sesiones del plan de entrenamiento NO aparecen aqui.</p>
+      <p>Solo aparecen aqui las actividades reales que hayas importado (GPX/TCX/CSV) o sincronizado desde Strava o intervals.icu. Las sesiones del plan de entrenamiento NO aparecen aqui.</p>
     </div>
     <div class="header-actions" style="display:flex;gap:10px;flex-wrap:wrap">
       <div id="act-sync-btn"></div>
@@ -2327,8 +2327,13 @@ initActivities().then(() => {
   const icu = localStorage.getItem('velomind_intervals_connected') === '1';
   if (strava) {
     wrap.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="syncFromProvider(\'strava\')" style="display:flex;align-items:center;gap:6px"><i class="fas fa-sync-alt" style="color:#FC4C02"></i> Importar desde Strava</button>';
-  } else if (icu) {
-    wrap.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="syncFromProvider(\'intervals\')" style="display:flex;align-items:center;gap:6px"><i class="fas fa-sync-alt" style="color:#38BDF8"></i> Importar desde intervals.icu</button>';
+  } else {
+    // Sin Strava, intervals.icu es la vía de importación: si aún no está conectado, el botón lleva a la guía
+    const action = icu ? 'syncFromProvider(\'intervals\')' : 'location.href=\'intervals-ayuda.html\'';
+    wrap.style.display = 'flex';
+    wrap.style.gap = '6px';
+    wrap.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="' + action + '" style="display:flex;align-items:center;gap:6px"><i class="fas fa-sync-alt" style="color:#38BDF8"></i> Importar desde intervals.icu</button>'
+      + '<a href="intervals-ayuda.html" class="btn btn-secondary btn-sm" title="Cómo conectar intervals.icu" aria-label="Cómo conectar intervals.icu" style="display:flex;align-items:center"><i class="fas fa-question-circle" style="color:#38BDF8"></i></a>';
   }
 })();
 

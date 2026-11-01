@@ -1,0 +1,211 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('velomind_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'light') document.documentElement.classList.add('light-theme');
+      document.documentElement.style.opacity = '0';
+    })();
+  </script>
+  <style>
+    html { color-scheme: dark; background-color: #0a0b0f; transition: opacity .18s ease; }
+    html[data-theme="light"] { color-scheme: light; background-color: #f3f4f6; }
+  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Conectar intervals.icu — VeloMind</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <script>window.API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:3000/api" : "https://velomind-backend.onrender.com/api";</script>
+  <script src="js/auth.js?v=1"></script>
+  <script src="js/update-banner.js"></script>
+  <script src="js/app.js?v=108"></script>
+  <style>
+    .icu-flow {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); padding: 16px 20px; margin-bottom: 20px;
+      font-size: 13px; color: var(--text-secondary); line-height: 1.6;
+    }
+    .icu-flow-chain { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; font-weight: 700; color: var(--text); }
+    .icu-flow-chain span { background: var(--bg-card-hover); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; }
+    .icu-flow-chain i { color: #38BDF8; font-size: 12px; }
+
+    .icu-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .icu-step {
+      display: flex; gap: 14px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 16px 18px;
+    }
+    .icu-step-num {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(56,189,248,0.12); border: 1.5px solid rgba(56,189,248,0.35); color: #38BDF8;
+      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px;
+    }
+    .icu-step-body { flex: 1; min-width: 0; font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+    .icu-step-body h3 { font-size: 15px; font-weight: 800; color: var(--text); margin: 3px 0 6px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .icu-step-body ul { margin: 6px 0 0 18px; padding: 0; }
+    .icu-step-body li { margin-bottom: 4px; }
+    .icu-step-body a { color: #38BDF8; }
+    .icu-warn {
+      margin-top: 10px; padding: 10px 12px; border-radius: var(--radius-md);
+      background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.3);
+      font-size: 13px; color: var(--text-secondary);
+    }
+    .icu-warn i { color: #FBBF24; margin-right: 4px; }
+
+    .icu-cta {
+      display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+      background: #38BDF8; color: #0b1220; font-weight: 700; font-size: 14px;
+      padding: 12px 20px; border-radius: var(--radius-md); margin-bottom: 28px;
+    }
+
+    .icu-faq-title { font-size: 18px; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text); margin-bottom: 12px; }
+    .icu-faq { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 18px; margin-bottom: 8px; font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+    .icu-faq strong { display: block; color: var(--text); margin-bottom: 4px; }
+
+    @media (max-width: 768px) {
+      .icu-step { padding: 14px; gap: 12px; }
+      .icu-step-body { font-size: 13px; }
+      .icu-step-body h3 { font-size: 14px; }
+      .icu-faq-title { font-size: 15px; }
+      .icu-faq { font-size: 13px; padding: 12px 14px; }
+      .icu-cta { width: 100%; justify-content: center; box-sizing: border-box; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo.png" alt="VeloMind" style="width:100%; max-width:165px; height:auto; display:block; margin:0 auto">
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Principal</div>
+    <a href="dashboard.html" class="nav-item"><i class="fas fa-home"></i> Inicio</a>
+    <a href="activities.html" class="nav-item"><i class="fas fa-history"></i> Actividades</a>
+    <a href="analytics.html" class="nav-item"><i class="fas fa-chart-bar"></i> Métricas</a>
+
+    <div class="nav-section-title">Entrenamiento</div>
+    <a href="training-plan.html" class="nav-item"><i class="fas fa-calendar-check"></i> Entrenamiento</a>
+    <a href="nutrition.html" class="nav-item"><i class="fas fa-apple-alt"></i> Nutrición</a>
+    <a href="body-weight.html" class="nav-item"><i class="fas fa-weight"></i> Peso</a>
+
+    <div class="nav-section-title">Análisis y Técnica</div>
+    <a href="rutas.html" class="nav-item"><i class="fas fa-map-marked-alt"></i> Rutas</a>
+    <a href="salidas-grupales.html" class="nav-item"><i class="fas fa-users"></i> Salidas Grupales</a>
+    <a href="biomechanics.html" class="nav-item"><i class="fas fa-bone"></i> Biomecánica</a>
+    <a href="garaje.html" class="nav-item"><i class="fas fa-warehouse"></i> Garaje</a>
+
+    <div class="nav-section-title">Cuenta</div>
+    <a href="integrations.html" class="nav-item active"><i class="fas fa-plug"></i> Integraciones</a>
+    <a href="index.html" class="nav-item"><i class="fas fa-user-cog"></i> Mi Perfil</a>
+    <a href="notificaciones.html" class="nav-item"><i class="fas fa-bell"></i> Notificaciones</a>
+    <a href="feedback.html" class="nav-item"><i class="fas fa-comment-dots"></i> Feedback</a>
+    <a href="soporte.html" class="nav-item"><i class="fas fa-life-ring"></i> Soporte</a>
+    <a href="https://ko-fi.com/velomind" target="_blank" rel="noopener" class="nav-item" style="color:#005FFF !important;font-weight:600"><i class="fas fa-mug-hot"></i> Impulsa VeloMind</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="athlete-card">
+      <div class="athlete-avatar" id="athlete-avatar">?</div>
+      <div class="athlete-info">
+        <div class="name" id="athlete-name">Cargando...</div>
+        <div class="ftp" id="athlete-ftp">FTP: -- W</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main-content">
+  <header class="page-header">
+    <div class="page-title">
+      <h1>Conectar intervals.icu</h1>
+      <p class="subtitle">Paso a paso para importar tus salidas sin Strava</p>
+    </div>
+  </header>
+
+  <div class="page-body">
+
+    <div class="icu-flow">
+      Strava solo nos deja conectar a unos pocos ciclistas. intervals.icu es gratis, no tiene límite y hace de puente entre tu dispositivo y VeloMind:
+      <div class="icu-flow-chain">
+        <span>Garmin, Wahoo, Zwift…</span><i class="fas fa-arrow-right"></i><span>intervals.icu</span><i class="fas fa-arrow-right"></i><span>VeloMind</span>
+      </div>
+    </div>
+
+    <div class="icu-steps">
+      <div class="icu-step">
+        <div class="icu-step-num">1</div>
+        <div class="icu-step-body">
+          <h3>Crea tu cuenta en intervals.icu</h3>
+          Entra en <a href="https://intervals.icu" target="_blank" rel="noopener">intervals.icu</a> y regístrate. Es gratis.
+        </div>
+      </div>
+
+      <div class="icu-step">
+        <div class="icu-step-num">2</div>
+        <div class="icu-step-body">
+          <h3>Conecta tu dispositivo a intervals.icu</h3>
+          En intervals.icu ve a <strong>Ajustes → pestaña Conexiones</strong>. En la tarjeta de tu dispositivo (Garmin Connect, Wahoo, Polar, Coros, Suunto, Zwift…) conéctalo y marca <strong>"Descargar actividades"</strong>.
+          <ul>
+            <li>En la pantalla de autorización de Garmin deja <strong>todas las casillas marcadas</strong>.</li>
+            <li>Para traer tus salidas anteriores, pulsa <strong>"Descargar datos antiguos"</strong> en la tarjeta de tu dispositivo.</li>
+          </ul>
+          <div class="icu-warn">
+            <i class="fas fa-exclamation-triangle"></i> Si también tienes Strava conectado en intervals.icu, desmarca <strong>"Descargar actividades"</strong> en la tarjeta de Strava. Las salidas que llegan por Strava no se pueden pasar a VeloMind (Strava no lo permite).
+          </div>
+        </div>
+      </div>
+
+      <div class="icu-step">
+        <div class="icu-step-num">3</div>
+        <div class="icu-step-body">
+          <h3>Copia tu API Key</h3>
+          En intervals.icu, en <strong>Ajustes</strong>, baja hasta <strong>Developer Settings</strong> y copia tu <strong>API Key</strong>. Si no hay ninguna, genérala ahí.
+        </div>
+      </div>
+
+      <div class="icu-step">
+        <div class="icu-step-num">4</div>
+        <div class="icu-step-body">
+          <h3>Pégala en VeloMind</h3>
+          Ve a <a href="integrations.html">Integraciones</a>, busca la tarjeta de <strong>intervals.icu</strong>, pega la API Key y pulsa <strong>Conectar</strong>.
+        </div>
+      </div>
+
+      <div class="icu-step">
+        <div class="icu-step-num">5</div>
+        <div class="icu-step-body">
+          <h3>Sincroniza</h3>
+          Pulsa <strong>Sincronizar ahora</strong>. Desde ese momento VeloMind importa tus salidas solo cada vez que abres la app. También puedes forzarlo en <a href="activities.html">Actividades</a> con <strong>Importar desde intervals.icu</strong>.
+        </div>
+      </div>
+    </div>
+
+    <a href="integrations.html" class="icu-cta"><i class="fas fa-plug"></i> Ir a Integraciones</a>
+
+    <div class="icu-faq-title">Si algo no funciona</div>
+    <div class="icu-faq">
+      <strong>Me sale "0 importadas · X venían de Strava"</strong>
+      Tus salidas llegan a intervals.icu a través de Strava, no de tu dispositivo. Repasa el paso 2: conecta tu Garmin (o el que uses) directamente y desmarca "Descargar actividades" en la tarjeta de Strava.
+    </div>
+    <div class="icu-faq">
+      <strong>En la tarjeta de Garmin de intervals.icu hay un icono rojo de enlace roto</strong>
+      A intervals.icu le falta permiso en Garmin. Entra en Garmin Connect, busca <strong>Intervals.icu</strong> en tus aplicaciones conectadas y activa <strong>Actividades</strong>, <strong>Estadísticas de salud diarias</strong> y <strong>Datos históricos</strong>. Si el icono sigue, desconecta Garmin en intervals.icu y vuelve a conectarlo.
+    </div>
+    <div class="icu-faq">
+      <strong>Acabo de terminar una salida y no aparece</strong>
+      intervals.icu puede tardar unos minutos en recibirla de tu dispositivo. Espera un poco y pulsa de nuevo "Importar desde intervals.icu".
+    </div>
+
+  </div>
+</main>
+
+<script>
+requestAnimationFrame(function() { document.documentElement.style.removeProperty('opacity'); });
+</script>
+</body>
+</html>
