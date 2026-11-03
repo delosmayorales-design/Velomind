@@ -1633,7 +1633,7 @@ Devuelve EXACTAMENTE este JSON (sin markdown, sin texto extra):
 Incluye los 7 días de la semana en plan_semanal. Para días de entreno duracion_min DEBE ser >= ${minSessionMin} (mínimo del atleta). Solo "Descanso" y "recovery" pueden tener duracion_min 0.`;
     }
 
-    const parsed = await callAI(CYCLING_COACH_SYSTEM_PROMPT, finalUserMessage, { max_tokens: 8000, temperature: 0.2, groqModel: finalModel });
+    const parsed = await callAI(CYCLING_COACH_SYSTEM_PROMPT, finalUserMessage, { max_tokens: 8000, temperature: 0.2, groqModel: isGroq ? finalModel : undefined });
     return res.json({ ok: true, analysis: parsed, meta: { activities: activities.length, model: finalModel } });
   } catch (e) {
     console.error('[AI Coach]', e.message);
