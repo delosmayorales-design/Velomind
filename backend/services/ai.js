@@ -2,6 +2,8 @@ const Anthropic = require('@anthropic-ai/sdk');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' });
 
+const GEMINI_RETRY_MS = 1000;
+
 /**
  * Llama a un modelo de IA en cascada (Anthropic -> OpenAI -> Gemini -> Groq).
  * @param {string} systemPrompt - El prompt del sistema para la IA.
@@ -69,7 +71,13 @@ async function callAI(systemPrompt, userMsg, options = {}) {
   if (!result && googleKey.startsWith('AIzaSy')) {
     try {
       const model = options.geminiModel || GEMINI_MODEL;
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + '\n\n' + userMsg }] }], generationConfig: { maxOutputTokens: max_tokens, temperature, responseMimeType: 'application/json' } }) });
+      const callGemini = () => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + '\n\n' + userMsg }] }], generationConfig: { maxOutputTokens: max_tokens, temperature, responseMimeType: 'application/json' } }) });
+      let r = await callGemini();
+      // El 503 de Gemini ("high demand") suele ser momentáneo: un reintento evita caer en Groq.
+      if (r.status === 503) {
+        await new Promise((resolve) => setTimeout(resolve, GEMINI_RETRY_MS));
+        r = await callGemini();
+      }
       const d = await r.json();
       if (!r.ok) throw new Error(d.error?.message || `Gemini error ${r.status}`);
       const text = d.candidates?.[0]?.content?.parts?.[0]?.text || d.candidates?.[0]?.parts?.[0]?.text;
@@ -87,9 +95,12 @@ async function callAI(systemPrompt, userMsg, options = {}) {
     // Groq free tier tiene un límite estricto de 6000 Tokens Por Minuto (TPM) sumando prompt + max_tokens.
     // Limitamos dinámicamente max_tokens a 2500 para evitar que el servidor devuelva error de Rate Limit.
     const groqMaxTokens = Math.min(max_tokens, 2500);
+    // Los gpt-oss descuentan su razonamiento interno de max_tokens: sin esto pueden agotarlo
+    // antes de escribir el JSON ("max completion tokens reached before generating...").
+    const reasoningFor = (model) => (model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {});
     for (const model of groqModels) {
       try {
-        const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` }, body: JSON.stringify({ model, max_tokens: groqMaxTokens, temperature, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }], response_format }) });
+        const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` }, body: JSON.stringify({ model, max_tokens: groqMaxTokens, temperature, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }], response_format, ...reasoningFor(model) }) });
         const d = await r.json();
         if (!r.ok) {
           // El modo response_format:'json_object' de Groq a veces rechaza una respuesta que
@@ -111,11 +122,10 @@ async function callAI(systemPrompt, userMsg, options = {}) {
   if (!result) {
     // Los mensajes de error crudos de los proveedores (ej. "Failed to validate JSON..." de
     // Groq) son texto interno en inglés pensado para desarrolladores, no para el atleta que
-    // ve el toast de error en la app. Si no reconocemos el mensaje como algo accionable por
-    // el usuario, mostramos un mensaje genérico en español y dejamos el original en el log.
+    // ve el toast de error en la app: mostramos siempre un mensaje genérico en español y
+    // dejamos el original en el log.
     if (lastError) console.error('[callAI] Todos los proveedores de IA fallaron:', lastError);
-    const friendly = 'El asistente de IA no pudo generar una respuesta válida esta vez. Vuelve a intentarlo en unos segundos.';
-    throw new Error(lastError && !/failed to (validate|generate) json/i.test(lastError) ? lastError : friendly);
+    throw new Error('El asistente de IA no pudo generar una respuesta válida esta vez. Vuelve a intentarlo en unos segundos.');
   }
   return result;
 }

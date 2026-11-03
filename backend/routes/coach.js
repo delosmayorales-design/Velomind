@@ -2237,7 +2237,7 @@ OUTPUT (JSON EXACTO)
 
 Si el plan ya es óptimo → devolver "modifications": []`;
 
-    const result = await callAI(systemPrompt, userMsg, { max_tokens: 1500, temperature: 0.3 });
+    const result = await callAI(systemPrompt, userMsg, { max_tokens: 4000, temperature: 0.3 });
     if (!result || !Array.isArray(result.modifications)) return res.status(500).json({ error: 'La IA no devolvió un plan válido.' });
 
     // Aplicar modificaciones respetando los días bloqueados
