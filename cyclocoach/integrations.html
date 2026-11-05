@@ -472,7 +472,7 @@
   </div>
 </main>
 
-<script src="js/app.js?v=108"></script>
+<script src="js/app.js?v=109"></script>
 <script src="js/backend-sync.js?v=106"></script>
 <script>
   // ── Auth guard ───────────────────────────────────────────────
@@ -910,6 +910,7 @@
 
   // Revelar página tras renderizado inicial
   requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
+  setTimeout(() => document.documentElement.style.removeProperty('opacity'), 300); // por si View Transitions cancela el rAF
 </script>
 </body>
 </html>

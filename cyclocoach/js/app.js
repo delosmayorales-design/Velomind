@@ -416,6 +416,9 @@ const TrainingPlanGenerator = {
       targetTSS = Math.round(targetTSS * 0.85);
       adaptation = { level: 'caution', icon: 'fa-scale-balanced', title: 'Plan ajustado — Fatiga moderada',
         text: `TSB: ${tsbRound}. Volumen reducido un 15% para asimilar carga sin acumular más estrés.` };
+    } else if (!cyclingActs.length) {
+      adaptation = { level: 'info', icon: 'fa-flag-checkered', title: 'Tu primera semana',
+        text: 'Aún no tenemos salidas tuyas, así que empezamos con una carga prudente. Con cada entreno que registres, el plan se ajustará a ti.' };
     } else if (cycleInfo.isRecoveryWeek) {
       adaptation = { level: 'info', icon: 'fa-rotate', title: `Semana ${cycleInfo.weekInCycle} — Recuperación programada`,
         text: `Llevas ${cycleInfo.weekInCycle - 1} semanas de carga progresiva. Esta semana es de recuperación activa (carga −25%) para que el cuerpo asimile las adaptaciones. La próxima semana retomará la carga completa.` };
@@ -932,7 +935,9 @@ const TrainingPlanGenerator = {
     let consecLoadWeeks = 0;
     for (let i = 3; i >= 0; i--) {
       const ref = i > 0 ? weekTSS[i - 1] : weekTSS[0] * 0.9;
-      if (weekTSS[i] >= ref * 0.70) consecLoadWeeks++;
+      // Una semana sin carga nunca cuenta como semana de carga (0 >= 0 hacía que un usuario
+      // nuevo empezara en "Semana 4 — Recuperación" con el plan recortado un 25%).
+      if (weekTSS[i] > 0 && weekTSS[i] >= ref * 0.70) consecLoadWeeks++;
       else break;
     }
 
@@ -956,6 +961,43 @@ const TrainingPlanGenerator = {
     const globalWeekIdx = new Set(activities.filter(a => (a.tss||0) > 5).map(a => mondayOf((a.date?.slice(0,10)||'2000-01-01')+'T00:00:00'))).size;
 
     return { weekInCycle, loadMultiplier, isRecoveryWeek, weeklyTSS: weekTSS, globalWeekIdx };
+  },
+
+  // Primera semana de alguien sin historial: no le dejamos sesiones en días que ya pasaron
+  // (antes de existir su cuenta) y, si puede ser, le damos algo que hacer hoy mismo.
+  adaptFirstWeek(plan, todayIdx = (new Date().getDay() + 6) % 7) {
+    const sessions = plan?.sessions;
+    if (!Array.isArray(sessions)) return plan;
+    const oldTarget = plan.targetTSS || 0;
+    const isTraining = s => !!s && !s.isRest;
+    const tssOf = s => Number.isFinite(s.tss) ? s.tss : Math.round((s.tssShare || 0) * oldTarget);
+    const asRest = day => ({ day, isRest: true, description: 'Descanso' });
+
+    let lastPast = null;
+    for (let i = 0; i < todayIdx; i++) {
+      if (!isTraining(sessions[i])) continue;
+      lastPast = sessions[i];
+      sessions[i] = asRest(sessions[i].day);
+    }
+    if (!isTraining(sessions[todayIdx])) {
+      const todayDay = sessions[todayIdx]?.day;
+      const nextIdx = sessions.findIndex((s, i) => i > todayIdx && isTraining(s));
+      if (nextIdx !== -1) {
+        const moved = sessions[nextIdx];
+        sessions[nextIdx] = asRest(moved.day);
+        sessions[todayIdx] = { ...moved, day: todayDay };
+      } else if (lastPast) {
+        sessions[todayIdx] = { ...lastPast, day: todayDay };
+      }
+    }
+    // El objetivo de la semana pasa a ser lo que de verdad queda por hacer
+    const remaining = sessions.filter(isTraining);
+    const newTarget = remaining.reduce((sum, s) => sum + tssOf(s), 0);
+    if (newTarget > 0) {
+      remaining.forEach(s => { s.tss = tssOf(s); s.tssShare = s.tss / newTarget; });
+      plan.targetTSS = newTarget;
+    }
+    return plan;
   },
 
   // Construir cycleInfo sintético para simulación de semana futura

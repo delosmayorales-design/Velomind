@@ -983,7 +983,7 @@
     </div>
 
     <!-- ── IMPULSA VELOMIND ── -->
-    <div style="margin-bottom:32px;padding:14px 16px;border-radius:12px;border:1px solid rgba(0,95,255,0.2);background:rgba(0,95,255,0.04)">
+    <div id="support-card" style="margin-bottom:32px;padding:14px 16px;border-radius:12px;border:1px solid rgba(0,95,255,0.2);background:rgba(0,95,255,0.04)">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px"><i class="fas fa-mug-hot"></i> Impulsa VeloMind</div>
@@ -999,7 +999,7 @@
   </div>
 </main>
 
-<script src="js/app.js?v=108"></script>
+<script src="js/app.js?v=109"></script>
 <script src="js/backend-sync.js?v=106"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1037,7 +1037,7 @@ const PHRASES = {
   ],
   no_data: [
     "Cada gran ciclista empezó con un primer pedaleo. ¡El tuyo es hoy!",
-    "Bienvenido a VeloMind. Empieza registrando tu primera actividad.",
+    "Te damos la bienvenida a VeloMind. Empieza registrando tu primera actividad.",
   ],
 };
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
@@ -1189,7 +1189,10 @@ function renderHero(athlete, metrics, plan) {
   if (tsbAdvice && tsbNow !== null) {
     phraseEl.innerHTML = `<span style="display:block;margin-bottom:6px">${tsbAdvice}</span><span style="color:var(--text-muted);font-size:13px">${pick(PHRASES[state])}</span>`;
   } else {
-    phraseEl.textContent = pick(PHRASES[state]);
+    // Sin historial pero con plan: el siguiente paso es la sesión de hoy, no "registrar una actividad"
+    phraseEl.textContent = (state === 'no_data' && plan?.sessions)
+      ? 'Tu plan está listo. Empieza por la sesión de hoy y márcala cuando la termines.'
+      : pick(PHRASES[state]);
   }
   document.getElementById('hero-chips').innerHTML =
     chips.map(c => `<span class="hero-chip">${c}</span>`).join('');
@@ -1198,7 +1201,7 @@ function renderHero(athlete, metrics, plan) {
 /* ── SESIÓN DE HOY ──────────────────────────────────────── */
 const WHY = {
   z2:        'Base aeróbica. Sin zona 2 no hay motor. Es la sesión más rentable del plan.',
-  endurance: 'Larga distancia para fortalecer fibras tipo I y enseñar al cuerpo a oxidar grasa.',
+  endurance: 'Ritmo constante para fortalecer fibras tipo I y enseñar al cuerpo a oxidar grasa.',
   tempo:     'Trabajo en umbral para subir el techo de potencia sostenida. Duele bien.',
   threshold: 'Empujas tu FTP hacia arriba. El entrenamiento que más mejora tu rendimiento.',
   vo2max:    'Intervalos VO₂ máx. Cortos, intensos, efectivos. El camino directo al techo aeróbico.',
@@ -1208,6 +1211,20 @@ const WHY = {
   walking:   'Caminata activa para recuperación y salud aeróbica de bajo impacto. Perfecta para días ligeros.',
   running:   'Running para mejorar la capacidad cardiovascular y complementar el trabajo sobre la bici.',
   gym:       'Trabajo de fuerza para prevenir lesiones, equilibrar musculatura y mejorar potencia.',
+};
+// Para quien empieza: qué consigue la sesión y cómo debe sentirse, sin jerga
+const WHY_SIMPLE = {
+  z2:        'Es la base de todo: rodar cómodo hace que cada semana te canses menos. Debes poder hablar sin ahogarte.',
+  endurance: 'Rodar a ritmo cómodo y constante mejora tu resistencia. Debes poder hablar sin ahogarte; si no, baja un poco.',
+  tempo:     'Un ritmo algo exigente pero sostenible, para que tu ritmo cómodo sea cada vez más rápido. Solo podrás decir frases cortas.',
+  threshold: 'Tramos duros y sostenidos: lo que más sube tu nivel. Hablar cuesta mucho, pero debes poder mantenerlos hasta el final.',
+  vo2max:    'Series cortas e intensas para mejorar tu capacidad máxima. Son duras, pero descansas entre cada una.',
+  sprint:    'Arrancadas muy cortas a tope para ganar explosividad. Descansa bien entre cada una.',
+  recovery:  'Pedaleo muy suave para recuperar las piernas. Debe parecerte casi demasiado fácil.',
+  long:      'Tu salida más larga de la semana. No busques ir rápido: ve a un ritmo que puedas mantener todo el rato.',
+  walking:   'Caminar a buen ritmo te ayuda a recuperar y suma salud sin cargar las piernas.',
+  running:   'Correr mejora tu corazón y complementa la bici. Empieza a un ritmo cómodo.',
+  gym:       'La fuerza previene lesiones y te hace pedalear con más potencia.',
 };
 
 function renderToday(plan, athlete) {
@@ -1306,7 +1323,25 @@ function renderToday(plan, athlete) {
         cons.push(`Carga por debajo: ${actualTSS} vs ${tss} TSS planificado — intensidad inferior a la esperada`);
       }
     }
-    if (pros.length === 0 && cons.length === 0) pros.push('Sesión registrada como completada');
+    // Recompensa y siguiente paso: que completar una sesión lleve a la próxima
+    const trainingIdxs = plan.sessions.map((s, i) => (s && !s.isRest) ? i : -1).filter(i => i >= 0);
+    const doneCount = trainingIdxs.filter(i => plan.sessions[i].completed).length;
+    const isFirstEver = !(AppState.activities || []).length && doneCount === 1;
+    if (pros.length === 0 && cons.length === 0) {
+      pros.push(isFirstEver ? '¡Tu primera sesión con VeloMind! Lo más difícil era empezar.' : 'Sesión registrada como completada');
+    }
+    pros.push(`Llevas ${doneCount} de ${trainingIdxs.length} sesiones esta semana`);
+    const nextIdx = trainingIdxs.find(i => i > todayIdx);
+    const nextSess = nextIdx !== undefined ? plan.sessions[nextIdx] : null;
+    const nextDayName = nextIdx !== undefined ? DAY_FULL[(nextIdx + 1) % 7] : '';
+    const nextBlock = `
+      <div class="why-block" style="border-left-color:#9ED62B;margin-top:10px">
+        <b><i class="fas fa-forward"></i> Lo siguiente</b>
+        ${nextSess
+          ? `${nextDayName}: ${nextSess.name || 'Próxima sesión'}${nextSess.durationMin ? ` · ${nextSess.durationMin} min` : ''}`
+          : 'Has terminado lo planificado esta semana. Descansa: el lunes tendrás tu nuevo plan.'}
+        ${!todayAct ? '<div style="margin-top:8px;font-size:12px"><a href="activities.html" style="color:var(--primary);font-weight:600">¿Tienes los datos? Añade la salida</a> para que cuente en tus métricas.</div>' : ''}
+      </div>`;
 
     let restRec;
     if (durRatio === null || (durRatio >= 0.85 && durRatio <= 1.1)) {
@@ -1353,6 +1388,7 @@ function renderToday(plan, athlete) {
           ${restRec.map(r=>`<li>${r}</li>`).join('')}
         </ul>
       </div>
+      ${nextBlock}
       <button class="btn-done done" onclick="event.preventDefault();event.stopPropagation();toggleTodayDone();" style="position:relative;z-index:10;-webkit-tap-highlight-color:transparent">
         <i class="fas fa-rotate-left"></i> Desmarcar sesión
       </button>`;
@@ -1361,7 +1397,8 @@ function renderToday(plan, athlete) {
 
   const sessType = (sess.type||'').toLowerCase();
   const whyKey   = Object.keys(WHY).find(k => sessType.includes(k));
-  const why      = plan.advice?.today || (whyKey ? WHY[whyKey] : 'Esta sesión encaja en tu bloque actual para progresar de forma continua.');
+  const isNovice = athlete?.experience === 'principiante';
+  const why      = plan.advice?.today || (whyKey ? ((isNovice && WHY_SIMPLE[whyKey]) || WHY[whyKey]) : 'Esta sesión encaja en tu bloque actual para progresar de forma continua.');
 
   const hex2  = color.length === 7 ? color : '#9ED62B';
   const faSess = sessFA(sess);
@@ -1982,14 +2019,16 @@ function renderWeek(plan) {
 
   // Días planificados, hechos, perdidos y extras
   const plannedIdxs = plan.sessions.map((s,i)=>({s,i})).filter(x=>!x.s.isRest).map(x=>x.i);
-  const doneIdxs    = plannedIdxs.filter(i => activeDays.has(i));
-  const missedIdxs  = plannedIdxs.filter(i => !activeDays.has(i));
+  const doneIdxs    = plannedIdxs.filter(i => activeDays.has(i) || plan.sessions[i].completed);
+  const missedIdxs  = plannedIdxs.filter(i => !doneIdxs.includes(i));
   const extraIdxs   = [...activeDays].filter(i => !plannedIdxs.includes(i)).sort((a,b)=>a-b);
 
   const weekTSS   = Math.round(weekActs.reduce((s,a) => s+(Number(a.tss)||0), 0));
   const weekHours = Math.round(weekActs.reduce((s,a) => s+(Number(a.duration)||0), 0)/360)/10;
   const tgtTSS    = plan.targetTSS || 0;
-  const tgtHours  = AppState.athlete?.weekly_hours || 0;
+  // Sin historial, el objetivo es lo planificado esta semana (puede empezar a mitad de semana)
+  const plannedMin = plan.sessions.reduce((sum, s) => sum + (s.isRest ? 0 : (s.durationMin || 0)), 0);
+  const tgtHours  = (!AppState.activities?.length && plannedMin) ? Math.round(plannedMin / 6) / 10 : (AppState.athlete?.weekly_hours || 0);
   const tssPct    = tgtTSS ? Math.min(120, Math.round(weekTSS/tgtTSS*100)) : 0;
   const tssDevPct = tgtTSS ? Math.round((weekTSS-tgtTSS)/tgtTSS*100) : 0;
   const tssBarColor = tssPct < 60 ? '#f59e0b' : tssPct <= 105 ? '#9ED62B' : '#ef4444';
@@ -2005,7 +2044,7 @@ function renderWeek(plan) {
     if (weekActs.length === 0) {
       const remaining = plannedIdxs.filter(i => i >= todayIdx);
       return remaining.length
-        ? `Todavía quedan ${remaining.length} sesión${remaining.length>1?'es':''} por hacer esta semana.`
+        ? `Todavía quedan ${remaining.length} ${remaining.length>1?'sesiones':'sesión'} por hacer esta semana.`
         : 'Esta semana no has entrenado aún.';
     }
     // Carga muy por encima
@@ -2168,7 +2207,8 @@ function renderWeek(plan) {
         </div>
         <a href="training-plan.html" style="font-size:11px;font-weight:700;color:#f59e0b;text-decoration:none;white-space:nowrap;border:1px solid rgba(245,158,11,.4);border-radius:6px;padding:4px 10px">Ajustar plan →</a>
       </div>`;
-  } else if (adherence14 !== null && adherence14 < 50 && expectedDays >= 4) {
+  } else if (adherence14 !== null && adherence14 < 50 && expectedDays >= 4
+             && (AppState.activities||[]).some(a => new Date((a.date||'').slice(0,10)+'T00:00:00') < twoWeeksAgo)) {
     adherenceAlert = `
       <div style="margin-top:12px;padding:10px 12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:10px">
         <div style="font-size:12px;font-weight:700;color:#ef4444"><i class="fas fa-arrow-trend-down"></i> Adherencia baja: ${adherence14}% en las últimas 2 semanas</div>
@@ -2690,6 +2730,7 @@ async function renderProjection() {
   const card = document.getElementById('projection-card');
   const el   = document.getElementById('projection-content');
   if (!el || !card) return;
+  if (!AppState.activities?.length) return; // sin salidas no hay nada real que proyectar
 
   const weeklyTSS = dashPlan?.targetTSS || null;
   const url = `${window.API_URL}/analytics/projection${weeklyTSS ? `?weekly_tss=${weeklyTSS}` : ''}`;
@@ -2770,7 +2811,7 @@ function renderMacrocycle() {
         <div class="ctx-lbl">TSS objetivo semanal</div>
       </div>
       <div class="ctx-item">
-        <div class="ctx-val" style="color:${adherenceColor}">${plan.adherence != null ? plan.adherence + '%' : '--'}</div>
+        <div class="ctx-val" style="color:${AppState.activities?.length ? adherenceColor : 'var(--text-muted)'}">${(AppState.activities?.length && plan.adherence != null) ? plan.adherence + '%' : '--'}</div>
         <div class="ctx-lbl">Adherencia (4 sem.)</div>
       </div>
       ${eventChip}
@@ -2788,12 +2829,16 @@ function renderMacrocycle() {
 
 /* ── INIT ────────────────────────────────────────────────── */
 (async function init() {
+  // Red de seguridad: si algo falla durante el arranque, la página no se queda en negro
+  setTimeout(() => document.documentElement.style.removeProperty('opacity'), 300);
   await AppState.init();
 
   const metrics = AppState.pmcData?.length ? AppState.getCurrentMetrics() : null;
   renderHero(AppState.athlete, metrics, null);
   renderLastAct();
   renderToday(null, AppState.athlete);
+  // Pedir apoyo tiene sentido cuando la app ya ha ayudado, no el primer día
+  if (!AppState.activities?.length) document.getElementById('support-card')?.style.setProperty('display', 'none');
   if (metrics) renderFTP(metrics);
 
   if (AppState.athlete) {
@@ -2807,7 +2852,10 @@ function renderMacrocycle() {
   }
 
   fetchWeather();
-  await loadPlan();
+  // loadPlan pinta el plan en caché antes de su primer await: mostramos la página sin esperar a la red
+  const planReady = loadPlan();
+  requestAnimationFrame(() => document.documentElement.style.removeProperty('opacity'));
+  await planReady;
   renderMacrocycle();
   loadWellness();
   renderProjection();

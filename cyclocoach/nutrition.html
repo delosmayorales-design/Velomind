@@ -481,7 +481,7 @@
 </div>
 
 <script src="js/meal-generator.js"></script>
-<script src="js/app.js?v=108"></script>
+<script src="js/app.js?v=109"></script>
 <script src="js/backend-sync.js?v=106"></script>
 <script>
 
@@ -623,6 +623,9 @@ function renderWeeklyGrid() {
     const isToday = i === todayIdx;
     const isPast  = sessDate < today;
     const isRest  = sess.isRest;
+    // "Hecho" solo si consta: sesión marcada o actividad ese día (no por el simple hecho de haber pasado)
+    const dayKey  = `${sessDate.getFullYear()}-${String(sessDate.getMonth()+1).padStart(2,'0')}-${String(sessDate.getDate()).padStart(2,'0')}`;
+    const isDoneDay = isPast && !isRest && (sess.completed || (AppState.activities || []).some(a => String(a.date || '').slice(0, 10) === dayKey));
     const color   = isRest ? 'var(--text-muted)' : (typeColors[sess.type] || '#88D8B0');
 
     return `
@@ -638,7 +641,7 @@ function renderWeeklyGrid() {
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:${color};margin-bottom:2px">
               ${isRest ? 'Descanso' : (sess.name || sess.type || 'Entrenamiento')}
               ${isToday ? '<span style="margin-left:6px;background:rgba(196,239,68,.15);color:#C4EF44;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700">HOY</span>' : ''}
-              ${isPast ? '<span style="margin-left:6px;background:rgba(158,214,43,0.15);color:#9ED62B;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700"><i class="fas fa-check"></i> HECHO</span>' : ''}
+              ${isDoneDay ? '<span style="margin-left:6px;background:rgba(158,214,43,0.15);color:#9ED62B;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700"><i class="fas fa-check"></i> HECHO</span>' : ''}
             </div>
             <div class="session-meta">
               <span class="meta-tag"><i class="fas fa-fire" style="color:var(--primary)"></i> ${adj ? adj.dailyCalories.toLocaleString() : '--'} kcal</span>

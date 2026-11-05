@@ -49,7 +49,7 @@ async function sendVerificationEmail(user) {
             Confirmar email
           </a>
           <p style="color:#6b7280;font-size:13px;margin:28px 0 0;line-height:1.5">
-            Si no creaste esta cuenta, podés ignorar este correo.
+            Si no creaste esta cuenta, puedes ignorar este correo.
           </p>
         </div>
         <div style="padding:20px 40px;background:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.06)">
@@ -332,7 +332,7 @@ router.post('/forgot-password', async (req, res) => {
               Restablecer contraseña
             </a>
             <p style="color:#6b7280;font-size:13px;margin:28px 0 0;line-height:1.5">
-              Si no solicitaste este cambio, podés ignorar este correo. Tu contraseña no cambiará.
+              Si no solicitaste este cambio, puedes ignorar este correo. Tu contraseña no cambiará.
             </p>
           </div>
           <div style="padding:20px 40px;background:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.06)">
@@ -375,7 +375,7 @@ router.post('/reset-password', async (req, res) => {
     await supabase.from('users').update({ password: hash, updated_at: new Date().toISOString() }).eq('id', resetToken.user_id);
     await supabase.from('password_reset_tokens').update({ used: true }).eq('id', resetToken.id);
 
-    res.json({ message: 'Contraseña actualizada correctamente. Ya podés iniciar sesión.' });
+    res.json({ message: 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.' });
   } catch (e) {
     console.error('[auth/reset-password]', e.message);
     res.status(500).json({ error: 'Error al restablecer la contraseña' });

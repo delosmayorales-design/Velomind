@@ -124,7 +124,7 @@
     <div class="icon" style="color:#10b981"><i class="fas fa-circle-check"></i></div>
     <h1>¡Email confirmado!</h1>
     <p>Tu cuenta ya está verificada. Ya podés iniciar sesión normalmente.</p>
-    <a href="login.html" class="btn"><i class="fas fa-arrow-right"></i> Ir al login</a>
+    <a href="login.html?tab=login" class="btn"><i class="fas fa-arrow-right"></i> Ir al login</a>
   </div>
 
   <div id="state-error" style="display:none">
@@ -135,7 +135,7 @@
     <button class="btn" onclick="resend()">
       <span id="resend-label"><i class="fas fa-paper-plane"></i> Reenviar email de confirmación</span>
     </button>
-    <a href="login.html" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Volver al login</a>
+    <a href="login.html?tab=login" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Volver al login</a>
   </div>
 </div>
 
@@ -149,7 +149,7 @@
     expired: ['Enlace expirado', 'Este enlace de confirmación ya venció. Pedí uno nuevo con tu email.'],
     invalid: ['Enlace inválido', 'Este enlace no existe o ya fue utilizado.'],
     missing: ['Falta el enlace', 'Abrí el enlace completo desde el email que te enviamos.'],
-    error:   ['Algo salió mal', 'No pudimos confirmar tu email. Intentá de nuevo.'],
+    error:   ['Algo salió mal', 'No pudimos confirmar tu email. Inténtalo de nuevo.'],
   };
 
   if (status === 'ok') {
@@ -177,7 +177,7 @@
       alert(data.message || 'Si la cuenta existe, te reenviamos el email.');
     } catch (e) {
       label.innerHTML = '<i class="fas fa-paper-plane"></i> Reenviar email de confirmación';
-      alert('Error de conexión. Intentá de nuevo.');
+      alert('Error de conexión. Inténtalo de nuevo.');
     }
   }
 </script>

@@ -204,7 +204,7 @@
     <div class="alert alert-info" style="margin-bottom:20px">
       <i class="fas fa-info-circle"></i>
       <div>
-        <strong>No ves tus actividades?</strong> Importa tus archivos GPX/TCX desde Garmin Connect, Wahoo o Polar, o <a href="integrations.html" style="color:inherit;font-weight:700">conecta Strava</a> para sincronizar automaticamente. Si aparecen datos de prueba que no son tuyos, usa el boton <strong>Limpiar todo</strong>.
+        <strong>¿Aún sin actividades?</strong> Añade tu salida a mano, importa un archivo GPX, TCX o FIT, o <a href="integrations.html" style="color:inherit;font-weight:700">conecta tu dispositivo</a> para sincronizar automáticamente.
       </div>
     </div>
 
@@ -360,7 +360,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="js/app.js?v=108"></script>
+<script src="js/app.js?v=109"></script>
 <script src="js/backend-sync.js?v=106"></script>
 <script>
 var allActivities = [];
@@ -839,7 +839,7 @@ function saveActivity(activity) {
       const MET = Math.min(16, Math.max(6, 0.9 * speedKmh + 0.5));
       activity.tss = Math.round(MET * weight * durationH * 0.08);
     } else {
-      const TSS_PER_HOUR = { swimming: 45, climbing: 50, strength: 40, gym: 40 };
+      const TSS_PER_HOUR = { cycling: 45, swimming: 45, climbing: 50, strength: 40, gym: 40, other: 40 };
       const perHour = TSS_PER_HOUR[activity.type] || 0;
       if (perHour) activity.tss = Math.round(durationH * perHour);
     }
@@ -894,6 +894,14 @@ function toggleManualEntry() {
 }
 
 async function saveManualActivity() {
+  if (!document.getElementById('m-date').value) {
+    showToast('Indica la fecha de la actividad', 'error');
+    return;
+  }
+  if (!(parseFloat(document.getElementById('m-duration').value) > 0) && !(parseFloat(document.getElementById('m-tss').value) > 0)) {
+    showToast('Indica la duración o el TSS de la actividad', 'error');
+    return;
+  }
   const ftp = AppState.athlete?.ftp || 200;
   const durationSec = (parseFloat(document.getElementById('m-duration').value) || 0) * 60;
   const avgPower = parseFloat(document.getElementById('m-power').value) || 0;
@@ -923,6 +931,11 @@ async function saveManualActivity() {
       allActivities = [saved, ...allActivities].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     }
     renderActivities(allActivities);
+    // Vaciar el formulario para no duplicar la actividad al volver a abrirlo
+    ['m-name', 'm-duration', 'm-dist', 'm-power', 'm-maxpower', 'm-hr', 'm-maxhr', 'm-cadence', 'm-tss']
+      .forEach(id => { document.getElementById(id).value = ''; });
+    const manualArrow = document.getElementById('manual-toggle-arrow');
+    if (manualArrow) manualArrow.style.transform = 'rotate(0deg)';
     document.getElementById('manual-form').classList.add('hidden');
     showToast('Actividad "' + saved.name + '" guardada - TSS: ' + saved.tss, 'success');
     document.getElementById('total-count').textContent = allActivities.length + ' actividades';

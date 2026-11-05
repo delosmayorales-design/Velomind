@@ -433,6 +433,12 @@
 <div class="auth-right">
   <div class="auth-box">
 
+    <div class="mobile-pitch" id="mobile-pitch" style="display:none;margin-bottom:20px">
+      <img src="logo.png" alt="VeloMind" style="height:56px;width:auto;border-radius:10px;margin-bottom:12px">
+      <div style="font-size:21px;font-weight:800;line-height:1.25;color:var(--text-primary,#fff);margin-bottom:6px">Tu entrenador de ciclismo, en el bolsillo</div>
+      <div style="font-size:14px;line-height:1.45;color:var(--text-secondary,#9ca3af)">Plan semanal y nutrición adaptados a ti, y a lo que haces cada día. Sin tarjeta.</div>
+    </div>
+
     <div class="auth-tabs">
       <button class="auth-tab active" onclick="switchTab('login')">Iniciar sesión</button>
       <button class="auth-tab" onclick="switchTab('register')">Crear cuenta</button>
@@ -440,6 +446,9 @@
 
     <!-- ALERT -->
     <div class="alert hidden" id="auth-alert"></div>
+    <div id="slow-hint" style="display:none;margin-bottom:14px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.4;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.3);color:#7dd3fc">
+      <i class="fas fa-hourglass-half"></i> Estamos arrancando el servidor. La primera vez puede tardar hasta un minuto; no cierres esta página.
+    </div>
 
     <!-- LOGIN PANEL -->
     <div class="form-panel active" id="panel-login">
@@ -469,17 +478,6 @@
       <button class="btn-primary" id="btn-login" onclick="doLogin(event)">
         <div class="spinner" id="spinner-login"></div>
         <span id="login-label"><i class="fas fa-arrow-right"></i> Entrar</span>
-      </button>
-
-      <div class="divider"><span>o continúa con</span></div>
-
-      <button class="social-btn strava" onclick="connectAfterAuth('strava', 'login')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
-        Conectar Strava (tras entrar)
-      </button>
-      <button class="social-btn intervals" onclick="connectAfterAuth('intervals', 'login')">
-        <i class="fas fa-wave-square" style="color:#38BDF8;font-size:17px"></i>
-        Conectar intervals.icu (tras entrar)
       </button>
     </div>
 
@@ -511,7 +509,7 @@
     <!-- REGISTER PANEL -->
     <div class="form-panel" id="panel-register">
       <h2 class="form-title">Crea tu cuenta</h2>
-      <p class="form-subtitle">Empieza a entrenar con datos</p>
+      <p class="form-subtitle">Tu plan personalizado, listo en un minuto</p>
 
       <div class="form-group">
         <label class="form-label">Nombre</label>
@@ -531,7 +529,7 @@
         <label class="form-label">Contraseña</label>
         <div class="input-with-icon">
           <i class="fas fa-lock input-icon"></i>
-          <input type="password" class="form-input" id="reg-password" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+          <input type="password" class="form-input" id="reg-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
           <button class="input-toggle" onclick="togglePwd('reg-password', this)" type="button">
             <i class="fas fa-eye"></i>
           </button>
@@ -548,17 +546,6 @@
       <button class="btn-primary" id="btn-register" onclick="doRegister(event)">
         <div class="spinner" id="spinner-reg"></div>
         <span id="reg-label"><i class="fas fa-user-plus"></i> Crear cuenta</span>
-      </button>
-
-      <div class="divider"><span>o regístrate con</span></div>
-
-      <button class="social-btn strava" onclick="connectAfterAuth('strava', 'register')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
-        Conectar Strava (tras registro)
-      </button>
-      <button class="social-btn intervals" onclick="connectAfterAuth('intervals', 'register')">
-        <i class="fas fa-wave-square" style="color:#38BDF8;font-size:17px"></i>
-        Conectar intervals.icu (tras registro)
       </button>
     </div>
 
@@ -594,7 +581,24 @@
     document.getElementById(spinner).style.display = on ? 'block' : 'none';
     document.getElementById(label).style.display = on ? 'none' : 'flex';
     document.getElementById(btn).disabled = on;
+    // Si el servidor estaba dormido la espera es larga: explicarlo en vez de dejar solo el spinner
+    clearTimeout(window._slowHintTimer);
+    const hint = document.getElementById('slow-hint');
+    if (hint) hint.style.display = 'none';
+    if (on && hint) window._slowHintTimer = setTimeout(() => { hint.style.display = 'block'; }, 4000);
   }
+
+  // Despertar el backend mientras la persona rellena el formulario
+  if (window.API_URL) fetch(window.API_URL + '/health').catch(() => {});
+
+  // Quien llega por primera vez ve "Crear cuenta"; quien ya tiene cuenta, "Iniciar sesión"
+  document.addEventListener('DOMContentLoaded', () => {
+    let returning = new URLSearchParams(location.search).get('tab') === 'login';
+    try { returning = returning || !!localStorage.getItem('vm_returning'); } catch (_) {}
+    if (returning) return;
+    switchTab('register');
+    if (window.innerWidth <= 768) document.getElementById('mobile-pitch').style.display = 'block';
+  });
 
   function switchTab(tab) {
     document.querySelectorAll('.auth-tab').forEach((t, i) => {
@@ -769,7 +773,7 @@
   async function doForgot(e) {
     e.preventDefault();
     const email = document.getElementById('forgot-email').value.trim().toLowerCase();
-    if (!email) { showForgotAlert('Ingresá tu email.'); return; }
+    if (!email) { showForgotAlert('Introduce tu email.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showForgotAlert('Email no válido.'); return; }
 
     setLoading('spinner-forgot', 'forgot-label', 'btn-forgot', true);
@@ -783,7 +787,7 @@
       const data = await res.json();
       showForgotAlert(data.message || 'Si el email está registrado, recibirás el enlace pronto.', 'success');
     } catch {
-      showForgotAlert('Error de conexión. Intentá de nuevo.');
+      showForgotAlert('Error de conexión. Inténtalo de nuevo.');
     } finally {
       setLoading('spinner-forgot', 'forgot-label', 'btn-forgot', false);
     }

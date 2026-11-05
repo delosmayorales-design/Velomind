@@ -879,7 +879,10 @@
       #events-list-banner .ev-row { flex-wrap: wrap; }
 
       /* Plan Semanal — resumen inline no desborda */
-      #plan-summary-inline { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+      body.first-week .page-body { display: flex; flex-direction: column; }
+      body.first-week .page-body > * { order: 2; min-width: 0; }
+      body.first-week .page-body > .week-plan-card { order: 1; }
+      #plan-summary-inline { display:block; white-space:normal; max-width:100%; }
 
       /* Botón semana siguiente — texto corto en móvil */
       .nw-btn-label::after { content: 'Sig. semana'; font-size: 11px; }
@@ -1216,7 +1219,7 @@
     <div id="ramp-rate-bar" style="display:none;margin-bottom:16px;padding:8px 14px;background:var(--bg-input);border-radius:8px;font-size:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"></div>
     <div id="recalc-summary" style="display:none;margin-bottom:20px"></div>
 
-    <div class="card mb-6">
+    <div class="card mb-6 week-plan-card">
       <div class="card-header">
         <div>
           <div class="card-title"><i class="fas fa-calendar-week" style="color:var(--accent)"></i> Plan Semanal</div>
@@ -1317,7 +1320,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="js/app.js?v=108"></script>
+<script src="js/app.js?v=109"></script>
 <script src="js/backend-sync.js?v=106"></script>
 <script src="js/fit-encoder.js"></script>
 <script>
@@ -1685,7 +1688,7 @@ async function initTrainingPlan() {
         // en su próxima carga, en vez de esperar a la próxima acción que guarde el plan.
         if (_sanitizeFixedSomething) silentSavePlan();
       } else {
-        generatePlan();
+        generatePlan([], { firstWeek: !AppState.activities?.length });
         silentSavePlan();
         // Guardar original del plan recién generado si no existe todavía
         try {
@@ -1703,6 +1706,16 @@ async function initTrainingPlan() {
         } catch(_e) {}
       }
     }
+
+    // Recién terminado el onboarding: el plan ya está creado, llevamos a la sesión de hoy
+    if (new URLSearchParams(location.search).get('welcome') === '1' && currentPlan) {
+      await Promise.race([silentSavePlan(), new Promise(r => setTimeout(r, 4000))]);
+      location.replace('dashboard.html');
+      return;
+    }
+
+    // Sin historial, lo primero que se ve es la semana (no los ceros de CTL/ATL ni la configuración)
+    document.body.classList.toggle('first-week', !AppState.activities?.length);
 
     // Revelar página tras primer render — sin flash de contenido a medias
     requestAnimationFrame(() => {
@@ -1779,6 +1792,7 @@ async function initTrainingPlan() {
     console.log('[TP] Done');
   } catch(e) {
     console.error('[TP] Error:', e);
+    document.documentElement.style.removeProperty('opacity');
   }
 }
 
@@ -1850,10 +1864,15 @@ function _extractCrossTrainingDays(plan) {
 // otro podían "elegir" uno de esos días (por su orden de preferencia) y el motor los
 // asignaba ahí, pero el paso de preservar el progreso los descartaba justo después,
 // dando la sensación de que el tipo elegido "no se tenía en cuenta".
-function generatePlan(excludeDayIndices = []) {
+function generatePlan(excludeDayIndices = [], { firstWeek = false } = {}) {
   const athlete = AppState.athlete || getDefaultAthlete();
   const previousDayTypes = _extractCrossTrainingDays(currentPlan);
   const plan = TrainingPlanGenerator.generate(athlete, AppState.activities, { previousDayTypes, excludeDayIndices });
+  if (firstWeek) {
+    // Sanear antes: corrige TSS según la duración, y el objetivo debe salir de los valores finales
+    _sanitizeCyclingContent(plan);
+    TrainingPlanGenerator.adaptFirstWeek?.(plan);
+  }
   currentPlan = plan;
   syncPlanWithReality();
   renderPlan(plan, athlete);
@@ -2325,7 +2344,7 @@ function renderPlan(plan, athlete) {
   else if (plan.adaptation?.level === 'caution') _weekCtx = '<i class="fas fa-scale-balanced"></i> Carga ajustada';
   else if (plan.adaptation?.level === 'info' && (plan.adaptation?.title || '').includes('Recuperación')) _weekCtx = '<i class="fas fa-rotate"></i> Semana de recuperación';
   document.getElementById('plan-summary-inline').innerHTML =
-    `${_weekCtx} · <strong style="color:var(--primary)">${plan.targetTSS} TSS</strong> · ${athlete.weekly_hours || 8}h · ${phaseLabel(plan.phase)}`;
+    `${_weekCtx} · <strong style="color:var(--primary)">${plan.targetTSS} TSS</strong> · ${athlete.weekly_hours || 8}h disponibles · ${phaseLabel(plan.phase)}`;
 
   renderRecalcSummary(plan);
 

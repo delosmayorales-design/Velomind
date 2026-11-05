@@ -1234,6 +1234,12 @@ function buildRecoveryWeek(ftp) {
 function buildInsights({ tsb, ctl, ftp, weight, zonePct, avgTSS, avgDurMin, acts, goal }) {
   const insights = [];
 
+  // Sin salidas no hay nada que diagnosticar: mejor decirlo que dar consejos sobre datos a cero
+  if (!acts.length) {
+    insights.push({ type: 'data', level: 'info', text: 'Todavía no hay salidas recientes que analizar. Completa la primera y este diagnóstico se personalizará con tus datos.' });
+    return insights;
+  }
+
   if (ctl > 0) {
     if (ctl < 30)  insights.push({ type: 'fitness', level: 'info',    text: `Tu CTL (${Math.round(ctl)}) indica nivel principiante-intermedio. Enfócate en consistencia y volumen gradual.` });
     if (ctl >= 30 && ctl < 60) insights.push({ type: 'fitness', level: 'info', text: `CTL ${Math.round(ctl)}: nivel intermedio sólido. Puedes empezar a añadir intensidad estructurada.` });
@@ -3505,3 +3511,4 @@ Usa ## para secciones, ### para nombres de puertos, - para listas. No generes ta
 });
 
 module.exports = router;
+module.exports.buildInsights = buildInsights;

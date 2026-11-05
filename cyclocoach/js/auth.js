@@ -408,6 +408,8 @@ const Auth = (() => {
   // ─── Inicializar en página protegida ─────────────────────────
   async function init() {
     let user = await requireAuth();
+    // Sobrevive al logout (no lleva prefijo velomind_): el login abre "Iniciar sesión" a quien ya tiene cuenta
+    if (user) { try { localStorage.setItem('vm_returning', '1'); } catch (_) {} }
 
     // ─── Redirección Inteligente (Omitir Onboarding) ─────────────
     const isProfilePage = window.location.pathname.endsWith('index.html') ||
