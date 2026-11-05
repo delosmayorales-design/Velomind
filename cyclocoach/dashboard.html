@@ -583,7 +583,7 @@
     }
     .week-day-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
     .wk-day-dot {
-      width: 100%; aspect-ratio: 1 / 1; min-height: 34px;
+      width: 100%; max-width: 52px; aspect-ratio: 1 / 1; min-height: 34px;
       border-radius: 50%; background: var(--bg-input);
       border: 2px solid transparent;
       display: flex; align-items: center; justify-content: center;
@@ -2023,15 +2023,24 @@ function renderWeek(plan) {
   const missedIdxs  = plannedIdxs.filter(i => !doneIdxs.includes(i));
   const extraIdxs   = [...activeDays].filter(i => !plannedIdxs.includes(i)).sort((a,b)=>a-b);
 
-  const weekTSS   = Math.round(weekActs.reduce((s,a) => s+(Number(a.tss)||0), 0));
-  const weekHours = Math.round(weekActs.reduce((s,a) => s+(Number(a.duration)||0), 0)/360)/10;
+  // Sesiones marcadas sin actividad registrada: suman su carga planificada como estimación (solo
+  // en este resumen; no se escriben actividades ni afectan a CTL/ATL).
+  const markedOnly = plannedIdxs.filter(i => plan.sessions[i].completed && !activeDays.has(i));
+  const estTSS = markedOnly.reduce((sum, i) => {
+    const s = plan.sessions[i];
+    return sum + (Number.isFinite(s.tss) ? s.tss : Math.round((s.tssShare || 0) * (plan.targetTSS || 0)));
+  }, 0);
+  const estSec = markedOnly.reduce((sum, i) => sum + (plan.sessions[i].durationMin || 0) * 60, 0);
+  const hasEstimate = markedOnly.length > 0;
+  const weekTSS   = Math.round(weekActs.reduce((s,a) => s+(Number(a.tss)||0), 0) + estTSS);
+  const weekHours = Math.round((weekActs.reduce((s,a) => s+(Number(a.duration)||0), 0) + estSec)/360)/10;
   const tgtTSS    = plan.targetTSS || 0;
   // Sin historial, el objetivo es lo planificado esta semana (puede empezar a mitad de semana)
   const plannedMin = plan.sessions.reduce((sum, s) => sum + (s.isRest ? 0 : (s.durationMin || 0)), 0);
   const tgtHours  = (!AppState.activities?.length && plannedMin) ? Math.round(plannedMin / 6) / 10 : (AppState.athlete?.weekly_hours || 0);
   const tssPct    = tgtTSS ? Math.min(120, Math.round(weekTSS/tgtTSS*100)) : 0;
   const tssDevPct = tgtTSS ? Math.round((weekTSS-tgtTSS)/tgtTSS*100) : 0;
-  const tssBarColor = tssPct < 60 ? '#f59e0b' : tssPct <= 105 ? '#9ED62B' : '#ef4444';
+  const tssBarColor = (tssPct < 60 && weekActs.length) ? '#f59e0b' : tssPct <= 105 ? '#9ED62B' : '#ef4444';
 
   // ── Narrativa ──────────────────────────────────────────
   function sessLabel(i) {
@@ -2042,7 +2051,13 @@ function renderWeek(plan) {
   function impactMsg() {
     // Sin actividad aún esta semana
     if (weekActs.length === 0) {
-      const remaining = plannedIdxs.filter(i => i >= todayIdx);
+      const remaining = plannedIdxs.filter(i => i >= todayIdx && !doneIdxs.includes(i));
+      if (doneIdxs.length) {
+        const hechas = `${doneIdxs.length} ${doneIdxs.length>1?'sesiones hechas':'sesión hecha'}`;
+        return remaining.length
+          ? `¡Bien! Llevas ${hechas}. ${remaining.length>1?`Quedan ${remaining.length} sesiones`:'Queda 1 sesión'} esta semana.`
+          : `¡Semana completada! Llevas ${hechas}.`;
+      }
       return remaining.length
         ? `Todavía quedan ${remaining.length} ${remaining.length>1?'sesiones':'sesión'} por hacer esta semana.`
         : 'Esta semana no has entrenado aún.';
@@ -2150,7 +2165,7 @@ function renderWeek(plan) {
 
   // Círculos de días con icono + categoría rodaje/series
   const cols = plan.sessions.map((s, i) => {
-    const has = activeDays.has(i), isToday = i === todayIdx;
+    const has = activeDays.has(i) || (!s.isRest && !!s.completed), isToday = i === todayIdx;
     let dotCls = '';
     if      (has && isToday) dotCls = 'done today';
     else if (has)            dotCls = 'done';
@@ -2254,7 +2269,7 @@ function renderWeek(plan) {
         </div>
         <div class="wk-stat">
           <div class="wk-stat-val" style="${tgtTSS ? 'color:' + tssBarColor : ''}">${weekTSS || '—'}</div>
-          <div class="wk-stat-lbl">TSS</div>
+          <div class="wk-stat-lbl">${hasEstimate ? 'TSS est.' : 'TSS'}</div>
         </div>
       </div>
     </div>
@@ -2272,7 +2287,7 @@ function renderWeek(plan) {
       <div class="wk-tss-track">
         <div class="wk-tss-fill" style="width:${Math.min(tssPct,100)}%;background:${tssBarColor}"></div>
       </div>
-      ${tgtHours ? `<div class="wk-tss-foot">${weekHours}h de ${tgtHours}h objetivo</div>` : ''}
+      ${tgtHours ? `<div class="wk-tss-foot">${weekHours}h de ${tgtHours}h objetivo${hasEstimate ? ' · estimado con las sesiones marcadas' : ''}</div>` : ''}
     </div>` : ''}`;
 }
 
