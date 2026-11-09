@@ -1003,7 +1003,7 @@
       <button class="phb phb-regen" onclick="regeneratePlan()" title="Regenerar plan">
         <i class="fas fa-sync-alt"></i><span>Regenerar</span>
       </button>
-      <button class="phb" id="btn-send-garmin" onclick="pushWeekToGarmin()" title="Enviar la semana a Garmin" style="display:none">
+      <button class="phb" id="btn-send-garmin" onclick="pushWeekToGarmin()" title="Enviar a tu Garmin lo que queda de semana">
         <i class="fas fa-paper-plane"></i><span>Garmin</span>
       </button>
       <button class="phb phb-save" id="btn-save-plan" onclick="savePlan()" title="Guardar plan">
@@ -2707,9 +2707,6 @@ function renderPlan(plan, athlete) {
         </div>
       </div>` : '');
 
-    const _garminViaIcu = localStorage.getItem('velomind_intervals_connected') === '1';
-    const _sendWeekBtn = document.getElementById('btn-send-garmin');
-    if (_sendWeekBtn) _sendWeekBtn.style.display = _garminViaIcu ? '' : 'none';
     const actionButtons = (!sess.isRest && !sess.isGym && !sess.isRunning && !sess.isWalking && !sess.isOther) ? `
       <div class="sess-actions">
         <div class="sess-export-section">
@@ -2720,7 +2717,7 @@ function renderPlan(plan, athlete) {
             <button class="sess-fmt-btn" onclick="exportSessionToZwift(${i})">ZWO</button>
             <button class="sess-fmt-btn" onclick="exportSessionToERG(${i})">ERG</button>
             <button class="sess-fmt-btn" onclick="exportSessionToGPX(${i})">GPX</button>`}
-            ${_garminViaIcu ? `<button class="sess-fmt-btn sess-fmt-btn--garmin" onclick="pushSessionToGarmin(${i})" title="Enviar esta sesión a tu Garmin"><i class="fas fa-paper-plane"></i> Garmin</button>` : ''}
+            <button class="sess-fmt-btn sess-fmt-btn--garmin" onclick="pushSessionToGarmin(${i})" title="Enviar esta sesión a tu Garmin"><i class="fas fa-paper-plane"></i> Garmin</button>
           </div>
           <button class="sess-export-toggle" onclick="toggleSessExport(this)">
             <i class="fas fa-download"></i> Exportar <i class="fas fa-chevron-down chev"></i>
@@ -6471,6 +6468,10 @@ function _garminWorkoutFor(index) {
 }
 
 async function _sendWorkoutsToGarmin(indices) {
+  if (localStorage.getItem('velomind_intervals_connected') !== '1') {
+    location.href = 'intervals-ayuda.html#garmin';
+    return;
+  }
   const toast = document.createElement('div');
   toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#e2e8f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:center;gap:8px;max-width:calc(100vw - 32px)';
   const icon = document.createElement('i');
@@ -6494,7 +6495,12 @@ async function _sendWorkoutsToGarmin(indices) {
     const data = await r.json().catch(() => ({}));
     if (r.ok) {
       const what = data.sent === 1 ? 'Entreno enviado' : `${data.sent} entrenos enviados`;
-      show('fas fa-check-circle', '#00c97b', `${what}. Sincroniza tu Garmin en unos minutos. Si no aparece, activa "Cargar entrenamientos planificados" en intervals.icu.`);
+      show('fas fa-check-circle', '#00c97b', `${what}. Sincroniza tu Garmin en unos minutos.`);
+      const help = document.createElement('a');
+      help.href = 'intervals-ayuda.html#garmin';
+      help.textContent = '¿No aparece?';
+      help.style.cssText = 'color:#00c97b;font-weight:700;white-space:nowrap';
+      toast.appendChild(help);
       visibleMs = 9000;
     } else {
       show('fas fa-exclamation-triangle', '#f59e0b', data.error || 'No se pudo enviar a Garmin.');
