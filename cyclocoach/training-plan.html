@@ -6466,19 +6466,20 @@ function exportSessionToGPX(index) {
 
 // ── Envío a Garmin a través de intervals.icu ──────────────────────────────
 
-function _garminWorkoutFor(index) {
-  const sess = currentPlan.sessions[index];
+function _garminWorkoutFor(index, roller = false) {
+  const planned = currentPlan.sessions[index];
+  const sess = roller ? _rollerSession(planned) : planned;
   const wt = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || {};
   const day = new Date();
   day.setDate(day.getDate() - (day.getDay() || 7) + 1 + index);
   return {
     date: `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`,
-    name: (wt.label || sess.name || sess.type || 'Entrenamiento').slice(0, 60),
+    name: `${roller ? 'Rodillo · ' : ''}${wt.label || sess.name || sess.type || 'Entrenamiento'}`.slice(0, 60),
     steps: FITWorkoutEncoder.buildSteps(sess, (AppState.athlete || {}).ftp || 200),
   };
 }
 
-async function _sendWorkoutsToGarmin(indices) {
+async function _sendWorkoutsToGarmin(indices, roller = false) {
   if (localStorage.getItem('velomind_intervals_connected') !== '1') {
     location.href = 'intervals-ayuda.html#garmin';
     return;
@@ -6501,7 +6502,7 @@ async function _sendWorkoutsToGarmin(indices) {
     const r = await fetch(`${window.API_URL}/providers/intervals/planned-workouts`, {
       method: 'POST',
       headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ workouts: indices.map(_garminWorkoutFor) }),
+      body: JSON.stringify({ workouts: indices.map(index => _garminWorkoutFor(index, roller)) }),
     });
     const data = await r.json().catch(() => ({}));
     if (r.ok) {
@@ -6766,22 +6767,44 @@ function closePostModal() {
 }
 
 // ── Adaptar a rodillo ────────────────────────────────────────
+const MAX_ROLLER_MIN = 87; // 1.45 horas máximo
+
+function _sessionLoad(sess) {
+  const tss = Number.isFinite(sess.tss) && sess.tss > 0
+    ? sess.tss
+    : Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
+  const durationMin = sess.durationMin || Math.round(tss / Math.pow(sess.ifTarget || 0.65, 2) * 60);
+  return { tss, durationMin };
+}
+
+/** Copia de la sesión recortada para rodillo; la sesión del plan no se modifica. */
+function _rollerSession(sess) {
+  const original = _sessionLoad(sess);
+  const durationMin = Math.min(Math.round(original.durationMin * 0.75), MAX_ROLLER_MIN);
+  const tss = Math.round(original.tss * (durationMin / original.durationMin));
+  const intervals = window.TrainingPlanGenerator
+    ? TrainingPlanGenerator._buildIntervals(sess.type, AppState.athlete?.ftp || 200, durationMin, tss, sess.ifTarget || 0.75, sess.intervalVariant || 'main', TrainingPlanGenerator._resolveCadenceSpec?.(sess))
+    : [];
+  // Si recortarla dejara una sesión sin estructura (rodaje corto), se mantiene entera.
+  const lostStructure = !intervals.length || (intervals.length < 2 && (sess.intervals || []).length > 1);
+  return lostStructure ? { ...sess, ...original } : { ...sess, durationMin, tss, intervals };
+}
+
 function adaptToRoller(idx) {
   const sess = currentPlan.sessions[idx];
   if (!sess || sess.isRest) return;
 
   const ftp = AppState.athlete?.ftp || 200;
-  const sessTSS = Number.isFinite(sess.tss) && sess.tss > 0
-    ? sess.tss
-    : Math.round((sess.tssShare || 0) * (currentPlan.targetTSS || 400));
-  const originalDur = sess.durationMin || Math.round(sessTSS / Math.pow(sess.ifTarget || 0.65, 2) * 60);
-  const maxRollerDur = 87; // 1.45 horas máximo
-  const rollerDur = Math.min(Math.round(originalDur * 0.75), maxRollerDur);
-  const rollerTSS = Math.round(sessTSS * (rollerDur / originalDur));
+  const { tss: sessTSS, durationMin: originalDur } = _sessionLoad(sess);
+  const roller = _rollerSession(sess);
+  const rollerDur = roller.durationMin;
+  const rollerTSS = roller.tss;
   const rollerPct = Math.round(100 * rollerDur / originalDur);
-  const rollerDurNote = rollerDur >= maxRollerDur
-    ? `máximo recomendado para rodillo estático (${rollerPct}% del original de ${originalDur} min)`
-    : `75% del original para compensar el mayor esfuerzo térmico sin ventilación exterior`;
+  const rollerDurNote = rollerDur === originalDur
+    ? 'la sesión ya es corta, así que se mantiene entera'
+    : rollerDur >= MAX_ROLLER_MIN
+      ? `máximo recomendado para rodillo estático (${rollerPct}% del original de ${originalDur} min)`
+      : `75% del original para compensar el mayor esfuerzo térmico sin ventilación exterior`;
 
   const rollerTips = [
     '<i class="fas fa-fan"></i> Usa ventilador para simular viento y enfriar.',
@@ -6794,13 +6817,7 @@ function adaptToRoller(idx) {
     '<i class="fas fa-chart-column"></i> Monitorea potencia, no velocidad.'
   ];
 
-  // Usa los mismos intervalos de la sesión (igual que la vista normal)
-  // Recalcularlos con duración reducida producía resultados vacíos o distintos a lo mostrado
-  const _rollerIvs = (sess.intervals && sess.intervals.length > 0)
-    ? sess.intervals
-    : (window.TrainingPlanGenerator
-        ? TrainingPlanGenerator._buildIntervals(sess.type, ftp, rollerDur, rollerTSS, sess.ifTarget || 0.75, 'main')
-        : []);
+  const _rollerIvs = roller.intervals;
   const _getRollerReps = (lbl) => {
     const m = String(lbl || '').match(/\(×\s*(\d+(?:-\d+)?)/i);
     if (!m) return 1;
@@ -6914,7 +6931,7 @@ function adaptToRoller(idx) {
         </ul>
       </div>
       <div style="display:flex;gap:8px;flex-direction:column">
-        <button onclick="exportRollerSession(${idx}, ${rollerDur})" style="padding:12px;background:#6366f1;border:1px solid #6366f1;border-radius:8px;color:white;font-size:14px;font-weight:600;cursor:pointer">Exportar TCX</button>
+        <button onclick="pushRollerToGarmin(${idx})" style="padding:12px;background:#6366f1;border:1px solid #6366f1;border-radius:8px;color:white;font-size:14px;font-weight:600;cursor:pointer"><i class="fas fa-paper-plane"></i> Enviar a Garmin</button>
       </div>
     </div>
   `;
@@ -6926,20 +6943,9 @@ function closeRollerModal() {
   closeModal('roller-modal');
 }
 
-function exportRollerSession(idx, rollerDur) {
-  const sess = currentPlan.sessions[idx];
-  if (!sess) return;
-
-  // Crear una copia de la sesión con duración ajustada
-  const rollerSess = { ...sess, durationMin: rollerDur };
-
-  // Usar la función existente de exportar, pero con la sesión modificada
-  // Asumiendo que exportSessionToGarmin toma la sesión directamente
-  // Necesitaría modificar la función o crear una nueva
-
-  // Por simplicidad, mostrar un mensaje
-  showToast('Función de exportación para rodillo próximamente', '#6366f1');
-  closeRollerModal();
+function pushRollerToGarmin(idx) {
+  closeRollerModal(); // el aviso de envío quedaría tapado por la ventana
+  return _sendWorkoutsToGarmin([idx], true);
 }
 
 function showModal(content, id) {

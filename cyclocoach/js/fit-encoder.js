@@ -57,7 +57,7 @@ const FITWorkoutEncoder = (() => {
         : { lo: Math.min(...vals), hi: Math.max(...vals) };
     };
     const repsOf     = (label) => { const m = String(label || '').match(/\(×(\d+)/); return m ? parseInt(m[1], 10) : 1; };
-    const minutesOf  = (dur)   => { const m = String(dur   || '').match(/[\d.]+/);   return m ? parseFloat(m[0]) : 0; };
+    const minutesOf  = (dur)   => { const m = String(dur   || '').match(/([\d.]+)\s*(s\b)?/i); return m ? parseFloat(m[1]) / (m[2] ? 60 : 1) : 0; };
     const isRestLbl  = (label) => /recuperaci[oó]n|descanso/i.test(label || '');
     const intensityOf = (label) => {
       const l = String(label || '').toLowerCase();
@@ -87,15 +87,16 @@ const FITWorkoutEncoder = (() => {
 
       // Si el siguiente intervalo es la recuperación emparejada de estas repeticiones
       // (mismo patrón que usa _buildIntervals: un renglón de trabajo ×N seguido de un
-      // renglón de recuperación ×N-1), intercalarlos igual que se ve en pantalla.
+      // renglón de recuperación ×N-1 o ×N), intercalarlos igual que se ve en pantalla.
       const next = intervals[i + 1];
-      const pairedRest = next && isRestLbl(next.label) && repsOf(next.label) === reps - 1;
+      const restReps = next && isRestLbl(next.label) ? repsOf(next.label) : 0;
+      const pairedRest = restReps === reps - 1 || restReps === reps;
       const restSec = pairedRest ? Math.round(minutesOf(next.dur) * 60) : 0;
       const restWatts = pairedRest ? parseWatts(next.watts) : { lo: 0, hi: 0 };
 
       for (let r = 0; r < reps; r++) {
         steps.push({ name: withSuffix(name, ` ${r + 1}/${reps}`), sec: perRepSec, intensity, lo, hi });
-        if (r < reps - 1 && pairedRest) {
+        if (pairedRest && r < restReps) {
           steps.push({ name: 'Recuperacion', sec: restSec, intensity: 1, lo: restWatts.lo, hi: restWatts.hi });
         }
       }
