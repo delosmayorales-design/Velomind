@@ -1003,6 +1003,9 @@
       <button class="phb phb-regen" onclick="regeneratePlan()" title="Regenerar plan">
         <i class="fas fa-sync-alt"></i><span>Regenerar</span>
       </button>
+      <button class="phb" id="btn-send-garmin" onclick="pushWeekToGarmin()" title="Enviar la semana a Garmin" style="display:none">
+        <i class="fas fa-paper-plane"></i><span>Garmin</span>
+      </button>
       <button class="phb phb-save" id="btn-save-plan" onclick="savePlan()" title="Guardar plan">
         <i class="fas fa-save"></i><span>Guardar</span>
       </button>
@@ -2704,7 +2707,9 @@ function renderPlan(plan, athlete) {
         </div>
       </div>` : '');
 
-    const _garminConn = localStorage.getItem('velomind_garmin_connected') === '1';
+    const _garminViaIcu = localStorage.getItem('velomind_intervals_connected') === '1';
+    const _sendWeekBtn = document.getElementById('btn-send-garmin');
+    if (_sendWeekBtn) _sendWeekBtn.style.display = _garminViaIcu ? '' : 'none';
     const actionButtons = (!sess.isRest && !sess.isGym && !sess.isRunning && !sess.isWalking && !sess.isOther) ? `
       <div class="sess-actions">
         <div class="sess-export-section">
@@ -2715,7 +2720,7 @@ function renderPlan(plan, athlete) {
             <button class="sess-fmt-btn" onclick="exportSessionToZwift(${i})">ZWO</button>
             <button class="sess-fmt-btn" onclick="exportSessionToERG(${i})">ERG</button>
             <button class="sess-fmt-btn" onclick="exportSessionToGPX(${i})">GPX</button>`}
-            ${_garminConn ? `<button class="sess-fmt-btn sess-fmt-btn--garmin" onclick="pushSessionToGarmin(${i})" title="Enviar al reloj Garmin (incluye alertas de hidratación y nutrición)"><i class="fas fa-watch"></i> Garmin</button>` : ''}
+            ${_garminViaIcu ? `<button class="sess-fmt-btn sess-fmt-btn--garmin" onclick="pushSessionToGarmin(${i})" title="Enviar esta sesión a tu Garmin"><i class="fas fa-paper-plane"></i> Garmin</button>` : ''}
           </div>
           <button class="sess-export-toggle" onclick="toggleSessExport(this)">
             <i class="fas fa-download"></i> Exportar <i class="fas fa-chevron-down chev"></i>
@@ -6351,11 +6356,6 @@ function toggleSessExport(btn) {
 function exportSessionToFIT(index) {
   if (!currentPlan) { alert('El plan aún no está generado.'); return; }
   if (typeof FITWorkoutEncoder === 'undefined') { alert('Librería de exportación no disponible.'); return; }
-  // Si Garmin está conectado, enviar directamente a Garmin Connect (sin USB)
-  if (localStorage.getItem('velomind_garmin_connected') === '1') {
-    pushSessionToGarmin(index);
-    return;
-  }
   FITWorkoutEncoder.exportFIT(
     currentPlan.sessions[index],
     (AppState.athlete || {}).ftp || 200,
@@ -6456,86 +6456,69 @@ function exportSessionToGPX(index) {
   FITWorkoutEncoder.exportSession(currentPlan.sessions[index], (AppState.athlete || {}).ftp || 200, 'gpx');
 }
 
-// ── Garmin push (envío directo al reloj vía Garmin Connect) ───────────────
+// ── Envío a Garmin a través de intervals.icu ──────────────────────────────
 
-async function pushSessionToGarmin(index) {
-  if (!currentPlan) { alert('El plan aún no está generado.'); return; }
+function _garminWorkoutFor(index) {
   const sess = currentPlan.sessions[index];
-  if (sess.isRest) { alert('Los días de descanso no necesitan enviarse.'); return; }
-  const ftp  = (AppState.athlete || {}).ftp || 200;
-  const wt   = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || {};
-  const name = (wt.label || sess.name || sess.type || 'Entrenamiento').slice(0, 60);
-  const durMin = sess.durationMin || 60;
-  const base   = FITWorkoutEncoder.buildSteps(sess, ftp);
-  const steps  = (durMin >= 45 && window._currentNutrition)
-    ? FITWorkoutEncoder._fitInjectNutrition ? FITWorkoutEncoder._fitInjectNutrition(base, window._currentNutrition) : base
-    : base;
+  const wt = (typeof WORKOUT_TYPES !== 'undefined' && WORKOUT_TYPES[sess.type]) || {};
+  const day = new Date();
+  day.setDate(day.getDate() - (day.getDay() || 7) + 1 + index);
+  return {
+    date: `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`,
+    name: (wt.label || sess.name || sess.type || 'Entrenamiento').slice(0, 60),
+    steps: FITWorkoutEncoder.buildSteps(sess, (AppState.athlete || {}).ftp || 200),
+  };
+}
 
+async function _sendWorkoutsToGarmin(indices) {
   const toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#e2e8f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:center;gap:8px';
-  toast.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:#00c97b"></i> Enviando a Garmin Connect...';
+  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#e2e8f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:center;gap:8px;max-width:calc(100vw - 32px)';
+  const icon = document.createElement('i');
+  const text = document.createElement('span');
+  toast.append(icon, text);
+  const show = (iconClass, color, message) => {
+    icon.className = iconClass;
+    icon.style.color = color;
+    text.textContent = message;
+  };
+  show('fas fa-spinner fa-spin', '#00c97b', 'Enviando a Garmin...');
   document.body.appendChild(toast);
 
+  let visibleMs = 5000;
   try {
-    const r = await fetch(`${window.API_URL}/providers/garmin/push-structured-workout`, {
-      method:  'POST',
+    const r = await fetch(`${window.API_URL}/providers/intervals/planned-workouts`, {
+      method: 'POST',
       headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ name, steps }),
+      body: JSON.stringify({ workouts: indices.map(_garminWorkoutFor) }),
     });
-    const data = await r.json();
+    const data = await r.json().catch(() => ({}));
     if (r.ok) {
-      toast.innerHTML = '<i class="fas fa-check-circle" style="color:#00c97b"></i> ¡Listo! Sincroniza tu Garmin para ver el entreno.';
+      const what = data.sent === 1 ? 'Entreno enviado' : `${data.sent} entrenos enviados`;
+      show('fas fa-check-circle', '#00c97b', `${what}. Sincroniza tu Garmin en unos minutos. Si no aparece, activa "Cargar entrenamientos planificados" en intervals.icu.`);
+      visibleMs = 9000;
     } else {
-      console.warn('[GarminPush]', data);
-      toast.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> ${data.message || 'Error al enviar'}. Descargando FIT...`;
-      FITWorkoutEncoder.exportFIT(sess, ftp, window._currentNutrition || null);
+      show('fas fa-exclamation-triangle', '#f59e0b', data.error || 'No se pudo enviar a Garmin.');
     }
   } catch (e) {
-    toast.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> Error de red. Descargando FIT...`;
-    FITWorkoutEncoder.exportFIT(sess, ftp, window._currentNutrition || null);
+    show('fas fa-exclamation-triangle', '#f59e0b', 'Sin conexión. Inténtalo de nuevo.');
   }
-  setTimeout(() => toast.remove(), 5000);
+  setTimeout(() => toast.remove(), visibleMs);
 }
 
-async function pushWeekToGarmin() {
+function pushSessionToGarmin(index) {
   if (!currentPlan) { alert('El plan aún no está generado.'); return; }
-  const ftp = (AppState.athlete || {}).ftp || 200;
-  const sessions = currentPlan.sessions.filter(s => !s.isRest);
-  if (!sessions.length) { alert('No hay sesiones de entrenamiento esta semana.'); return; }
-
-  const toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#e2e8f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:center;gap:8px';
-  document.body.appendChild(toast);
-
-  let sent = 0, failed = 0;
-  for (const sess of sessions) {
-    toast.innerHTML = `<i class="fas fa-spinner fa-spin" style="color:#00c97b"></i> Enviando ${sent + 1}/${sessions.length} a Garmin Connect...`;
-    const { tcxContent, workoutName } = FITWorkoutEncoder.buildTCXForPush(sess, ftp);
-    try {
-      const r = await fetch(`${window.API_URL}/providers/garmin/push-workout`, {
-        method: 'POST',
-        headers: { ...Auth.getHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workoutName, tcxContent })
-      });
-      if (r.ok) { sent++; } else { failed++; FITWorkoutEncoder.exportSession(sess, ftp, 'tcx'); }
-    } catch { failed++; FITWorkoutEncoder.exportSession(sess, ftp, 'tcx'); }
-    await new Promise(res => setTimeout(res, 500));
-  }
-
-  toast.innerHTML = failed === 0
-    ? `<i class="fas fa-check-circle" style="color:#00c97b"></i> ${sent} sesiones enviadas a Garmin Connect.`
-    : `<i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> ${sent} enviadas, ${failed} descargadas como TCX.`;
-  setTimeout(() => toast.remove(), 5000);
+  return _sendWorkoutsToGarmin([index]);
 }
 
-function exportWeekToGarmin() {
+function pushWeekToGarmin() {
   if (!currentPlan) { alert('El plan aún no está generado.'); return; }
-  if (localStorage.getItem('velomind_garmin_connected') === '1') {
-    pushWeekToGarmin();
-  } else {
-    FITWorkoutEncoder.exportWeek(currentPlan.sessions, (AppState.athlete || {}).ftp || 200, 'tcx');
-    showGarminImportGuide();
-  }
+  const todayIndex = (new Date().getDay() || 7) - 1;
+  const indices = currentPlan.sessions
+    .map((sess, index) => ({ sess, index }))
+    .filter(({ sess, index }) => index >= todayIndex && !sess.isRest && !sess.isGym && !sess.isRunning && !sess.isWalking && !sess.isOther)
+    .map(({ index }) => index);
+  if (!indices.length) { alert('No quedan sesiones de ciclismo por enviar esta semana.'); return; }
+  return _sendWorkoutsToGarmin(indices);
 }
 
 function exportWeekToZwift() {

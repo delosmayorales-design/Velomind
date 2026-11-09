@@ -10,19 +10,24 @@ const { recalculatePMC } = require('../services/pmc');
 const { recalculateCP } = require('../services/criticalPower');
 const { calcHRTSS } = require('../utils/training');
 const { getLatestRestingHR, stravaToAppType } = require('./providers');
+const { stepsToIntervalsText } = require('../services/intervalsWorkout');
 const router = express.Router();
 
 const ICU_BASE = 'https://intervals.icu/api/v1';
 const SOURCE = 'Intervals.icu';
 const DAY = 24 * 60 * 60 * 1000;
 const IMPORTED_TYPES = ['cycling', 'strength', 'running', 'walking'];
+const MAX_PLANNED_WORKOUTS = 7;
 
-function icuFetch(apiKey, path) {
+function icuFetch(apiKey, path, { method = 'GET', body } = {}) {
   return fetch(`${ICU_BASE}${path}`, {
+    method,
     headers: {
       Authorization: 'Basic ' + Buffer.from(`API_KEY:${apiKey}`).toString('base64'),
       Accept: 'application/json',
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
 
@@ -232,6 +237,52 @@ router.get('/streams/:activityId', requireAuth, async (req, res) => {
     if (e.status === 401 || e.status === 403) return res.status(424).json({ error: 'intervals.icu ha rechazado la API key. Ve a Integraciones y vuelve a conectarlo.', code: 'ICU_KEY_REJECTED' });
     console.error('[intervals/streams]', e.message);
     res.status(500).json({ error: 'Error del servidor. Inténtalo de nuevo.' });
+  }
+});
+
+// Crea o actualiza entrenos en el calendario de intervals.icu, que los pasa a Garmin.
+// El external_id es por día: reenviar una sesión adaptada la sustituye sin duplicarla.
+router.post('/planned-workouts', requireAuth, async (req, res) => {
+  const incoming = Array.isArray(req.body?.workouts) ? req.body.workouts : [];
+  if (!incoming.length || incoming.length > MAX_PLANNED_WORKOUTS) {
+    return res.status(400).json({ error: 'No hay sesiones válidas para enviar.' });
+  }
+
+  const events = [];
+  for (const workout of incoming) {
+    const date = String(workout?.date || '');
+    const description = stepsToIntervalsText(workout?.steps);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !description) {
+      return res.status(400).json({ error: 'La sesión no tiene fecha o pasos válidos.' });
+    }
+    events.push({
+      category: 'WORKOUT',
+      type: 'Ride',
+      start_date_local: `${date}T00:00:00`,
+      name: String(workout.name || 'Entrenamiento VeloMind').slice(0, 60),
+      description,
+      external_id: `velomind-${date}`,
+    });
+  }
+
+  try {
+    const { data: user, error } = await supabase.from('users')
+      .select('intervals_api_key, intervals_athlete_id')
+      .eq('id', req.user.id).single();
+    if (error) throw error;
+    if (!user?.intervals_api_key) return res.status(400).json({ error: 'Conecta intervals.icu en Integraciones para enviar entrenos a Garmin.' });
+
+    const athleteId = encodeURIComponent(user.intervals_athlete_id || '0');
+    const r = await icuFetch(user.intervals_api_key, `/athlete/${athleteId}/events/bulk?upsert=true`, { method: 'POST', body: events });
+    if (r.status === 401 || r.status === 403) {
+      return res.status(424).json({ error: 'intervals.icu ha rechazado la API key. Ve a Integraciones y vuelve a conectarlo.', code: 'ICU_KEY_REJECTED' });
+    }
+    if (r.status === 429) return res.status(429).json({ error: 'Límite de peticiones a intervals.icu alcanzado. Inténtalo en unos minutos.' });
+    if (!r.ok) return res.status(502).json({ error: `intervals.icu devolvió un error (HTTP ${r.status}).` });
+    res.json({ sent: events.length });
+  } catch (e) {
+    console.error('[intervals/planned-workouts]', e.message);
+    res.status(500).json({ error: 'Error al enviar el entreno. Inténtalo de nuevo.' });
   }
 });
 

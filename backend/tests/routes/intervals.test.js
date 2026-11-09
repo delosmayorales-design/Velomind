@@ -54,6 +54,51 @@ describe('isDuplicate', () => {
   });
 });
 
+describe('POST /planned-workouts', () => {
+  const url = '/api/providers/intervals/planned-workouts';
+  const workout = { date: '2026-11-10', name: 'Umbral', steps: [{ sec: 600, lo: 140, hi: 175 }] };
+
+  test('crea el evento con id por día para que reenviar lo sustituya', async () => {
+    mockDb.__queueResponse('users', { data: { intervals_api_key: 'key', intervals_athlete_id: 'i9' }, error: null });
+    global.fetch.mockResolvedValue(jsonRes(200, []));
+
+    const res = await request(buildApp()).post(url).send({ workouts: [workout] });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ sent: 1 });
+    const [calledUrl, init] = global.fetch.mock.calls[0];
+    expect(calledUrl).toBe('https://intervals.icu/api/v1/athlete/i9/events/bulk?upsert=true');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual([{
+      category: 'WORKOUT', type: 'Ride', start_date_local: '2026-11-10T00:00:00', name: 'Umbral',
+      description: '- 10m 140-175w', external_id: 'velomind-2026-11-10',
+    }]);
+  });
+
+  test('rechaza fechas o pasos inválidos sin llamar a intervals.icu', async () => {
+    const badDate = await request(buildApp()).post(url).send({ workouts: [{ ...workout, date: 'mañana' }] });
+    const noSteps = await request(buildApp()).post(url).send({ workouts: [{ ...workout, steps: [] }] });
+    const empty = await request(buildApp()).post(url).send({ workouts: [] });
+    expect([badDate.status, noSteps.status, empty.status]).toEqual([400, 400, 400]);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('sin intervals.icu conectado avisa de que hay que conectarlo', async () => {
+    mockDb.__queueResponse('users', { data: { intervals_api_key: null }, error: null });
+    const res = await request(buildApp()).post(url).send({ workouts: [workout] });
+    expect(res.status).toBe(400);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('una API key rechazada devuelve 424 para no cerrar la sesión de VeloMind', async () => {
+    mockDb.__queueResponse('users', { data: { intervals_api_key: 'key', intervals_athlete_id: 'i9' }, error: null });
+    global.fetch.mockResolvedValue(jsonRes(401, {}));
+    const res = await request(buildApp()).post(url).send({ workouts: [workout] });
+    expect(res.status).toBe(424);
+    expect(res.body.code).toBe('ICU_KEY_REJECTED');
+  });
+});
+
 describe('POST /connect', () => {
   test('rechaza claves con formato inválido sin llamar a intervals.icu', async () => {
     const res = await request(buildApp()).post('/api/providers/intervals/connect').send({ api_key: 'x' });
