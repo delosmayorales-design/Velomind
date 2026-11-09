@@ -4145,8 +4145,18 @@ async function recalculateWeek(idx, isFuture = false) {
       if (!sess._origDurationMin) sess._origDurationMin = prevMin;
       if (sess.tss && prevMin > 0) sess.tss = Math.round(sess.tss * (newMin / prevMin));
       sess.durationMin  = newMin;
-      sess.completed    = true;
+      if (_heHecho) sess.completed = true;
       sess.feedback     = feedback;
+      // Los pasos deben seguir a la duración: de ellos salen los archivos y el envío a Garmin.
+      if (window.TrainingPlanGenerator && !sess.isGym && !sess.isRunning && !sess.isWalking && !sess.isOther) {
+        const _ftp = AppState.athlete?.ftp || 200;
+        const _cadence = TrainingPlanGenerator._resolveCadenceSpec?.(sess);
+        const _build = (variant) => TrainingPlanGenerator._buildIntervals(sess.type, _ftp, newMin, sess.tss, sess.ifTarget || 0.75, variant, _cadence);
+        sess.intervals = _build('main');
+        sess.alt_intervals = _build('alt');
+        sess.description = TrainingPlanGenerator._buildDesc(sess.intervals);
+        sess.alt_description = TrainingPlanGenerator._buildDesc(sess.alt_intervals);
+      }
       renderPlan(currentPlan, AppState.athlete);
       silentSavePlan();
       if (result) { result.innerHTML = `<span style="color:#10b981"><i class="fas fa-check-circle"></i> Sesión actualizada a ${newMin} min. El resto del plan no cambia.</span>`; result.style.display = ''; }
