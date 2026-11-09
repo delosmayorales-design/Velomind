@@ -611,7 +611,8 @@
     .sess-export-toggle { display: none; }
 
     @media (max-width: 600px) {
-      .sess-actions { padding: 10px 12px; gap: 8px; position: relative; flex-wrap: nowrap; }
+      .sess-actions { padding: 10px 12px; gap: 8px; position: relative; flex-wrap: wrap; }
+      .sess-fmt-btn--garmin { order: -1; flex: 1 0 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 13px; }
       .sess-export-lbl, .sess-export-formats { display: none !important; }
       .sess-export-formats.open {
         display: flex !important; flex-wrap: wrap; gap: 7px;
@@ -2717,12 +2718,12 @@ function renderPlan(plan, athlete) {
             <button class="sess-fmt-btn" onclick="exportSessionToZwift(${i})">ZWO</button>
             <button class="sess-fmt-btn" onclick="exportSessionToERG(${i})">ERG</button>
             <button class="sess-fmt-btn" onclick="exportSessionToGPX(${i})">GPX</button>`}
-            <button class="sess-fmt-btn sess-fmt-btn--garmin" onclick="pushSessionToGarmin(${i})" title="Enviar esta sesión a tu Garmin"><i class="fas fa-paper-plane"></i> Garmin</button>
           </div>
           <button class="sess-export-toggle" onclick="toggleSessExport(this)">
             <i class="fas fa-download"></i> Exportar <i class="fas fa-chevron-down chev"></i>
           </button>
         </div>
+        <button class="sess-fmt-btn sess-fmt-btn--garmin" onclick="pushSessionToGarmin(${i})" title="Enviar esta sesión a tu Garmin"><i class="fas fa-paper-plane"></i> Garmin</button>
         <div style="flex:1;min-width:4px"></div>
         <button class="sess-act-btn sess-act-roller" onclick="adaptToRoller(${i})"><i class="fas fa-home"></i> Rodillo</button>
         <button class="sess-act-btn sess-act-audio" onclick="startAudioCoach(${i})"><i class="fas fa-headphones"></i> Audio</button>
