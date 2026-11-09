@@ -6,6 +6,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { callAI } = require('../services/ai');
 const { calcIF, calcTSS, getZone, getTSBStatus } = require('../utils/training');
 const { computeWBal } = require('../services/wbal');
+const { estimateVo2max, LOOKBACK_MONTHS: VO2MAX_LOOKBACK_MONTHS } = require('../services/vo2max');
 const router = express.Router();
 const fs = require('fs');
 const multer = require('multer');
@@ -310,6 +311,40 @@ router.get('/power-curve', async (req, res) => {
 
   // Añadir FTP como referencia
   res.json({ curve, ftp, weight, wkg_ftp: Math.round(ftp / weight * 100) / 100 });
+});
+
+async function getVo2maxEstimate(userId, ftp, weight) {
+  const since = new Date();
+  since.setUTCMonth(since.getUTCMonth() - VO2MAX_LOOKBACK_MONTHS);
+  const { data: activities, error } = await supabase.from('activities')
+    .select('date, best_efforts')
+    .eq('user_id', userId)
+    .gte('date', since.toISOString().split('T')[0])
+    .order('date', { ascending: false })
+    .limit(1000);
+  if (error) throw error;
+  return estimateVo2max({ activities: activities || [], ftp: Number(ftp), weight: Number(weight) });
+}
+
+// Para los prompts de IA: si falla la consulta, sigue valiendo la estimación por FTP.
+async function vo2maxForPrompt(userId, ftp, weight) {
+  try {
+    return (await getVo2maxEstimate(userId, ftp, weight))?.value ?? null;
+  } catch (e) {
+    console.warn('[VO2max] prompt:', e.message);
+    return estimateVo2max({ ftp: Number(ftp), weight: Number(weight) })?.value ?? null;
+  }
+}
+
+// ── GET /api/coach/vo2max ─────────────────────────────────────
+router.get('/vo2max', async (req, res) => {
+  try {
+    const { data: user } = await supabase.from('users').select('ftp, weight').eq('id', req.user.id).single();
+    res.json({ estimate: await getVo2maxEstimate(req.user.id, user?.ftp, user?.weight) });
+  } catch (e) {
+    console.error('[VO2max]', e.message);
+    res.status(500).json({ error: 'No se pudo calcular el VO2max' });
+  }
 });
 
 // ── GET /api/coach/wbal/:activityId ───────────────────────────
@@ -3064,7 +3099,7 @@ router.post('/race-day', requirePremium, async (req, res) => {
 
   const { ftp, weight, ctl, atl, tsb, lthr, max_hr, estimatedDurationMin } = athleteData;
   const wkg        = (ftp && weight) ? (ftp / weight).toFixed(2) : 'N/D';
-  const vo2max_est = (ftp && weight) ? Math.round((ftp / weight) * 10.8 + 7) : null;
+  const vo2max_est = await vo2maxForPrompt(req.user.id, ftp, weight);
 
   // Calcular parámetros nutricionales reales a partir de la duración estimada
   const durH       = estimatedDurationMin ? (estimatedDurationMin / 60) : null;
@@ -3297,7 +3332,7 @@ router.post('/race-strategy', requirePremium, async (req, res) => {
 
   const { ftp, weight, ctl, atl, tsb, lthr, max_hr } = athleteData;
   const wkg = (ftp && weight) ? (ftp / weight).toFixed(2) : 'N/D';
-  const vo2max_est = (ftp && weight) ? Math.round((ftp / weight) * 10.8 + 7) : null;
+  const vo2max_est = await vo2maxForPrompt(req.user.id, ftp, weight);
 
   const climbsText = (raceProfile?.climbs?.length > 0)
     ? raceProfile.climbs.map((c, i) => {

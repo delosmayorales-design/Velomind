@@ -240,6 +240,10 @@
           <p style="margin:6px 0 0;color:var(--text-muted)">Potencia máxima que puedes mantener durante <strong>~60 minutos</strong>. Es la referencia para calcular todas las zonas de entrenamiento. Los W/kg te indican tu rendimiento relativo al peso corporal.</p>
         </div>
         <div style="padding:12px;background:var(--bg-input);border-radius:8px">
+          <strong style="color:#FF4757"><i class="fas fa-lungs"></i> VO₂máx estimado</strong>
+          <p style="margin:6px 0 0;color:var(--text-muted)">Capacidad máxima de usar oxígeno, en ml/kg/min. VeloMind la <strong>estima</strong> con tu mejor potencia de 5 minutos de los últimos 90 días y tu peso. No sustituye a una prueba de laboratorio y puede diferir del valor de tu reloj.</p>
+        </div>
+        <div style="padding:12px;background:var(--bg-input);border-radius:8px">
           <strong><i class="fas fa-chart-area"></i> TSS — Training Stress Score</strong>
           <p style="margin:6px 0 0;color:var(--text-muted)">Puntuación de carga de cada sesión. <strong>100 TSS</strong> = 1 hora al FTP exacto. Una salida Z2 de 2h ≈ 80-100 TSS. Un intervalo de 1h dura ≈ 80-110 TSS. Guía: &lt;60 fácil · 60-150 medio · &gt;150 duro.</p>
         </div>
@@ -284,6 +288,24 @@
           <div class="metric-label"><i class="fas fa-bolt"></i> FTP</div>
           <div class="metric-value ftp" id="ftp-val">--</div>
           <div class="metric-change" id="wkg">-- W/kg</div>
+        </div>
+      </div>
+
+      <!-- ROW 1a: VO2max estimado -->
+      <div id="vo2-section" class="card mb-6 hidden">
+        <div style="display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center">
+          <div style="flex:1 1 220px;min-width:0">
+            <div class="metric-label"><i class="fas fa-lungs"></i> VO₂máx estimado</div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px">
+              <span id="vo2-value" style="font-size:32px;font-weight:800;color:#FF4757">--</span>
+              <span style="font-size:13px;color:var(--text-muted)">ml/kg/min</span>
+            </div>
+            <div id="vo2-source" style="font-size:12px;color:var(--text-muted);margin-top:6px"></div>
+            <div id="vo2-change" style="font-size:12px;font-weight:700;margin-top:4px"></div>
+          </div>
+          <div id="vo2-chart-wrap" class="hidden" style="flex:2 1 280px;min-width:0;height:110px;position:relative">
+            <canvas id="vo2-chart" aria-label="Evolución del VO2máx estimado en los últimos 12 meses" role="img"></canvas>
+          </div>
         </div>
       </div>
 
@@ -653,6 +675,7 @@ async function init() {
   render();
   renderZones();
   loadPowerCurve();
+  loadVo2max();
   loadDecouplingCard();
   loadProjectionCard();
 }
@@ -1795,6 +1818,7 @@ function _boot() {
   try { render(); } catch(e) { console.warn('[Boot] render:', e); }
   try { renderZones(); } catch(e) { console.warn('[Boot] renderZones:', e); }
   try { loadPowerCurve(); } catch(e) { console.warn('[Boot] loadPowerCurve:', e); }
+  try { loadVo2max(); } catch(e) { console.warn('[Boot] loadVo2max:', e); }
   // Revelar página (con fallback por si View Transitions cancela el rAF)
   requestAnimationFrame(function(){ document.documentElement.style.removeProperty('opacity'); });
   setTimeout(function(){ document.documentElement.style.removeProperty('opacity'); }, 300);
@@ -2050,6 +2074,70 @@ function _buildLocalPowerCurve(acts) {
     wkg_ftp: (ftp > 0 && wgt > 0) ? (ftp / wgt).toFixed(2) : '--',
     source: 'local',
   };
+}
+
+async function loadVo2max() {
+  try {
+    var res = await fetch(window.API_URL + '/coach/vo2max', { headers: Auth.getHeaders() });
+    if (!res.ok) { console.warn('[VO2max] HTTP', res.status); return; }
+    var body = await res.json();
+    if (body.estimate) renderVo2max(body.estimate);
+  } catch(e) { console.warn('[VO2max] API:', e.message); }
+}
+
+function renderVo2max(est) {
+  document.getElementById('vo2-section').classList.remove('hidden');
+  document.getElementById('vo2-value').textContent = est.value;
+
+  var source = document.getElementById('vo2-source');
+  if (est.method === 'power5') {
+    var when = new Date(est.power5.date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    source.textContent = 'Según tu mejor potencia de 5 min: ' + est.power5.watts + ' W (' + when + ') · ' + est.weight + ' kg. Es una estimación.';
+  } else {
+    source.textContent = 'Aproximado desde tu FTP. Para afinarlo, haz un esfuerzo máximo de 5 min con potenciómetro.';
+  }
+
+  var history = est.history || [];
+  var change = document.getElementById('vo2-change');
+  change.textContent = '';
+  if (history.length) {
+    var lastMonth = history[history.length - 1].month.split('-').map(Number);
+    var targetMonth = new Date(Date.UTC(lastMonth[0], lastMonth[1] - 1 - 3, 15)).toISOString().slice(0, 7);
+    var previous = history.find(function(p) { return p.month === targetMonth; });
+    if (previous) {
+      var diff = est.value - previous.value;
+      change.textContent = (diff > 0 ? '+' + diff : diff) + ' respecto a hace 3 meses';
+      change.style.color = diff > 0 ? '#10B981' : diff < 0 ? '#F59E0B' : 'var(--text-muted)';
+    }
+  }
+
+  var wrap = document.getElementById('vo2-chart-wrap');
+  if (charts.vo2) { charts.vo2.destroy(); charts.vo2 = null; }
+  if (history.length < 3) { wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+  charts.vo2 = new Chart(document.getElementById('vo2-chart'), {
+    type: 'line',
+    data: {
+      labels: history.map(function(p) {
+        return new Date(p.month + '-15T12:00:00').toLocaleDateString('es-ES', { month: 'short' });
+      }),
+      datasets: [{
+        label: 'VO₂máx estimado',
+        data: history.map(function(p) { return p.value; }),
+        borderColor: '#FF4757',
+        backgroundColor: 'rgba(255,71,87,0.08)',
+        fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2, pointHoverRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+        y: { grid: { color: 'rgba(148,163,184,0.12)' }, ticks: { color: '#94a3b8', font: { size: 10 }, maxTicksLimit: 4 } }
+      }
+    }
+  });
 }
 
 async function loadPowerCurve(days) {
