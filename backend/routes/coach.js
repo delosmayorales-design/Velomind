@@ -152,6 +152,7 @@ router.get('/recommendations', async (req, res) => {
   // Distribución de zonas: usa zone_times reales cuando existen (datos de streams Strava/Garmin)
   // Fallback: clasifica por avg_power de la actividad completa (aproximación menos precisa)
   const zoneMins = [0, 0, 0, 0, 0, 0, 0, 0]; // índice 1-7
+  const realZoneMins = [0, 0, 0, 0, 0, 0, 0, 0]; // solo salidas con zone_times (para diagnósticos)
   let realZoneCount = 0, estimZoneCount = 0;
   acts.forEach(a => {
     if (a.zone_times) {
@@ -159,6 +160,7 @@ router.get('/recommendations', async (req, res) => {
       const zt = typeof a.zone_times === 'string' ? JSON.parse(a.zone_times) : a.zone_times;
       for (let i = 1; i <= 7; i++) {
         zoneMins[i] += (zt[`z${i}`] || 0) / 60; // convertir segundos a minutos
+        realZoneMins[i] += (zt[`z${i}`] || 0) / 60;
       }
       realZoneCount++;
     } else {
@@ -175,6 +177,14 @@ router.get('/recommendations', async (req, res) => {
   const totalMins = zoneMins.slice(1).reduce((s, c) => s + c, 0);
   const zonePct = zoneMins.map(c => totalMins ? Math.round(c / totalMins * 100) : 0);
   const zoneDataQuality = realZoneCount > estimZoneCount ? 'real' : 'estimated';
+  // El reparto estimado mete TODA la salida en la zona de su NP: una salida de 3 h con NP
+  // al 80% cuenta como 3 h en Z3 aunque casi todo fuera Z2 (y los propios sweet spot del
+  // plan disparaban el aviso). Los diagnósticos de "zona gris" usan solo datos reales.
+  const realTotalMins = realZoneMins.slice(1).reduce((s, c) => s + c, 0);
+  const zoneQuality = {
+    realCount: realZoneCount,
+    realPct: realZoneMins.map(c => realTotalMins ? Math.round(c / realTotalMins * 100) : 0),
+  };
 
   // Diagnóstico de polarización
   const lowPct = zonePct[1] + zonePct[2]; // Z1+Z2
@@ -202,7 +212,7 @@ router.get('/recommendations', async (req, res) => {
 
   // ── Generar recomendación de entrenamiento ──
   const training = buildTrainingRecommendation({ tsb, ctl, atl, ftp, weight, goal, phase, form,
-    zonePct, lowPct, midPct, hiPct, tssGrowth, avgTSS, avgDurMin, acts, inactiveDays });
+    zonePct, lowPct, midPct, hiPct, tssGrowth, avgTSS, avgDurMin, acts, inactiveDays, zoneQuality });
 
   // ── Generar recomendación de nutrición ──
   const nutrition = buildNutritionRecommendation({ ftp, weight, goal, phase, form,
@@ -1100,7 +1110,7 @@ function buildBiomechanicsFallback(rider, photos, userPoints = {}) {
 // ── Builders ─────────────────────────────────────────────────
 
 function buildTrainingRecommendation({ tsb, ctl, ftp, weight, goal, phase, form,
-  zonePct, lowPct, midPct, hiPct, tssGrowth, avgTSS, avgDurMin, acts, inactiveDays = null }) {
+  zonePct, lowPct, midPct, hiPct, tssGrowth, avgTSS, avgDurMin, acts, inactiveDays = null, zoneQuality = null }) {
 
   // Semana objetivo según estado de forma + fase
   let weekTarget, sessions, focus, alerts = [];
@@ -1148,7 +1158,7 @@ function buildTrainingRecommendation({ tsb, ctl, ftp, weight, goal, phase, form,
   return {
     phase, focus, weekTarget,
     sessions, alerts, keySession,
-    insights: buildInsights({ tsb, ctl, ftp, weight, zonePct, avgTSS, avgDurMin, acts, goal }),
+    insights: buildInsights({ tsb, ctl, ftp, weight, zonePct, avgTSS, avgDurMin, acts, goal, zoneQuality }),
   };
 }
 
@@ -1266,7 +1276,7 @@ function buildRecoveryWeek(ftp) {
   ];
 }
 
-function buildInsights({ tsb, ctl, ftp, weight, zonePct, avgTSS, avgDurMin, acts, goal }) {
+function buildInsights({ tsb, ctl, ftp, weight, zonePct, avgTSS, avgDurMin, acts, goal, zoneQuality = null }) {
   const insights = [];
 
   // Sin salidas no hay nada que diagnosticar: mejor decirlo que dar consejos sobre datos a cero
@@ -1281,9 +1291,16 @@ function buildInsights({ tsb, ctl, ftp, weight, zonePct, avgTSS, avgDurMin, acts
     if (ctl >= 60) insights.push({ type: 'fitness', level: 'success', text: `CTL ${Math.round(ctl)}: excelente base de forma. Tus 30 salidas reflejan consistencia real.` });
   }
 
-  if (zonePct[3] + zonePct[4] > 40) {
+  // "Zona gris": solo con datos reales segundo a segundo (≥5 salidas). El reparto estimado
+  // mete la salida entera en la zona de su NP y exageraba muchísimo la Z3. Además el plan de
+  // VeloMind prescribe tempo/sweet spot y umbral a propósito, así que el aviso no puede
+  // decir "evita la Z3" (se contradecía con la sesión de sweet spot del día siguiente): lo
+  // que sí es un problema es que los rodajes suaves se vayan a tempo.
+  const zq = zoneQuality && zoneQuality.realCount >= 5 ? zoneQuality.realPct : null;
+  if (zq && zq[3] + zq[4] > 40) {
+    const z2Cap = ftp ? ` En los días de Z2 no pases de ~${Math.round(ftp * 0.75)} W.` : '';
     insights.push({ type: 'polarization', level: 'warning',
-      text: `${zonePct[3] + zonePct[4]}% de tus salidas están en Z3/Z4. Esta "zona gris" acumula fatiga sin el estímulo óptimo. Mueve las sesiones fáciles a Z1/Z2 y las duras a Z5+.` });
+      text: `El ${zq[3] + zq[4]}% de tu tiempo (medido en ${zoneQuality.realCount} salidas con potencia segundo a segundo) está en Z3/Z4. El tempo, sweet spot y umbral de tu plan cuentan aquí y están bien; lo que conviene vigilar es que los rodajes suaves no se te vayan a tempo.${z2Cap}` });
   }
 
   if (ftp && weight) {
@@ -1478,11 +1495,14 @@ router.post('/ai-analysis', requirePremium, async (req, res) => {
     // Distribución de zonas: usa zone_times reales cuando disponibles
     const ftp = user.ftp || 200;
     const zoneMins2 = [0, 0, 0, 0, 0, 0, 0, 0];
+    let realZoneActs2 = 0, estimZoneActs2 = 0;
     activities.forEach(a => {
       if (a.zone_times) {
         const zt = typeof a.zone_times === 'string' ? JSON.parse(a.zone_times) : a.zone_times;
         for (let i = 1; i <= 7; i++) zoneMins2[i] += (zt[`z${i}`] || 0) / 60;
+        realZoneActs2++;
       } else {
+        estimZoneActs2++;
         const p   = Number(a.np || a.avg_power || 0);
         const dur = Number(a.duration || 0) / 60;
         if (p > 0 && ftp && dur > 0) {
@@ -1520,6 +1540,10 @@ router.post('/ai-analysis', requirePremium, async (req, res) => {
       wkg:      ftp && (user.weight || 70) ? Math.round(ftp / (user.weight || 70) * 100) / 100 : null,
       has_power_meter: hasPower,
       zona_distribucion: { z1: zonePct[1], z2: zonePct[2], z3: zonePct[3], z4: zonePct[4], z5: zonePct[5], z6: zonePct[6], z7: zonePct[7] },
+      // El reparto estimado asigna la salida entera a la zona de su NP y sobreestima la Z3.
+      zona_distribucion_fiabilidad: realZoneActs2 >= 5 && realZoneActs2 >= estimZoneActs2
+        ? `real (${realZoneActs2} salidas con potencia segundo a segundo)`
+        : `estimada — poco fiable, sobreestima Z3 (${realZoneActs2} salidas con datos reales de ${realZoneActs2 + estimZoneActs2})`,
       avg_session_min: avgDurMin,
       weekly_hours:    weeklyHours,
       days_per_week:   daysPerWeek,
@@ -1974,9 +1998,11 @@ const CYCLING_COACH_SYSTEM_PROMPT = `Eres un Head Coach de ciclismo de élite co
 MÓDULO 1 — DIAGNÓSTICO DE RENDIMIENTO (siempre primero)
 ══════════════════════════════════════════════════════
 1. Estado de forma TSB: >25 Muy fresco | 5-25 Fresco | -10 a 5 En forma | -20 a -10 Cansado | -30 a -20 Fatigado | <-30 Sobreentrenado
-2. Análisis de polarización (Modelo Seiler):
-   - Óptimo: 75-80% baja intensidad (Z1/Z2) + 15-20% alta intensidad (Z5+) + <10% zona media
-   - Si Z3+Z4 > 40%: PROBLEMA — zona gris acumula fatiga sin el estímulo óptimo
+2. Distribución de intensidad (el plan de VeloMind es PIRAMIDAL, no polarizado puro):
+   - Referencia: ~70-80% Z1/Z2, 15-25% Z3/Z4 (tempo, sweet spot y umbral son sesiones PRESCRITAS por el plan), algo de Z5+
+   - El tempo/sweet spot del plan NO es "zona gris": no lo critiques ni recomiendes eliminarlo
+   - Solo si Z3+Z4 > 40%: avisa de que los rodajes que deberían ser Z2 se están yendo a tempo (los días suaves deben ir de verdad suaves)
+   - Si la distribución viene marcada como estimada o con pocas salidas, no saques conclusiones de ella
    - Si Z2 < 40%: base aeróbica insuficiente
 3. DIAGNÓSTICO DE PUNTOS DÉBILES (obligatorio, basado en datos reales):
    - Compara distribución de zonas real vs óptima para el objetivo
@@ -2848,14 +2874,24 @@ router.get('/smart-insights', requirePremium, async (req, res) => {
     const hasMeaningfulData = (latestPMC.ctl > 5 || latestPMC.atl > 5) && (activities?.length || 0) > 0;
     if (hasMeaningfulData) {
       const zoneMins = [0,0,0,0,0,0,0,0];
+      let zoneActs = 0;
       for (const a of (activities || [])) {
         if (a.zone_times) {
           const zt = typeof a.zone_times === 'string' ? JSON.parse(a.zone_times) : a.zone_times;
           for (let z = 1; z <= 7; z++) zoneMins[z] += (zt[`z${z}`] || 0) / 60;
+          zoneActs++;
         }
       }
       const totalZM = zoneMins.slice(1).reduce((s,v) => s+v, 0);
       const zonePct = zoneMins.map(v => totalZM > 0 ? Math.round(v / totalZM * 100) : 0);
+      // Con muy pocas salidas con datos segundo a segundo el reparto no es representativo
+      // (p. ej. 2 salidas que resultan ser los sweet spot del plan = "abusas de la Z3").
+      const zonesLine = zoneActs >= 3
+        ? `Zonas 30 días (${zoneActs} salidas con datos de potencia): Z1=${zonePct[1]}% Z2=${zonePct[2]}% Z3=${zonePct[3]}% Z4=${zonePct[4]}% Z5=${zonePct[5]}%`
+        : 'Zonas 30 días: sin datos suficientes (no opines sobre la distribución de zonas)';
+      const weekQuality = (planData?.sessions || [])
+        .filter(s => s && !s.isRest && ['tempo', 'threshold', 'vo2max', 'sprint', 'strength'].includes(s.type))
+        .map(s => `${s.day || ''} ${s.name || s.type}`.trim());
       const ctlTrend = weekAgoPMC ? (latestPMC.ctl - weekAgoPMC.ctl).toFixed(1) : null;
       const todayDow = (now.getDay() + 6) % 7;
       const todaySess = planData?.sessions?.[todayDow];
@@ -2871,6 +2907,8 @@ Reglas:
 - El icon debe ser un único emoji relevante
 - type: "warning" si hay riesgo, "success" si todo va bien, "info" si es neutro
 - Esta app es EXCLUSIVAMENTE de ciclismo
+- El plan de VeloMind es piramidal: incluye a propósito sesiones de tempo/sweet spot (Z3) y umbral (Z4). NUNCA digas que el atleta "abusa de la Z3", que está en "zona gris" ni que evite el tempo/sweet spot: contradiría su propio plan. Si las zonas muestran mucha Z3, como mucho recuerda que los rodajes Z2 deben ir de verdad en Z2.
+- No recomiendes cambiar el tipo de una sesión del plan; ayuda a ejecutarla bien.
 
 Responde SOLO con JSON: {"insights":[{"title":"...","message":"...","icon":"emoji","type":"info|warning|success"}]}`;
 
@@ -2879,7 +2917,8 @@ Responde SOLO con JSON: {"insights":[{"title":"...","message":"...","icon":"emoj
 CTL: ${latestPMC.ctl.toFixed(1)}${ctlTrend ? ` (${Number(ctlTrend) >= 0 ? '+' : ''}${ctlTrend} en 7 días)` : ''}
 ATL: ${latestPMC.atl.toFixed(1)} | TSB: ${tsbSign}${latestPMC.tsb.toFixed(1)}
 FTP: ${ftp}W | W/kg: ${(ftp/weight).toFixed(2)}
-Zonas 30 días: Z1=${zonePct[1]}% Z2=${zonePct[2]}% Z3=${zonePct[3]}% Z4=${zonePct[4]}% Z5=${zonePct[5]}%
+${zonesLine}
+Sesiones de calidad del plan esta semana: ${weekQuality.length ? weekQuality.join(', ') : 'ninguna'}
 Sesión de HOY: ${todaySess ? (todaySess.isRest ? 'Descanso' : `${todaySess.name||todaySess.type} — ${todaySess.durationMin||'?'} min, TSS objetivo ${todaySess.tss||'?'}`) : 'Sin plan'}
 Sesión de MAÑANA: ${tomorrowSessAI ? (tomorrowSessAI.isRest ? 'Descanso' : `${tomorrowSessAI.name||tomorrowSessAI.type} — ${tomorrowSessAI.durationMin||'?'} min`) : 'Sin plan'}
 Objetivo del atleta: ${user.goal || 'resistencia'}`;

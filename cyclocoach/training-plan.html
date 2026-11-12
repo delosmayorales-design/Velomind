@@ -1979,8 +1979,8 @@ function _sanitizeCyclingContent(plan) {
         if (window.TrainingPlanGenerator?._buildIntervals) {
           const _ftpSan = AppState.athlete?.ftp || 200;
           const _csSan = TrainingPlanGenerator._resolveCadenceSpec?.(s);
-          s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, _ftpSan, s.durationMin, s.tss, s.ifTarget, 'main', _csSan);
-          s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, _ftpSan, s.durationMin, s.tss, s.ifTarget, 'alt', _csSan);
+          s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, _ftpSan, s.durationMin, s.tss, s.ifTarget, 'main', _csSan, s._structure);
+          s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, _ftpSan, s.durationMin, s.tss, s.ifTarget, 'alt', _csSan, s._structure);
           if (TrainingPlanGenerator._buildDesc) {
             s.description     = TrainingPlanGenerator._buildDesc(s.intervals);
             s.alt_description = TrainingPlanGenerator._buildDesc(s.alt_intervals);
@@ -1997,8 +1997,8 @@ function _sanitizeCyclingContent(plan) {
       if (_spec && typeof s.durationMin === 'number' && s.durationMin > 0 && s.ifTarget) {
         s._cadenceSpec = _spec;
         const _ftpCad = AppState.athlete?.ftp || 200;
-        s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, _ftpCad, s.durationMin, s.tss, s.ifTarget, 'main', _spec);
-        s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, _ftpCad, s.durationMin, s.tss, s.ifTarget, 'alt', _spec);
+        s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, _ftpCad, s.durationMin, s.tss, s.ifTarget, 'main', _spec, s._structure);
+        s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, _ftpCad, s.durationMin, s.tss, s.ifTarget, 'alt', _spec, s._structure);
         if (TrainingPlanGenerator._buildDesc) {
           s.description     = TrainingPlanGenerator._buildDesc(s.intervals);
           s.alt_description = TrainingPlanGenerator._buildDesc(s.alt_intervals);
@@ -2318,8 +2318,8 @@ function renderPlan(plan, athlete) {
       const sv    = s.intervalVariant || 'main';
       const svAlt = sv === 'main' ? 'alt' : 'main';
       const _cs   = TrainingPlanGenerator._resolveCadenceSpec?.(s);
-      s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, sv, _cs);
-      s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, svAlt, _cs);
+      s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, sv, _cs, s._structure);
+      s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, svAlt, _cs, s._structure);
       if (TrainingPlanGenerator._buildDesc) {
         s.description     = TrainingPlanGenerator._buildDesc(s.intervals);
         s.alt_description = TrainingPlanGenerator._buildDesc(s.alt_intervals);
@@ -3122,8 +3122,8 @@ function _redistributeCancelledTSS(idx, cancelTSS, dayName) {
     rs.advice      = `+${perDayTSS} TSS redistribuido de la sesión cancelada del ${dayName}.`;
 
     if (window.TrainingPlanGenerator) {
-      rs.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, adjTSS, newIF, 'main');
-      rs.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, adjTSS, newIF, 'alt');
+      rs.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, adjTSS, newIF, 'main', null, rs._structure);
+      rs.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, adjTSS, newIF, 'alt', null, rs._structure);
       if (TrainingPlanGenerator._buildDesc) {
         rs.description     = TrainingPlanGenerator._buildDesc(rs.intervals);
         rs.alt_description = TrainingPlanGenerator._buildDesc(rs.alt_intervals);
@@ -3255,8 +3255,8 @@ async function applyCheckIn(idx, feeling) {
 
   if (feeling === 'normal') {
     if (window.TrainingPlanGenerator) {
-      sess.intervals     = TrainingPlanGenerator._buildIntervals(orig.type, ftp, orig.durationMin, orig.tss, orig.ifTarget, 'main');
-      sess.alt_intervals = TrainingPlanGenerator._buildIntervals(orig.type, ftp, orig.durationMin, orig.tss, orig.ifTarget, 'alt');
+      sess.intervals     = TrainingPlanGenerator._buildIntervals(orig.type, ftp, orig.durationMin, orig.tss, orig.ifTarget, 'main', null, sess._structure);
+      sess.alt_intervals = TrainingPlanGenerator._buildIntervals(orig.type, ftp, orig.durationMin, orig.tss, orig.ifTarget, 'alt', null, sess._structure);
       sess.description     = _buildDesc(sess.intervals);
       sess.alt_description = _buildDesc(sess.alt_intervals);
     }
@@ -3292,8 +3292,8 @@ async function applyCheckIn(idx, feeling) {
   sess.advice      = advice;
 
   if (window.TrainingPlanGenerator) {
-    sess.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, orig.ifTarget, 'main');
-    sess.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, orig.ifTarget, 'alt');
+    sess.intervals     = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, orig.ifTarget, 'main', null, sess._structure);
+    sess.alt_intervals = TrainingPlanGenerator._buildIntervals(newType, ftp, newDur, newTSS, orig.ifTarget, 'alt', null, sess._structure);
     sess.description     = _buildDesc(sess.intervals);
     sess.alt_description = _buildDesc(sess.alt_intervals);
   }
@@ -3394,8 +3394,8 @@ async function saveAdaptation(idx) {
     // porque el mínimo por tipo alargó la duración (el texto/intervalos de la IA
     // describían su duración original, ya no la que se guarda).
     if ((t.recomendacion !== 'mantener' || _minDurBump) && window.TrainingPlanGenerator) {
-      sess.intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'main');
-      sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'alt');
+      sess.intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'main', null, sess._structure);
+      sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, sess.durationMin, sess.tss, sess.ifTarget, 'alt', null, sess._structure);
 
       const buildDesc = (ivs) => {
         let parts = [];
@@ -3483,8 +3483,8 @@ async function saveAdaptation(idx) {
       todaySess.advice      = `+22% de volumen por redistribución del descanso del ${dayName}.`;
       if (window.TrainingPlanGenerator) {
         const ifT = todaySess.ifTarget || 0.75;
-        todaySess.intervals     = TrainingPlanGenerator._buildIntervals(tType, ftp, tDur, tTSS, ifT, 'main');
-        todaySess.alt_intervals = TrainingPlanGenerator._buildIntervals(tType, ftp, tDur, tTSS, ifT, 'alt');
+        todaySess.intervals     = TrainingPlanGenerator._buildIntervals(tType, ftp, tDur, tTSS, ifT, 'main', null, todaySess._structure);
+        todaySess.alt_intervals = TrainingPlanGenerator._buildIntervals(tType, ftp, tDur, tTSS, ifT, 'alt', null, todaySess._structure);
         todaySess.description     = _rd(todaySess.intervals);
         todaySess.alt_description = _rd(todaySess.alt_intervals);
       }
@@ -3506,8 +3506,8 @@ async function saveAdaptation(idx) {
       nSess.advice      = `Carga reforzada tras el descanso del ${dayName}: ${Math.round(cancelledTSS * 0.55)} TSS redistribuidos.`;
       if (window.TrainingPlanGenerator) {
         const ifT = nSess.ifTarget || 0.80;
-        nSess.intervals     = TrainingPlanGenerator._buildIntervals(nType, ftp, nDur, nTSS, ifT, 'main');
-        nSess.alt_intervals = TrainingPlanGenerator._buildIntervals(nType, ftp, nDur, nTSS, ifT, 'alt');
+        nSess.intervals     = TrainingPlanGenerator._buildIntervals(nType, ftp, nDur, nTSS, ifT, 'main', null, nSess._structure);
+        nSess.alt_intervals = TrainingPlanGenerator._buildIntervals(nType, ftp, nDur, nTSS, ifT, 'alt', null, nSess._structure);
         nSess.description     = _rd(nSess.intervals);
         nSess.alt_description = _rd(nSess.alt_intervals);
       }
@@ -3941,8 +3941,8 @@ async function _applyActivitySubstitution(idx, sub, feedback, isFuture, btn, res
                           && !['gym','running','walking'].includes(rs.type);
         if (isCycling && rs.ifTarget && window.TrainingPlanGenerator) {
           rs.durationMin  = Math.max(20, Math.round((newTSS / (rs.ifTarget ** 2 * 100)) * 60));
-          rs.intervals     = TrainingPlanGenerator._buildIntervals(rs.type, ftp, rs.durationMin, newTSS, rs.ifTarget, 'main');
-          rs.alt_intervals = TrainingPlanGenerator._buildIntervals(rs.type, ftp, rs.durationMin, newTSS, rs.ifTarget, 'alt');
+          rs.intervals     = TrainingPlanGenerator._buildIntervals(rs.type, ftp, rs.durationMin, newTSS, rs.ifTarget, 'main', null, rs._structure);
+          rs.alt_intervals = TrainingPlanGenerator._buildIntervals(rs.type, ftp, rs.durationMin, newTSS, rs.ifTarget, 'alt', null, rs._structure);
         } else if (rs.durationMin && baseTSS > 0) {
           rs.durationMin = Math.round(rs.durationMin * (newTSS / baseTSS));
         }
@@ -3996,8 +3996,8 @@ function _applyTSSBudget(plan) {
       s.durationMin = Math.max(20, Math.round((newTSS / (s.ifTarget ** 2 * 100)) * 60));
       if (window.TrainingPlanGenerator && s.type) {
         const _cs = TrainingPlanGenerator._resolveCadenceSpec?.(s);
-        s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, newTSS, s.ifTarget, 'main', _cs);
-        s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, newTSS, s.ifTarget, 'alt', _cs);
+        s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, newTSS, s.ifTarget, 'main', _cs, s._structure);
+        s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, newTSS, s.ifTarget, 'alt', _cs, s._structure);
       }
     } else if (isCycling && s.durationMin) {
       s.durationMin = Math.max(20, Math.round(s.durationMin * scale));
@@ -4152,7 +4152,7 @@ async function recalculateWeek(idx, isFuture = false) {
       if (window.TrainingPlanGenerator && !sess.isGym && !sess.isRunning && !sess.isWalking && !sess.isOther) {
         const _ftp = AppState.athlete?.ftp || 200;
         const _cadence = TrainingPlanGenerator._resolveCadenceSpec?.(sess);
-        const _build = (variant) => TrainingPlanGenerator._buildIntervals(sess.type, _ftp, newMin, sess.tss, sess.ifTarget || 0.75, variant, _cadence);
+        const _build = (variant) => TrainingPlanGenerator._buildIntervals(sess.type, _ftp, newMin, sess.tss, sess.ifTarget || 0.75, variant, _cadence, sess._structure);
         sess.intervals = _build('main');
         sess.alt_intervals = _build('alt');
         sess.description = TrainingPlanGenerator._buildDesc(sess.intervals);
@@ -4205,8 +4205,8 @@ async function recalculateWeek(idx, isFuture = false) {
               s.emoji = '🚴';
             }
             const _cs = TrainingPlanGenerator._resolveCadenceSpec?.(s);
-            s.intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'main', _cs);
-            s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'alt', _cs);
+            s.intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'main', _cs, s._structure);
+            s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'alt', _cs, s._structure);
 
             const buildDesc = (ivs) => {
               let parts = [];
@@ -5011,8 +5011,8 @@ function _applyWeekTSSExcessScaling(plan, todayIdx, ftp) {
       sess.durationMin = newDur;
       sess.advice      = `Duración reducida un ${pctRed}%: llevas ${Math.round(weekActualTSS)} TSS vs ${targetTSS} objetivo (+${Math.round(devPct)}%). Adapta la intensidad según cómo te sientas.`;
       if (window.TrainingPlanGenerator?._buildIntervals) {
-        sess.intervals     = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, ifV, 'main');
-        sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, ifV, 'alt');
+        sess.intervals     = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, ifV, 'main', null, sess._structure);
+        sess.alt_intervals = TrainingPlanGenerator._buildIntervals(sess.type, ftp, newDur, newTSS, ifV, 'alt', null, sess._structure);
         if (TrainingPlanGenerator._buildDesc) {
           sess.description     = TrainingPlanGenerator._buildDesc(sess.intervals);
           sess.alt_description = TrainingPlanGenerator._buildDesc(sess.alt_intervals);
@@ -5488,8 +5488,8 @@ function _rescaleRemainingSessions(plan, fromIdx, remainingTargetTSS, ftp) {
     // este recorte deliberado — mismo patrón que recalculateWeek() (:4032-4037).
     s._adapted    = true;
     if (window.TrainingPlanGenerator?._buildIntervals) {
-      s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, newDur, s.tss, ifV, 'main');
-      s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, newDur, s.tss, ifV, 'alt');
+      s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, newDur, s.tss, ifV, 'main', null, s._structure);
+      s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, newDur, s.tss, ifV, 'alt', null, s._structure);
     }
   });
   return achieved;
@@ -5870,7 +5870,12 @@ function _renderNextWeekSummary() {
   );
   const nextWeekInCycle = currentCycle.weekInCycle >= 4 ? 1 : currentCycle.weekInCycle + 1;
 
-  const nextPlan = TrainingPlanGenerator.generate(nextAthlete, AppState.activities, { cycleWeekOverride: nextWeekInCycle });
+  // globalWeekIdx + 1: la semana siguiente rota a la siguiente plantilla (antes se pasaba
+  // sin índice y la vista previa mostraba siempre la plantilla 1 de 5).
+  const nextPlan = TrainingPlanGenerator.generate(nextAthlete, AppState.activities, {
+    cycleWeekOverride: nextWeekInCycle,
+    globalWeekIdxOverride: (currentCycle.globalWeekIdx || 0) + 1,
+  });
 
   // Rango de fechas de la semana siguiente
   const now        = new Date();
@@ -6723,8 +6728,8 @@ async function _recalcFromModal() {
           s.emoji = '🚴';
         }
         const _cs = TrainingPlanGenerator._resolveCadenceSpec?.(s);
-        s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'main', _cs);
-        s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'alt', _cs);
+        s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'main', _cs, s._structure);
+        s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, ifT, 'alt', _cs, s._structure);
         const buildDesc = ivs => {
           const parts = [];
           for (let k = 0; k < ivs.length; k++) {
@@ -6783,7 +6788,7 @@ function _rollerSession(sess) {
   const durationMin = Math.min(Math.round(original.durationMin * 0.75), MAX_ROLLER_MIN);
   const tss = Math.round(original.tss * (durationMin / original.durationMin));
   const intervals = window.TrainingPlanGenerator
-    ? TrainingPlanGenerator._buildIntervals(sess.type, AppState.athlete?.ftp || 200, durationMin, tss, sess.ifTarget || 0.75, sess.intervalVariant || 'main', TrainingPlanGenerator._resolveCadenceSpec?.(sess))
+    ? TrainingPlanGenerator._buildIntervals(sess.type, AppState.athlete?.ftp || 200, durationMin, tss, sess.ifTarget || 0.75, sess.intervalVariant || 'main', TrainingPlanGenerator._resolveCadenceSpec?.(sess), sess._structure)
     : [];
   // Si recortarla dejara una sesión sin estructura (rodaje corto), se mantiene entera.
   const lostStructure = !intervals.length || (intervals.length < 2 && (sess.intervals || []).length > 1);

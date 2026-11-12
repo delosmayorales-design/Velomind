@@ -369,7 +369,7 @@ const TrainingPlanGenerator = {
 
     // ── Ciclo 3:1 — detectar semana del microciclo desde historial TSS ──
     const cycleInfo = options.cycleWeekOverride != null
-      ? this._buildCycleFromWeek(options.cycleWeekOverride)
+      ? this._buildCycleFromWeek(options.cycleWeekOverride, options.globalWeekIdxOverride)
       : this._detectCycleWeek(cyclingActs);
 
     // ── TSS objetivo semanal ──
@@ -958,7 +958,12 @@ const TrainingPlanGenerator = {
 
     // Índice global de semanas entrenadas (no se resetea en semanas de recuperación)
     const mondayOf = d => { const x = new Date(d); const day = x.getDay()||7; x.setDate(x.getDate()-day+1); x.setHours(0,0,0,0); return x.toISOString().slice(0,10); };
-    const globalWeekIdx = new Set(activities.filter(a => (a.tss||0) > 5).map(a => mondayOf((a.date?.slice(0,10)||'2000-01-01')+'T00:00:00'))).size;
+    // Solo semanas ANTERIORES a la actual: si contara la semana en curso, el índice (y con
+    // él la plantilla) cambiaría a mitad de semana en cuanto se registra la primera salida,
+    // y la vista previa de la semana siguiente (índice + 1) se saltaría una plantilla.
+    const globalWeekIdx = new Set(activities
+      .filter(a => (a.tss||0) > 5 && new Date((a.date?.slice(0,10)||'2000-01-01') + 'T00:00:00') < monday)
+      .map(a => mondayOf((a.date?.slice(0,10)||'2000-01-01')+'T00:00:00'))).size;
 
     return { weekInCycle, loadMultiplier, isRecoveryWeek, weeklyTSS: weekTSS, globalWeekIdx };
   },
@@ -1001,7 +1006,7 @@ const TrainingPlanGenerator = {
   },
 
   // Construir cycleInfo sintético para simulación de semana futura
-  _buildCycleFromWeek(weekInCycle) {
+  _buildCycleFromWeek(weekInCycle, globalWeekIdx = 0) {
     const w = Math.max(1, Math.min(4, weekInCycle));
     const multipliers = { 1: 1.00, 2: 1.05, 3: 1.10, 4: 0.75 };
     return {
@@ -1009,6 +1014,7 @@ const TrainingPlanGenerator = {
       loadMultiplier: multipliers[w],
       isRecoveryWeek: w === 4,
       weeklyTSS: [0, 0, 0, 0],
+      globalWeekIdx: Math.max(0, Math.floor(Number(globalWeekIdx) || 0)),
     };
   },
 
@@ -1129,7 +1135,18 @@ const TrainingPlanGenerator = {
       this._activeSegments = this._LOCAL_SEGMENTS;
     }
     // ── Selección de plantilla según goal y phase ──
-    let templates = this._getTemplate(goal, phase, exp, tsb, weekInCycle, globalWeekIdx);
+    // Taper: qué semana del taper es depende de cuánto falta para el evento, no del ciclo
+    // 3:1 (antes la 1ª semana de taper podía salir como "el taper ya está hecho").
+    let peakWeekIdx = null;
+    if (phase === 'peak') {
+      const primary = this._getPrimaryEventDate(events || []);
+      if (primary) {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const daysUntil = Math.floor((new Date(primary + 'T00:00:00') - today) / 86400000);
+        if (daysUntil >= 7 && daysUntil < 22) peakWeekIdx = daysUntil >= 14 ? 0 : 1;
+      }
+    }
+    let templates = this._getTemplate(goal, phase, exp, tsb, weekInCycle, globalWeekIdx, peakWeekIdx);
 
     // ── Normalizar tssShare para que la semana siempre sume exactamente el targetTSS ──
     // Solo en base/build: ahí la intención SIEMPRE es entregar el 100% del targetTSS semanal,
@@ -1202,9 +1219,15 @@ const TrainingPlanGenerator = {
     // Alternancia de variante de intervalos: semanas impares → main, pares → alt
     const intervalVariant = (weekInCycle % 2 === 1) ? 'main' : 'alt';
 
+    // Variedad + progresión de las series: solo en base/build (en peak/race/recovery el
+    // contenido lo marca el taper y no debe alargar series). Ver _pickStructure.
+    const useStructures = (phase === 'base' || phase === 'build') && exp !== 'principiante';
+    const progStep = this._progressionStep(weekInCycle);
+
     // Calcular duración de cada sesión en minutos a partir de la distribución de TSS
-    const sessions = templates.map(t => {
+    const sessions = templates.map((t, dayIdx) => {
       if (t.isRest) return t;
+      let structure = useStructures ? this._pickStructure(t, progStep, globalWeekIdx + dayIdx) : null;
 
       let sessTSS  = Math.round(t.tssShare * targetTSS);
       // Progresión: intensidad sube 1-2% en sesiones de calidad conforme avanza el ciclo 3:1
@@ -1261,7 +1284,7 @@ const TrainingPlanGenerator = {
       {
         let _bestDur = durMin, _bestDiff = Infinity;
         for (let _cal = 0; _cal < 8; _cal++) {
-          const _testIvs = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, intervalVariant, t._cadenceSpec);
+          const _testIvs = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, structure ? 'main' : intervalVariant, t._cadenceSpec, structure);
           const _real = this._realTSS(_testIvs, ftp);
           if (!_real || _real.tss <= 0) break;
           const _diff = Math.abs(_real.tss - sessTSS);
@@ -1276,10 +1299,25 @@ const TrainingPlanGenerator = {
         durMin = _bestDur;
       }
 
+      // Recorte por carga: si la duración ya está en su mínimo (no se puede acortar más) y
+      // la estructura elegida mete más trabajo del que pide el TSS de la sesión, se quitan
+      // minutos/repeticiones de trabajo (trim) en vez de mandar una sesión más dura de lo
+      // planificado. El trim se guarda en _structure para que las reconstrucciones coincidan.
+      if (structure) {
+        for (let trim = 1; trim <= 4; trim++) {
+          const cur = this._realTSS(this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, 'main', t._cadenceSpec, structure), ftp);
+          if (!cur || cur.tss <= sessTSS * 1.06) break;
+          structure = { ...structure, trim };
+        }
+      }
+
       // Generar intervalos: variante activa según semana del ciclo, alternando cada semana
-      const intervals     = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, intervalVariant, t._cadenceSpec);
-      const altVariant    = intervalVariant === 'main' ? 'alt' : 'main';
-      const alt_intervals = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, altVariant, t._cadenceSpec);
+      // Con estructura, 'main' es SIEMPRE la elegida y 'alt' su alternativa: así todos los
+      // puntos de la app que reconstruyen con 'main'/'alt' literales obtienen lo mismo.
+      const sessVariant   = structure ? 'main' : intervalVariant;
+      const intervals     = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, sessVariant, t._cadenceSpec, structure);
+      const altVariant    = sessVariant === 'main' ? 'alt' : 'main';
+      const alt_intervals = this._buildIntervals(t.type, ftp, durMin, sessTSS, ifTarget, altVariant, t._cadenceSpec, structure);
 
       // Construir descripción dinámica que coincida exactamente con los intervalos
       let dynamicDesc = this._buildDesc(intervals);
@@ -1302,7 +1340,8 @@ const TrainingPlanGenerator = {
         advice: t.description,
         intervals,
         alt_intervals,
-        intervalVariant,
+        intervalVariant: sessVariant,
+        ...(structure ? { _structure: structure } : {}),
       };
     });
 
@@ -1369,7 +1408,7 @@ const TrainingPlanGenerator = {
     return 'personal'; // resistencia (y cualquier valor no reconocido)
   },
 
-  _getPeakTemplate(goal, weekInCycle = 1) {
+  _getPeakTemplate(goal, weekInCycle = 1, peakWeekIdx = null) {
     const profile = this._peakProfile(goal);
 
     if (profile === 'sharp') {
@@ -1406,7 +1445,7 @@ const TrainingPlanGenerator = {
           { day: 'Domingo',  isRest: true,  description: 'Descanso total. Cuerpo fresco y listo para el evento.' },
         ],
       ];
-      return variants[(weekInCycle - 1) % 3];
+      return variants[peakWeekIdx != null ? peakWeekIdx : (weekInCycle - 1) % 3];
     }
 
     if (profile === 'ultra') {
@@ -1444,7 +1483,7 @@ const TrainingPlanGenerator = {
           { day: 'Domingo',  isRest: true,  description: 'Descanso total. Cuerpo fresco y listo para el evento.' },
         ],
       ];
-      return variants[(weekInCycle - 1) % 3];
+      return variants[peakWeekIdx != null ? peakWeekIdx : (weekInCycle - 1) % 3];
     }
 
     // 'endurance': gran_fondo, carrera_larga, resistencia — taper orientado a resistencia
@@ -1479,7 +1518,7 @@ const TrainingPlanGenerator = {
         { day: 'Domingo',  isRest: true,  description: 'Descanso total. Cuerpo fresco y listo para el evento.' },
       ],
     ];
-    return variants[(weekInCycle - 1) % 3];
+    return variants[peakWeekIdx != null ? peakWeekIdx : (weekInCycle - 1) % 3];
   },
 
   _getRaceWeekTemplate(goal) {
@@ -1562,7 +1601,7 @@ const TrainingPlanGenerator = {
   },
 
   /* ── Plantillas semanales según goal/phase ── */
-  _getTemplate(goal, phase, exp, tsb, weekInCycle = 1, globalWeekIdx = 0) {
+  _getTemplate(goal, phase, exp, tsb, weekInCycle = 1, globalWeekIdx = 0, peakWeekIdx = null) {
     // Principiante: plan especial sin series ni intensidad alta (sin rotación)
     if (exp === 'principiante') {
       const isPeso = goal === 'perdida_peso' || goal === 'resistencia';
@@ -1603,7 +1642,7 @@ const TrainingPlanGenerator = {
     }
 
     if (phase === 'peak') {
-      return this._getPeakTemplate(goal, weekInCycle);
+      return this._getPeakTemplate(goal, weekInCycle, peakWeekIdx);
     }
 
     // ── BASE y BUILD — 5 plantillas rotativas por goal ──────────────
@@ -2582,8 +2621,216 @@ const TrainingPlanGenerator = {
     return (sess && sess._cadenceSpec) || (sess && this.CADENCE_SPEC_BY_NAME[sess.name]) || null;
   },
 
+  /* ── Variedad y progresión de las series (estructuras) ─────────────────────
+     Antes cada tipo de sesión tenía solo 2 formas (main/alt) alternadas por semana
+     par/impar, así que "Umbral de puerto", "Umbral máximo — series largas" y "Umbral de
+     resistencia" daban el mismo 3×11 min todas las semanas. Ahora cada sesión de calidad
+     de base/build lleva `_structure` = { type, main, alt } con la clave de su estructura:
+       · progresión dentro del ciclo 3:1 (semana 1 → series cortas, 2 → medias, 3 → largas;
+         la semana 4 de descarga vuelve a las cortas),
+       · rotación entre opciones equivalentes según el índice global de semana,
+       · y el nombre de la plantilla manda cuando promete algo concreto ("series largas",
+         "over-unders", "progresivo", "bloques de tempo"...).
+     La clave se guarda con la sesión para que, al reconstruir intervalos (cambio de FTP,
+     adaptar minutos, mover días...), el entreno no cambie de forma. Sesiones sin
+     `_structure` (planes guardados antes de esto) usan exactamente el camino de siempre. */
+  _STRUCTURE_STEPS: {
+    threshold: [['th:8', 'th:10'], ['th:12', 'th:15'], ['th:20', 'th:15']],
+    tempo:     [['tp:10', 'tp:12'], ['tp:15', 'tp:20'], ['tp:25', 'tp:cont']],
+    vo2max:    [['vo:3', 'vo:2'],   ['vo:4', 'vo:3'],   ['vo:5', 'vo:4']],
+  },
+
+  /** Paso de progresión (0-2) según la semana del ciclo 3:1. La semana 4 (descarga) vuelve a 0. */
+  _progressionStep(weekInCycle) {
+    return { 1: 0, 2: 1, 3: 2, 4: 0 }[weekInCycle] ?? 0;
+  },
+
+  /** Elige la estructura de una sesión de plantilla. Devuelve null si no aplica (camino legacy). */
+  _pickStructure(t, step, salt) {
+    if (!t || t.isRest || !t.type) return null;
+    if (t._cadenceSpec) return null; // las sesiones de cadencia ya tienen su propia estructura
+    const name = String(t.name || '');
+    const type = t.type;
+    const rot = Math.abs(Math.floor(salt || 0));
+
+    if (type === 'endurance' || type === 'long') {
+      // Solo cuando el nombre PROMETE trabajo de ritmo; el resto de Z2 sigue igual.
+      if (/sin intensidad|Z1|recuperaci/i.test(name)) return null;
+      if (/tempo|calidad|ritmo (de|objetivo|del)|bloques de ritmo/i.test(name)) {
+        return { type, main: 'lg:tempo', alt: 'legacy:main' };
+      }
+      return null;
+    }
+
+    const steps = this._STRUCTURE_STEPS[type];
+    if (!steps) return null;
+    let s = Math.max(0, Math.min(2, step));
+
+    if (type === 'threshold') {
+      if (/over|cambios? de ritmo|lactato/i.test(name)) {
+        return { type, main: 'legacy:alt', alt: steps[s][rot % 2] };
+      }
+      if (/largas|largos|extendid|máximo|doble bloque|bloques largos|concentrado/i.test(name)) s = 2;
+      else if (/cort[oa]s?\b|activaci/i.test(name)) s = 0;
+      return { type, main: steps[s][rot % 2], alt: 'legacy:alt' };
+    }
+
+    if (type === 'tempo') {
+      if (/progresiv/i.test(name)) return { type, main: 'tp:prog', alt: steps[s][rot % 2] };
+      if (/mixto|umbral/i.test(name)) return { type, main: 'tp:mix', alt: steps[s][rot % 2] };
+      if (/largo|sostenido|continuo/i.test(name)) s = 2;
+      return { type, main: steps[s][rot % 2], alt: steps[s][(rot + 1) % 2] };
+    }
+
+    if (type === 'vo2max') {
+      if (/micro|40 ?s|30 ?\/ ?30/i.test(name)) return { type, main: 'legacy:alt', alt: steps[s][rot % 2] };
+      if (/cortas?\b|agudeza/i.test(name)) s = 0;
+      return { type, main: steps[s][rot % 2], alt: 'legacy:alt' };
+    }
+    return null;
+  },
+
+  /** Reparte `main` minutos en N repeticiones trabajo/recuperación. null si no caben minReps. */
+  _fitReps(main, { work, rec, minReps, maxReps, workMin, workMax }, trim = 0) {
+    // trim (recorte por carga, ver _buildSessions): 1 = no alargar repeticiones,
+    // 2+ = además quitar (trim-1) repeticiones, sin bajar de minReps.
+    if (trim >= 1) workMax = work;
+    if (trim >= 2) maxReps = Math.max(minReps, Math.min(maxReps, Math.floor((main + rec) / (work + rec))) - (trim - 1));
+    let reps = Math.min(maxReps, Math.floor((main + rec) / (work + rec)));
+    if (reps < minReps) {
+      const w = Math.floor((main - (minReps - 1) * rec) / minReps);
+      if (w < workMin) return null;
+      return { reps: minReps, work: w, rec };
+    }
+    // Sobra tiempo: alargar un poco cada repetición (hasta workMax), nunca acortarla.
+    const w = Math.max(work, Math.min(workMax, Math.floor((main - (reps - 1) * rec) / reps)));
+    return { reps, work: w, rec };
+  },
+
+  /** Intervalos completos para una clave de estructura, o null si no cabe (→ legacy). */
+  _buildStructuredIntervals(type, key, ftp, durMin, warm, cool, main, trim = 0) {
+    const pct = (ratio) => Math.round(ftp * ratio);
+    const [fam, arg] = key.split(':');
+    const rows = [];
+    let used = 0;
+
+    if (fam === 'th') {
+      const work = parseInt(arg, 10);
+      const REC = { 8: 4, 10: 5, 12: 5, 15: 6, 20: 8 }[work] || Math.round(work / 2);
+      const fit = this._fitReps(main, {
+        work, rec: REC,
+        minReps: work <= 10 ? 3 : 2,
+        maxReps: { 8: 6, 10: 5, 12: 4, 15: 3, 20: 3 }[work] || 3,
+        workMin: Math.max(6, Math.round(work * 0.75)),
+        workMax: Math.round(work * 1.25),
+      }, trim);
+      if (!fit) return null;
+      const seg = this._pickSegment(fit.work, 'minThresh');
+      rows.push({ label: `Series de umbral en ${seg.name} (×${fit.reps} repeticiones)`, dur: `${fit.work} min c/u`, watts: `${pct(0.93)}–${pct(1.03)} W`, rpm: '85-90 rpm', desc: `Sube ${seg.name} (${seg.km} km / ${seg.grad}%) al FTP. Respiración muy alta pero controlada.` });
+      rows.push({ label: `Recuperación activa (×${fit.reps - 1} repeticiones)`, dur: `${fit.rec} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Recuperación bajando. No parar.' });
+      used = fit.reps * fit.work + (fit.reps - 1) * fit.rec;
+    } else if (fam === 'tp' && arg === 'cont') {
+      if (main < 30) return null;
+      const work = Math.min(main, 45) - 5 * trim; // tope 45': más de eso seguido en Z3 es excesivo para un intermedio
+      if (work < 25) return null;
+      const seg = this._pickSegment(work, 'minThresh');
+      rows.push({ label: `Bloque Z3 continuo en ${seg.name}`, dur: `${work} min`, watts: `${pct(0.76)}–${pct(0.88)} W`, rpm: '85-90 rpm', desc: 'Un único bloque sostenido "comfortably hard". Ritmo constante de principio a fin.' });
+      used = work;
+    } else if (fam === 'tp' && arg === 'prog') {
+      const block = Math.min(15, Math.floor(main / 3)) - 2 * trim;
+      if (block < 8) return null;
+      const steps = [[0.76, 0.80, 'suave'], [0.80, 0.84, 'medio'], [0.84, 0.88, 'alto']];
+      steps.forEach(([lo, hi, lvl], i) => rows.push({ label: `Bloque Z3 progresivo — tramo ${['uno', 'dos', 'tres'][i]}`, dur: `${block} min`, watts: `${pct(lo)}–${pct(hi)} W`, rpm: '85-90 rpm', desc: `Tramo ${lvl} del bloque progresivo: sube un escalón de vatios sin parar.` }));
+      used = block * 3;
+    } else if (fam === 'tp' && arg === 'mix') {
+      // Sweet spot ×2 + un bloque final al umbral: lo que promete "Sweetspot + umbral".
+      const th = 8, rec = 5;
+      const ss = Math.min(20, Math.floor((main - th - 2 * rec) / 2)) - 2 * trim;
+      if (ss < 10) return null;
+      rows.push({ label: `Bloques Z3 sweetspot (×2 repeticiones)`, dur: `${ss} min c/u`, watts: `${pct(0.84)}–${pct(0.90)} W`, rpm: '85-90 rpm', desc: '"Comfortably hard". Respiración elevada pero rítmica.' });
+      rows.push({ label: `Recuperación activa (×2 repeticiones)`, dur: `${rec} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Pedaleo suave entre bloques.' });
+      rows.push({ label: `Bloque final al umbral`, dur: `${th} min`, watts: `${pct(0.95)}–${pct(1.02)} W`, rpm: '88-92 rpm', desc: 'Cierra con un bloque al FTP con las piernas ya cargadas.' });
+      used = 2 * ss + 2 * rec + th;
+    } else if (fam === 'tp') {
+      const work = parseInt(arg, 10);
+      const REC = { 10: 3, 12: 4, 15: 5, 20: 5, 25: 5 }[work] || 5;
+      const fit = this._fitReps(main, {
+        work, rec: REC,
+        minReps: work <= 12 ? 3 : 2,
+        maxReps: { 10: 5, 12: 4, 15: 4, 20: 3, 25: 2 }[work] || 2,
+        workMin: Math.max(8, Math.round(work * 0.75)),
+        workMax: Math.round(work * 1.2),
+      }, trim);
+      if (!fit) return null;
+      const seg = this._pickSegment(fit.work, 'minThresh');
+      rows.push({ label: `Bloques Z3 en ${seg.name} (×${fit.reps} repeticiones)`, dur: `${fit.work} min c/u`, watts: `${pct(0.76)}–${pct(0.88)} W`, rpm: '85-90 rpm', desc: `"Comfortably hard" en ${seg.name}. Respiración elevada pero rítmica.` });
+      rows.push({ label: `Recuperación Z1 (×${fit.reps - 1} repeticiones)`, dur: `${fit.rec} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Pedaleo suave entre bloques.' });
+      used = fit.reps * fit.work + (fit.reps - 1) * fit.rec;
+    } else if (fam === 'vo') {
+      const work = parseInt(arg, 10);
+      const rec = work === 5 ? 4 : work;
+      const fit = this._fitReps(main, {
+        work, rec,
+        minReps: { 2: 5, 3: 4, 4: 3, 5: 3 }[work] || 3,
+        maxReps: { 2: 8, 3: 6, 4: 6, 5: 5 }[work] || 5,
+        workMin: work, workMax: work, // en VO₂max no se estira la repetición
+      }, trim);
+      if (!fit) return null;
+      const seg = this._pickSegment(fit.work, 'minVO2');
+      rows.push({ label: `Series VO₂Max en ${seg.name} (×${fit.reps} repeticiones)`, dur: `${fit.work} min c/u`, watts: `${pct(1.06)}–${pct(1.20)} W`, rpm: '90-100 rpm', desc: `Sube ${seg.name} (${seg.km} km / ${seg.grad}%) a tope. FC máxima ~90-95%. Baja pedaleando suave.` });
+      rows.push({ label: `Recuperación activa (×${fit.reps - 1} repeticiones)`, dur: `${fit.rec} min c/u`, watts: `${pct(0.50)}–${pct(0.55)} W`, rpm: '90+ rpm', desc: 'Recuperación activa bajando. No parar.' });
+      used = fit.reps * fit.work + (fit.reps - 1) * fit.rec;
+    } else if (fam === 'lg' && arg === 'tempo') {
+      // Z2 con bloques de tempo en la segunda mitad: lo que prometen "Fondo con bloques de
+      // tempo", "Gran fondo con bloques de calidad", "Ensayo de ritmo"... Tope del 30% en Z3.
+      warm = Math.max(10, Math.round(durMin * 0.15));
+      cool = Math.max(10, Math.round(durMin * 0.10));
+      main = durMin - warm - cool;
+      if (main < 60) return null;
+      let reps = main >= 120 ? 3 : 2;
+      let work = (main >= 150 ? 20 : 15) - 2 * trim;
+      if (work < 8) return null;
+      const rec = 10;
+      while (reps * work > main * 0.30 && work > 10) work--;
+      if (reps * work > main * 0.30) reps = 2;
+      const tempoTotal = reps * work + (reps - 1) * rec;
+      const z2A = Math.floor((main - tempoTotal) / 2);
+      const z2B = main - tempoTotal - z2A;
+      if (z2A < 10 || z2B < 10) return null;
+      rows.push({ label: 'Bloque Z2 aeróbico', dur: `${z2A} min`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: '85-92 rpm', desc: 'Base aeróbica estable antes de los bloques de ritmo.' });
+      rows.push({ label: `Bloques de tempo (×${reps} repeticiones)`, dur: `${work} min c/u`, watts: `${pct(0.76)}–${pct(0.85)} W`, rpm: '85-90 rpm', desc: 'Ritmo de evento: exigente pero sostenible. Come y bebe igual que en carrera.' });
+      rows.push({ label: `Recuperación Z2 (×${reps - 1} repeticiones)`, dur: `${rec} min c/u`, watts: `${pct(0.56)}–${pct(0.70)} W`, rpm: '85-90 rpm', desc: 'Vuelve a Z2 sin parar.' });
+      rows.push({ label: 'Bloque Z2 final', dur: `${z2B} min`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: '85-92 rpm', desc: 'Termina en Z2 aunque las piernas estén cargadas.' });
+      return [
+        { label: 'Calentamiento', dur: `${warm} min`, watts: `${pct(0.50)}–${pct(0.60)} W`, rpm: '85-90 rpm', desc: 'Activación suave.' },
+        ...rows,
+        { label: 'Vuelta a la calma', dur: `${cool} min`, watts: `${pct(0.45)}–${pct(0.55)} W`, rpm: '90 rpm', desc: 'Reducir gradualmente.' },
+      ];
+    } else {
+      return null;
+    }
+
+    if (used > main || used <= 0) return null;
+    const leftover = main - used;
+    const WARM_LABEL = {
+      threshold: ['Calentamiento', 'Incluye sprints cortos para activar.', 0.55, 0.70, '88-92 rpm'],
+      tempo:     ['Calentamiento progresivo', 'Incremento gradual.', 0.55, 0.70, '88 rpm'],
+      vo2max:    ['Calentamiento', 'Activación completa. Incluye 2×2 min al 90% FTP.', 0.55, 0.70, '90 rpm'],
+    }[type];
+    if (!WARM_LABEL) return null;
+    const out = [{ label: WARM_LABEL[0], dur: `${warm} min`, watts: `${pct(WARM_LABEL[2])}–${pct(WARM_LABEL[3])} W`, rpm: WARM_LABEL[4], desc: WARM_LABEL[1] }, ...rows];
+    if (leftover > 10) {
+      // Mejor un rodaje Z2 explícito que una "vuelta a la calma" de 40 min.
+      out.push({ label: 'Rodaje aeróbico Z2', dur: `${leftover} min`, watts: `${pct(0.56)}–${pct(0.70)} W`, rpm: '85-92 rpm', desc: 'Completa el volumen de la sesión en Z2.' });
+      out.push({ label: 'Vuelta a la calma', dur: `${cool} min`, watts: `< ${pct(0.60)} W`, rpm: 'libre', desc: 'Reducción gradual.' });
+    } else {
+      out.push({ label: 'Vuelta a la calma', dur: `${cool + leftover} min`, watts: `< ${pct(0.60)} W`, rpm: 'libre', desc: 'Reducción gradual.' });
+    }
+    return out;
+  },
+
   /** Genera estructura de intervalos detallada */
-  _buildIntervals(type, ftp, durMin, tss, ifTarget, variant = 'main', cadenceSpec = null) {
+  _buildIntervals(type, ftp, durMin, tss, ifTarget, variant = 'main', cadenceSpec = null, structure = null) {
     const pct = (ratio) => Math.round(ftp * ratio);
 
     // Días de series (umbral/VO2/sprint/fuerza/tempo): calentamiento mínimo de 15 min,
@@ -2600,6 +2847,19 @@ const TrainingPlanGenerator = {
       return [
         { label: 'Rodaje corto', dur: `${durMin} min`, watts: `${pct(0.55)}–${pct(0.70)} W`, rpm: '85-90 rpm', desc: 'Sesión muy corta, rodaje aeróbico continuo.' }
       ];
+    }
+
+    // Estructura elegida al generar el plan (ver _pickStructure). Solo aplica si sigue
+    // siendo del mismo tipo: si la sesión se sustituyó por otro tipo, se ignora.
+    if (structure && structure.type === type) {
+      const key = structure[variant === 'alt' ? 'alt' : 'main'];
+      if (typeof key === 'string' && key.startsWith('legacy:')) {
+        variant = key.slice(7) === 'alt' ? 'alt' : 'main';
+      } else if (typeof key === 'string') {
+        const built = this._buildStructuredIntervals(type, key, ftp, durMin, warm, cool, main, Math.max(0, Math.min(4, structure.trim | 0)));
+        if (built) return built;
+        // No cabe en esta duración → cae al camino de siempre con la variante pedida.
+      }
     }
 
     let intervals = [];
@@ -2629,7 +2889,12 @@ const TrainingPlanGenerator = {
           const blockMin = cadenceSpec.blockMin;
           const maxReps = Math.floor(main / (blockMin * 2));
           const reps = Math.max(2, Math.min(cadenceSpec.reps || maxReps, maxReps));
-          const restMin = Math.max(3, Math.round((main - reps * blockMin) / reps));
+          // floor (no round) + el sobrante a la vuelta a la calma: con round los pasos se
+          // pasaban o quedaban cortos 1-5 min respecto a la duración de la sesión, y esa
+          // diferencia llegaba tal cual al archivo FIT / Garmin. reps ≤ main/(2·blockMin)
+          // garantiza restMin ≥ blockMin, así que nunca sale 0.
+          const restMin = Math.max(3, Math.floor((main - reps * blockMin) / reps));
+          cool = Math.max(5, cool + main - reps * (blockMin + restMin));
           intervals.push({ label: `Bloque de fuerza a baja cadencia (×${reps} repeticiones)`, dur: `${blockMin} min c/u`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: `${cadenceSpec.lowRpm} rpm`, desc: 'Torque aeróbico: fuerza a baja cadencia sin elevar la frecuencia cardiaca.' });
           intervals.push({ label: `Recuperación Z2 (×${reps} repeticiones)`, dur: `${restMin} min c/u`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: '85-90 rpm', desc: 'Recuperar cadencia normal entre bloques de fuerza.' });
         } else if (cadenceSpec && cadenceSpec.mode === 'altCadence' && main >= cadenceSpec.blockMin * 2) {
@@ -2637,7 +2902,10 @@ const TrainingPlanGenerator = {
           // igual que forceBlocks, pero para plantillas que prometen alternancia, no fuerza.
           const blockMin = cadenceSpec.blockMin;
           const reps = Math.max(2, Math.floor(main / (blockMin * 2)));
-          const leftoverPerRep = Math.round((main - reps * blockMin * 2) / reps);
+          const leftoverPerRep = Math.floor((main - reps * blockMin * 2) / reps);
+          // Mismo ajuste que forceBlocks (con suelo de 5 min: en sesiones muy cortas reps=2
+          // ya no cabe y el bloque se pasa de tiempo — mejor eso que una vuelta a la calma de 0).
+          cool = Math.max(5, cool + main - reps * (blockMin * 2 + Math.max(0, leftoverPerRep)));
           const climb = cadenceSpec.terrain === 'climb';
           intervals.push({ label: `${climb ? 'Tramo en subida a' : 'Bloque a'} cadencia baja (×${reps} repeticiones)`, dur: `${blockMin} min c/u`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: `${cadenceSpec.lowRpm} rpm`, desc: 'Fuerza: torque a baja cadencia.' });
           intervals.push({ label: `${climb ? 'Tramo en subida a' : 'Bloque a'} cadencia alta (×${reps} repeticiones)`, dur: `${blockMin + Math.max(0, leftoverPerRep)} min c/u`, watts: `${pct(0.56)}–${pct(0.75)} W`, rpm: `${cadenceSpec.highRpm} rpm`, desc: 'Cadencia habitual entre bloques.' });

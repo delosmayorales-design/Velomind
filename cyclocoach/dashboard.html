@@ -2702,8 +2702,8 @@ function _rebuildDashDescriptions(sessions) {
     }
     const sv    = s.intervalVariant || 'main';
     const svAlt = sv === 'main' ? 'alt' : 'main';
-    s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, sv);
-    s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, svAlt);
+    s.intervals     = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, sv, null, s._structure);
+    s.alt_intervals = TrainingPlanGenerator._buildIntervals(s.type, ftp, s.durationMin, s.tss, s.ifTarget, svAlt, null, s._structure);
     s.description     = TrainingPlanGenerator._buildDesc(s.intervals);
     s.alt_description = TrainingPlanGenerator._buildDesc(s.alt_intervals);
   });
