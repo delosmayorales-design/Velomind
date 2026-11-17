@@ -824,6 +824,19 @@
       display: flex; align-items: center; gap: 4px; white-space: nowrap;
     }
     .xtr-icon { font-size: 13px; line-height: 1; }
+    /* Días de bici elegidos por el atleta */
+    .bike-days-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .bike-day-chip {
+      height: 28px; min-width: 0; border-radius: 6px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.14); background: transparent;
+      color: var(--text-muted); font-size: 11px; font-weight: 800; font-family: inherit;
+    }
+    .bike-day-chip.on { background: var(--primary); border-color: var(--primary); color: #111; }
+    .bike-days-foot { display: flex; align-items: center; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+    .bike-days-foot label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+    .bike-days-foot select { flex: 1; min-width: 120px; }
+    .bike-days-hint { font-size: 10px; color: var(--text-muted); margin-top: 5px; line-height: 1.35; }
+    html[data-theme="light"] .bike-day-chip, html.light-theme .bike-day-chip { border-color: rgba(0,0,0,.15); }
     .cfg-span2 { grid-column: span 2; }
     .cfg-span3 { grid-column: 1/-1; }
 
@@ -1082,6 +1095,25 @@
             <div class="params-field cfg-span2">
               <label>CTL inicial</label>
               <input type="number" id="adj-initial-ctl" class="params-input" placeholder="0" min="0" max="200" title="Punto de partida para el PMC cuando no tienes historial. Si ya tienes +6 semanas de actividades sincronizadas, el CTL se calcula automáticamente desde ellas y este valor no afecta al resultado.">
+            </div>
+
+            <!-- Días de bici: qué días concretos entrena y cuál es la salida larga -->
+            <div class="xtr-section">
+              <div class="xtr-section-label"><i class="fas fa-bicycle"></i> Días de bici</div>
+              <div class="bike-days-row" id="adj-bike-days">
+                <button type="button" class="bike-day-chip" data-day="0" onclick="toggleBikeDay(0)" title="Lunes">L</button>
+                <button type="button" class="bike-day-chip" data-day="1" onclick="toggleBikeDay(1)" title="Martes">M</button>
+                <button type="button" class="bike-day-chip" data-day="2" onclick="toggleBikeDay(2)" title="Miércoles">X</button>
+                <button type="button" class="bike-day-chip" data-day="3" onclick="toggleBikeDay(3)" title="Jueves">J</button>
+                <button type="button" class="bike-day-chip" data-day="4" onclick="toggleBikeDay(4)" title="Viernes">V</button>
+                <button type="button" class="bike-day-chip" data-day="5" onclick="toggleBikeDay(5)" title="Sábado">S</button>
+                <button type="button" class="bike-day-chip" data-day="6" onclick="toggleBikeDay(6)" title="Domingo">D</button>
+              </div>
+              <div class="bike-days-foot">
+                <label for="adj-long-day">Salida larga</label>
+                <select id="adj-long-day" class="params-input params-select"></select>
+              </div>
+              <div class="bike-days-hint" id="adj-bike-days-hint"></div>
             </div>
 
             <!-- Entrenamiento complementario: selectores alineados -->
@@ -1836,6 +1868,43 @@ function fillAdjustmentForm() {
   if (document.getElementById('adj-running-days')) document.getElementById('adj-running-days').value = a.running_days || 0;
   if (document.getElementById('adj-walking-days')) document.getElementById('adj-walking-days').value = a.walking_days || 0;
   if (document.getElementById('adj-other-days'))   document.getElementById('adj-other-days').value   = a.other_days   || 0;
+  // Días de bici elegidos (vacío = reparto automático del motor)
+  const prefs = (typeof TrainingPlanGenerator !== 'undefined') ? TrainingPlanGenerator._parseDayPrefs(a) : null;
+  _adjBikeDays = new Set(prefs ? prefs.days : []);
+  _adjLongDay  = prefs ? prefs.longDay : null;
+  renderBikeDaysUI();
+}
+
+// ── Días de bici (0=Lunes..6=Domingo) ──
+var _adjBikeDays = new Set();
+var _adjLongDay  = null;
+const _BIKE_DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+function toggleBikeDay(d) {
+  if (_adjBikeDays.has(d)) _adjBikeDays.delete(d); else _adjBikeDays.add(d);
+  if (_adjLongDay !== null && !_adjBikeDays.has(_adjLongDay)) _adjLongDay = null;
+  renderBikeDaysUI();
+}
+
+function renderBikeDaysUI() {
+  document.querySelectorAll('#adj-bike-days .bike-day-chip').forEach(btn => {
+    btn.classList.toggle('on', _adjBikeDays.has(Number(btn.dataset.day)));
+  });
+  const sel = document.getElementById('adj-long-day');
+  const hint = document.getElementById('adj-bike-days-hint');
+  const days = [..._adjBikeDays].sort((a, b) => a - b);
+  if (sel) {
+    sel.innerHTML = '<option value="">Automática</option>' +
+      days.map(d => `<option value="${d}">${_BIKE_DAY_NAMES[d]}</option>`).join('');
+    sel.value = _adjLongDay !== null ? String(_adjLongDay) : '';
+    sel.disabled = days.length === 0;
+    sel.onchange = () => { _adjLongDay = sel.value === '' ? null : Number(sel.value); };
+  }
+  if (hint) {
+    hint.textContent = days.length
+      ? `${days.length} día${days.length > 1 ? 's' : ''} de bici por semana. El resto de días quedan para descanso, gimnasio o caminata.`
+      : 'Sin días marcados: el plan elige los días automáticamente. Marca los días que puedes salir en bici.';
+  }
 }
 
 function renderWeekDates() {
@@ -5756,7 +5825,12 @@ async function applyAdjustments() {
     updates.running_days = runningDaysVal;
     updates.walking_days = walkingDaysVal;
     updates.other_days   = otherDaysVal;
-    if (maxHR      !== null && !isNaN(maxHR)      && maxHR      >= 100) updates.max_hr = maxHR;
+    // Días de bici concretos: [] / null = reparto automático
+    const bikeDays = [..._adjBikeDays].sort((a, b) => a - b);
+    updates.training_days = bikeDays.length ? bikeDays : null;
+    updates.long_ride_day = (bikeDays.length && _adjLongDay !== null && bikeDays.includes(_adjLongDay)) ? _adjLongDay : null;
+    if (bikeDays.length) updates.days_per_week = bikeDays.length;
+    if (maxHR     !== null && !isNaN(maxHR)      && maxHR      >= 100) updates.max_hr = maxHR;
     if (lthr       !== null && !isNaN(lthr)        && lthr       >= 100) updates.lthr = lthr;
     if (goal)  updates.goal = goal;
     // Los eventos (target_events / event_date) se guardan exclusivamente desde

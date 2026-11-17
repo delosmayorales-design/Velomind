@@ -338,7 +338,9 @@ const TrainingPlanGenerator = {
     const goal   = GoalUtils.normalize(athlete.goal || 'resistencia');
     const trainingGoal = GoalUtils.toTrainingGoal(goal);
     const exp    = athlete.experience || 'intermedio';
-    const days_per_week = Math.max(1, Math.min(7, athlete.days_per_week || 5));
+    const dayPrefs = this._parseDayPrefs(athlete);
+    // Con días concretos elegidos, el nº de días de bici es el de esos días
+    const days_per_week = dayPrefs ? dayPrefs.days.length : Math.max(1, Math.min(7, athlete.days_per_week || 5));
 
     // TSB/CTL actuales — usar pmcData del AppState (fuente backend) si está disponible
     // Si no, calcular localmente como fallback offline
@@ -471,7 +473,7 @@ const TrainingPlanGenerator = {
       this._injectWalkingSessions(
         this._injectRunningSessions(
           this._injectGymSessions(
-            this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle, events, cycleInfo.globalWeekIdx || 0),
+            this._buildSessions(trainingGoal, effectivePhase, ftp, weight, hours, exp, tsb, targetTSS, cyclingActs, days_per_week, athlete.segments, cycleInfo.weekInCycle, events, cycleInfo.globalWeekIdx || 0, dayPrefs),
             gymDays, previousDayTypes, excludeDayIndices
           ),
           runningDays, previousDayTypes, excludeDayIndices
@@ -1119,7 +1121,119 @@ const TrainingPlanGenerator = {
     return parts.join(' + ');
   },
 
-  _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week = 5, userSegments = null, weekInCycle = 1, events = [], globalWeekIdx = 0) {
+  // ── Días de entrenamiento elegidos por el atleta ──
+  // Normaliza las preferencias guardadas en el perfil: training_days = índices 0=Lunes..6=Domingo
+  // (array o JSON en texto), long_ride_day = índice del día de la salida larga (o null = automático).
+  // Devuelve null si no hay días elegidos → el motor usa el reparto automático de siempre.
+  _parseDayPrefs(athlete) {
+    let raw = athlete?.training_days;
+    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { raw = null; } }
+    if (!Array.isArray(raw)) return null;
+    const days = [...new Set(raw.map(Number).filter(d => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
+    if (!days.length) return null;
+    const ld = athlete?.long_ride_day;
+    const longDay = (ld === null || ld === undefined || ld === '') ? null : Number(ld);
+    return { days, longDay: (Number.isInteger(longDay) && days.includes(longDay)) ? longDay : null };
+  },
+
+  // Recoloca las sesiones de la plantilla semanal en los días que el atleta ha elegido.
+  //  1. Si hay más sesiones que días, se quitan las de menor prioridad (el fondo largo, lo último).
+  //  2. El fondo largo va al día de salida larga elegido (si lo hay).
+  //  3. El resto se reparte en los demás días respetando el orden de la plantilla, y después
+  //     se intercambian si así se evita encadenar dos días de calidad (la Regla 1 de
+  //     _buildSessions convertiría el segundo en recuperación).
+  //  4. Los días no elegidos quedan de descanso marcado como _daysLimitRest (la Regla 2 no
+  //     los convierte en sesión activa).
+  // Devuelve una plantilla de 7 días o null si no aplica.
+  _applyDayPreferences(templates, prefDays, longDay, TYPE_PRIORITY) {
+    const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    if (!Array.isArray(templates) || templates.length !== 7) return null;
+    if (templates.some((t, i) => t.day !== DAYS[i])) return null;
+    const days = [...new Set((prefDays || []).filter(d => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
+    if (!days.length) return null;
+
+    let sessions = templates.map((t, i) => ({ t, i })).filter(x => !x.t.isRest);
+    if (!sessions.length) return null;
+    const hadShare = sessions.reduce((s, x) => s + (x.t.tssShare || 0), 0);
+
+    // 1. Sesión que va al día de salida larga: el 'long' de más carga; si no hay, el rodaje
+    //    de resistencia de más carga (nunca una sesión de calidad). Se elige antes del
+    //    recorte para que no se descarte aunque su tipo tenga poca prioridad.
+    let longIdx = null;
+    if (longDay !== null && days.includes(longDay)) {
+      const pick = types => sessions
+        .filter(x => types.includes(x.t.type))
+        .sort((a, b) => (b.t.tssShare || 0) - (a.t.tssShare || 0))[0];
+      const cand = pick(['long']) || pick(['endurance']);
+      if (cand) longIdx = cand.i;
+    }
+
+    // 2. Recorte por prioridad (a igual prioridad se quita la que va antes en la semana)
+    if (sessions.length > days.length) {
+      const byPrio = sessions.filter(x => x.i !== longIdx).sort((a, b) =>
+        ((TYPE_PRIORITY[a.t.type] || 4) - (TYPE_PRIORITY[b.t.type] || 4)) || (a.i - b.i));
+      const drop = new Set(byPrio.slice(0, sessions.length - days.length).map(x => x.i));
+      sessions = sessions.filter(x => !drop.has(x.i));
+    }
+
+    // 3. Elegir qué días de los disponibles se usan (si sobran días, repartirlos)
+    const others = sessions.filter(x => x.i !== longIdx);
+    let freeDays = days.filter(d => longIdx === null || d !== longDay);
+    if (others.length < freeDays.length) {
+      const k = others.length, m = freeDays.length;
+      freeDays = k === 0 ? [] : Array.from({ length: k }, (_, j) => freeDays[Math.round(j * (m - 1) / Math.max(1, k - 1))]);
+      if (k === 1) freeDays = [days.filter(d => longIdx === null || d !== longDay)[0]];
+    }
+    const slots = new Array(7).fill(null);
+    if (longIdx !== null) slots[longDay] = templates[longIdx];
+    others.forEach((x, j) => { slots[freeDays[j]] = x.t; });
+
+    // 3b. Evitar dos días de calidad seguidos intercambiando sesiones movibles
+    const HARD = new Set(['threshold', 'vo2max', 'sprint', 'strength']);
+    const ANY  = new Set(['threshold', 'vo2max', 'sprint', 'strength', 'tempo']);
+    const conflicts = s => {
+      let c = 0;
+      for (let d = 1; d < 7; d++) {
+        if (s[d - 1] && s[d] && HARD.has(s[d - 1].type) && ANY.has(s[d].type)) c++;
+      }
+      return c;
+    };
+    const movable = freeDays.slice();
+    for (let iter = 0; iter < 10 && conflicts(slots) > 0; iter++) {
+      let best = null, bestC = conflicts(slots);
+      for (let a = 0; a < movable.length; a++) {
+        for (let b = a + 1; b < movable.length; b++) {
+          const da = movable[a], db = movable[b];
+          [slots[da], slots[db]] = [slots[db], slots[da]];
+          const c = conflicts(slots);
+          if (c < bestC) { bestC = c; best = [da, db]; }
+          [slots[da], slots[db]] = [slots[db], slots[da]];
+        }
+      }
+      if (!best) break;
+      const [da, db] = best;
+      [slots[da], slots[db]] = [slots[db], slots[da]];
+    }
+
+    // 4. Plantilla final de 7 días
+    const daySet = new Set(days);
+    let result = slots.map((t, d) => {
+      if (t) return { ...t, day: DAYS[d] };
+      return daySet.has(d)
+        ? { day: DAYS[d], isRest: true, description: 'Descanso. Hoy tenías hueco, pero la semana ya tiene su carga repartida.' }
+        : { day: DAYS[d], isRest: true, _daysLimitRest: true, description: 'Descanso — día sin bici en tu disponibilidad. Movilidad, estiramientos o caminar.' };
+    });
+
+    // Si se quitaron sesiones, repartir su carga entre las que quedan
+    const keptShare = result.reduce((s, t) => s + (t.isRest ? 0 : (t.tssShare || 0)), 0);
+    if (keptShare > 0 && Math.abs(keptShare - hadShare) > 1e-6) {
+      const f = hadShare / keptShare;
+      result = result.map(t => (t.isRest || !t.tssShare) ? t : { ...t, tssShare: t.tssShare * f });
+    }
+    return result;
+  },
+
+  _buildSessions(goal, phase, ftp, weight, hours, exp, tsb, targetTSS, activities, days_per_week = 5, userSegments = null, weekInCycle = 1, events = [], globalWeekIdx = 0, dayPrefs = null) {
     // Cargar segmentos configurados por el usuario (o usar los por defecto hardcoded como fallback)
     if (userSegments && Array.isArray(userSegments) && userSegments.length > 0) {
       this._activeSegments = userSegments.map(s => ({
@@ -1170,7 +1284,15 @@ const TrainingPlanGenerator = {
     // Los fondos (long) son la base aeróbica más valiosa — se eliminan los últimos.
     const TYPE_PRIORITY = { recovery: 1, endurance: 2, tempo: 3, threshold: 4, strength: 4, sprint: 5, vo2max: 5, long: 6, race: 7 };
     const trainingDays = templates.filter(t => !t.isRest);
-    if (trainingDays.length > days_per_week) {
+    // Días concretos elegidos por el atleta (ej. rodillo martes/jueves + fondo el domingo):
+    // sustituyen al recorte automático de abajo. No se aplican en la semana de carrera
+    // (phase 'race'), donde la posición de cada sesión depende de la fecha del evento.
+    const prefTemplates = (phase !== 'race' && dayPrefs)
+      ? this._applyDayPreferences(templates, dayPrefs.days, dayPrefs.longDay, TYPE_PRIORITY)
+      : null;
+    if (prefTemplates) {
+      templates = prefTemplates;
+    } else if (trainingDays.length > days_per_week) {
       const excess = trainingDays.length - days_per_week;
       const WEEKEND = new Set(['Sábado', 'Domingo']);
 

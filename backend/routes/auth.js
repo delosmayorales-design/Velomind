@@ -239,7 +239,8 @@ router.post('/avatar', requireAuth, avatarUpload.single('avatar'), async (req, r
 // Perfil PUT
 router.put('/profile', requireAuth, async (req, res) => {
   const allowed = ['name','age','sex','weight','height','ftp','max_hr','lthr',
-                   'experience','goal','weekly_hours','days_per_week','event_date','initial_ctl','target_events','gym_days','running_days','walking_days','other_days'];
+                   'experience','goal','weekly_hours','days_per_week','event_date','initial_ctl','target_events','gym_days','running_days','walking_days','other_days',
+                   'training_days','long_ride_day'];
   const updates = {};
   for (const k of allowed) {
     if (req.body[k] !== undefined) updates[k] = req.body[k];
@@ -266,9 +267,39 @@ router.put('/profile', requireAuth, async (req, res) => {
     updates.max_hr = hr;
   }
 
+  // Días de bici concretos: array de índices 0=Lunes..6=Domingo, o null (= automático)
+  if (updates.training_days !== undefined) {
+    const td = updates.training_days;
+    if (td === null || (Array.isArray(td) && td.length === 0)) {
+      updates.training_days = null;
+    } else if (Array.isArray(td) && td.every(d => Number.isInteger(Number(d)) && Number(d) >= 0 && Number(d) <= 6)) {
+      updates.training_days = [...new Set(td.map(Number))].sort((a, b) => a - b);
+    } else {
+      return res.status(400).json({ error: 'Días de entrenamiento no válidos' });
+    }
+  }
+  if (updates.long_ride_day !== undefined) {
+    const ld = updates.long_ride_day;
+    if (ld === null || ld === '') {
+      updates.long_ride_day = null;
+    } else {
+      const n = Number(ld);
+      if (!Number.isInteger(n) || n < 0 || n > 6)
+        return res.status(400).json({ error: 'Día de salida larga no válido' });
+      updates.long_ride_day = n;
+    }
+  }
+
   updates.updated_at = new Date().toISOString();
 
-  const { error } = await supabase.from('users').update(updates).eq('id', req.user.id);
+  let { error } = await supabase.from('users').update(updates).eq('id', req.user.id);
+  // Si la migración add_training_days.sql aún no se ha aplicado, no romper el guardado del
+  // resto del perfil: reintentar sin esas columnas (el frontend las conserva en local).
+  if (error && /training_days|long_ride_day/.test(error.message || '')) {
+    delete updates.training_days;
+    delete updates.long_ride_day;
+    ({ error } = await supabase.from('users').update(updates).eq('id', req.user.id));
+  }
   if (error) return res.status(500).json({ error: error.message });
 
   // Si cambió el CTL inicial, recalcular PMC en background para que el cambio se vea al instante

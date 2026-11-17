@@ -78,7 +78,9 @@ function isLegacyDemoActivity(a) {
           // Mismo problema que target_events/event_date, pero aquí 0 es un valor válido
           // y querido (p.ej. "sin días de gimnasio"): no se puede usar truthiness, hay
           // que comprobar explícitamente null/undefined para no perder un 0 local real.
-          ['gym_days', 'running_days', 'walking_days', 'other_days'].forEach(f => {
+          // training_days / long_ride_day: igual, si la columna aún no existe en la BD
+          // (migración add_training_days.sql pendiente) se conserva el valor local.
+          ['gym_days', 'running_days', 'walking_days', 'other_days', 'training_days', 'long_ride_day'].forEach(f => {
             if (data.user[f] == null && AppState.athlete?.[f] != null) {
               _merged[f] = AppState.athlete[f];
             }
