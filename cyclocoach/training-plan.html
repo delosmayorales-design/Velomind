@@ -4822,9 +4822,15 @@ function showSessionDetail(idx, showAlt = false) {
               const intensity = _ivIfFromWatts(iv.watts, iv.label);
               const h = Math.round(16 + intensity * 54);
               const flexWeight = Math.max(0.5, durationMin);
-              const op = (0.45 + Math.min(0.5, intensity * 0.35)).toFixed(2);
+              // Azul = suave (rodaje/recuperación), naranja → rojo = series duras
+              const barBg = intensity >= 1.06 ? 'linear-gradient(180deg,#ef4444,#dc2626)'
+                          : intensity >= 0.91 ? 'linear-gradient(180deg,#f97316,#ea580c)'
+                          : intensity >= 0.76 ? 'linear-gradient(180deg,#fb923c,#f59e0b)'
+                          : intensity >= 0.56 ? 'linear-gradient(180deg,#38bdf8,#0284c7)'
+                          :                     'linear-gradient(180deg,#0ea5e9,#075985)';
+              const op = intensity >= 0.56 ? 0.95 : 0.7;
               const repText = iv._repTotal > 1 ? ` · rep ${iv._repIdx}/${iv._repTotal}` : '';
-              return `<div title="${ivIdx + 1}. ${iv.label}${repText} · ${iv.dur}${iv.watts ? ' · ' + iv.watts : ''}" style="flex:${flexWeight};min-width:4px;height:${h}px;background:${color};opacity:${op};border-radius:4px 4px 0 0"></div>`;
+              return `<div title="${ivIdx + 1}. ${iv.label}${repText} · ${iv.dur}${iv.watts ? ' · ' + iv.watts : ''}" style="flex:${flexWeight};min-width:4px;height:${h}px;background:${barBg};opacity:${op};border-radius:4px 4px 0 0"></div>`;
             }).join('');
           })()}
           </div>
