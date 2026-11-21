@@ -430,6 +430,9 @@ class PlanRecalculator {
   static _MAX_DUR = { long: 240, endurance: 210, recovery: 90, threshold: 150, tempo: 150, vo2max: 150, sprint: 150, strength: 150 };
 
   static _crossTrainingKey(sess) {
+    // El tipo manda: un flag isWalking/isGym… huérfano de una sesión ya cambiada a bici
+    // no debe hacer que se trate como actividad complementaria.
+    if (sess.type && !['gym', 'running', 'walking', 'other'].includes(sess.type)) return null;
     if (sess.isWalking) return 'walking';
     if (sess.isGym) return 'gym';
     if (sess.isRunning) return 'running';

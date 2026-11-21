@@ -999,7 +999,7 @@
   </div>
 </main>
 
-<script src="js/app.js?v=109"></script>
+<script src="js/app.js?v=110"></script>
 <script src="js/backend-sync.js?v=106"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -2688,6 +2688,7 @@ function _rebuildDashDescriptions(sessions) {
   const ftp = AppState.athlete?.ftp || 200;
   const _NON_CYCLING = new Set(['gym', 'running', 'walking']);
   (sessions || []).forEach(s => {
+    window.syncSessionTypeFlags?.(s);
     if (s.isRest || !s.type) return;
     if (s.isGym || s.isRunning || s.isWalking || s.isOther || _NON_CYCLING.has(s.type)) return;
     // Si el TSS guardado ya no corresponde a durationMin+ifTarget (p.ej. una adaptación

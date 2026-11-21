@@ -8,6 +8,20 @@ const { calcIF, calcTSS, getZone, getTSBStatus } = require('../utils/training');
 const { computeWBal } = require('../services/wbal');
 const { estimateVo2max, LOOKBACK_MONTHS: VO2MAX_LOOKBACK_MONTHS } = require('../services/vo2max');
 const router = express.Router();
+
+// Los flags isWalking/isRunning/isGym/isOther deben seguir siempre a `type`. Al aplicar
+// cambios de la IA con { ...sesión, ...cambios } el flag de la actividad anterior
+// sobrevivía (bug: caminata cambiada a "bici suave MTB" seguía mostrándose como caminata).
+const CROSS_FLAG_BY_TYPE = { walking: 'isWalking', running: 'isRunning', gym: 'isGym', other: 'isOther' };
+function syncSessionTypeFlags(sess) {
+  if (!sess || !sess.type) return sess;
+  const keep = CROSS_FLAG_BY_TYPE[sess.type];
+  for (const flag of Object.values(CROSS_FLAG_BY_TYPE)) {
+    if (flag === keep) sess[flag] = true;
+    else delete sess[flag];
+  }
+  return sess;
+}
 const fs = require('fs');
 const multer = require('multer');
 const upload = multer({ dest: '/tmp/', limits: { fileSize: 40 * 1024 * 1024 } }); // /tmp siempre existe; 40MB — un clip corto de biomecánica no necesita más, y ahorra ancho de banda
@@ -2557,6 +2571,7 @@ Si el plan ya es óptimo → devolver "modifications": []`;
       }
     }
 
+    newSessions.forEach(syncSessionTypeFlags);
     return res.json({ ok: true, newPlan: { mensaje_coach: result.mensaje_coach, sessions: newSessions } });
   } catch (e) {
     res.status(500).json({ error: e.message });

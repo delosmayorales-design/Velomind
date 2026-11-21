@@ -1356,7 +1356,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="js/app.js?v=109"></script>
+<script src="js/app.js?v=110"></script>
 <script src="js/backend-sync.js?v=106"></script>
 <script src="js/fit-encoder.js"></script>
 <script>
@@ -2014,6 +2014,8 @@ function _sanitizeCyclingContent(plan) {
   let changed = false;
   plan.sessions.forEach(s => {
     if (!s) return;
+    // Flag de actividad huérfano (caminata cambiada a bici que seguía siendo "caminata").
+    if (window.syncSessionTypeFlags?.(s)) changed = true;
     // Reparar duración mínima solo para sesiones de ciclismo sin adaptar.
     const _isCyclingType = !s.isGym && !s.isRunning && !s.isWalking && !s.isOther && !['gym','running','walking'].includes(s.type);
     if (!s.isRest && !s._adapted && _isCyclingType && typeof s.durationMin === 'number' && s.durationMin > 0) {
@@ -4259,6 +4261,7 @@ async function recalculateWeek(idx, isFuture = false) {
         // Reconstruir intervalos para que coincidan visualmente con el nuevo tiempo/tipo dictado por la IA
         const ftp = AppState.athlete?.ftp || 200; // Get the current FTP from the athlete's state.
         data.newPlan.sessions.forEach(s => {
+          window.syncSessionTypeFlags?.(s);
           if (s.isRest) {
             s.intervals = []; s.alt_intervals = [];
             s.description = 'Descanso.'; s.alt_description = '';

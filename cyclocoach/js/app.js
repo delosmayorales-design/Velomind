@@ -4009,7 +4009,24 @@ const NutritionPlanner = {
   }
 };
 
+/* Los flags isWalking/isRunning/isGym/isOther deben seguir siempre a `type`.
+   Al modificar una sesión (p.ej. caminata → "bici suave MTB") la IA cambia el tipo pero
+   el flag antiguo sobrevivía y la modal/dashboard seguían mostrando "Caminata".
+   Devuelve true si ha corregido algo (para persistir la reparación). */
+const _CROSS_FLAG_BY_TYPE = { walking: 'isWalking', running: 'isRunning', gym: 'isGym', other: 'isOther' };
+function syncSessionTypeFlags(sess) {
+  if (!sess || !sess.type) return false;
+  const keep = _CROSS_FLAG_BY_TYPE[sess.type];
+  let changed = false;
+  for (const flag of Object.values(_CROSS_FLAG_BY_TYPE)) {
+    if (flag === keep) { if (sess[flag] !== true) { sess[flag] = true; changed = true; } }
+    else if (flag in sess) { delete sess[flag]; changed = true; }
+  }
+  return changed;
+}
+
 /* Exportar al ámbito global */
+window.syncSessionTypeFlags = syncSessionTypeFlags;
 window.AppState       = AppState;
 window.PMC            = PMC;
 window.Utils          = Utils;

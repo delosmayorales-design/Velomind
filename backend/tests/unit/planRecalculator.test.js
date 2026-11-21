@@ -429,3 +429,12 @@ describe('PlanRecalculator._redistributeSessions', () => {
     });
   });
 });
+
+describe('PlanRecalculator._crossTrainingKey', () => {
+  test('el tipo manda sobre un flag huérfano: caminata cambiada a bici ya no es caminata', () => {
+    expect(PlanRecalculator._crossTrainingKey({ type: 'endurance', isWalking: true })).toBeNull();
+  });
+  test('una caminata sigue detectándose como caminata', () => {
+    expect(PlanRecalculator._crossTrainingKey({ type: 'walking', isWalking: true })).toBe('walking');
+  });
+});
